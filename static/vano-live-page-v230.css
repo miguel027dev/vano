@@ -1,0 +1,1252 @@
+/* VANO MAPS V230 — bundle consolidado. Ordem preservada do runtime original. */
+
+/* ---- vano-theme-v56.css ---- */
+/* ============================================================
+   VANO V56 — white + purple system, automatic Black mode
+   Official brand purple: #F59A62 / #FFC39B
+   ============================================================ */
+:root{
+  --vano:#F59A62;
+  --vano-2:#FFC39B;
+  --vano-deep:#D9703F;
+  --vano-soft:#FFF4EC;
+  --vano-soft-2:#FFFBF2;
+  --vano-bg:#F6F7FB;
+  --vano-card:#FFFFFF;
+  --vano-card-2:#FAFAFD;
+  --vano-ink:#171A2B;
+  --vano-muted:#687386;
+  --vano-line:#E3E6EE;
+  --vano-line-strong:#D6DAE5;
+  --vano-shadow:0 12px 34px rgba(32,38,70,.08);
+  --vano-shadow-lg:0 28px 80px rgba(32,38,70,.13);
+  --vano-radius:18px;
+  /* Legacy aliases: old orange branding becomes VANO purple. Traffic/alerts
+     that use dedicated hard-coded warning colors remain functional. */
+  --orange:#F59A62;
+  --orange-2:#FFC39B;
+  --orange-3:#FFC39B;
+  --bg:#F6F7FB;
+  --surface:#FFFFFF;
+  --surface-2:#F8F9FC;
+  --surface-3:#F0F2F7;
+  --text:#171A2B;
+  --muted:#687386;
+  --muted-2:#8891A1;
+  --line:#E3E6EE;
+  --shadow:var(--vano-shadow);
+}
+html{background:var(--vano-bg)}
+html,body{max-width:100%;overflow-x:hidden}
+body{background:var(--vano-bg)!important;background-image:none!important;color:var(--vano-ink)!important}
+body:before{display:none!important}
+
+/* ---------- Global light surfaces ---------- */
+html[data-vano-theme="light"] .topbar{
+  background:rgba(255,255,255,.90)!important;border-bottom:1px solid rgba(215,219,230,.86)!important;
+  box-shadow:0 8px 28px rgba(30,36,70,.055)!important;backdrop-filter:blur(22px) saturate(135%)!important;
+}
+html[data-vano-theme="light"] .brand,
+html[data-vano-theme="light"] .page-title,
+html[data-vano-theme="light"] .title,
+html[data-vano-theme="light"] h1,
+html[data-vano-theme="light"] h2,
+html[data-vano-theme="light"] h3{color:#171A2B!important}
+html[data-vano-theme="light"] .navlinks a,
+html[data-vano-theme="light"] .navlinks button.navbtn{color:#667185!important}
+html[data-vano-theme="light"] .navlinks a:hover,
+html[data-vano-theme="light"] .navlinks button.navbtn:hover,
+html[data-vano-theme="light"] .navlinks a.active{background:#FFF4EC!important;color:#D9703F!important}
+html[data-vano-theme="light"] .panel,
+html[data-vano-theme="light"] .card,
+html[data-vano-theme="light"] .kpi,
+html[data-vano-theme="light"] .alert-card,
+html[data-vano-theme="light"] .auth-card,
+html[data-vano-theme="light"] .profile-hero,
+html[data-vano-theme="light"] .profile-card,
+html[data-vano-theme="light"] .profile-detail,
+html[data-vano-theme="light"] .profile-link,
+html[data-vano-theme="light"] .faq details{
+  background:#fff!important;color:#171A2B!important;border-color:#E3E6EE!important;box-shadow:0 10px 28px rgba(34,40,75,.055)!important;
+}
+html[data-vano-theme="light"] .panel-head,
+html[data-vano-theme="light"] .detail-body{border-color:#E8EAF1!important}
+html[data-vano-theme="light"] .page-subtitle,
+html[data-vano-theme="light"] .subtitle,
+html[data-vano-theme="light"] .muted,
+html[data-vano-theme="light"] .tiny{color:#707A8C!important}
+html[data-vano-theme="light"] .input,
+html[data-vano-theme="light"] .select,
+html[data-vano-theme="light"] .textarea,
+html[data-vano-theme="light"] .settings-field input,
+html[data-vano-theme="light"] .settings-field select,
+html[data-vano-theme="light"] .place-card input,
+html[data-vano-theme="light"] .invite-box input{
+  background:#FBFBFD!important;color:#171A2B!important;border-color:#DDE1EA!important;box-shadow:none!important;
+}
+html[data-vano-theme="light"] .input:focus,
+html[data-vano-theme="light"] .select:focus,
+html[data-vano-theme="light"] .textarea:focus,
+html[data-vano-theme="light"] .settings-field input:focus,
+html[data-vano-theme="light"] .settings-field select:focus{
+  border-color:rgba(217,112,63,.62)!important;box-shadow:0 0 0 4px rgba(217,112,63,.09)!important;
+}
+html[data-vano-theme="light"] .profile-detail summary .detail-icon,
+html[data-vano-theme="light"] .iconbox{background:#FFF4EC!important;color:#F59A62!important;border-color:#FFE0CC!important}
+html[data-vano-theme="light"] .profile-detail summary .detail-copy span,
+html[data-vano-theme="light"] .profile-card-head p,
+html[data-vano-theme="light"] .privacy-note,
+html[data-vano-theme="light"] .emergency-note,
+html[data-vano-theme="light"] .family-note{color:#748093!important}
+html[data-vano-theme="light"] .place-card,
+html[data-vano-theme="light"] .fuel-choice,
+html[data-vano-theme="light"] .family-person,
+html[data-vano-theme="light"] .style-choice{background:#FAFAFD!important;border-color:#E4E7EF!important;color:#252A3B!important}
+html[data-vano-theme="light"] .style-choice:has(input:checked){background:#FFFBF2!important;border-color:#FFC39B!important;box-shadow:0 0 0 3px rgba(217,112,63,.07)!important}
+html[data-vano-theme="light"] .style-choice:has(input:checked) .style-select{background:#FFFBF2!important;color:#D9703F!important}
+html[data-vano-theme="light"] .invite-main{background:#FFF2E8!important;color:#D9703F!important;border:1px solid #E8DED6!important}
+html[data-vano-theme="light"] .profile-link i{color:#D9703F!important}
+html[data-vano-theme="light"] footer{background:#F6F7FB!important;border-color:#E2E5ED!important;color:#7A8495!important}
+html[data-vano-theme="light"] .mobile-dock{background:rgba(255,255,255,.94)!important;border-color:#DEE2EB!important;box-shadow:0 14px 38px rgba(29,35,69,.10)!important}
+html[data-vano-theme="light"] .mobile-dock a{color:#778195!important}
+html[data-vano-theme="light"] .mobile-dock a:hover{background:#FFF4EC!important;color:#D9703F!important}
+
+/* ---------- Buttons ---------- */
+.btn-primary,.sheet-submit,.auth-choice.primary{
+  background:linear-gradient(135deg,#FFC39B 0%,#F59A62 58%,#D9703F 100%)!important;
+  border-color:transparent!important;color:#fff!important;
+  box-shadow:0 12px 28px rgba(217,112,63,.22)!important;
+}
+.btn-primary:hover,.sheet-submit:hover,.auth-choice.primary:hover{filter:brightness(1.025);box-shadow:0 15px 34px rgba(217,112,63,.27)!important}
+.btn:focus-visible,a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid rgba(217,112,63,.24)!important;outline-offset:2px}
+
+/* ---------- Theme selector ---------- */
+.vano-theme-setting-v56{display:grid;gap:12px;padding:14px;border:1px solid var(--vano-line);border-radius:17px;background:var(--vano-card-2)}
+.vano-theme-setting-v56 .theme-copy{display:flex;align-items:flex-start;gap:10px}
+.vano-theme-setting-v56 .theme-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none;background:#FFF2E8;color:#F59A62;border:1px solid #FFE0CC}
+.vano-theme-setting-v56 .theme-copy>div{min-width:0;flex:1}
+.vano-theme-setting-v56 .theme-copy b{display:block;font-size:11px;color:var(--vano-ink)}
+.vano-theme-setting-v56 .theme-copy span{display:block;margin-top:4px;color:var(--vano-muted);font-size:8.5px;line-height:1.45}
+.vano-theme-options{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:5px;background:#ECEEF4;border-radius:14px}
+.vano-theme-option{height:40px;border:0;border-radius:10px;background:transparent;color:#697386;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:6px}
+.vano-theme-option.active{background:#fff;color:#D9703F;box-shadow:0 4px 14px rgba(35,40,70,.10)}
+.vano-theme-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;color:#7A8495;font-size:8px;line-height:1.4}
+.vano-theme-meta [data-theme-state]{color:#555FC9;font-weight:800}
+
+/* ---------- Black theme ---------- */
+html[data-vano-theme="black"]{
+  --vano-bg:#07080D;--vano-card:#101116;--vano-card-2:#15171D;--vano-ink:#F4F5F8;--vano-muted:#969EAC;--vano-line:#272A34;
+  --bg:#07080D;--surface:#101116;--surface-2:#15171D;--surface-3:#1A1C23;--text:#F4F5F8;--muted:#969EAC;--muted-2:#777F8D;--line:#272A34;
+}
+html[data-vano-theme="black"],html[data-vano-theme="black"] body{background:#07080D!important;color:#F4F5F8!important}
+html[data-vano-theme="black"] .vano-theme-setting-v56{background:#15171D!important;border-color:#292C36!important}
+html[data-vano-theme="black"] .vano-theme-setting-v56 .theme-icon{background:#27231F!important;color:#FFC39B!important;border-color:#27231F!important}
+html[data-vano-theme="black"] .vano-theme-options{background:#0C0D12!important;border:1px solid #252832!important}
+html[data-vano-theme="black"] .vano-theme-option{color:#8F97A5!important}
+html[data-vano-theme="black"] .vano-theme-option.active{background:#27231F!important;color:#FFC39B!important;box-shadow:none!important}
+html[data-vano-theme="black"] .vano-theme-meta{color:#7F8794!important}
+html[data-vano-theme="black"] .vano-theme-meta [data-theme-state]{color:#FFC39B!important}
+html[data-vano-theme="black"] .mobile-dock{background:rgba(10,11,15,.94)!important;border-color:#292C35!important}
+
+/* ---------- Map app light refinement ---------- */
+html[data-vano-theme="light"] body:has(.ws-app){background:#EEF1F7!important}
+html[data-vano-theme="light"] .ws-app .search-card,
+html[data-vano-theme="light"] .ws-app .sheet,
+html[data-vano-theme="light"] .ws-app .destination-confirm,
+html[data-vano-theme="light"] .ws-app .account-drawer,
+html[data-vano-theme="light"] .ws-app .prefs-drawer,
+html[data-vano-theme="light"] .ws-app .safety-drawer{
+  background:rgba(255,255,255,.965)!important;color:#171A2B!important;border-color:rgba(220,224,234,.95)!important;
+  box-shadow:0 18px 48px rgba(28,34,66,.13)!important;
+}
+html[data-vano-theme="light"] .ws-app .location-row{background:#F8F9FC!important;border-color:#E2E5ED!important}
+html[data-vano-theme="light"] .ws-app .location-input{color:#171A2B!important}
+html[data-vano-theme="light"] .ws-app .location-input::placeholder{color:#8A93A2!important}
+html[data-vano-theme="light"] .ws-app .chip-shortcut,
+html[data-vano-theme="light"] .ws-app .quick,
+html[data-vano-theme="light"] .ws-app .map-btn,
+html[data-vano-theme="light"] .ws-app .nav-stack-btn,
+html[data-vano-theme="light"] .ws-app .nav-audio-toggle{background:#fff!important;color:#5E687A!important;border-color:#E0E4EC!important;box-shadow:0 8px 22px rgba(33,39,71,.09)!important}
+html[data-vano-theme="light"] .ws-app .nav-stack-btn.active,
+html[data-vano-theme="light"] .ws-app .nav-audio-toggle.active,
+html[data-vano-theme="light"] .ws-app .map-btn.active{background:#FFF2E8!important;color:#D9703F!important;border-color:#E8DED6!important}
+html[data-vano-theme="light"] .ws-app .segment,
+html[data-vano-theme="light"] .ws-app .travel{background:#F1F3F7!important;border-color:#E1E4EC!important}
+html[data-vano-theme="light"] .ws-app .segment button,
+html[data-vano-theme="light"] .ws-app .travel button{color:#727D8F!important}
+html[data-vano-theme="light"] .ws-app .segment button.active,
+html[data-vano-theme="light"] .ws-app .travel button.active{background:#fff!important;color:#D9703F!important;box-shadow:0 3px 10px rgba(36,42,75,.09)!important}
+html[data-vano-theme="light"] .ws-app .route-card,
+html[data-vano-theme="light"] .ws-app .route-variant,
+html[data-vano-theme="light"] .ws-app .parking-nearby,
+html[data-vano-theme="light"] .ws-app .route-insight{background:#FAFAFD!important;color:#252A3B!important;border-color:#E2E5ED!important}
+html[data-vano-theme="light"] .ws-app .route-variant.active{background:#FFF4EC!important;border-color:#FFC39B!important}
+html[data-vano-theme="light"] .ws-app .drawer-link{color:#32384A!important}
+html[data-vano-theme="light"] .ws-app .drawer-link:hover{background:#FFF4EC!important}
+html[data-vano-theme="light"] .ws-app .drawer-divider{background:#E7E9F0!important}
+
+/* ---------- Entry / login: white + purple ---------- */
+html[data-vano-theme="light"] body:has(.vano-entry){background:#F4F5FA!important}
+html[data-vano-theme="light"] .vano-entry{background:#F4F5FA!important;color:#171A2B!important}
+html[data-vano-theme="light"] .auth-screen{background:#fff!important;border-color:#E2E5ED!important;box-shadow:0 30px 90px rgba(35,41,76,.12)!important}
+html[data-vano-theme="light"] .auth-screen:before{background:none!important}
+html[data-vano-theme="light"] .auth-copy h1{color:#171A2B!important}
+html[data-vano-theme="light"] .auth-copy h1 span{color:#F59A62!important}
+html[data-vano-theme="light"] .auth-copy p{color:#697487!important}
+html[data-vano-theme="light"] .auth-brandline{color:#171A2B!important}
+html[data-vano-theme="light"] .auth-brandline span{color:#8A93A3!important}
+html[data-vano-theme="light"] .auth-brandline img{filter:drop-shadow(0 7px 16px rgba(217,112,63,.18))!important}
+html[data-vano-theme="light"] .city-art:before{background:linear-gradient(180deg,#fff 0%,rgba(255,255,255,.68) 34%,transparent 100%)!important}
+html[data-vano-theme="light"] .city-art:after{background:linear-gradient(0deg,#fff 0%,rgba(255,255,255,.64) 36%,transparent 100%)!important}
+html[data-vano-theme="light"] .city-art img{filter:saturate(.88) contrast(1.02) brightness(1.02)!important}
+html[data-vano-theme="light"] .city-route-badge{background:rgba(255,255,255,.90)!important;color:#444B5C!important;border-color:#E1E4ED!important;box-shadow:0 10px 28px rgba(30,36,70,.10)!important}
+html[data-vano-theme="light"] .auth-actions{background:#FAFAFD!important;border-color:#E7E9F0!important}
+html[data-vano-theme="light"] .auth-actions-head h2{color:#171A2B!important}
+html[data-vano-theme="light"] .auth-actions-head p{color:#707B8E!important}
+html[data-vano-theme="light"] .auth-choice.secondary,
+html[data-vano-theme="light"] .auth-guest{background:#fff!important;color:#2B3041!important;border-color:#DDE1EA!important;box-shadow:none!important}
+html[data-vano-theme="light"] .auth-google{background:#fff!important;color:#202431!important;border-color:#DDE1EA!important;box-shadow:0 5px 16px rgba(35,41,70,.045)!important}
+html[data-vano-theme="light"] .auth-divider{color:#9098A7!important}
+html[data-vano-theme="light"] .auth-divider:before,
+html[data-vano-theme="light"] .auth-divider:after{background:#E4E7EE!important}
+html[data-vano-theme="light"] .auth-legal{color:#8A93A3!important}
+html[data-vano-theme="light"] .sheet-backdrop{background:rgba(20,24,40,.34)!important}
+html[data-vano-theme="light"] .sheet-card{background:#fff!important;color:#171A2B!important;border-color:#DFE3EC!important;box-shadow:0 30px 90px rgba(29,35,67,.22)!important}
+html[data-vano-theme="light"] .sheet-grab{background:#D4D8E2!important}
+html[data-vano-theme="light"] .sheet-head h2{color:#171A2B!important}
+html[data-vano-theme="light"] .sheet-head p{color:#747E90!important}
+html[data-vano-theme="light"] .sheet-close{background:#F5F6F9!important;color:#6F7889!important;border-color:#E1E4EC!important}
+html[data-vano-theme="light"] .sheet-field label{color:#555F72!important}
+html[data-vano-theme="light"] .sheet-input,
+html[data-vano-theme="light"] .sheet-select{background:#F9FAFC!important;color:#171A2B!important;border-color:#DDE1EA!important}
+html[data-vano-theme="light"] .sheet-input:focus,
+html[data-vano-theme="light"] .sheet-select:focus{border-color:rgba(217,112,63,.62)!important;box-shadow:0 0 0 4px rgba(217,112,63,.08)!important}
+html[data-vano-theme="light"] .sheet-switch{color:#7B8495!important}
+
+/* Purple line exactly follows the official VANO palette. */
+.vano-entry .city-art .vano-login-route{filter:drop-shadow(0 0 8px rgba(217,112,63,.50))!important}
+.vano-entry .city-art .vano-login-route path.route-halo{stroke:#F59A62!important;opacity:.12!important}
+.vano-entry .city-art .vano-login-route path.route-main{stroke:url(#vanoLoginRouteGradient)!important;opacity:.98!important}
+.vano-entry .splash-route{filter:drop-shadow(0 0 9px rgba(217,112,63,.72))!important}
+.vano-entry .splash-route .route-halo{stroke:#F59A62!important;opacity:.10!important}
+.vano-entry .splash-mark{filter:drop-shadow(0 0 18px rgba(217,112,63,.34))!important}
+.vano-entry .splash-tag{color:#F59A62!important}
+.vano-entry .splash-puck:after{background:#F59A62!important;box-shadow:0 0 12px rgba(217,112,63,.62)!important}
+.vano-entry .vano-splash:after{background:linear-gradient(90deg,#F59A62,#FFC39B,#F59A62)!important;box-shadow:0 0 10px rgba(217,112,63,.55)!important}
+
+/* ---------- Responsive polish ---------- */
+@media (max-width:699px){
+  .container,.nav{width:calc(100% - 20px)!important}
+  .topbar{height:58px!important}
+  .page{padding:18px 0 82px!important}
+  .profile-shell{width:100%!important}
+  .profile-hero,.profile-card,.profile-detail,.profile-link{border-radius:16px!important}
+  .settings-grid,.place-grid{grid-template-columns:1fr!important}
+  .settings-grid .full{grid-column:auto!important}
+  .vano-theme-options{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .vano-theme-option{height:42px;font-size:8.5px}
+  .vano-entry .auth-screen{width:100%!important;max-width:520px!important;min-height:100svh!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+  html[data-vano-theme="light"] .vano-entry .auth-screen{background:#fff!important}
+  .auth-copy{padding-top:max(26px,env(safe-area-inset-top))!important}
+  .auth-actions{padding-bottom:max(18px,env(safe-area-inset-bottom))!important}
+}
+
+@media (min-width:700px) and (max-width:1099px){
+  .container{width:min(940px,calc(100% - 36px))!important}
+  .profile-shell{max-width:860px!important}
+  .settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .vano-entry{padding:18px!important}
+  .auth-screen{width:min(1000px,calc(100vw - 36px))!important;height:min(780px,calc(100svh - 36px))!important;min-height:620px!important}
+  .auth-actions{padding:42px 34px!important}
+}
+
+@media (min-width:1100px){
+  .container{width:min(1220px,calc(100% - 56px))!important}
+  .profile-shell{max-width:940px!important}
+  .profile-card,.profile-detail{border-radius:20px!important}
+  .vano-entry{padding:28px!important}
+  .auth-screen{width:min(1180px,calc(100vw - 56px))!important;height:min(790px,calc(100svh - 56px))!important}
+}
+
+@media (orientation:landscape) and (max-height:620px){
+  .page{padding-top:12px!important}
+  .topbar{height:52px!important}
+  .vano-entry{padding:10px!important}
+  .auth-screen{height:calc(100svh - 20px)!important;min-height:500px!important}
+  .auth-copy{padding-top:28px!important;padding-bottom:8px!important}
+  .auth-copy h1{font-size:38px!important}
+  .auth-actions{padding-top:24px!important;padding-bottom:24px!important}
+}
+
+@media (pointer:coarse){
+  button,.btn,a.auth-choice,a.auth-google,a.auth-guest,.profile-link{min-height:44px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* Entry information density: useful, not noisy. */
+.auth-proof{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}
+.auth-proof span{min-height:29px;display:inline-flex;align-items:center;gap:5px;padding:0 9px;border-radius:999px;font-size:7.5px;font-weight:820;letter-spacing:.01em}
+html[data-vano-theme="light"] .auth-proof span{background:#FFFBF2;color:#D9703F;border:1px solid #FFFBF2}
+html[data-vano-theme="black"] .auth-proof span{background:#19192C;color:#FFC39B;border:1px solid #27231F}
+.auth-logout-note{display:flex;align-items:center;gap:9px;padding:11px 12px;border-radius:14px;margin-bottom:4px}
+.auth-logout-note b{display:block;font-size:10px}.auth-logout-note span{display:block;margin-top:2px;font-size:8px}
+html[data-vano-theme="light"] .auth-logout-note{background:#F0FAF6;border:1px solid #D7EFE4;color:#237555}
+html[data-vano-theme="light"] .auth-logout-note span{color:#56836F}
+html[data-vano-theme="black"] .auth-logout-note{background:#10221B;border:1px solid #204735;color:#70D6A5}
+html[data-vano-theme="black"] .auth-logout-note span{color:#79A993}
+@media(max-width:430px){.auth-proof{gap:5px;margin-top:11px}.auth-proof span{font-size:7px;padding:0 7px;min-height:26px}}
+
+/* Shared/live route pages also follow the same day/night system. */
+html[data-vano-theme="light"] .share-app,
+html[data-vano-theme="light"] body:has(.share-app),
+html[data-vano-theme="light"] .app,
+html[data-vano-theme="light"] body:has(.app){background:#F6F7FB!important;color:#171A2B!important}
+html[data-vano-theme="light"] .share-app .pill,
+html[data-vano-theme="light"] .share-app .bottom,
+html[data-vano-theme="light"] .app .brand,
+html[data-vano-theme="light"] .app .status,
+html[data-vano-theme="light"] .app .card{background:rgba(255,255,255,.94)!important;color:#171A2B!important;border-color:#E0E4EC!important;box-shadow:0 16px 40px rgba(34,40,72,.12)!important}
+html[data-vano-theme="light"] .share-app .pill span,
+html[data-vano-theme="light"] .share-app .route-label small,
+html[data-vano-theme="light"] .app .card p,
+html[data-vano-theme="light"] .app .privacy,
+html[data-vano-theme="light"] .app .stat span{color:#747F91!important}
+html[data-vano-theme="light"] .app .stat{background:#F8F9FC!important;border-color:#E2E5ED!important}
+html[data-vano-theme="light"] .share-app .veil,
+html[data-vano-theme="light"] .app .veil{background:linear-gradient(180deg,rgba(246,247,251,.18),transparent 24%,transparent 72%,rgba(246,247,251,.24))!important}
+.vano-entry .vano-splash:before{
+  background:linear-gradient(180deg,rgba(5,6,12,.28) 0%,rgba(5,6,12,.42) 34%,rgba(5,6,12,.64) 72%,#07080D 100%),url('/static/auth-city-route-vano-v56.webp') center 49%/cover no-repeat!important;
+}
+
+/* ---------- Onboarding: same white/purple language ---------- */
+html[data-vano-theme="light"] body:has(.onboard){background:#F6F7FB!important}
+html[data-vano-theme="light"] .onboard{background:#F6F7FB!important;color:#171A2B!important}
+html[data-vano-theme="light"] .vano-mini{color:#171A2B!important}
+html[data-vano-theme="light"] .vano-mini img{filter:drop-shadow(0 8px 16px rgba(217,112,63,.18))!important}
+html[data-vano-theme="light"] .step-pill{color:#D9703F!important;background:#FFF2E8!important;border-color:#E8DED6!important}
+html[data-vano-theme="light"] .ob-progress{background:#E6E8EF!important}
+html[data-vano-theme="light"] .ob-head h1{color:#171A2B!important}
+html[data-vano-theme="light"] .ob-head h1 span{color:#6D7789!important}
+html[data-vano-theme="light"] .ob-head p{color:#707B8E!important}
+html[data-vano-theme="light"] .ob-section{background:#fff!important;border-color:#E2E5ED!important;box-shadow:0 10px 26px rgba(33,39,73,.05)!important}
+html[data-vano-theme="light"] .ob-section-title b{color:#222738!important}
+html[data-vano-theme="light"] .ob-section-title span{color:#758093!important}
+html[data-vano-theme="light"] .field label{color:#596477!important}
+html[data-vano-theme="light"] .onboard .input,
+html[data-vano-theme="light"] .onboard .select{background:#F9FAFC!important;color:#171A2B!important;border-color:#DDE1EA!important}
+html[data-vano-theme="light"] .onboard .input::placeholder{color:#9AA2AF!important}
+html[data-vano-theme="light"] .choice label,
+html[data-vano-theme="light"] .pref label,
+html[data-vano-theme="light"] .night-card{background:#FAFAFD!important;border-color:#E2E5ED!important}
+html[data-vano-theme="light"] .choice label b,
+html[data-vano-theme="light"] .pref label b,
+html[data-vano-theme="light"] .night-card b{color:#252A3B!important}
+html[data-vano-theme="light"] .choice label span,
+html[data-vano-theme="light"] .pref label span,
+html[data-vano-theme="light"] .night-card span{color:#748093!important}
+html[data-vano-theme="light"] .choice input:checked+label,
+html[data-vano-theme="light"] .pref input:checked+label{background:#FFFBF2!important;border-color:#FFC39B!important}
+html[data-vano-theme="light"] .choice input:checked+label i,
+html[data-vano-theme="light"] .pref input:checked+label .pref-icon{color:#F59A62!important}
+html[data-vano-theme="light"] .pref input:checked+label .pref-icon{background:#FFFBF2!important}
+html[data-vano-theme="light"] .pref input:checked+label .radio-dot{border-color:#F59A62!important}
+html[data-vano-theme="light"] .pref input:checked+label .radio-dot:after{background:#F59A62!important}
+html[data-vano-theme="light"] .switch input:checked+.slider{background:#F59A62!important}
+html[data-vano-theme="light"] .mini-note{background:#F6F7FA!important;color:#7B8495!important}
+html[data-vano-theme="light"] .presence-consent{background:#FFFBF2!important;border-color:#E8DED6!important}
+html[data-vano-theme="light"] .presence-consent input{accent-color:#F59A62!important}
+html[data-vano-theme="light"] .presence-consent b{color:#33384A!important}
+html[data-vano-theme="light"] .presence-consent span span{color:#778195!important}
+html[data-vano-theme="light"] .privacy-note{background:#F3F7FF!important;border-color:#DEE8FA!important;color:#68758A!important}
+html[data-vano-theme="light"] .privacy-note b{color:#384156!important}
+html[data-vano-theme="light"] .vehicle-hint i{color:#F59A62!important}
+html[data-vano-theme="light"] .fine{color:#8891A1!important}
+
+/* ---------- Generic data/admin screens ---------- */
+html[data-vano-theme="light"] .table th{color:#707B8D!important;border-color:#E4E7EE!important;background:#FAFAFC!important}
+html[data-vano-theme="light"] .table td{color:#303648!important;border-color:#E8EAF0!important}
+html[data-vano-theme="light"] .table tr:hover td{background:#F8F8FF!important}
+html[data-vano-theme="light"] .badge{background:#F3F4F8!important;color:#606B7E!important;border-color:#E0E4EC!important}
+html[data-vano-theme="light"] .badge.orange{background:#FFF2E8!important;color:#D9703F!important;border-color:#E8DED6!important}
+html[data-vano-theme="light"] .flash{background:rgba(255,255,255,.97)!important;color:#2C3244!important;border-color:#E1E4EC!important;box-shadow:0 14px 38px rgba(30,36,68,.12)!important}
+html[data-vano-theme="light"] .empty{color:#7A8496!important}
+html[data-vano-theme="light"] .code-num{color:#F59A62!important}
+
+/* V56 splash: intentionally minimal — VANO mark only. */
+.vano-entry .vano-splash{background:#F7F8FC!important}
+html[data-vano-theme="black"] .vano-entry .vano-splash{background:#07080D!important}
+.vano-entry .vano-splash:before,.vano-entry .vano-splash:after,
+.vano-entry .splash-map,.vano-entry .splash-route,.vano-entry .splash-word,
+.vano-entry .splash-tag,.vano-entry .splash-puck{display:none!important}
+.vano-entry .splash-center{transform:none!important;animation:none!important;display:grid;place-items:center}
+.vano-entry .splash-mark{width:92px!important;margin:0!important;filter:drop-shadow(0 12px 28px rgba(217,112,63,.20))!important;animation:vanoMarkV56 .58s cubic-bezier(.2,.8,.2,1) both!important}
+html[data-vano-theme="black"] .vano-entry .splash-mark{filter:drop-shadow(0 0 24px rgba(217,112,63,.30))!important}
+@keyframes vanoMarkV56{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+
+
+/* ---- vano-system-v170.css ---- */
+/* VANO v170 — complete visual system.
+   Keeps the existing HTML/application structure and re-skins every shared surface
+   with the VANO brand board: peach/orange, ivory, warm charcoal and warm gray. */
+:root{
+  --vano-primary:#F59A62;
+  --vano-primary-soft:#FFC39B;
+  --vano-primary-deep:#D9703F;
+  --vano-paper:#FFFBF2;
+  --vano-paper-2:#FFF6EE;
+  --vano-paper-3:#F7EEE5;
+  --vano-ink:#27231F;
+  --vano-muted:#706861;
+  --vano-line:rgba(112,104,97,.16);
+  --vano-line-strong:rgba(112,104,97,.25);
+  --vano-white:#FFFFFF;
+  --vano-shadow-sm:0 8px 24px rgba(79,58,43,.08);
+  --vano-shadow:0 18px 50px rgba(79,58,43,.12);
+  --vano-shadow-lg:0 30px 90px rgba(79,58,43,.16);
+  --vano-ring:0 0 0 4px rgba(245,154,98,.16);
+  --bg:#FFFBF2!important;
+  --surface:#FFFFFF!important;
+  --surface-2:#FFF6EE!important;
+  --surface-3:#F7EEE5!important;
+  --text:#27231F!important;
+  --muted:#706861!important;
+  --muted-2:#948A82!important;
+  --line:rgba(112,104,97,.16)!important;
+  --orange:#F59A62!important;
+  --orange-2:#D9703F!important;
+  --orange-3:#FFC39B!important;
+  --o:#F59A62!important;
+  --o2:#FFC39B!important;
+  --shadow:var(--vano-shadow)!important;
+  --brand:#F59A62!important;
+  --brand-2:#D9703F!important;
+  --brand-soft:#FFF0E5!important;
+  --accent:#F59A62!important;
+  --ink:#27231F!important;
+  --soft:#FFF6EE!important;
+}
+html{color-scheme:light!important;background:var(--vano-paper)!important}
+html[data-vano-theme],html[data-vano-theme]{color-scheme:light!important}
+body{
+  color:var(--vano-ink)!important;
+  background:
+    radial-gradient(circle at 8% -8%,rgba(255,195,155,.28),transparent 30rem),
+    radial-gradient(circle at 94% 0,rgba(245,154,98,.12),transparent 28rem),
+    var(--vano-paper)!important;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+body:before{background:none!important}
+::selection{background:rgba(245,154,98,.28);color:var(--vano-ink)}
+:focus-visible{outline:2px solid rgba(217,112,63,.55)!important;outline-offset:2px!important}
+
+/* Header / navigation */
+.topbar{
+  background:rgba(255,251,242,.86)!important;
+  border-bottom:1px solid rgba(112,104,97,.12)!important;
+  box-shadow:0 8px 30px rgba(79,58,43,.045)!important;
+  backdrop-filter:blur(24px) saturate(1.2)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(1.2)!important;
+}
+.nav{gap:14px!important}
+.brand{color:var(--vano-ink)!important;font-weight:880!important;letter-spacing:-.45px!important}
+.brand>span{display:none!important}
+.vano-brand-wordmark{width:126px!important;height:38px!important;object-fit:contain!important;object-position:left center!important}
+.navlinks a,.navlinks button.navbtn{color:var(--vano-muted)!important;border-radius:999px!important;font-weight:720!important}
+.navlinks a:hover,.navlinks button.navbtn:hover,.navlinks a.active{background:rgba(245,154,98,.11)!important;color:var(--vano-ink)!important}
+
+/* Buttons */
+.btn,.auth-button,.profile-v108-button,.guest-limit-primary,.guest-limit-secondary{
+  border-radius:14px!important;
+  font-weight:800!important;
+  letter-spacing:-.12px!important;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .18s ease,border-color .18s ease,background .18s ease!important;
+}
+.btn{
+  background:rgba(255,255,255,.92)!important;
+  color:var(--vano-ink)!important;
+  border:1px solid var(--vano-line)!important;
+  box-shadow:0 5px 16px rgba(79,58,43,.045)!important;
+}
+.btn:hover{transform:translateY(-1px)!important;border-color:rgba(217,112,63,.28)!important;box-shadow:var(--vano-shadow-sm)!important}
+.btn:active{transform:translateY(0) scale(.985)!important}
+.btn-primary{
+  color:#fff!important;
+  border-color:transparent!important;
+  background:linear-gradient(135deg,#FFC39B 0%,#F59A62 45%,#D9703F 100%)!important;
+  box-shadow:0 11px 26px rgba(217,112,63,.22),inset 0 1px 0 rgba(255,255,255,.42)!important;
+}
+.btn-primary:hover{box-shadow:0 15px 34px rgba(217,112,63,.27),inset 0 1px 0 rgba(255,255,255,.46)!important}
+.btn-danger{background:#FFF3F0!important;border-color:#F3CDC6!important;color:#A04435!important}
+
+/* Shared cards / panels / forms */
+.card,.panel,.kpi,.alert-card,.auth-card,.modal-card,.sheet-card{
+  background:rgba(255,255,255,.94)!important;
+  color:var(--vano-ink)!important;
+  border-color:var(--vano-line)!important;
+  box-shadow:var(--vano-shadow-sm)!important;
+}
+.card:hover,.panel:hover{border-color:rgba(217,112,63,.23)!important}
+.panel-head{border-bottom-color:rgba(112,104,97,.12)!important}
+.subtitle,.page-subtitle,.muted,.tiny,.card p,.panel p{color:var(--vano-muted)!important}
+.eyebrow{color:var(--vano-primary-deep)!important}
+.title,.page-title,.section-title{color:var(--vano-ink)!important}
+.title span,.section-title span,.hero h1 span{color:var(--vano-primary-deep)!important}
+.iconbox{
+  background:linear-gradient(145deg,#FFF7F0,#FFE7D6)!important;
+  color:var(--vano-primary-deep)!important;
+  border-color:#FFDCC6!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 9px 22px rgba(217,112,63,.08)!important;
+}
+.input,.select,.textarea,input:not([type=radio]):not([type=checkbox]):not([type=hidden]),select,textarea{
+  color:var(--vano-ink)!important;
+  background:rgba(255,255,255,.94)!important;
+  border-color:var(--vano-line)!important;
+}
+.input::placeholder,.textarea::placeholder,input::placeholder,textarea::placeholder{color:#9C9189!important}
+.input:focus,.select:focus,.textarea:focus,input:focus,select:focus,textarea:focus{
+  border-color:rgba(217,112,63,.5)!important;
+  box-shadow:var(--vano-ring)!important;
+}
+.badge{background:#FFF3E9!important;border-color:#FFD9C2!important;color:#A9522D!important}
+.badge.green{background:#EDF8F3!important;border-color:#CDE8DB!important;color:#2B7258!important}
+.badge.red{background:#FFF0EE!important;border-color:#F0CAC4!important;color:#A34B3E!important}
+.table th{color:#8E837C!important;background:#FFF8F2!important;border-color:var(--vano-line)!important}
+.table td{color:var(--vano-ink)!important;border-color:rgba(112,104,97,.10)!important}
+.table tr:hover td{background:#FFFAF6!important}
+.flash{background:rgba(255,255,255,.96)!important;border-color:var(--vano-line)!important;color:var(--vano-ink)!important;box-shadow:var(--vano-shadow-sm)!important}
+
+/* Landing / public pages */
+.hero-card{background:linear-gradient(145deg,#FFFFFF,#FFF6EE)!important;border-color:var(--vano-line)!important;box-shadow:var(--vano-shadow-lg)!important}
+.mock-map{background:radial-gradient(circle at 30% 20%,#FFFDF9,#F4EDE6 62%,#EEE4DA)!important}
+.mock-map:before,.mock-map:after{filter:none!important;opacity:.7!important}
+.map-bubble{background:rgba(39,35,31,.92)!important;color:#fff!important;border-color:rgba(255,255,255,.10)!important;box-shadow:0 15px 36px rgba(39,35,31,.18)!important}
+.map-bubble small{color:#D9D1CB!important}
+.route-line{border-color:var(--vano-primary)!important;border-left-color:transparent!important;border-bottom-color:var(--vano-primary-soft)!important;filter:drop-shadow(0 0 12px rgba(245,154,98,.27))!important}
+
+/* Mobile dock */
+.mobile-dock{
+  background:rgba(255,251,242,.94)!important;
+  border-color:rgba(112,104,97,.14)!important;
+  box-shadow:0 16px 42px rgba(79,58,43,.14)!important;
+  backdrop-filter:blur(24px) saturate(1.2)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(1.2)!important;
+}
+.mobile-dock a{color:#847A73!important}
+.mobile-dock a:hover,.mobile-dock a.active{background:#FFF0E5!important;color:var(--vano-primary-deep)!important}
+
+/* Login standalone: override legacy purple without changing its structure */
+.auth-page{background:
+  radial-gradient(circle at 8% 0,rgba(255,195,155,.26),transparent 34rem),
+  var(--vano-paper)!important}
+.auth-shell{background:#fff!important;border-color:var(--vano-line)!important;box-shadow:var(--vano-shadow-lg)!important}
+.auth-pane{background:linear-gradient(160deg,#FFFFFF 0%,#FFFCF8 100%)!important}
+.auth-page .eyebrow,.auth-page h1 span{color:var(--vano-primary-deep)!important}
+.auth-page .eyebrow:before{background:var(--vano-primary)!important}
+.product-pill{background:#FFF8F2!important;border-color:var(--vano-line)!important;color:var(--vano-muted)!important}
+.product-pill i{background:var(--vano-primary)!important;box-shadow:0 0 0 4px rgba(245,154,98,.13)!important}
+.auth-button.email{
+  background:linear-gradient(135deg,#FFC39B,#F59A62 52%,#D9703F)!important;
+  color:#fff!important;
+  box-shadow:0 12px 28px rgba(217,112,63,.23)!important;
+}
+.auth-button.google{border-color:var(--vano-line)!important;box-shadow:0 6px 18px rgba(79,58,43,.06)!important}
+.auth-links a:hover{color:var(--vano-primary-deep)!important}
+.route-pane{background:#F4EEE7!important;border-left-color:var(--vano-line)!important}
+.route-glow{background:rgba(245,154,98,.17)!important}
+.live-badge,.mini-chip,.route-summary,.reroute-card{border-color:var(--vano-line)!important;box-shadow:var(--vano-shadow-sm)!important}
+.mini-chip svg,.reroute-icon{color:var(--vano-primary-deep)!important}
+.reroute-icon{background:#FFF0E5!important}
+.reroute-line i{background:linear-gradient(90deg,var(--vano-primary-soft),var(--vano-primary-deep))!important}
+.location-dot{background:var(--vano-primary)!important;box-shadow:0 4px 16px rgba(217,112,63,.28)!important}
+.location-dot.end{background:var(--vano-ink)!important}
+
+/* Onboarding/profile/admin polish */
+.ob-card,.profile-v108-card,.profile-v72-card,.activity-card,.admin-card,.admin-kpi{
+  background:#fff!important;
+  border-color:var(--vano-line)!important;
+  box-shadow:var(--vano-shadow-sm)!important;
+}
+.ob-option.active,.profile-v72-accent:has(input:checked),.profile-v108-quick a:hover{
+  border-color:rgba(217,112,63,.34)!important;
+  background:#FFF5EC!important;
+}
+.profile-v108-quick-icon,.profile-v72-icon,.ob-icon{background:#FFF0E5!important;color:var(--vano-primary-deep)!important}
+
+/* Shared route / live trip standalone */
+.share-app,.live-app{background:#F5EFE8!important;color:var(--vano-ink)!important}
+.share-top,.route-panel,.live-top,.live-app .card{background:rgba(255,251,242,.96)!important;border-color:var(--vano-line)!important;box-shadow:var(--vano-shadow)!important}
+.route-kicker,.live-app .eyebrow{color:var(--vano-primary-deep)!important}
+.route-actions .primary{background:linear-gradient(135deg,#FFC39B,#F59A62 55%,#D9703F)!important;color:#fff!important;box-shadow:0 10px 24px rgba(217,112,63,.2)!important}
+.route-note{background:#FFF1E7!important;color:#8A4B2D!important}
+.metric,.stat{background:#FFF9F4!important;border-color:var(--vano-line)!important}
+.progress i{background:linear-gradient(90deg,#FFC39B,#F59A62,#D9703F)!important}
+
+@media(max-width:760px){
+  .topbar{background:rgba(255,251,242,.94)!important}
+  .container,.nav{width:calc(100% - 18px)!important}
+  .page{padding-top:18px!important}
+  .card,.panel{border-radius:18px!important}
+  .auth-page{padding:0!important;background:#fff!important}
+  .auth-shell{border:0!important;border-radius:0!important;min-height:100dvh!important;box-shadow:none!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+
+/* Dedicated admin/risk screens that shipped with hard-coded violet rules. */
+body:has(.risk-admin){background:var(--vano-paper)!important;color:var(--vano-ink)!important}
+body:has(.risk-admin) .topbar{background:rgba(255,251,242,.94)!important;border-color:var(--vano-line)!important}
+.risk-eyebrow{color:var(--vano-primary-deep)!important}
+.risk-card{border-color:var(--vano-line)!important;background:#fff!important;box-shadow:var(--vano-shadow-sm)!important}
+.risk-card-head{border-color:rgba(112,104,97,.11)!important}
+.rf-input,.rf-select{background:#FFFCF9!important;border-color:var(--vano-line)!important;color:var(--vano-ink)!important}
+.rf-input:focus,.rf-select:focus{border-color:rgba(217,112,63,.52)!important;box-shadow:var(--vano-ring)!important}
+.switch input:checked+span{background:linear-gradient(135deg,var(--vano-primary-soft),var(--vano-primary))!important}
+.risk-submit{background:linear-gradient(135deg,#FFC39B,#F59A62 52%,#D9703F)!important;box-shadow:0 10px 24px rgba(217,112,63,.2)!important}
+.zone-pill{background:#FFF1E7!important;color:#A4512D!important}
+.policy-note{background:#FFF6EF!important;border-color:#FFE0CD!important;color:#795C4B!important}
+.risk-back,.mini-btn{border-color:var(--vano-line)!important;color:var(--vano-ink)!important}
+
+/* Register / entry experience */
+body:has(.vano-entry),.vano-entry{background:var(--vano-paper)!important;color:var(--vano-ink)!important}
+.v63-entry-shell{background:#fff!important;border-color:var(--vano-line)!important;box-shadow:var(--vano-shadow-lg)!important}
+.v63-entry-shell:before{background:linear-gradient(115deg,rgba(255,255,255,.96) 0 43%,rgba(255,246,238,.54) 43% 100%)!important}
+.v63-entry-brand em,.v63-entry-kicker,.v63-entry-panel h1 span{color:var(--vano-primary-deep)!important}
+.v63-entry-brand em{background:#FFF0E5!important}
+.v63-entry-proof span{border-color:var(--vano-line)!important;background:#FFF9F4!important;color:var(--vano-muted)!important}
+.v63-route-stage{background:radial-gradient(circle at 72% 8%,rgba(255,195,155,.22),transparent 26%),linear-gradient(145deg,#FFF9F4,#F0E7DE)!important;border-color:var(--vano-line)!important}
+.v63-stage-card,.v63-stage-brand{background:rgba(255,251,242,.90)!important;border-color:var(--vano-line)!important;color:var(--vano-ink)!important;box-shadow:var(--vano-shadow-sm)!important}
+.auth-choice.primary,.auth-google.auth-google-primary{background:linear-gradient(135deg,#FFC39B,#F59A62 50%,#D9703F)!important;color:#fff!important;border-color:transparent!important;box-shadow:0 12px 28px rgba(217,112,63,.21)!important}
+.auth-choice.secondary,.auth-guest{background:#fff!important;color:var(--vano-ink)!important;border-color:var(--vano-line)!important}
+.auth-sheet .sheet-card{border-color:var(--vano-line)!important;box-shadow:var(--vano-shadow-lg)!important}
+.sheet-input:focus,.sheet-select:focus{border-color:rgba(217,112,63,.5)!important;box-shadow:var(--vano-ring)!important}
+.sheet-submit{background:linear-gradient(135deg,#FFC39B,#F59A62 50%,#D9703F)!important;box-shadow:0 12px 26px rgba(217,112,63,.21)!important}
+
+/* Onboarding: convert the legacy dark setup flow into a warm VANO setup flow. */
+.onboard{
+  background:radial-gradient(circle at 86% -6%,rgba(255,195,155,.30),transparent 30rem),radial-gradient(circle at 4% 36%,rgba(245,154,98,.10),transparent 25rem),var(--vano-paper)!important;
+  color:var(--vano-ink)!important;
+}
+.vano-mini{color:var(--vano-ink)!important}
+.vano-mini img{filter:drop-shadow(0 8px 18px rgba(217,112,63,.16))!important}
+.step-pill{color:var(--vano-primary-deep)!important;border-color:#FFD7BF!important;background:#FFF1E6!important}
+.ob-progress{background:#EFE4DB!important}.ob-progress i{background:linear-gradient(90deg,#FFC39B,#F59A62,#D9703F)!important;box-shadow:0 0 15px rgba(245,154,98,.22)!important}
+.ob-head .eyebrow{color:var(--vano-primary-deep)!important}
+.ob-head h1{color:var(--vano-ink)!important}.ob-head h1 span{color:#8A7F77!important}.ob-head p{color:var(--vano-muted)!important}
+.ob-section{border-color:var(--vano-line)!important;background:rgba(255,255,255,.92)!important;box-shadow:var(--vano-shadow-sm)!important}
+.ob-section-title .ico{background:#FFF0E5!important;border-color:#FFDCC7!important;color:var(--vano-primary-deep)!important}
+.ob-section-title b{color:var(--vano-ink)!important}.ob-section-title span{color:var(--vano-muted)!important}
+.onboard .input,.onboard .select{background:#FFFCF9!important;color:var(--vano-ink)!important;border-color:var(--vano-line)!important}
+.onboard .input::placeholder{color:#A0958D!important}
+.choice label,.pref label,.night-card{background:#FFFDFC!important;border-color:var(--vano-line)!important}
+.choice label b,.pref label b,.night-card b,.presence-consent b{color:var(--vano-ink)!important}
+.choice label span,.pref label span,.night-card span,.presence-consent span span{color:var(--vano-muted)!important}
+.choice input:checked+label,.pref input:checked+label{border-color:rgba(217,112,63,.38)!important;background:#FFF2E8!important;box-shadow:inset 0 0 0 1px rgba(245,154,98,.05)!important}
+.pref-icon{background:#FFF5ED!important;color:#8A7E76!important}.pref input:checked+label .pref-icon{background:#FFEBDD!important;color:var(--vano-primary-deep)!important}
+.radio-dot{border-color:#CFC2B8!important}.pref input:checked+label .radio-dot{border-color:var(--vano-primary)!important}.pref input:checked+label .radio-dot:after{background:var(--vano-primary)!important}
+.slider{background:#D7CCC3!important}.switch input:checked+.slider{background:linear-gradient(135deg,var(--vano-primary-soft),var(--vano-primary))!important}
+.mini-note{background:#FFF8F2!important;color:var(--vano-muted)!important}
+.privacy-note{background:#FFF6EF!important;border-color:#FFE1CE!important;color:#796C63!important}.privacy-note i{color:var(--vano-primary-deep)!important}
+.presence-consent{border-color:#FFD9C3!important;background:#FFF4EB!important}
+.fine,.optional,.vehicle-hint{color:#887D75!important}.vehicle-hint i{color:var(--vano-primary-deep)!important}
+
+/* Live trip standalone */
+.app{background:#F4EEE7!important;color:var(--vano-ink)!important}
+.app .map{background:#F1EAE3!important}
+.app .veil{background:linear-gradient(180deg,rgba(255,251,242,.18),transparent 24%,transparent 70%,rgba(255,251,242,.12))!important}
+.app .brand,.app .status{background:rgba(255,251,242,.95)!important;border-color:var(--vano-line)!important;color:var(--vano-ink)!important;box-shadow:var(--vano-shadow-sm)!important}
+.app .status{color:var(--vano-muted)!important}
+.app .dot{background:var(--vano-primary)!important;box-shadow:0 0 0 5px rgba(245,154,98,.13)!important}
+.app .card{background:rgba(255,251,242,.97)!important;border-color:var(--vano-line)!important;color:var(--vano-ink)!important;box-shadow:0 -14px 42px rgba(67,49,37,.14)!important}
+.app .grab{background:#D6CBC2!important}.app .eyebrow{color:var(--vano-primary-deep)!important}.app .card p,.app .stat span,.app .privacy{color:var(--vano-muted)!important}
+.app .stat{background:#FFF8F2!important;border-color:var(--vano-line)!important}.app .progress{background:#EDE2D9!important}
+.app .progress i{background:linear-gradient(90deg,#FFC39B,#F59A62,#D9703F)!important}
+.app .puck{background:linear-gradient(145deg,#FFC39B,#F59A62 55%,#D9703F)!important;border-color:#FFFBF2!important;box-shadow:0 0 0 4px rgba(39,35,31,.82),0 9px 22px rgba(39,35,31,.24)!important}
+.app .offline{background:var(--vano-paper)!important;color:var(--vano-ink)!important}.app .offline p{color:var(--vano-muted)!important}
+
+
+/* ---- vano-map-v170.css ---- */
+/* VANO v170 — Mapbox/navigation redesign. Geometry and IDs are preserved. */
+.ws-app{
+  --v-card:rgba(255,251,242,.965);
+  --v-card-solid:#FFFBF2;
+  --v-ink:#27231F;
+  --v-muted:#706861;
+  --v-primary:#F59A62;
+  --v-light:#FFC39B;
+  --v-deep:#D9703F;
+  --v-line:rgba(112,104,97,.17);
+  --v-shadow:0 18px 48px rgba(67,49,37,.14);
+  background:#F4EEE7!important;
+  color:var(--v-ink)!important;
+}
+.ws-app #map{background:#F4EEE7!important}
+.map-vignette{background:linear-gradient(180deg,rgba(255,251,242,.40),transparent 18%,transparent 76%,rgba(255,251,242,.14))!important}
+.ambient-halo{opacity:.45!important;filter:saturate(.78)!important}
+.vano-map-brand{
+  background:rgba(255,251,242,.86)!important;
+  border:1px solid rgba(112,104,97,.11)!important;
+  border-radius:16px!important;
+  box-shadow:0 8px 24px rgba(67,49,37,.09)!important;
+  backdrop-filter:blur(18px) saturate(1.15)!important;
+}
+.vano-map-brand img{filter:none!important}
+
+/* Search / planning sheet */
+.search-card,.planner-search-card.search-card{
+  background:rgba(255,251,242,.94)!important;
+  color:var(--v-ink)!important;
+  border:1px solid rgba(112,104,97,.15)!important;
+  border-radius:22px!important;
+  box-shadow:0 14px 36px rgba(67,49,37,.13),inset 0 1px 0 rgba(255,255,255,.92)!important;
+  backdrop-filter:blur(24px) saturate(1.25)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(1.25)!important;
+}
+.location-row+.location-row{border-top-color:rgba(112,104,97,.10)!important}
+.location-input{color:var(--v-ink)!important;font-weight:760!important;letter-spacing:-.18px!important}
+.location-input::placeholder{color:#958A82!important}
+.row-btn,.planner-adjust-btn,.map-btn,.options-btn,.floating-locate,.nav-stack-btn,.nav-audio-toggle,.nav-search-btn{
+  background:rgba(255,251,242,.96)!important;
+  color:var(--v-ink)!important;
+  border:1px solid rgba(112,104,97,.13)!important;
+  box-shadow:0 8px 22px rgba(67,49,37,.105)!important;
+}
+.row-btn:hover,.planner-adjust-btn:hover,.map-btn:hover,.options-btn:hover,.floating-locate:hover,.nav-stack-btn:hover,.nav-audio-toggle:hover{background:#FFF0E5!important;color:var(--v-deep)!important}
+.search-results,.search-results.search-results-portal{
+  background:rgba(255,251,242,.985)!important;
+  color:var(--v-ink)!important;
+  border:1px solid rgba(112,104,97,.15)!important;
+  box-shadow:0 20px 52px rgba(67,49,37,.16)!important;
+  backdrop-filter:blur(22px)!important;
+}
+.search-item{border-color:rgba(112,104,97,.08)!important}
+.search-item:hover,.search-item:active{background:#FFF3E9!important}
+.result-icon,.planner-preset-icon,.nearby-service-icon{
+  background:linear-gradient(145deg,#FFF3E9,#FFE6D4)!important;
+  color:var(--v-deep)!important;
+  border-color:#FFDDC8!important;
+}
+.result-copy b,.planner-heading-copy b{color:var(--v-ink)!important}
+.result-copy small,.result-meta,.search-label,.search-message,.planner-tip,.planner-heading-copy span{color:var(--v-muted)!important}
+
+.sheet#planSheet,.sheet,.destination-confirm,.prefs-drawer,.safety-drawer,.account-drawer,.options-drawer{
+  background:rgba(255,251,242,.975)!important;
+  color:var(--v-ink)!important;
+  border-color:rgba(112,104,97,.15)!important;
+  box-shadow:0 -14px 52px rgba(67,49,37,.15)!important;
+  backdrop-filter:blur(26px) saturate(1.18)!important;
+  -webkit-backdrop-filter:blur(26px) saturate(1.18)!important;
+}
+.grab,.sheet-grab{background:#D9D0C8!important}
+.planner-preset,.nearby-service,.quick,.route-card,.parking-nearby,.parking-item,.route-insight .insight,.sub-action,.safety-tool,.pref-row{
+  background:rgba(255,255,255,.88)!important;
+  color:var(--v-ink)!important;
+  border-color:rgba(112,104,97,.13)!important;
+  box-shadow:none!important;
+}
+.planner-preset:hover,.nearby-service:hover,.quick:hover,.parking-item:hover,.sub-action:hover{background:#FFF4EB!important;border-color:rgba(217,112,63,.22)!important}
+.segment,.travel{background:#F8EFE7!important;border-color:rgba(112,104,97,.12)!important;padding:4px!important}
+.segment button,.travel button{color:#7B716A!important;border-color:transparent!important;border-radius:12px!important}
+.segment button.active,.travel button.active,.segment button.smart.active{
+  color:#A94F29!important;
+  background:#FFF8F3!important;
+  border-color:#FFD6BD!important;
+  box-shadow:0 5px 14px rgba(217,112,63,.09)!important;
+}
+.route-head h2,.route-card h3,.parking-head b{color:var(--v-ink)!important}
+.route-head p,.route-ai,.parking-head span,.parking-empty,.route-card p{color:var(--v-muted)!important}
+.route-time span{color:var(--v-ink)!important}
+.route-time small{color:var(--v-deep)!important}
+.customize-route-kicker span,.route-choice-label{color:#9A8E86!important}
+.customize-route-kicker b{color:var(--v-ink)!important}
+
+/* Main CTA — deliberately rebuilt to feel like the hero action */
+.start-trip-cta{
+  position:relative!important;
+  min-height:62px!important;
+  padding:8px 12px 8px 9px!important;
+  display:grid!important;
+  grid-template-columns:46px minmax(0,1fr) 36px!important;
+  align-items:center!important;
+  gap:10px!important;
+  border:1px solid rgba(255,255,255,.40)!important;
+  border-radius:20px!important;
+  overflow:hidden!important;
+  background:
+    radial-gradient(circle at 18% -10%,rgba(255,255,255,.58),transparent 30%),
+    linear-gradient(135deg,#FFC39B 0%,#F59A62 48%,#D9703F 100%)!important;
+  color:#fff!important;
+  box-shadow:0 16px 36px rgba(217,112,63,.28),inset 0 1px 0 rgba(255,255,255,.54),inset 0 -1px 0 rgba(132,59,26,.10)!important;
+  text-align:left!important;
+  transform:translateZ(0)!important;
+  transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease,filter .2s ease!important;
+}
+.start-trip-cta:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 18%,rgba(255,255,255,.20) 38%,transparent 58%);transform:translateX(-120%);transition:transform .6s ease;pointer-events:none}
+.start-trip-cta:hover:before{transform:translateX(120%)}
+.start-trip-cta:hover{transform:translateY(-1px)!important;box-shadow:0 19px 42px rgba(217,112,63,.34),inset 0 1px 0 rgba(255,255,255,.6)!important}
+.start-trip-cta:active{transform:translateY(0) scale(.99)!important}
+.start-trip-cta:disabled{filter:saturate(.72);opacity:.8!important}
+.start-trip-icon{
+  width:46px!important;height:46px!important;border-radius:15px!important;display:grid!important;place-items:center!important;
+  background:linear-gradient(155deg,#38332E,#211E1B)!important;
+  color:#FFF8F3!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  box-shadow:0 8px 18px rgba(68,37,23,.20),inset 0 1px 0 rgba(255,255,255,.12)!important;
+}
+.start-trip-icon svg{width:20px!important;height:20px!important;stroke-width:2.4!important}
+.start-trip-copy{min-width:0!important;display:flex!important;flex-direction:column!important;gap:2px!important}
+.start-trip-copy b{font-size:14px!important;line-height:1.12!important;letter-spacing:-.28px!important;color:#fff!important;font-weight:880!important}
+.start-trip-copy small{font-size:9px!important;line-height:1.25!important;color:rgba(255,255,255,.82)!important;font-weight:720!important;letter-spacing:.01em!important}
+.start-trip-arrow{width:34px!important;height:34px!important;border-radius:50%!important;display:grid!important;place-items:center!important;background:rgba(255,255,255,.17)!important;border:1px solid rgba(255,255,255,.20)!important;color:#fff!important;font-size:24px!important;line-height:1!important}
+
+/* Confirmation / loading */
+.destination-confirm-card,.route-loading-card,.resume-trip-card,.immersive-choice-card,.guest-limit-card{
+  background:rgba(255,251,242,.98)!important;
+  color:var(--v-ink)!important;
+  border-color:rgba(112,104,97,.16)!important;
+  box-shadow:0 24px 68px rgba(67,49,37,.19)!important;
+}
+.destination-accept,.resume-trip-continue,.traffic-accept,.guest-limit-primary{
+  color:#fff!important;
+  background:linear-gradient(135deg,#FFC39B,#F59A62 48%,#D9703F)!important;
+  border-color:transparent!important;
+  box-shadow:0 10px 25px rgba(217,112,63,.22)!important;
+}
+.destination-edit,.resume-trip-dismiss,.traffic-dismiss,.guest-limit-secondary{background:#fff!important;color:var(--v-ink)!important;border-color:var(--v-line)!important}
+.route-loading-spinner{border-color:rgba(245,154,98,.18)!important;border-top-color:var(--v-deep)!important}
+.route-loading-dots i{background:var(--v-primary)!important}
+
+/* Map controls/status */
+.status-chip,.gps-quality,.traffic-radar,.connectivity-pill,.nav-map-mode,.nav-tracking,.nav-immersive-chip,.nav-voice-popover,.nav-alt-hint,.nav-feedback{
+  background:rgba(255,251,242,.94)!important;
+  color:var(--v-ink)!important;
+  border-color:rgba(112,104,97,.14)!important;
+  box-shadow:0 10px 28px rgba(67,49,37,.12)!important;
+  backdrop-filter:blur(18px) saturate(1.2)!important;
+}
+.floating-speedo{background:rgba(39,35,31,.93)!important;color:#fff!important;border-color:rgba(255,255,255,.08)!important;box-shadow:0 12px 28px rgba(39,35,31,.22)!important}
+.floating-speedo small{color:#CFC6BF!important}
+
+/* Active navigation HUD */
+.nav-maneuver-top{
+  background:
+    radial-gradient(circle at 18% -25%,rgba(255,195,155,.16),transparent 40%),
+    linear-gradient(150deg,#302B27,#211E1B)!important;
+  color:#FFFBF2!important;
+  border:1px solid rgba(255,255,255,.09)!important;
+  border-radius:24px!important;
+  box-shadow:0 18px 44px rgba(39,35,31,.26),inset 0 1px 0 rgba(255,255,255,.06)!important;
+  backdrop-filter:blur(18px)!important;
+}
+.nav-maneuver-icon{
+  background:linear-gradient(145deg,#FFC39B,#F59A62 56%,#D9703F)!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.28)!important;
+  box-shadow:0 9px 20px rgba(217,112,63,.23),inset 0 1px 0 rgba(255,255,255,.45)!important;
+}
+.nav-maneuver-copy small{color:#CFC5BE!important}
+.nav-maneuver-copy b{color:#fff!important}
+.nav-maneuver-copy span{color:#E7DED8!important}
+.nav-street-chip{background:rgba(255,251,242,.94)!important;color:var(--v-ink)!important;border-color:rgba(112,104,97,.13)!important;box-shadow:0 8px 22px rgba(67,49,37,.10)!important}
+.nav-panel.nav-minimal{
+  background:rgba(255,251,242,.965)!important;
+  color:var(--v-ink)!important;
+  border-color:rgba(112,104,97,.15)!important;
+  box-shadow:0 -18px 52px rgba(67,49,37,.17)!important;
+  backdrop-filter:blur(24px) saturate(1.2)!important;
+}
+.nav-summary-item{background:#FFF8F2!important;border-color:rgba(112,104,97,.11)!important}
+.nav-summary-item small{color:#9A8E86!important}
+.nav-summary-item strong{color:var(--v-ink)!important}
+.traffic-suggestion{background:#FFF4EA!important;border-color:#FFD7BE!important}
+.traffic-suggestion-icon{background:#fff!important;color:var(--v-deep)!important}
+.nav-alt-accept{background:var(--v-primary)!important;color:#fff!important}
+.reroute .loading{border-color:rgba(245,154,98,.20)!important;border-top-color:var(--v-primary)!important}
+
+/* User puck */
+.user-marker.vano-uploaded-user{filter:drop-shadow(0 10px 14px rgba(66,42,28,.24))!important}
+.user-marker.vano-uploaded-user .pulse{background:radial-gradient(circle,rgba(245,154,98,.22) 0 18%,rgba(245,154,98,.08) 36%,transparent 68%)!important;animation-duration:2.6s!important}
+.user-marker.vano-uploaded-user .user-puck-image{filter:drop-shadow(0 1px 0 rgba(255,255,255,.45))!important}
+
+/* Destination marker: built from DOM/CSS, no rectangular PNG asset. */
+.route-marker.destination{
+  width:48px!important;
+  height:59px!important;
+  overflow:visible!important;
+  filter:none!important;
+  pointer-events:none!important;
+}
+.arrival-ground{
+  position:absolute!important;
+  left:50%!important;
+  bottom:0!important;
+  width:29px!important;
+  height:8px!important;
+  transform:translateX(-50%)!important;
+  border-radius:50%!important;
+  background:rgba(39,35,31,.22)!important;
+  filter:blur(4px)!important;
+}
+.arrival-bubble{
+  position:absolute!important;
+  left:50%!important;
+  top:0!important;
+  width:44px!important;
+  height:44px!important;
+  transform:translateX(-50%) translateZ(0)!important;
+  border-radius:50%!important;
+  background:linear-gradient(145deg,#3B3530,#211E1B)!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:
+    0 10px 20px rgba(39,35,31,.24),
+    0 3px 8px rgba(217,112,63,.12),
+    inset 0 1px 0 rgba(255,255,255,.20),
+    inset 0 -2px 5px rgba(0,0,0,.20)!important;
+}
+.arrival-bubble:after{
+  content:""!important;
+  position:absolute!important;
+  left:50%!important;
+  bottom:-10px!important;
+  width:18px!important;
+  height:18px!important;
+  transform:translateX(-50%) rotate(45deg)!important;
+  border-radius:3px 0 5px 0!important;
+  background:linear-gradient(135deg,#2B2723 42%,#211E1B 100%)!important;
+  border-right:1px solid rgba(255,255,255,.12)!important;
+  border-bottom:1px solid rgba(255,255,255,.09)!important;
+  box-shadow:5px 5px 10px rgba(39,35,31,.12)!important;
+  z-index:-1!important;
+}
+.arrival-ring{
+  position:absolute!important;
+  inset:4px!important;
+  border-radius:50%!important;
+  padding:3px!important;
+  background:linear-gradient(145deg,#FFE0CB 0%,#FFC39B 22%,#F59A62 58%,#D9703F 100%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.64),0 1px 5px rgba(217,112,63,.20)!important;
+}
+.arrival-checkers{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  overflow:hidden!important;
+  border-radius:50%!important;
+  background-color:#FFFBF2!important;
+  background-image:conic-gradient(#27231F 25%,#FFFBF2 0 50%,#27231F 0 75%,#FFFBF2 0)!important;
+  background-size:12px 12px!important;
+  background-position:center!important;
+  box-shadow:inset 0 0 0 1px rgba(39,35,31,.45),inset 0 -7px 10px rgba(39,35,31,.12),inset 0 7px 10px rgba(255,255,255,.28)!important;
+  transform:rotate(-3deg)!important;
+}
+.arrival-checkers:before{
+  content:""!important;
+  position:absolute!important;
+  inset:-4px!important;
+  border-radius:50%!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.66) 0 21%,transparent 38% 65%,rgba(39,35,31,.10) 100%)!important;
+  pointer-events:none!important;
+}
+.arrival-checkers:after{
+  content:""!important;
+  position:absolute!important;
+  left:8px!important;right:8px!important;top:4px!important;height:7px!important;
+  border-radius:50%!important;
+  background:rgba(255,255,255,.32)!important;
+  filter:blur(2px)!important;
+}
+
+.body-nav .route-marker.destination .arrival-visual{transform:scale(.96)!important;transform-origin:center bottom!important}
+
+/* Map alerts rebuilt with the same polished DOM/CSS language as the arrival pin. */
+.route-marker.alert-marker{position:relative!important;width:52px!important;height:64px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;cursor:pointer!important;pointer-events:auto!important;appearance:none!important;-webkit-appearance:none!important}
+.alert-visual{position:relative!important;display:block!important;width:52px!important;height:64px!important}
+.alert-ground{position:absolute!important;left:50%!important;bottom:0!important;width:31px!important;height:8px!important;transform:translateX(-50%)!important;border-radius:50%!important;background:rgba(39,35,31,.18)!important;filter:blur(4px)!important}
+.alert-bubble{position:absolute!important;left:50%!important;top:0!important;width:46px!important;height:46px!important;transform:translateX(-50%) translateZ(0)!important;border-radius:50%!important;background:linear-gradient(145deg,#3B3530,#211E1B)!important;border:1px solid rgba(255,255,255,.18)!important;box-shadow:0 10px 20px rgba(39,35,31,.22),0 3px 8px rgba(217,112,63,.12),inset 0 1px 0 rgba(255,255,255,.20),inset 0 -2px 5px rgba(0,0,0,.20)!important}
+.alert-bubble:after{content:""!important;position:absolute!important;left:50%!important;bottom:-10px!important;width:18px!important;height:18px!important;transform:translateX(-50%) rotate(45deg)!important;border-radius:3px 0 5px 0!important;background:linear-gradient(135deg,#2B2723 42%,#211E1B 100%)!important;border-right:1px solid rgba(255,255,255,.12)!important;border-bottom:1px solid rgba(255,255,255,.09)!important;box-shadow:5px 5px 10px rgba(39,35,31,.12)!important;z-index:-1!important}
+.alert-ring{position:absolute!important;inset:4px!important;display:grid!important;place-items:center!important;border-radius:50%!important;padding:3px!important;background:linear-gradient(145deg,#FFE0CB 0%,#FFC39B 22%,#F59A62 58%,#D9703F 100%)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.64),0 1px 5px rgba(217,112,63,.20)!important}
+.alert-face{position:relative!important;display:grid!important;place-items:center!important;width:100%!important;height:100%!important;overflow:hidden!important;border-radius:50%!important;background:radial-gradient(circle at 34% 26%,#FFFFFF 0%,#FFF8F1 40%,#F1E5D8 100%)!important;box-shadow:inset 0 0 0 1px rgba(39,35,31,.16),inset 0 -7px 10px rgba(39,35,31,.09),inset 0 7px 10px rgba(255,255,255,.28)!important}
+.alert-face:before{content:""!important;position:absolute!important;inset:0!important;border-radius:50%!important;background:linear-gradient(145deg,rgba(255,255,255,.58) 0 21%,transparent 38% 68%,rgba(39,35,31,.07) 100%)!important;pointer-events:none!important}
+.alert-face:after{content:""!important;position:absolute!important;left:9px!important;right:9px!important;top:5px!important;height:7px!important;border-radius:50%!important;background:rgba(255,255,255,.34)!important;filter:blur(2px)!important;pointer-events:none!important}
+.alert-icon{position:relative!important;z-index:1!important;display:grid!important;place-items:center!important;width:100%!important;height:100%!important}
+.alert-icon-svg{width:24px!important;height:24px!important;display:block!important}
+.alert-icon-svg .fg{fill:#27231F!important}.alert-icon-svg .accent{fill:#F59A62!important}.alert-icon-svg .light{fill:#FFFBF2!important}.alert-icon-svg .stroke{fill:none!important;stroke:#27231F!important;stroke-width:1.8!important;stroke-linecap:round!important;stroke-linejoin:round!important}.alert-icon-svg .stroke-fill{fill:#FFFBF2!important;stroke:#27231F!important;stroke-width:1.4!important}
+.route-marker.alert-marker[data-kind="traffic"] .alert-face{background:radial-gradient(circle at 34% 26%,#FFFFFF 0%,#FFF7ED 38%,#F6E1CF 100%)!important}
+.route-marker.alert-marker[data-kind="flood"] .alert-face{background:radial-gradient(circle at 34% 26%,#FFFFFF 0%,#FFF8F1 42%,#F0E9E0 100%)!important}
+.route-marker.alert-marker[data-kind="police"] .alert-ring,.route-marker.alert-marker[data-kind="security"] .alert-ring{background:linear-gradient(145deg,#FFE0CB 0%,#FFC39B 20%,#F59A62 55%,#CF6A3C 100%)!important}
+@media(max-width:640px){.route-marker.alert-marker{width:48px!important;height:60px!important}.alert-visual{width:48px!important;height:60px!important}.alert-bubble{width:42px!important;height:42px!important}.alert-icon-svg{width:22px!important;height:22px!important}}
+
+/* Arrival marker also used by standalone shared-route page */
+.marker.dest{
+  position:relative!important;width:38px!important;height:46px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;
+}
+.marker.dest:before{
+  content:""!important;position:absolute!important;left:50%!important;top:0!important;width:36px!important;height:36px!important;transform:translateX(-50%)!important;border-radius:50%!important;
+  background:conic-gradient(#27231F 25%,#FFFBF2 0 50%,#27231F 0 75%,#FFFBF2 0) center/10px 10px!important;
+  border:4px solid #F59A62!important;box-shadow:0 0 0 3px #27231F,0 8px 18px rgba(39,35,31,.22),inset 0 3px 6px rgba(255,255,255,.28)!important;
+}
+.marker.dest:after{
+  content:""!important;position:absolute!important;left:50%!important;top:31px!important;width:14px!important;height:14px!important;transform:translateX(-50%) rotate(45deg)!important;background:#27231F!important;border-radius:2px!important;box-shadow:5px 5px 9px rgba(39,35,31,.10)!important;z-index:-1!important;
+}
+
+/* Popups / Mapbox chrome */
+.mapboxgl-popup-content{background:rgba(255,251,242,.98)!important;color:var(--v-ink)!important;border:1px solid rgba(112,104,97,.15)!important;border-radius:16px!important;box-shadow:0 16px 38px rgba(67,49,37,.16)!important}
+.mapboxgl-popup-tip{border-top-color:#FFFBF2!important}
+.mapboxgl-ctrl-group{border-radius:14px!important;overflow:hidden!important;box-shadow:0 8px 22px rgba(67,49,37,.11)!important}
+.mapboxgl-ctrl-group button{background:#FFFBF2!important;color:var(--v-ink)!important}
+.mapboxgl-ctrl-attrib.mapboxgl-compact,.mapboxgl-ctrl-attrib{background:rgba(255,251,242,.84)!important;color:#7F746D!important;border-color:rgba(112,104,97,.12)!important}
+
+/* Do not let the legacy dark theme repaint the navigation. */
+html[data-vano-theme="black"] .ws-app,html[data-vano-theme="black"] .sheet#planSheet,html[data-vano-theme="black"] .search-card,
+html[data-vano-theme="black"] .nav-panel.nav-minimal,html[data-vano-theme="black"] .destination-confirm,
+html[data-vano-theme="black"] .prefs-drawer,html[data-vano-theme="black"] .safety-drawer{background:rgba(255,251,242,.97)!important;color:var(--v-ink)!important;border-color:var(--v-line)!important}
+html[data-vano-theme="black"] .nav-maneuver-top{background:linear-gradient(150deg,#302B27,#211E1B)!important;color:#fff!important}
+
+@media(max-width:640px){
+  .search-card,.planner-search-card.search-card{left:8px!important;right:8px!important;border-radius:19px!important}
+  .sheet#planSheet,.sheet{border-radius:24px 24px 0 0!important}
+  .start-trip-cta{min-height:58px!important;border-radius:18px!important;grid-template-columns:42px minmax(0,1fr) 32px!important;gap:9px!important;padding:8px 10px 8px 8px!important}
+  .start-trip-icon{width:42px!important;height:42px!important;border-radius:14px!important}
+  .start-trip-copy b{font-size:13px!important}
+  .start-trip-copy small{font-size:8px!important}
+  .start-trip-arrow{width:30px!important;height:30px!important;font-size:21px!important}
+  .nav-maneuver-top{border-radius:20px!important}
+  .route-marker.destination{width:44px!important;height:55px!important}
+  .route-marker.destination .arrival-visual{transform:scale(.94)!important;transform-origin:center bottom!important}
+}
+.start-trip-loading-icon .loading{width:18px!important;height:18px!important;border:2px solid rgba(255,255,255,.28)!important;border-top-color:#fff!important;border-radius:50%!important;animation:spin .7s linear infinite!important}
+.start-trip-cta.is-starting .start-trip-arrow{font-size:16px!important;font-weight:900!important;letter-spacing:2px!important}
+
+
+/* ---- vano-black-v176.css ---- */
+/* VANO v176 — final black-mode authority and auth/banner polish. */
+:root{--vb-bg:#171512;--vb-surface:#211E1B;--vb-surface-2:#27231F;--vb-surface-3:#302B27;--vb-text:#FFFBF2;--vb-muted:#D5CBC4;--vb-muted-2:#B9AEA7;--vb-line:rgba(255,251,242,.11);--vb-orange:#F59A62;--vb-orange-2:#FFC39B;--vb-orange-3:#D9703F}
+
+/* Brand banner: use the exact supplied 2048×682 artwork but crop its built-in whitespace in CSS. */
+.vano-auth-banner-link{display:block!important;width:min(100%,570px)!important;text-decoration:none!important}
+.vano-auth-banner-frame{position:relative!important;display:block!important;width:min(100%,560px)!important;aspect-ratio:5.06/1!important;overflow:hidden!important;border-radius:20px!important;background:#fff!important;border:1px solid rgba(112,104,97,.10)!important;box-shadow:0 14px 38px rgba(74,51,36,.11)!important;isolation:isolate!important}
+.vano-auth-banner-frame .vano-auth-banner{position:absolute!important;left:50%!important;top:50%!important;width:123.7%!important;height:auto!important;max-width:none!important;max-height:none!important;transform:translate(-50%,-50%)!important;display:block!important;image-rendering:auto!important;filter:none!important;object-fit:initial!important}
+.vano-auth-banner--compact .vano-auth-banner-frame,.vano-auth-banner-frame.compact{width:min(100%,465px)!important}
+.vano-auth-tagline{margin:10px 0 0!important;color:#706861!important;font-size:12px!important;font-weight:720!important;line-height:1.3!important;letter-spacing:-.12px!important}
+@media(max-width:760px){.vano-auth-banner-link{width:min(100%,380px)!important}.vano-auth-banner-frame{width:min(100%,360px)!important;border-radius:17px!important}.vano-auth-tagline{font-size:10.5px!important;margin-top:7px!important}}
+@media(max-width:370px){.vano-auth-banner-link{width:min(100%,330px)!important}.vano-auth-banner-frame{width:min(100%,316px)!important}}
+
+/* Black mode must paint before and across every normal page. */
+html[data-vano-theme="black"]{background:var(--vb-bg)!important;color-scheme:dark!important}
+html[data-vano-theme="black"] body{background:var(--vb-bg)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] body:before{background:radial-gradient(circle at 18% -10%,rgba(245,154,98,.055),transparent 28%),radial-gradient(circle at 88% 8%,rgba(255,195,155,.025),transparent 24%)!important}
+html[data-vano-theme="black"] :is(.page,.section,.auth-wrap,.onboard,.vano-entry){background:var(--vb-bg)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.topbar,.mobile-dock){background:rgba(23,21,18,.96)!important;border-color:var(--vb-line)!important;color:var(--vb-text)!important;box-shadow:0 12px 34px rgba(0,0,0,.24)!important}
+html[data-vano-theme="black"] footer{background:var(--vb-bg)!important;border-color:var(--vb-line)!important;color:var(--vb-muted)!important}
+html[data-vano-theme="black"] :is(.navlinks a,.navlinks button.navbtn,.nav-actions .tiny){color:var(--vb-muted)!important}
+html[data-vano-theme="black"] :is(.navlinks a:hover,.navlinks button.navbtn:hover,.navlinks a.active){background:var(--vb-surface-2)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.page-title,.title,.section-title,h1,h2,h3,h4,h5,h6,strong,b,summary,label){color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.page-subtitle,.subtitle,.muted,.tiny,p,small){color:var(--vb-muted)!important}
+html[data-vano-theme="black"] :is(.eyebrow,[class*="eyebrow"],[class*="kicker"]){color:var(--vb-orange-2)!important}
+
+/* General surfaces/forms used by content pages. */
+html[data-vano-theme="black"] :is(.panel,.card,.kpi,.alert-card,.auth-card,.invite-card,.faq-hero,.faq details,.notif,.users-surface,.flash){background:var(--vb-surface)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important;box-shadow:0 14px 42px rgba(0,0,0,.20)!important}
+html[data-vano-theme="black"] :is(.panel-head,.panel-body,.card-body,.section,.table-wrap){border-color:var(--vb-line)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.input,.select,.textarea,input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),select,textarea){background:var(--vb-surface-2)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] :is(.input,.select,.textarea,input,textarea)::placeholder{color:#AFA49D!important}
+html[data-vano-theme="black"] table{color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.table th,.table td,thead,tbody,tr){border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .table tr:hover td{background:rgba(255,251,242,.025)!important}
+html[data-vano-theme="black"] :is(.badge,.pill,.chip){border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .btn:not(.btn-primary){background:var(--vb-surface-2)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .btn-primary{color:#fff!important}
+
+/* Map UI: the account/profile drawer and its profile section were being repainted white by older CSS. */
+html[data-vano-theme="black"] .ws-app{background:var(--vb-bg)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] .ws-app :is(.account-drawer,.safety-drawer,.prefs-drawer,.quick-alert-card,.search-results,.destination-confirm,.sheet#planSheet,.sheet,.route-card,.guest-limit-card,.resume-trip-card,.nav-panel.nav-minimal,.nav-voice-popover,.traffic-radar,.route-loading-card){background:rgba(33,30,27,.975)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important;box-shadow:0 18px 50px rgba(0,0,0,.32)!important}
+html[data-vano-theme="black"] .ws-app :is(.drawer-user,.drawer-link,.drawer-profile,.safety-tool,.pref-row,.quick-alert-grid button,.parking-item,.planner-preset,.nearby-service,.search-item,.search-suggestion,.location-row,.segment button,.travel button,.preview-actions .sub-action){background:var(--vb-surface-2)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .ws-app :is(.drawer-user b,.drawer-profile,.drawer-link,.drawer-link span,.drawer-link em,.drawer-link i,.safety-tool,.safety-tool b,.pref-row,.pref-row b,.quick-alert-label,.quick-alert-head h3,.search-item b,.search-suggestion b,.planner-heading-copy b,.route-card h3,.route-head h2,.destination-confirm h3,.nav-summary-item strong){color:var(--vb-text)!important}
+html[data-vano-theme="black"] .ws-app :is(.drawer-user span,.drawer-login p,.guest-drawer-content>p,.quick-alert-head p,.quick-alert-status,.result-address,.result-copy small,.search-label,.search-label span,.search-label em,.search-message,.search-message span,.search-suggestion small,.planner-heading-copy span,.route-card-meta,.route-ai,.destination-confirm p,.nav-summary-item small,.traffic-radar-copy span){color:var(--vb-muted)!important}
+html[data-vano-theme="black"] .ws-app :is(.drawer-divider,.support-title){border-color:var(--vb-line)!important;background-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .ws-app :is(.drawer-link:hover,.drawer-link:active,.search-item:active,.search-suggestion:active,.quick-alert-grid button:active,.planner-preset:active,.nearby-service:active){background:var(--vb-surface-3)!important;color:var(--vb-orange-2)!important}
+html[data-vano-theme="black"] .ws-app :is(.drawer-avatar.fallback,.quick-alert-close,.guest-drawer-close,.guest-drawer-secondary){background:var(--vb-surface-2)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .ws-app .guest-drawer-benefits span{background:var(--vb-surface-2)!important;color:var(--vb-muted)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .ws-app .guest-drawer-primary{color:#fff!important}
+html[data-vano-theme="black"] .ws-app .mapboxgl-popup-content{background:rgba(33,30,27,.99)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .ws-app .mapboxgl-popup-content *{color:inherit!important}
+html[data-vano-theme="black"] .ws-app .mapboxgl-popup-tip{border-top-color:var(--vb-surface)!important}
+html[data-vano-theme="black"] .ws-app .mapboxgl-ctrl-group button{background:var(--vb-surface-2)!important;color:var(--vb-text)!important}
+.map-mood-fade{transition:opacity .09s ease!important}
+
+/* Profile page: authoritative dark skin for every nested profile surface. */
+html[data-vano-theme="black"] body:has(.v72-profile-page){background:var(--vb-bg)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.profile-v72-hero,.profile-v72-card,.profile-v72-detail,.profile-v72-links,.profile-v108-quicknav a,.profile-v72-place,.profile-v72-nav-pref,.profile-v72-map-style,.profile-v72-accent,.profile-v72-fuel-list span,.profile-v72-person,.profile-v72-empty){background:var(--vb-surface)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important;box-shadow:none!important}
+html[data-vano-theme="black"] .profile-v72-detail summary{background:var(--vb-surface)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] .profile-v72-detail summary:hover{background:var(--vb-surface-2)!important}
+html[data-vano-theme="black"] .profile-v72-detail-body{background:#1C1916!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.profile-v72-field input,.profile-v72-field select,.profile-v72-place input,.profile-v72-invite input){background:var(--vb-surface-2)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] :is(.profile-v72-copy h1,.profile-v72-section-head h2,.profile-v72-subhead b,.profile-v72-detail-copy b,.profile-v72-place-head,.profile-v72-nav-copy b,.profile-v72-map-copy b,.profile-v72-person b,.profile-v72-links b,.profile-v108-quicknav b){color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.profile-v72-copy p,.profile-v72-section-head p,.profile-v72-subcopy,.profile-v72-detail-copy small,.profile-v72-field>span,.profile-v72-nav-copy small,.profile-v72-map-copy small,.profile-v72-person small,.profile-v72-links small,.profile-v108-quicknav small){color:var(--vb-muted)!important}
+html[data-vano-theme="black"] :is(.profile-v72-badge,.profile-v72-note,.profile-v72-nav-icon,.profile-v72-detail-icon,.profile-v72-card-icon,.profile-v72-link-icon,.profile-v108-quick-icon,.profile-v72-secondary){background:rgba(245,154,98,.10)!important;color:var(--vb-orange-2)!important;border-color:rgba(245,154,98,.18)!important}
+html[data-vano-theme="black"] .profile-v72-switch{background:#4A433E!important}
+html[data-vano-theme="black"] .profile-v72-switch:before{background:#FFFBF2!important}
+html[data-vano-theme="black"] :is(.profile-v72-map-style:has(input:checked),.profile-v72-accent:has(input:checked),.profile-v72-fuel-list input:checked+span){background:rgba(245,154,98,.11)!important;border-color:rgba(245,154,98,.30)!important;color:var(--vb-orange-2)!important}
+
+/* Onboarding and auth entry. */
+html[data-vano-theme="black"] :is(.ob-shell,.ob-section,.choice label,.pref label,.night-card,.presence-consent,.privacy-note,.v63-entry-shell,.v63-entry-panel,.v63-auth-block,.auth-shell,.auth-pane,.sheet-card){background:var(--vb-surface)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important;box-shadow:none!important}
+html[data-vano-theme="black"] :is(.ob-head h1,.ob-section-title b,.choice label b,.pref label b,.night-card b,.v63-entry-panel h1,.v63-auth-label span:first-child,.auth-copy h1,.sheet-head h2){color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.ob-head p,.ob-section-title span,.choice label span,.pref label span,.night-card span,.v63-entry-lead,.auth-legal,.lead,.legal,.sheet-head p,.sheet-switch){color:var(--vb-muted)!important}
+html[data-vano-theme="black"] :is(.ob-section .input,.ob-section .select,.sheet-input,.sheet-select,.field input,.input-shell,.auth-button.google,.auth-google,.auth-choice.secondary,.auth-guest){background:var(--vb-surface-2)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] :is(.auth-button.email,.auth-choice.primary,.sheet-submit){color:#fff!important}
+html[data-vano-theme="black"] .vano-auth-tagline{color:var(--vb-muted)!important}
+html[data-vano-theme="black"] .vano-auth-banner-frame{border-color:rgba(255,195,155,.16)!important;box-shadow:0 16px 42px rgba(0,0,0,.30)!important}
+@media(max-width:760px){html[data-vano-theme="black"] :is(.auth-page[data-auth-page="login"],.auth-page[data-auth-page="login"] .auth-shell,.auth-page[data-auth-page="login"] .auth-pane,.vano-entry,.vano-entry .v63-entry-shell,.vano-entry .v63-entry-panel){background:var(--vb-bg)!important}}
+
+/* Notifications/help/invites and generic content lists. */
+html[data-vano-theme="black"] :is(.notif-shell,.notif-list,.faq-shell,.invite-shell){color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.notif,.faq details,.invite-card){background:var(--vb-surface)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] :is(.notif p,.notif small,.faq p,.faq small,.invite-card p,.invite-card small){color:var(--vb-muted)!important}
+
+/* Admin pages: old admin-specific styles contained many late white !important rules. */
+html[data-vano-theme="black"] :is(.admin86,.audit-page,.admin-server-page,.finance93,.risk-admin,.admin-users-v76){background:var(--vb-bg)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.admin86,.audit-page,.admin-server-page,.finance93,.risk-admin,.admin-users-v76) :is([class*="card"],[class*="panel"],[class*="surface"],[class*="kpi"],[class*="metric"],[class*="tile"],[class*="row"],table){background:var(--vb-surface)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important;box-shadow:none!important}
+html[data-vano-theme="black"] :is(.admin86,.audit-page,.admin-server-page,.finance93,.risk-admin,.admin-users-v76) :is(input,select,textarea){background:var(--vb-surface-2)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] :is(.admin86,.audit-page,.admin-server-page,.finance93,.risk-admin,.admin-users-v76) :is(h1,h2,h3,h4,b,strong,label,th,td){color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.admin86,.audit-page,.admin-server-page,.finance93,.risk-admin,.admin-users-v76) :is(p,small,.muted,span){border-color:var(--vb-line)!important}
+
+/* Standalone shared/live pages when this sheet is linked there. */
+html[data-vano-theme="black"] :is(.share-app,.map-unavailable,.app,.offline){background:var(--vb-bg)!important;color:var(--vb-text)!important}
+html[data-vano-theme="black"] :is(.share-top,.route-panel,.share-app .metric,.share-app .route-actions button,.share-app .route-actions a:not(.primary),.live-trip-card){background:rgba(33,30,27,.97)!important;color:var(--vb-text)!important;border-color:var(--vb-line)!important}
+html[data-vano-theme="black"] :is(.share-top span,.share-app .place small,.share-app .metric small,.share-app .copy-status,.share-app .route-panel p){color:var(--vb-muted)!important}
+
+
+/* VANO v177 — remove the cramped mobile header shown in the screenshot.
+   Signed-in phones already have the bottom dock, so the old wordmark/logout bar is redundant. */
+@media(max-width:760px){
+  body.vano-signed-in>.topbar,
+  body:has(.vano-entry)>.topbar,
+  body:has(.onboard)>.topbar{display:none!important}
+  body.vano-signed-in{padding-top:0!important}
+  body.vano-signed-in>.page,
+  body.vano-signed-in>.container.page{padding-top:max(14px,env(safe-area-inset-top))!important}
+}
+
+/* Desktop/tablet header stays restrained and does not duplicate the wordmark text. */
+.topbar .brand>span{display:none!important}
+.topbar .vano-brand-wordmark{width:132px!important;height:32px!important;max-width:132px!important;object-fit:contain!important;object-position:left center!important;filter:none!important}
+
+
+/* VANO v178 — transparent auth branding.
+   Removes the white/cropped banner frame entirely and uses high-resolution
+   light/dark transparent assets so the identity feels native to the page. */
+.vano-auth-banner-link{
+  display:block!important;
+  width:min(100%,560px)!important;
+  max-width:560px!important;
+  margin:0!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  text-decoration:none!important;
+}
+.vano-auth-banner-clean{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  aspect-ratio:4.86/1!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+  isolation:isolate!important;
+}
+.vano-auth-banner-clean:before{
+  content:""!important;
+  position:absolute!important;
+  left:1.5%!important;
+  top:17%!important;
+  width:17%!important;
+  aspect-ratio:1!important;
+  border-radius:34%!important;
+  background:rgba(245,154,98,.14)!important;
+  filter:blur(22px)!important;
+  transform:scale(.92)!important;
+  z-index:-1!important;
+  pointer-events:none!important;
+}
+.vano-auth-banner-clean .vano-auth-banner{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+  transform:none!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  image-rendering:auto!important;
+  -webkit-font-smoothing:antialiased!important;
+  filter:drop-shadow(0 10px 22px rgba(74,51,36,.08))!important;
+}
+.vano-auth-banner-dark{opacity:0!important;visibility:hidden!important}
+html[data-vano-theme="black"] .vano-auth-banner-light{opacity:0!important;visibility:hidden!important}
+html[data-vano-theme="black"] .vano-auth-banner-dark{opacity:1!important;visibility:visible!important;filter:drop-shadow(0 12px 28px rgba(0,0,0,.24))!important}
+html[data-vano-theme="black"] .vano-auth-banner-clean:before{background:rgba(245,154,98,.18)!important;filter:blur(25px)!important}
+
+/* Kill every legacy framed-banner style that could leak back in. */
+.vano-auth-banner-frame{
+  display:contents!important;
+  width:auto!important;height:auto!important;aspect-ratio:auto!important;
+  overflow:visible!important;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+}
+.vano-auth-banner-frame .vano-auth-banner{position:static!important;transform:none!important}
+
+/* Better auth hierarchy around the new lockup. */
+.auth-page[data-auth-page="login"] .brand-row{
+  position:relative!important;
+  inset:auto!important;
+  width:100%!important;
+  min-height:0!important;
+  margin:0 0 clamp(24px,4.5vh,48px)!important;
+  padding:0!important;
+  pointer-events:auto!important;
+  display:block!important;
+}
+.auth-page[data-auth-page="login"] .auth-copy{
+  margin:0!important;
+  padding:0!important;
+}
+.vano-entry .v63-entry-brand{
+  display:block!important;
+  width:100%!important;
+  margin:0 0 clamp(28px,5vh,52px)!important;
+  padding:0!important;
+}
+.vano-entry .v63-entry-kicker{margin-top:0!important}
+
+@media(max-width:760px){
+  .vano-auth-banner-link{width:min(100%,390px)!important;max-width:390px!important}
+  .vano-auth-banner-clean{aspect-ratio:4.86/1!important}
+  .auth-page[data-auth-page="login"] .brand-row{margin-bottom:clamp(28px,6vh,48px)!important}
+  .auth-page[data-auth-page="login"] .auth-pane{
+    padding-top:max(24px,calc(env(safe-area-inset-top) + 16px))!important;
+  }
+  .vano-entry .v63-entry-brand{margin-bottom:34px!important}
+}
+@media(max-width:380px){
+  .vano-auth-banner-link{width:min(100%,344px)!important}
+  .auth-page[data-auth-page="login"] .brand-row{margin-bottom:26px!important}
+  .vano-entry .v63-entry-brand{margin-bottom:28px!important}
+}
+

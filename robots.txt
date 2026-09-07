@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /mobile/auth/
+Disallow: /logout
+
+Sitemap: __PUBLIC_SITE_URL__/sitemap.xml

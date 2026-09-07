@@ -1,0 +1,127 @@
+# VANO MAPS — Render Blueprint
+# Deploy this repository with Render > New > Blueprint.
+# The PostgreSQL database is a separate managed resource, so user data survives
+# web-service restarts and future code deploys.
+services:
+  - type: web
+    name: rairo
+    runtime: python
+    plan: free
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -r requirements.txt && python -m py_compile app.py db_backend.py mobile_routes.py vano_osint_bridge.py
+    startCommand: VANO_SKIP_DB_INIT=1 RAIRO_DB_INIT_ONLY=1 python -c "from app import init_db_with_retry; init_db_with_retry()" && VANO_SKIP_DB_INIT=1 python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 6 --timeout 120 --keep-alive 5 --access-logfile - --error-logfile -
+    healthCheckPath: /healthz
+    envVars:
+      # DATABASE_URL is the canonical PostgreSQL connection string used by VANO MAPS. Legacy resource names are retained to preserve the existing database.
+      # Split PG* fields stay wired only as a compatibility fallback.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rairo-postgres
+          property: connectionString
+      - key: PGHOST
+        fromDatabase:
+          name: rairo-postgres
+          property: host
+      - key: PGPORT
+        fromDatabase:
+          name: rairo-postgres
+          property: port
+      - key: PGUSER
+        fromDatabase:
+          name: rairo-postgres
+          property: user
+      - key: PGPASSWORD
+        fromDatabase:
+          name: rairo-postgres
+          property: password
+      - key: PGDATABASE
+        fromDatabase:
+          name: rairo-postgres
+          property: database
+      - key: DATABASE_CONNECT_TIMEOUT
+        value: "10"
+      - key: DATABASE_INIT_RETRIES
+        value: "10"
+      - key: DATABASE_INIT_RETRY_DELAY
+        value: "2"
+      - key: RAIRO_NODE_COUNT
+        value: "15"
+      - key: RAIRO_NODE_CAPACITY
+        value: "4"
+      - key: RAIRO_NODE_HEALTH_PATH
+        value: "/healthz"
+      - key: RAIRO_NODE_CHECK_TIMEOUT
+        value: "2.8"
+      - key: RAIRO_DISTRIBUTED_ROUTING_ENABLED
+        value: "1"
+      - key: RAIRO_NODE_ROUTE_TIMEOUT
+        value: "10"
+      - key: RAIRO_NODE_ROUTE_ATTEMPTS
+        value: "2"
+      - key: RAIRO_NODE_CONFIG_CACHE_TTL
+        value: "12"
+      - key: CENTRAL_API_SECRET
+        sync: false
+      - key: RAIRO_CANDIDATE_POOL_TTL
+        value: "16"
+      - key: RAIRO_ROUTE_CONTEXT_TTL
+        value: "14"
+      - key: RAIRO_FLOW_QUERY_TTL
+        value: "8"
+      - key: RAIRO_FLOW_PRUNE_INTERVAL
+        value: "600"
+      - key: RAIRO_SECRET_KEY
+        generateValue: true
+      # OSINT of VANO private administrative telemetry bridge.
+      # VANO_OSINT_SERVICE_TOKEN must match VANO_SERVICE_TOKEN on OSINT of VANO.
+      - key: VANO_OSINT_URL
+        sync: false
+      - key: VANO_OSINT_SERVICE_TOKEN
+        sync: false
+      - key: VANO_OSINT_BRIDGE_KEY
+        generateValue: true
+      - key: VANO_OSINT_TEST_GROUP
+        value: "closed-beta"
+      - key: VANO_OSINT_CONSENT_VERSION
+        value: "beta-location-v1"
+      - key: VANO_OSINT_TRACKING_PROMPT
+        value: "1"
+      - key: VANO_OSINT_WEB_MIN_INTERVAL
+        value: "2"
+      - key: VANO_OSINT_TIMEOUT
+        value: "8"
+      - key: MAPBOX_ACCESS_TOKEN
+        sync: false
+      - key: HERE_TRAFFIC_API_KEY
+        sync: false
+      - key: RAIRO_ADMIN_EMAIL
+        sync: false
+      - key: RAIRO_ADMIN_PASSWORD
+        sync: false
+      - key: RAIRO_OWNER_EMAIL
+        sync: false
+      - key: PUBLIC_SITE_URL
+        value: https://vanomaps.online
+      - key: VANO_BUILD_ID
+        value: 262.0.0
+      - key: VANO_KEEPALIVE_URL
+        value: https://vanomaps.online
+      - key: DATABASE_POOL_MIN
+        value: 1
+      - key: DATABASE_POOL_MAX
+        value: 12
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: "https://vanomaps.online/login/google/callback"
+      # Android OAuth bridge. Keep this aligned with gradle.properties.
+      - key: VANO_MOBILE_RETURN_URI
+        value: "vienna://auth/callback"
+
+databases:
+  - name: rairo-postgres
+    plan: free
+    databaseName: rairodb
+    user: rairo
+    ipAllowList: []
