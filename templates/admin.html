@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}Admin · VANO MAPS{% endblock %}
+{% block content %}
+<main class="admin86 admin240">
+  <div class="admin240-shell">
+    <header class="admin240-topbar">
+      <div class="admin240-brand">
+        <span class="admin240-logo"><i data-lucide="command" width="19"></i></span>
+        <div><small>VANO CONTROL CENTER</small><h1>Administração</h1><p>Visão operacional limpa. O detalhe fica nas áreas específicas, não no dashboard.</p></div>
+      </div>
+      <div class="admin240-top-actions">
+        <a href="{{ url_for('index') }}" class="admin240-ghost"><i data-lucide="map" width="15"></i>Mapa</a>
+        <a href="{{ url_for('admin_audit_logs') }}" class="admin240-ghost"><i data-lucide="history" width="15"></i>Auditoria</a>
+      </div>
+    </header>
+
+    <nav class="admin240-nav" aria-label="Áreas administrativas">
+      <a href="{{ url_for('admin_users') }}"><i data-lucide="users" width="17"></i><span><b>Usuários</b><small>contas e acessos</small></span></a>
+      <a href="{{ url_for('admin_reports') }}"><i data-lucide="triangle-alert" width="17"></i><span><b>Alertas</b><small>moderação</small></span></a>
+      <a href="{{ url_for('admin_risk_zones') }}"><i data-lucide="map-pinned" width="17"></i><span><b>Zonas</b><small>áreas e bloqueios</small></span></a>
+      <a href="{{ url_for('admin_finance') }}"><i data-lucide="landmark" width="17"></i><span><b>Financeiro</b><small>caixa e contas</small></span></a>
+      <a href="{{ url_for('admin_privacy_requests') }}"><i data-lucide="shield-check" width="17"></i><span><b>Privacidade</b><small>{{ product_metrics['privacy_pending'] }} pendente(s)</small></span></a>
+      <a href="{{ url_for('admin_benchmark') }}"><i data-lucide="flask-conical" width="17"></i><span><b>Benchmark</b><small>testes de rotas</small></span></a>
+    </nav>
+
+    <section class="admin240-overview">
+      <article class="admin240-kpi primary"><span class="kpi-icon"><i data-lucide="radio" width="18"></i></span><div><small>ATIVOS AGORA</small><b id="heroConcurrentNow">{{ extra['simultaneous_now'] }}</b><span>janela de 5 minutos</span></div></article>
+      <article class="admin240-kpi"><span class="kpi-icon"><i data-lucide="route" width="18"></i></span><div><small>ROTAS HOJE</small><b>{{ stats['routes_today'] }}</b><span>{{ stats['routes_24h'] }} nas últimas 24h</span></div></article>
+      <article class="admin240-kpi"><span class="kpi-icon"><i data-lucide="triangle-alert" width="18"></i></span><div><small>ALERTAS ATIVOS</small><b>{{ stats['active_reports'] }}</b><span>{{ product_metrics['road_snaps_24h'] }} alinhados à via · 24h</span></div></article>
+      <article class="admin240-kpi"><span class="kpi-icon"><i data-lucide="users-round" width="18"></i></span><div><small>PRESENÇAS · 3 MIN</small><b>{{ extra['presence_3m'] }}</b><span>{{ product_metrics['nearby_notice_24h'] }} cards “perto” exibidos · 24h</span></div></article>
+    </section>
+
+    <section class="admin240-grid-main">
+      <article class="admin240-card admin240-health">
+        <header><div><small>SISTEMA</small><h2>Saúde operacional</h2></div><span class="admin240-live"><i></i>ao vivo</span></header>
+        <div class="admin240-health-main">
+          <div class="admin240-health-score"><strong id="heroHealthy">{{ infra['summary']['healthy_nodes'] }}/{{ infra['summary']['total_nodes'] }}</strong><span>nodes saudáveis</span></div>
+          <div class="admin240-capacity">
+            <div><span>Capacidade</span><b id="heroCapacity">{{ extra['simultaneous_capacity'] }}</b></div>
+            <div><span>Em uso</span><b><span id="heroUsed">{{ extra['simultaneous_used'] }}</span>/<span id="heroCapacityInline">{{ extra['simultaneous_capacity'] }}</span></b></div>
+            <div><span>Livre</span><b id="heroAvailable">{{ extra['simultaneous_available'] }}</b></div>
+            <div><span>Latência</span><b id="infraLatencyTop">{{ infra['summary']['avg_latency_ms'] }} ms</b></div>
+          </div>
+        </div>
+        <div class="admin240-progress"><span id="heroOccupancyBar" style="width:{{ extra['simultaneous_occupancy_pct'] }}%"></span></div>
+        <div class="admin240-health-foot"><span>Ocupação <b id="heroOccupancy">{{ extra['simultaneous_occupancy_pct'] }}</b>%</span><span>15 min <b id="hero15m">{{ extra['active_15m'] }}</b></span><span>60 min <b id="hero60m">{{ extra['active_60m'] }}</b></span></div>
+      </article>
+
+      <article class="admin240-card admin240-product">
+        <header><div><small>PRODUTO · 24H</small><h2>O que importa agora</h2></div></header>
+        <div class="admin240-pulse-grid">
+          <div><small>NAVEGAÇÕES</small><b>{{ product_metrics['navigation_starts_24h'] }}</b><span>{{ product_metrics['navigation_complete_24h'] }} concluídas</span></div>
+          <div><small>BUSCAS OK</small><b>{{ product_metrics['searches_24h'] }}</b><span>{{ product_metrics['search_no_results_24h'] }} sem resultado</span></div>
+          <div><small>RECALCULADAS</small><b>{{ product_metrics['reroutes_24h'] }}</b><span>{{ product_metrics['reroutes_per_trip'] }} / viagem</span></div>
+          <div><small>ALERTAS SINCRONIZADOS</small><b>{{ product_metrics['alert_syncs_24h'] }}</b><span>eventos de atualização</span></div>
+          <div><small>ERROS HTTP</small><b>{{ product_metrics['errors_24h'] }}</b><span>{{ product_metrics['client_errors_24h'] }} no cliente</span></div>
+          <div><small>P95 ROTA</small><b>{{ product_metrics['route_p95_ms'] }} ms</b><span>P50 {{ product_metrics['route_p50_ms'] }} ms</span></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="admin240-card admin240-infra">
+      <header class="admin240-section-head">
+        <div><small>INFRAESTRUTURA</small><h2>Route Nodes</h2><p>Filtre, teste ou configure sem misturar isso com as métricas do produto.</p></div>
+        <div class="admin240-head-actions"><span id="infraUpdated" class="admin240-muted">Atualizando…</span><button class="admin240-primary" id="testAllNodes" type="button"><i data-lucide="activity" width="15"></i>Testar todos</button></div>
+      </header>
+
+      <div class="admin240-infra-summary">
+        <span>Total <b id="sumNodes">{{ infra['summary']['total_nodes'] }}</b></span>
+        <span>Configurados <b id="sumConfigured">{{ infra['summary']['configured_nodes'] }}</b></span>
+        <span>Saudáveis <b id="sumHealthy">{{ infra['summary']['healthy_nodes'] }}</b></span>
+        <span>Teste <b id="sumTest">{{ infra['summary']['test_nodes'] }}</b></span>
+        <span>Slots <b id="sumSlots">{{ infra['summary']['used_slots'] }}/{{ infra['summary']['capacity'] }}</b></span>
+        <span>Livres <b id="sumAvailable">{{ infra['summary']['available_slots'] }}</b></span>
+        <span class="hidden-dynamic" id="simNowKpi">{{ extra['simultaneous_now'] }}</span><span class="hidden-dynamic" id="simOccKpi">{{ extra['simultaneous_occupancy_pct'] }}%</span><span class="hidden-dynamic" id="simFreeKpi">{{ extra['simultaneous_available'] }}</span><span class="hidden-dynamic" id="avgLatencyKpi">{{ infra['summary']['avg_latency_ms'] }} ms</span><span class="hidden-dynamic" id="active15Kpi">{{ extra['active_15m'] }}</span><span class="hidden-dynamic" id="active60Kpi">{{ extra['active_60m'] }}</span><span class="hidden-dynamic" id="infraCapacityTop">{{ infra['summary']['capacity'] }}</span><span class="hidden-dynamic" id="sumHealthyTop">{{ infra['summary']['healthy_nodes'] }}</span>
+      </div>
+
+      <div class="admin240-topology" aria-label="Topologia resumida">
+        <div class="admin240-central"><i data-lucide="server-cog" width="17"></i><span><b>Central</b><small id="topologyHealthyText">{{ infra['summary']['healthy_nodes'] }}/{{ infra['summary']['total_nodes'] }} saudáveis</small></span></div>
+        <div class="admin240-topology-nodes">{% for n in infra['nodes'] %}<span class="topology-node {{ n['status'] }}" data-topology-node="{{ n['id'] }}"><b data-topology-name>{{ n['name'] }}</b><small data-topology-region>{{ n['region'] }}</small><em data-topology-meta>{{ n['active_users'] }}/{{ n['capacity'] }} · {{ n['latency_ms'] }} ms</em></span>{% endfor %}</div>
+      </div>
+
+      <div class="admin240-toolbar">
+        <div class="node-filter-group"><button class="node-filter active" type="button" data-node-filter="all">Todos <b id="filterCountAll">{{ infra['summary']['total_nodes'] }}</b></button><button class="node-filter" type="button" data-node-filter="online">Online <b id="filterCountOnline">{{ infra['summary']['healthy_nodes'] }}</b></button><button class="node-filter" type="button" data-node-filter="degraded">Atenção <b id="filterCountDegraded">0</b></button><button class="node-filter" type="button" data-node-filter="offline">Offline <b id="filterCountOffline">0</b></button></div>
+        <label class="node-search"><i data-lucide="search" width="15"></i><input id="nodeSearchInput" type="search" placeholder="Buscar node, região ou URL"></label>
+        <select class="node-sort" id="nodeSortSelect"><option value="status">Status</option><option value="latency">Latência</option><option value="occupancy">Ocupação</option><option value="priority">Prioridade</option></select>
+      </div>
+
+      <div class="server-grid admin240-server-grid" id="serverGrid">
+        {% for n in infra['nodes'] %}
+        <article class="server-card admin240-server" data-node-id="{{ n['id'] }}" data-status="{{ n['status'] }}">
+          <div class="server-head"><div><span class="server-id">{{ n['id'] }}</span><h3 data-field="name">{{ n['name'] }}</h3><p data-field="region">{{ n['region'] }}</p></div><span class="server-status status-{{ n['status'] }}" data-field="status">{{ n['status']|upper }}</span></div>
+          <div class="admin240-server-kpis"><div><small>Em uso</small><b><span data-field="active_users">{{ n['active_users'] }}</span>/{{ n['capacity'] }}</b></div><div><small>Livres</small><b data-field="available_slots_text">{{ n['capacity'] - n['active_users'] }}</b></div><div><small>Latência</small><b data-field="latency_ms">{{ n['latency_ms'] }} ms</b></div><div><small>P95</small><b data-field="response_p95_ms">{{ n['response_p95_ms'] }} ms</b></div></div>
+          <div class="server-progress"><span data-field="occupancy_bar" style="width:{{ n['occupancy_pct'] }}%"></span></div>
+          <div class="admin240-server-state"><span data-field="occupancy_label">{% if n['active_users'] >= n['capacity'] %}Servidor cheio{% elif n['active_users'] > 0 %}Em uso{% else %}Disponível{% endif %}</span><b data-field="occupancy_pct_text">{{ n['occupancy_pct'] }}%</b></div>
+          <div class="server-slot-grid" hidden>{% for slot in range(1,n['capacity']+1) %}<div class="server-slot {% if slot <= n['active_users'] %}active{% endif %}" data-slot-index="{{ slot }}"></div>{% endfor %}</div>
+          <div class="admin240-server-url"><span>URL</span><code data-field="url">{{ n['url'] or 'Não configurada' }}</code></div>
+          <span class="hidden-dynamic" data-field="response_avg_ms">{{ n['response_avg_ms'] }} ms</span><span class="hidden-dynamic" data-field="requests_min">{{ n['requests_min'] }}</span><span class="hidden-dynamic" data-field="cpu_pct">{{ n['cpu_pct'] if n['cpu_pct'] is not none else '—' }}</span><span class="hidden-dynamic" data-field="memory_pct">{{ n['memory_pct'] if n['memory_pct'] is not none else '—' }}</span><span class="hidden-dynamic" data-field="provider">{{ n['provider'] }}</span><span class="hidden-dynamic" data-field="environment">{{ n['environment'] }}</span><span class="hidden-dynamic" data-field="health_path">{{ n['health_path'] }}</span><span class="hidden-dynamic" data-field="mode">{{ 'Real' if n['mode']=='real' else 'Teste' }}</span><span class="hidden-dynamic" data-field="config_source">{{ n['config_source'] }}</span><span class="hidden-dynamic" data-field="http_status">HTTP {{ n['http_status'] if n['http_status'] else '—' }}</span><span class="hidden-dynamic" data-field="priority">{{ n['priority'] }}</span><span class="hidden-dynamic" data-field="note">{{ n['note'] }}</span>
+          <div class="server-card-actions"><a class="node-action manage-node" href="{{ url_for('admin_server_detail', node_index=n['index']) }}"><i data-lucide="panel-top-open" width="14"></i>Detalhes</a><button class="node-action configure-node" type="button" data-node-index="{{ n['index'] }}"><i data-lucide="settings-2" width="14"></i>Configurar</button><button class="node-action test-node" type="button" data-node-index="{{ n['index'] }}" {% if not n['configured'] %}disabled{% endif %}><i data-lucide="activity" width="14"></i>Testar</button></div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="admin240-grid-main admin240-bottom-grid">
+      <article class="admin240-card"><header><div><small>ÚLTIMAS ROTAS</small><h2>Movimento recente</h2></div></header><div class="admin240-feed">{% for r in recent_routes %}<div class="admin240-feed-row"><span class="feed-icon"><i data-lucide="route" width="15"></i></span><div><b>{{ r['origin_label'] or 'Origem' }} → {{ r['destination_label'] or 'Destino' }}</b><small>{{ r['user_name'] }} · {{ (r['distance_m']/1000)|round(1) }} km · {{ (r['duration_s']/60)|round|int }} min</small></div><time>{{ r['created_at'][:16].replace('T',' ') }}</time></div>{% else %}<div class="admin240-empty">Nenhuma rota recente.</div>{% endfor %}</div></article>
+      <article class="admin240-card"><header><div><small>ALERTAS</small><h2>Moderação recente</h2></div><a class="admin240-link" href="{{ url_for('admin_reports') }}">Abrir todos</a></header><div class="admin240-feed">{% for r in reports %}<div class="admin240-feed-row"><span class="feed-icon alert"><i data-lucide="triangle-alert" width="15"></i></span><div><b>{{ r['title'] }}</b><small>{{ r['reporter_name'] }} · {{ categories.get(r['category'],categories['other'])['label'] }}</small></div><time>{{ r['created_at'][:16].replace('T',' ') }}</time></div>{% else %}<div class="admin240-empty">Nenhum alerta recente.</div>{% endfor %}</div></article>
+    </section>
+
+    <details class="admin240-card admin240-advanced">
+      <summary><span><i data-lucide="chart-no-axes-combined" width="16"></i><b>Métricas avançadas</b><small>Abra só quando precisar diagnosticar.</small></span><i data-lucide="chevron-down" width="17"></i></summary>
+      <div class="admin240-advanced-grid"><div><small>Dispatch attempts</small><b>{{ dispatch_ops['attempts'] }}</b></div><div><small>Sucesso nodes</small><b>{{ dispatch_ops['success_pct'] }}%</b></div><div><small>Fallback local</small><b>{{ dispatch_ops['local_fallbacks'] }}</b></div><div><small>Falhas</small><b>{{ dispatch_ops['failures'] }}</b></div><div><small>P95 request</small><b>{{ product_metrics['request_p95_ms'] }} ms</b></div><div><small>P99 request</small><b>{{ product_metrics['request_p99_ms'] }} ms</b></div><div><small>GPS fraco</small><b>{{ product_metrics['gps_weak_24h'] + product_metrics['gps_poor_24h'] }}</b></div><div><small>Offline</small><b>{{ product_metrics['offline_events_24h'] }}</b></div></div>
+    </details>
+  </div>
+
+  <div class="node-config-modal" id="nodeConfigModal" hidden>
+    <div class="node-config-backdrop" data-close-node-modal></div>
+    <section class="node-config-dialog" role="dialog" aria-modal="true" aria-labelledby="nodeConfigTitle">
+      <header class="node-config-head"><div><span class="section-tag">Route Node</span><h2 id="nodeConfigTitle">Configurar servidor</h2><p>Configuração operacional salva no Central.</p></div><button class="node-modal-close" type="button" data-close-node-modal aria-label="Fechar">×</button></header>
+      <form id="nodeConfigForm" class="node-config-form">
+        <input type="hidden" id="nodeConfigIndex">
+        <div class="node-form-grid">
+          <label><span>Nome</span><input type="text" id="nodeConfigName" maxlength="80" required></label><label><span>Provider</span><select id="nodeConfigProvider"><option>Render</option><option>Railway</option><option>Cloud Run</option><option>Oracle</option><option>Koyeb</option><option>Outro</option></select></label>
+          <label><span>Região</span><input type="text" id="nodeConfigRegion" maxlength="80"></label><label><span>Ambiente</span><select id="nodeConfigEnvironment"><option value="production">Produção</option><option value="staging">Staging</option><option value="test">Teste</option></select></label>
+          <label class="full"><span>URL pública HTTPS</span><input id="nodeConfigUrl" type="url" inputmode="url"></label><label><span>Capacidade</span><input id="nodeConfigCapacity" type="number" min="1" max="32" value="4"></label><label><span>Prioridade</span><input id="nodeConfigPriority" type="number" min="1" max="999" value="100"></label>
+          <label><span>Timeout conexão</span><input id="nodeConfigConnectTimeout" type="number" step="0.1" min="0.5" max="8" value="2.2"></label><label><span>Timeout rota</span><input id="nodeConfigRouteTimeout" type="number" step="0.5" min="3" max="45" value="10"></label><label><span>Cooldown</span><input id="nodeConfigCooldown" type="number" min="0" max="300" value="20"></label>
+          <label><span>Health path</span><input type="text" id="nodeConfigHealth" value="/healthz"></label><label class="full"><span>Route path</span><input type="text" id="nodeConfigRoutePath" value="/v1/route/calculate"></label><label class="full"><span>Precalc path</span><input type="text" id="nodeConfigPrecalcPath" value="/v1/route/precalculate"></label><label class="full"><span>Notas internas</span><textarea id="nodeConfigNotes" maxlength="500" rows="3"></textarea></label>
+        </div>
+        <label class="node-toggle"><input id="nodeConfigEnabled" type="checkbox" checked><span>Node habilitado</span></label><label class="node-toggle warning"><input id="nodeConfigDrain" type="checkbox"><span>Drain mode</span></label>
+        <div class="node-config-message" id="nodeConfigMessage" aria-live="polite"></div>
+        <footer class="node-config-footer"><button class="admin240-ghost" type="button" data-close-node-modal>Cancelar</button><button class="admin240-primary" type="submit" id="saveNodeConfig"><i data-lucide="save" width="15"></i>Salvar servidor</button></footer>
+      </form>
+    </section>
+  </div>
+</main>
+<script id="infraInitial" type="application/json">{{ infra|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-v123.js') }}?v={{ vano_build_id }}"></script>{% endblock %}

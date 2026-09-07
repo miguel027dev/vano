@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Excluir conta · VANO MAPS{% endblock %}
+{% block content %}
+<main class="page">
+  <div class="container" style="max-width:860px">
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">VANO MAPS · CONTA</p>
+        <h1 class="page-title">Excluir sua conta VANO MAPS</h1>
+        <p class="page-subtitle">Você pode excluir permanentemente sua conta e os dados pessoais associados diretamente pelo perfil.</p>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-body legal-copy">
+        <h2>O que acontece quando você exclui a conta?</h2>
+        <p>A exclusão remove permanentemente a conta e os dados pessoais de navegação associados ao usuário dentro do VANO MAPS, incluindo preferências, sessões e dados vinculados à conta conforme descrito na Política de Privacidade.</p>
+        <p>Registros estritamente operacionais que precisem ser mantidos por segurança podem permanecer apenas de forma anonimizada, sem vínculo com o identificador da conta.</p>
+
+        <h2>Como excluir</h2>
+        <ol>
+          <li>Entre na sua conta VANO MAPS.</li>
+          <li>Abra <strong>Perfil</strong>.</li>
+          <li>Vá até <strong>Excluir conta</strong>.</li>
+          <li>Se sua conta usa senha, confirme a senha atual.</li>
+          <li>Digite <strong>EXCLUIR</strong> e confirme a exclusão permanente.</li>
+        </ol>
+
+        {% if current_user %}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
+          <a class="btn btn-primary" href="{{ url_for('profile') }}#accountDanger"><i data-lucide="trash-2" width="16"></i>Ir para excluir conta</a>
+          <a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}"><i data-lucide="shield-check" width="16"></i>Política de Privacidade</a>
+        </div>
+        {% else %}
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
+          <a class="btn btn-primary" href="{{ url_for('login', next=url_for('profile') + '#accountDanger') }}"><i data-lucide="log-in" width="16"></i>Entrar para excluir minha conta</a>
+          <a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}"><i data-lucide="shield-check" width="16"></i>Política de Privacidade</a>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}

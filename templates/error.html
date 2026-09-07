@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ code }} · VANO MAPS{% endblock %}
+{% block content %}
+<main class="page"><div class="container"><section class="panel vano-error-panel" style="max-width:720px;margin:70px auto"><div class="panel-body" style="padding:45px">
+  <div class="code-num" aria-hidden="true">{{ code }}</div>
+  <h1 class="page-title">{{ title }}</h1>
+  <p class="page-subtitle">{{ message }}</p>
+  <div class="vano-error-actions" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:20px">
+    {% if code in [429,500,502,503,504] %}<button class="btn btn-primary" type="button" onclick="location.reload()"><i data-lucide="refresh-cw" width="16"></i>Tentar novamente</button>{% endif %}
+    <button class="btn btn-ghost" type="button" onclick="history.length>1?history.back():location.assign('{{ url_for('index') }}')"><i data-lucide="arrow-left" width="16"></i>Voltar</button>
+    <a class="btn btn-ghost" href="{{ url_for('index') }}"><i data-lucide="home" width="16"></i>Início</a>
+  </div>
+</div></section></div></main>
+{% endblock %}

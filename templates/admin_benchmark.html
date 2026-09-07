@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% block title %}Benchmark de rotas · VANO MAPS{% endblock %}
+{% block legacy_map_assets %}{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-benchmark-v262.css') }}?v={{ vano_build_id }}">
+{% endblock %}
+{% block content %}
+<main class="bench261">
+  <div class="bench261-shell">
+    <header class="bench261-head">
+      <div>
+        <span class="bench261-kicker"><i data-lucide="flask-conical" width="14"></i> VANO ROUTE LAB</span>
+        <h1>Benchmark de rotas</h1>
+        <p>Compare os modos do motor de rotas com a mesma origem e destino, medindo ETA, distância, latência, tráfego, segurança e cache.</p>
+      </div>
+      <div class="bench261-head-actions">
+        <a class="bench261-btn ghost" href="{{ url_for('admin_dashboard') }}"><i data-lucide="arrow-left" width="15"></i>Admin</a>
+        <button class="bench261-btn ghost" id="exportJsonBtn" type="button" disabled><i data-lucide="braces" width="15"></i>JSON</button>
+        <button class="bench261-btn ghost" id="exportCsvBtn" type="button" disabled><i data-lucide="download" width="15"></i>CSV</button>
+      </div>
+    </header>
+
+    <section class="bench261-grid">
+      <aside class="bench261-panel bench261-controls">
+        <header class="bench261-panel-head">
+          <div><span>CONFIGURAÇÃO</span><h2>Cenário de teste</h2></div>
+          <button class="bench261-icon-btn" id="resetBenchBtn" type="button" title="Limpar resultados" aria-label="Limpar resultados"><i data-lucide="rotate-ccw" width="16"></i></button>
+        </header>
+
+        <div class="bench261-presets" aria-label="Cenários rápidos">
+          <button type="button" data-preset="morumbi-paulista">Morumbi → Paulista</button>
+          <button type="button" data-preset="congonhas-paulista">Congonhas → Paulista</button>
+          <button type="button" data-preset="faria-ibirapuera">Faria Lima → Ibirapuera</button>
+        </div>
+
+        <div class="bench261-field-group">
+          <label class="bench261-field">
+            <span>Origem</span>
+            <div class="bench261-input-row">
+              <input id="originInput" type="text" autocomplete="off" inputmode="text" spellcheck="false" placeholder="Endereço ou lat,lon" value="Morumbi Shopping, São Paulo">
+              <button type="button" class="bench261-locate" id="useLocationBtn" title="Usar minha posição" aria-label="Usar minha posição como origem"><i data-lucide="crosshair" width="16"></i></button>
+            </div>
+            <small id="originResolved">Ainda não resolvida</small>
+          </label>
+          <label class="bench261-field">
+            <span>Destino</span>
+            <input id="destinationInput" type="text" autocomplete="off" inputmode="text" spellcheck="false" placeholder="Endereço ou lat,lon" value="Av. Paulista, 1578, São Paulo">
+            <small id="destinationResolved">Ainda não resolvido</small>
+          </label>
+        </div>
+
+        <div class="bench261-two-cols">
+          <label class="bench261-field"><span>Perfil</span><select id="profileSelect"><option value="driving">Carro</option><option value="motorcycle">Moto</option><option value="cycling">Bicicleta</option><option value="walking">A pé</option></select></label>
+          <label class="bench261-field"><span>Execuções / modo</span><select id="runsSelect"><option value="1">1 execução</option><option value="2" selected>2 execuções</option><option value="3">3 execuções</option><option value="4">4 execuções</option><option value="6">6 execuções</option><option value="10">10 execuções</option></select></label>
+        </div>
+
+        <div class="bench261-block">
+          <div class="bench261-block-title"><span>Modos</span><small>Selecione o que comparar</small></div>
+          <div class="bench261-mode-grid">
+            <label><input type="checkbox" name="benchMode" value="fastest" checked><span><i data-lucide="zap" width="15"></i><b>Rápida</b><small>ETA primeiro</small></span></label>
+            <label><input type="checkbox" name="benchMode" value="smart" checked><span><i data-lucide="sparkles" width="15"></i><b>VANO</b><small>equilíbrio</small></span></label>
+            <label><input type="checkbox" name="benchMode" value="safest" checked><span><i data-lucide="shield-check" width="15"></i><b>Segura</b><small>risco primeiro</small></span></label>
+            <label><input type="checkbox" name="benchMode" value="quietest"><span><i data-lucide="leaf" width="15"></i><b>Tranquila</b><small>menos fluxo</small></span></label>
+          </div>
+        </div>
+
+        <div class="bench261-two-cols">
+          <label class="bench261-field"><span>Variant budget</span><select id="variantBudget"><option>2</option><option selected>4</option><option>6</option><option>8</option></select></label>
+          <label class="bench261-switch"><input id="adaptiveToggle" type="checkbox" checked><span></span><div><b>Adaptive routing</b><small>gerar variantes</small></div></label>
+        </div>
+
+        <details class="bench261-details">
+          <summary>Preferências avançadas <i data-lucide="chevron-down" width="15"></i></summary>
+          <div class="bench261-checks">
+            <label><input id="avoidTolls" type="checkbox"><span>Evitar pedágios</span></label>
+            <label><input id="avoidUnpaved" type="checkbox"><span>Evitar não pavimentadas</span></label>
+            <label><input id="avoidFerries" type="checkbox"><span>Evitar balsas</span></label>
+          </div>
+        </details>
+
+        <div class="bench261-run-row"><button class="bench261-run" id="runBenchmarkBtn" type="button"><i data-lucide="play" width="17"></i><span>Executar benchmark</span></button><button class="bench261-btn ghost" id="cancelBenchmarkBtn" type="button" hidden><i data-lucide="square" width="15"></i>Cancelar</button></div>
+        <div class="bench261-progress" id="benchProgress" hidden><div><span id="benchProgressText">Preparando…</span><b id="benchProgressCount">0/0</b></div><progress id="benchProgressBar" value="0" max="1"></progress></div>
+        <div class="bench261-message" id="benchMessage" aria-live="polite"></div>
+      </aside>
+
+      <section class="bench261-main">
+        <div class="bench261-summary" id="summaryCards">
+          <article><span class="summary-icon"><i data-lucide="timer" width="17"></i></span><div><small>LATÊNCIA MEDIANA</small><b id="summaryLatency">—</b><em>round-trip do navegador</em></div></article>
+          <article><span class="summary-icon"><i data-lucide="clock-3" width="17"></i></span><div><small>MELHOR ETA</small><b id="summaryEta">—</b><em id="summaryEtaMode">aguardando teste</em></div></article>
+          <article><span class="summary-icon"><i data-lucide="circle-check-big" width="17"></i></span><div><small>SUCESSO</small><b id="summarySuccess">—</b><em id="summarySuccessDetail">sem execuções</em></div></article>
+          <article><span class="summary-icon"><i data-lucide="route" width="17"></i></span><div><small>CANDIDATOS</small><b id="summaryCandidates">—</b><em>média por resposta</em></div></article>
+        </div>
+
+        <article class="bench261-map-card">
+          <header><div><span>VISUALIZAÇÃO</span><h2>Rotas selecionadas</h2></div><div class="bench261-legend"><span class="fastest"><i></i>Rápida</span><span class="smart"><i></i>VANO</span><span class="safest"><i></i>Segura</span><span class="quietest"><i></i>Tranquila</span></div></header>
+          <div id="benchmarkMap" class="bench261-map"><div class="bench261-map-empty" id="mapEmpty"><i data-lucide="map" width="26"></i><b>Execute um benchmark</b><span>As rotas selecionadas aparecerão aqui.</span></div></div>
+        </article>
+
+        <article class="bench261-results-card">
+          <header class="bench261-results-head"><div><span>RESULTADOS</span><h2>Comparativo</h2></div><div id="resultMeta" class="bench261-result-meta">0 execuções</div></header>
+          <div class="bench261-mode-summary" id="modeSummary"></div>
+          <div class="bench261-table-wrap">
+            <table class="bench261-table">
+              <caption class="sr-only">Resultados do benchmark de rotas</caption>
+              <thead><tr><th>Modo</th><th>Run</th><th>Latência</th><th>ETA</th><th>Distância</th><th>Tráfego</th><th>Segurança</th><th>Score VANO</th><th>Candidatos</th><th>Provider</th><th>Cache</th><th>Status</th></tr></thead>
+              <tbody id="benchmarkTableBody"><tr class="bench261-empty-row"><td colspan="12">Nenhum benchmark executado.</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </section>
+  </div>
+</main>
+<script>window.VANO_BENCHMARK_BOOT={{ {'token': mapbox_token, 'style': mapbox_style, 'csrf': csrf_token(), 'build': vano_build_id}|tojson }};</script>
+{% endblock %}
+{% block scripts %}
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js"></script>
+<script src="{{ url_for('static', filename='vano-benchmark-v262.js') }}?v={{ vano_build_id }}"></script>
+{% endblock %}

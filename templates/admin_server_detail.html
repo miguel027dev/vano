@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}{{ node['name'] }} · Admin VANO MAPS{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endblock %}
+{% block content %}
+<main class="admin-server-page admin86">
+  <div class="admin-server-wrap">
+    <header class="server-detail-head">
+      <div>
+        <a class="server-detail-back" href="{{ url_for('admin_dashboard') }}"><i data-lucide="arrow-left" width="15"></i>Voltar ao Admin</a>
+        <h1>{{ node['name'] }}</h1>
+        <p>Node {{ node['id'] }} · {{ node['provider'] }} · {{ node['region'] }} · {{ node['environment'] }}</p>
+      </div>
+      <div class="server-detail-actions">
+        <button class="btn admin86-btn" type="button" id="nodeDetailTest"><i data-lucide="activity" width="16"></i>Testar agora</button>
+        <a class="btn admin86-btn" href="{{ url_for('admin_server_logs_csv', node_index=node['index']) }}"><i data-lucide="download" width="16"></i>Exportar CSV</a>
+        <button class="btn admin86-btn" type="button" id="nodeClearLogs"><i data-lucide="trash-2" width="16"></i>Limpar logs</button>
+      </div>
+    </header>
+
+    <section class="server-detail-kpis">
+      <div><small>Requests · 24h</small><b id="nodeStatTotal">{{ node_stats['total'] }}</b></div>
+      <div><small>Taxa de sucesso</small><b id="nodeStatSuccess">{{ node_stats['success_pct'] }}%</b></div>
+      <div><small>Usuários únicos</small><b id="nodeStatUsers">{{ node_stats['unique_users'] }}</b></div>
+      <div><small>Latência média</small><b id="nodeStatAvg">{{ node_stats['avg_latency_ms'] }} ms</b></div>
+      <div><small>P95</small><b id="nodeStatP95">{{ node_stats['p95_latency_ms'] }} ms</b></div>
+      <div><small>Falhas</small><b id="nodeStatFailures">{{ node_stats['failures'] }}</b></div>
+    </section>
+
+    <section class="server-detail-grid">
+      <article class="admin86-card server-live-card">
+        <div class="section-head compact-spread">
+          <div><span class="section-tag">Estado ao vivo</span><h2>Telemetria do servidor</h2></div>
+          <span class="server-status status-{{ status['status'] }}" id="nodeDetailStatus">{{ status['status']|upper }}</span>
+        </div>
+        <div class="server-live-hero">
+          <div class="server-rack server-live-rack" aria-hidden="true">
+            <div class="server-rack-top"></div>
+            <div class="server-rack-fill" id="nodeDetailRackFill" style="height:{{ status['occupancy_pct'] or 0 }}%"></div>
+            <div class="server-slot-grid" id="nodeDetailSlots" style="grid-template-rows:repeat({{ status['capacity'] or node['capacity'] }},1fr)">
+              {% set active_jobs = status['active_jobs'] or 0 %}
+              {% set cap = status['capacity'] or node['capacity'] %}
+              {% for slot in range(1, cap + 1) %}
+              <div class="server-slot {% if slot <= active_jobs %}active{% endif %}" data-slot-index="{{ slot }}"><span class="slot-led"></span><span class="slot-line"></span><span class="slot-line short"></span></div>
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <div class="server-live-summary">
+              <div><small>Jobs</small><b><span id="nodeDetailActive">{{ status['active_jobs'] or 0 }}</span>/<span id="nodeDetailCapacity">{{ status['capacity'] or node['capacity'] }}</span></b></div>
+              <div><small>Vagas livres</small><b id="nodeDetailAvailable">{{ status['available_slots'] or node['capacity'] }}</b></div>
+              <div><small>Latência</small><b id="nodeDetailLatency">{{ status['latency_ms'] or 0 }} ms</b></div>
+              <div><small>Resposta média</small><b id="nodeDetailResponse">{{ status['response_avg_ms'] or 0 }} ms</b></div>
+              <div><small>CPU</small><b id="nodeDetailCpu">{{ status['cpu_pct'] if status['cpu_pct'] is not none else '—' }}{% if status['cpu_pct'] is not none %}%{% endif %}</b></div>
+              <div><small>Memória</small><b id="nodeDetailMemory">{{ status['memory_pct'] if status['memory_pct'] is not none else '—' }}{% if status['memory_pct'] is not none %}%{% endif %}</b></div>
+              <div><small>Req/min</small><b id="nodeDetailRpm">{{ status['requests_min'] or 0 }}</b></div>
+              <div><small>Cache hit</small><b id="nodeDetailCache">{{ status['cache_hit_pct'] or 0 }}%</b></div>
+              <div><small>HTTP</small><b id="nodeDetailHttp">{{ status['http_status'] or '—' }}</b></div>
+            </div>
+            <div class="server-health-note" id="nodeDetailNote">{{ status['note'] }}</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="admin86-card server-config-card">
+        <div class="section-head"><div><span class="section-tag">Configuração avançada</span><h2>Política deste node</h2></div></div>
+        <form id="serverDetailConfigForm">
+          <div class="server-config-grid">
+            <label><span>Nome</span><input type="text" id="detailName" value="{{ node['name'] }}" maxlength="80"></label>
+            <label><span>Provider</span><select id="detailProvider">{% for p in ['Render','Railway','Cloud Run','Oracle','Koyeb','Outro'] %}<option {% if node['provider']==p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></label>
+            <label><span>Região</span><input type="text" id="detailRegion" value="{{ node['region'] }}" maxlength="80"></label>
+            <label><span>Ambiente</span><select id="detailEnvironment"><option value="production" {% if node['environment']=='production' %}selected{% endif %}>Produção</option><option value="staging" {% if node['environment']=='staging' %}selected{% endif %}>Staging</option><option value="test" {% if node['environment']=='test' %}selected{% endif %}>Teste</option></select></label>
+            <label class="full"><span>URL HTTPS</span><input id="detailUrl" type="url" value="{{ node['url'] }}" placeholder="https://..."></label>
+            <label><span>Capacidade</span><input id="detailCapacity" type="number" min="1" max="32" value="{{ node['capacity'] }}"></label>
+            <label><span>Prioridade</span><input id="detailPriority" type="number" min="1" max="999" value="{{ node['priority'] }}"></label>
+            <label><span>Timeout conexão</span><input id="detailConnectTimeout" type="number" step="0.1" min="0.5" max="8" value="{{ node['connect_timeout_s'] }}"></label>
+            <label><span>Timeout rota</span><input id="detailRouteTimeout" type="number" step="0.5" min="3" max="45" value="{{ node['route_timeout_s'] }}"></label>
+            <label><span>Cooldown</span><input id="detailCooldown" type="number" min="0" max="300" value="{{ node['cooldown_s'] }}"></label>
+            <label><span>Health path</span><input type="text" id="detailHealth" value="{{ node['health_path'] }}"></label>
+            <label class="full"><span>Route path</span><input type="text" id="detailRoutePath" value="{{ node['route_path'] }}"></label>
+            <label class="full"><span>Precalc path</span><input type="text" id="detailPrecalcPath" value="{{ node['precalc_path'] }}"></label>
+            <label class="full"><span>Notas internas</span><textarea id="detailNotes" maxlength="500">{{ node['notes'] }}</textarea></label>
+          </div>
+          <div class="server-config-flags">
+            <label><input id="detailEnabled" type="checkbox" {% if node['enabled'] %}checked{% endif %}><span>Habilitado para roteamento</span></label>
+            <label><input id="detailDrain" type="checkbox" {% if node['drain_mode'] %}checked{% endif %}><span>Drain mode — não recebe novas rotas, mas continua online para diagnóstico</span></label>
+          </div>
+          <div class="server-config-buttons"><button class="btn btn-primary admin86-primary" id="detailSave" type="submit"><i data-lucide="save" width="16"></i>Salvar configuração</button></div>
+          <div class="node-config-message" id="detailConfigMessage" aria-live="polite"></div>
+        </form>
+      </article>
+    </section>
+
+    <section class="admin86-card server-log-card" style="margin-top:16px">
+      <div class="section-head compact-spread">
+        <div><span class="section-tag">Logs do dispatcher</span><h2>Quem foi encaminhado para este servidor</h2><p>Não armazena coordenadas precisas aqui; mostra usuário, request, modo, resposta e desempenho.</p></div>
+        <span class="pill-soft">Últimos 250 eventos</span>
+      </div>
+      <div class="server-log-toolbar">
+        <div class="server-log-filters">
+          <button class="log-filter active" type="button" data-log-filter="all">Todos</button>
+          <button class="log-filter" type="button" data-log-filter="success">Sucesso</button>
+          <button class="log-filter" type="button" data-log-filter="failure">Falhas</button>
+          <button class="log-filter" type="button" data-log-filter="prefetch">Prefetch</button>
+        </div>
+        <label class="node-search"><i data-lucide="search" width="15"></i><input id="nodeLogSearch" type="search" placeholder="Buscar usuário, request ou erro"></label>
+      </div>
+      <div class="server-log-table-wrap">
+        <table class="server-log-table">
+          <thead><tr><th>Horário</th><th>Usuário</th><th>Request</th><th>Modo</th><th>Tipo</th><th>Resultado</th><th>HTTP</th><th>Latência</th><th>Erro</th></tr></thead>
+          <tbody id="nodeLogBody">
+            {% for l in logs %}
+            <tr data-success="{{ 1 if l['success'] else 0 }}" data-prefetch="{{ 1 if l['prefetch'] else 0 }}">
+              <td>{{ l['created_at'][:19].replace('T',' ') }}</td>
+              <td class="log-user"><b>{{ l['user_name'] }}</b><small>{{ l['user_email'] or 'Visitante' }}</small></td>
+              <td><div class="log-request" title="{{ l['request_id'] }}">{{ l['request_id'] or '—' }}</div></td>
+              <td>{{ l['mode'] or '—' }}</td>
+              <td class="{% if l['prefetch'] %}log-prefetch{% endif %}">{{ 'Prefetch' if l['prefetch'] else 'Rota' }}</td>
+              <td><span class="log-result {{ 'ok' if l['success'] else 'fail' }}">{{ 'OK' if l['success'] else 'Falha' }}</span></td>
+              <td>{{ l['http_status'] or '—' }}</td><td>{{ l['latency_ms'] }} ms</td><td>{{ l['error'] or '—' }}</td>
+            </tr>
+            {% else %}<tr><td colspan="9" class="empty-state">Ainda não há logs para este node.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="server-management-note" style="margin-top:16px"><b>Como usar:</b> em manutenção, ative Drain Mode primeiro. O Central para de enviar novas rotas, mas você continua vendo health-check e métricas. Depois pode desabilitar o servidor com segurança.</div>
+  </div>
+</main>
+<script id="nodeDetailInitial" type="application/json">{{ {'config':node,'status':status,'stats':node_stats}|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script>window.VANO_NODE_DETAIL_INDEX={{ node['index'] }};</script><script src="{{ url_for('static', filename='vano-admin-node-v92.js') }}?v={{ vano_build_id }}"></script>{% endblock %}

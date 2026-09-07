@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Auditoria · Admin VANO MAPS{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endblock %}
+{% block content %}
+<main class="audit-page admin86 audit123"><div class="admin-server-wrap">
+  <header class="server-detail-head"><div><a class="server-detail-back" href="{{ url_for('admin_dashboard') }}"><i data-lucide="arrow-left" width="15"></i>Voltar ao Admin</a><h1>Atividade e auditoria</h1><p>Acessos, páginas, cliques e ações administrativas com IP, dispositivo e tempo de resposta.</p></div></header>
+
+  <section class="activity-kpis" aria-label="Resumo dos últimos eventos">
+    <div class="activity-kpi"><small>EVENTOS CARREGADOS</small><b>{{ activity_stats.total }}</b><span>últimos registros</span></div>
+    <div class="activity-kpi"><small>CLIQUES</small><b>{{ activity_stats.clicks }}</b><span>ações de interface</span></div>
+    <div class="activity-kpi"><small>IPS DISTINTOS</small><b>{{ activity_stats.unique_ips }}</b><span>neste recorte</span></div>
+    <div class="activity-kpi"><small>ERROS HTTP</small><b>{{ activity_stats.errors }}</b><span>status 4xx/5xx</span></div>
+  </section>
+
+  <section class="admin86-card list-card activity-card">
+    <div class="activity-card-head"><div><small>JORNADA DO USUÁRIO</small><h2>Acessos e cliques</h2><p>O IP exibido é o endereço resolvido após os proxies confiáveis configurados no servidor.</p></div><label class="activity-search"><i data-lucide="search" width="15"></i><input id="activitySearch" type="search" autocomplete="off" placeholder="Buscar IP, usuário, página, clique…"></label></div>
+    <div class="audit-table-wrap"><table class="audit-table activity-table" id="activityTable"><thead><tr><th>Data</th><th>Usuário / IP</th><th>Evento</th><th>Página / ação</th><th>Dispositivo</th><th>Status</th></tr></thead><tbody>
+    {% for a in activity_rows %}
+      <tr data-activity-row data-search="{{ (a['created_at'] ~ ' ' ~ a['user_name'] ~ ' ' ~ a['user_email'] ~ ' ' ~ a['ip_address'] ~ ' ' ~ a['event_type'] ~ ' ' ~ a['method'] ~ ' ' ~ a['path'] ~ ' ' ~ a['detail'] ~ ' ' ~ a['browser'] ~ ' ' ~ a['os_name'])|lower|e }}">
+        <td><b>{{ a['created_at'][:19].replace('T',' ') }}</b><small>{{ a['duration_ms'] }} ms</small></td>
+        <td><b>{{ a['user_name'] }}</b>{% if a['user_email'] %}<small>{{ a['user_email'] }}</small>{% endif %}<code class="ip-chip">{{ a['ip_address'] }}</code></td>
+        <td><span class="event-chip event-{{ a['event_type']|e }}">{{ a['event_type'] }}</span><small>{{ a['method'] }}</small></td>
+        <td><b class="activity-detail">{{ a['detail'] }}</b><small class="activity-path">{{ a['path'] }}</small>{% if a['metadata_obj'].get('href') %}<small>→ {{ a['metadata_obj'].get('href') }}</small>{% endif %}</td>
+        <td><b>{{ a['device_type'] }}</b><small>{{ a['browser'] }} · {{ a['os_name'] }}</small></td>
+        <td>{% if a['status_code'] %}<span class="status-chip {% if a['status_code'] >= 400 %}is-error{% else %}is-ok{% endif %}">{{ a['status_code'] }}</span>{% else %}<span class="status-chip">evento</span>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="6" class="empty-state">Ainda não há eventos de atividade registrados.</td></tr>{% endfor %}
+    </tbody></table></div>
+    <div class="activity-empty-filter" id="activityEmptyFilter" hidden>Nenhum evento corresponde à busca.</div>
+  </section>
+
+  <section class="admin86-card list-card sensitive-audit-card">
+    <div class="activity-card-head"><div><small>SEGURANÇA</small><h2>Ações administrativas sensíveis</h2><p>Alterações realizadas no painel continuam separadas dos eventos comuns de navegação.</p></div></div>
+    <div class="audit-table-wrap"><table class="audit-table"><thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Metadados protegidos</th></tr></thead><tbody>
+    {% for a in audit_rows %}<tr><td>{{ a['created_at'][:19].replace('T',' ') }}</td><td><b>{{ a['user_name'] }}</b><br><small>{{ a['user_email'] }}</small></td><td><b>{{ a['action'] }}</b></td><td><div class="audit-meta">{{ a['metadata'] }}</div></td></tr>{% else %}<tr><td colspan="4" class="empty-state">Nenhum evento de auditoria.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+</div></main>
+{% endblock %}
+{% block scripts %}
+<script>
+(()=>{const input=document.getElementById('activitySearch'),rows=[...document.querySelectorAll('[data-activity-row]')],empty=document.getElementById('activityEmptyFilter');if(!input)return;const filter=()=>{const q=input.value.trim().toLowerCase(),tokens=q.split(/\s+/).filter(Boolean);let visible=0;rows.forEach(row=>{const hay=row.dataset.search||'',show=!tokens.length||tokens.every(t=>hay.includes(t));row.hidden=!show;if(show)visible++});if(empty)empty.hidden=visible>0};input.addEventListener('input',filter,{passive:true});})();
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block legacy_map_assets %}<link rel="preconnect" href="https://unpkg.com" crossorigin><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">{% endblock %}{% block title %}Publicar alerta · VANO MAPS{% endblock %}
+{% block head %}<style>#reportMap{height:390px;border-radius:18px;border:1px solid var(--line);overflow:hidden}.pick-note{display:flex;gap:8px;align-items:center;color:#a4abb5;font-size:12px;margin-top:9px}.leaflet-control-attribution{background:rgba(16,18,22,.82)!important}.leaflet-control-attribution a{color:#FFC39B!important}@media(max-width:700px){ #reportMap{height:300px}}</style>{% endblock %}
+{% block content %}<main class="page"><div class="container"><div class="page-head"><div><div class="eyebrow">Comunidade</div><h1 class="page-title">Publicar um alerta</h1><p class="page-subtitle">Marque o local com precisão e descreva somente informações úteis para outras pessoas.</p></div><a class="btn" href="{{ url_for('alerts_page') }}"><i data-lucide="list" width="16"></i>Ver alertas</a></div>
+<div class="split"><div class="panel"><div class="panel-head"><h3>1. Escolha o local</h3><button type="button" class="btn btn-sm" id="myLoc"><i data-lucide="locate-fixed" width="15"></i>Minha localização</button></div><div class="panel-body"><div id="reportMap"></div><div class="pick-note"><i data-lucide="mouse-pointer-click" width="15"></i>Clique no mapa. O VANO vai alinhar o ponto automaticamente na via dirigível mais próxima.</div></div></div>
+<div class="panel"><div class="panel-head"><h3>2. Detalhes do alerta</h3></div><div class="panel-body"><form method="post" class="form-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" id="lat" name="latitude" required><input type="hidden" id="lon" name="longitude" required><div class="field full"><label>Categoria</label><select class="select" name="category" required>{% for key,meta in categories.items() %}<option value="{{ key }}">{{ meta['label'] }}</option>{% endfor %}</select></div><div class="field full"><label>Título</label><input type="text" class="input" name="title" minlength="4" maxlength="100" required placeholder="Ex.: Trecho com iluminação ruim"></div><div class="field full"><label>Descrição</label><textarea class="textarea" name="description" maxlength="600" placeholder="Explique de forma objetiva o que outras pessoas precisam saber."></textarea></div><div class="field full"><label>Endereço/referência</label><input type="text" class="input" id="address" name="address" maxlength="220" placeholder="Preenchido ao selecionar o ponto"></div><div class="field full"><label>Gravidade percebida</label><select class="select" name="severity"><option value="1">1 — Baixa</option><option value="2">2 — Moderada</option><option value="3" selected>3 — Relevante</option><option value="4">4 — Alta</option><option value="5">5 — Muito alta</option></select></div><button class="btn btn-primary field full" type="submit"><i data-lucide="send" width="16"></i>Publicar alerta</button></form></div></div></div></div></main>{% endblock %}
+{% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const vanoT=v=>window.VANO_I18N?.t?.(String(v))||String(v);
+const notify=(m,t='error')=>window.VANO_RUNTIME?.toast?.(vanoT(m),t)||console.warn(m);
+const csrf=document.querySelector('input[name="csrf_token"]')?.value||'';
+const rm=L.map('reportMap').setView([20,0],2);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(rm);
+let marker=null,chooseSeq=0;
+async function getJSON(url,options={},timeout=12000){
+  if(window.VANO_RUNTIME?.fetchJSON)return window.VANO_RUNTIME.fetchJSON(url,options,timeout);
+  const r=await fetch(url,options),d=await r.json();if(!r.ok)throw new Error(d.error||d.detail||`HTTP ${r.status}`);return{response:r,data:d};
+}
+async function choose(lat,lon){
+  const seq=++chooseSeq,note=document.querySelector('.pick-note');
+  if(note)note.lastChild.textContent=' Alinhando o alerta à via mais próxima…';
+  try{
+    const {data:d}=await getJSON('/api/snap-road',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf,'Accept':'application/json'},body:JSON.stringify({lat,lon})},12000);
+    if(seq!==chooseSeq)return;if(!d.ok)throw new Error(d.error||'Não foi possível localizar uma via próxima.');
+    lat=+d.lat;lon=+d.lon;document.getElementById('lat').value=lat;document.getElementById('lon').value=lon;
+    if(marker)rm.removeLayer(marker);marker=L.marker([lat,lon]).addTo(rm);
+    if(d.road_name)document.getElementById('address').value=d.road_name;
+    else try{const {data:rd}=await getJSON(`/api/reverse?lat=${lat}&lon=${lon}`,{},9000);document.getElementById('address').value=rd.label||''}catch{}
+    if(note)note.lastChild.textContent=` Ponto fixado na via${d.road_name?' · '+d.road_name:''}.`;
+  }catch(e){
+    if(seq!==chooseSeq)return;document.getElementById('lat').value='';document.getElementById('lon').value='';if(marker){rm.removeLayer(marker);marker=null}
+    if(note)note.lastChild.textContent=' Não foi possível fixar esse ponto em uma via. Escolha outro local.';notify(e.message||'Não foi possível alinhar o alerta à rua.');
+  }
+}
+rm.on('click',e=>choose(e.latlng.lat,e.latlng.lng));
+document.getElementById('myLoc').onclick=()=>navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{const lat=p.coords.latitude,lon=p.coords.longitude;rm.setView([lat,lon],16);choose(lat,lon)},()=>notify('Não foi possível acessar a localização.')):notify('Geolocalização não disponível.');
+if(navigator.geolocation)navigator.geolocation.getCurrentPosition(p=>rm.setView([p.coords.latitude,p.coords.longitude],13),()=>{}, {timeout:3000,maximumAge:180000});
+</script>
+{% endblock %}

@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block title %}Perfil · VANO MAPS{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-page-v230.css') }}?v={{ vano_build_id }}">
+
+
+{% endblock %}
+{% block content %}
+<main class="page v72-profile-page">
+  <div class="container profile-v72-shell">
+    <section class="profile-v72-hero" aria-label="Resumo do perfil">
+      <div class="profile-v72-identity">
+        {% if current_user['avatar_url'] %}
+          <img class="profile-v72-avatar" src="{{ current_user['avatar_url'] }}" alt="Foto de perfil">
+        {% else %}
+          <div class="profile-v72-avatar profile-v72-avatar-fallback"><i data-lucide="user-round" width="26"></i></div>
+        {% endif %}
+        <div class="profile-v72-copy">
+          <span class="profile-v72-eyebrow">SUA CONTA</span>
+          <h1>{{ current_user['name'] }}</h1>
+          <p>{{ current_user['email'] }}</p>
+          <div class="profile-v72-badges">
+            {% if is_pioneer %}<span class="profile-v72-badge profile-v72-badge-pioneer" title="Um dos 5.000 primeiros usuários do VANO MAPS"><i data-lucide="medal" width="13"></i>Pioneiro</span>{% endif %}
+            <span class="profile-v72-badge"><i data-lucide="sparkles" width="13"></i>{% if membership_days == 0 %}Entrou hoje{% elif membership_days == 1 %}1 dia no VANO MAPS{% elif membership_days < 30 %}{{ membership_days }} dias no VANO MAPS{% elif membership_days < 365 %}{{ (membership_days/30)|round|int }} meses no VANO MAPS{% else %}{{ (membership_days/365)|round(1) }} anos no VANO MAPS{% endif %}</span>
+            <span class="profile-v72-badge profile-v72-badge-soft"><i data-lucide="shield-check" width="13"></i>Conta protegida</span>
+          </div>
+        </div>
+      </div>
+      <a class="profile-v72-map-button" href="{{ url_for('map_page') }}"><i data-lucide="navigation" width="17"></i><span>Voltar ao mapa</span></a>
+    </section>
+
+    <section class="profile-v255-intro" aria-labelledby="profilePersonalizeTitle">
+      <div>
+        <span>PERSONALIZAÇÃO</span>
+        <h2 id="profilePersonalizeTitle">Deixe o VANO do seu jeito</h2>
+        <p>Ajuste os atalhos, o comportamento das rotas, o mapa, a segurança e o veículo em um só lugar.</p>
+      </div>
+      <div class="profile-v255-status"><i data-lucide="check-circle-2" width="16"></i><span>Salve as alterações ao terminar</span></div>
+    </section>
+
+    <nav class="profile-v108-quicknav profile-v255-quicknav" aria-label="Atalhos do perfil">
+      <a href="#places"><span class="profile-v108-quick-icon"><i data-lucide="house" width="17"></i></span><span><b>Destinos</b><small>{% if current_user['home_label'] or current_user['work_label'] %}Atalhos configurados{% else %}Configure casa e trabalho{% endif %}</small></span><i data-lucide="chevron-right" width="15"></i></a>
+      <a href="#appSettings"><span class="profile-v108-quick-icon"><i data-lucide="route" width="17"></i></span><span><b>Rotas e mapa</b><small>Preferências de navegação</small></span><i data-lucide="chevron-right" width="15"></i></a>
+      <a href="#vehicle"><span class="profile-v108-quick-icon"><i data-lucide="car-front" width="17"></i></span><span><b>Veículo</b><small>{% if current_user['vehicle_make'] or current_user['vehicle_model'] %}{{ current_user['vehicle_make'] or '' }} {{ current_user['vehicle_model'] or '' }}{% else %}Adicionar veículo{% endif %}</small></span><i data-lucide="chevron-right" width="15"></i></a>
+      <a href="#family"><span class="profile-v108-quick-icon"><i data-lucide="shield-check" width="17"></i></span><span><b>Segurança</b><small>Emergência e vínculos</small></span><i data-lucide="chevron-right" width="15"></i></a>
+    </nav>
+
+    <form method="post" id="settings" class="profile-v72-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <details class="profile-v72-detail" id="places" open>
+        <summary><span class="profile-v72-detail-icon"><i data-lucide="map-pin-house" width="18"></i></span><span class="profile-v72-detail-copy"><b>Casa e trabalho</b><small>Atalhos para seus destinos frequentes</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
+        <div class="profile-v72-detail-body profile-v72-grid-two">
+          <label class="profile-v72-place"><span class="profile-v72-place-head"><i data-lucide="home" width="16"></i><b>Casa</b></span><input type="text" name="home_label" value="{{ current_user['home_label'] or '' }}" placeholder="Rua, número, bairro ou CEP"></label>
+          <label class="profile-v72-place"><span class="profile-v72-place-head"><i data-lucide="briefcase-business" width="16"></i><b>Trabalho</b></span><input type="text" name="work_label" value="{{ current_user['work_label'] or '' }}" placeholder="Empresa ou endereço"></label>
+        </div>
+      </details>
+
+      <details class="profile-v72-detail" id="family">
+        <summary><span class="profile-v72-detail-icon"><i data-lucide="heart-handshake" width="18"></i></span><span class="profile-v72-detail-copy"><b>Emergência e vínculo</b><small>Contato de emergência e conta responsável</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
+        <div class="profile-v72-detail-body">
+          <div class="profile-v72-grid-two">
+            <label class="profile-v72-field"><span>Nome do contato</span><input type="text" name="emergency_name" value="{{ current_user['emergency_name'] or '' }}" placeholder="Ex.: Mãe"></label>
+            <label class="profile-v72-field"><span>Telefone</span><input name="emergency_phone" type="tel" autocomplete="tel" value="{{ current_user['emergency_phone'] or '' }}" placeholder="(11) 99999-9999" inputmode="tel"></label>
+          </div>
+          <div class="profile-v72-note"><i data-lucide="shield" width="15"></i><span>O contato fica salvo para acesso rápido. Contas vinculadas podem receber notificações internas quando o SOS é acionado.</span></div>
+          <div class="profile-v72-divider"></div>
+          <div class="profile-v72-family-list">
+            {% for linked in linked_accounts %}
+              <div class="profile-v72-person">
+                {% if linked['avatar_url'] %}<img src="{{ linked['avatar_url'] }}" alt="">{% else %}<span class="profile-v72-person-avatar"><i data-lucide="user-round" width="17"></i></span>{% endif %}
+                <div><b>{{ linked['name'] }}</b><small>{{ linked['email'] }} · conta vinculada</small></div>
+                <button type="button" data-remove-link="{{ linked['id'] }}" aria-label="Remover vínculo"><i data-lucide="unlink" width="16"></i></button>
+              </div>
+            {% else %}
+              <div class="profile-v72-empty"><i data-lucide="users-round" width="19"></i><span>Nenhuma conta vinculada ainda.</span></div>
+            {% endfor %}
+          </div>
+          <button class="profile-v72-secondary" id="createFamilyInvite" type="button"><i data-lucide="link" width="15"></i>Criar link de convite</button>
+          <div class="profile-v72-invite" id="inviteBox"><input type="text" id="inviteUrl" readonly><button id="copyInvite" type="button">Copiar</button></div>
+        </div>
+      </details>
+
+      <details class="profile-v72-detail" id="appSettings">
+        <summary><span class="profile-v72-detail-icon"><i data-lucide="settings-2" width="18"></i></span><span class="profile-v72-detail-copy"><b>Preferências do aplicativo</b><small>Idioma, mapa e unidades</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
+        <div class="profile-v72-detail-body">
+          <div class="profile-v72-grid-two profile-v72-grid-gap-top">
+            <label class="profile-v72-field"><span>Idioma</span><select name="locale"><option value="pt-BR" {% if active_locale=='pt-BR' %}selected{% endif %}>Português (Brasil)</option><option value="fr-FR" {% if active_locale=='fr-FR' %}selected{% endif %}>Français</option><option value="de-DE" {% if active_locale=='de-DE' %}selected{% endif %}>Deutsch</option><option value="ru-RU" {% if active_locale=='ru-RU' %}selected{% endif %}>Русский</option><option value="en-US" {% if active_locale=='en-US' %}selected{% endif %}>English</option><option value="es-ES" {% if active_locale=='es-ES' %}selected{% endif %}>Español</option></select></label>
+            <label class="profile-v72-field"><span>Distância</span><select name="distance_unit"><option value="km" {% if current_user['distance_unit']!='mi' %}selected{% endif %}>Quilômetros</option><option value="mi" {% if current_user['distance_unit']=='mi' %}selected{% endif %}>Milhas</option></select></label>
+          </div>
+
+          <div class="profile-v72-subsection profile-v72-grid-gap-top">
+            <div class="profile-v72-subhead"><span>NAVEGAÇÃO</span><b>O que evitar nas rotas</b></div>
+            <p class="profile-v72-subcopy">Essas preferências são aplicadas ao cálculo de rota sempre que o tipo de trajeto permitir.</p>
+            <div class="profile-v72-nav-prefs">
+              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="ship-wheel" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar balsas</b><small>Prefere caminhos sem travessias por balsa.</small></span><input type="checkbox" name="avoid_ferries" value="1" {% if current_user['avoid_ferries'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
+              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="badge-dollar-sign" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar pedágios</b><small>Evita vias com cobrança quando houver alternativa.</small></span><input type="checkbox" name="avoid_tolls" value="1" {% if current_user['avoid_tolls'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
+              <label class="profile-v72-nav-pref"><span class="profile-v72-nav-icon"><i data-lucide="construction" width="17"></i></span><span class="profile-v72-nav-copy"><b>Evitar vias não pavimentadas</b><small>Prefere ruas asfaltadas em rotas motorizadas.</small></span><input type="checkbox" name="avoid_unpaved" value="1" {% if current_user['avoid_unpaved'] %}checked{% endif %}><span class="profile-v72-switch" aria-hidden="true"></span></label>
+            </div>
+          </div>
+
+          <div class="profile-v72-subsection profile-v72-grid-gap-top">
+            <div class="profile-v72-subhead"><span>MAPA</span><b>Tipo de mapa</b></div>
+            <p class="profile-v72-subcopy">Escolha um visual fixo ou deixe o VANO MAPS adaptar o mapa ao horário e ao clima.</p>
+            {% set style_pref = current_user['map_style'] or 'auto' %}
+            <div class="profile-v72-map-styles profile-v72-map-styles-five">
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="auto" {% if style_pref in ['auto','vivid','vano'] %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-auto"><i data-lucide="wand-sparkles" width="20"></i></span><span class="profile-v72-map-copy"><b>Automático</b><small>Dia, tarde, noite e chuva.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="day" {% if style_pref in ['day','standard','streets'] %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-day"><i data-lucide="sun" width="20"></i></span><span class="profile-v72-map-copy"><b>Dia</b><small>Claro e limpo.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="afternoon" {% if style_pref == 'afternoon' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-afternoon"><i data-lucide="sunset" width="20"></i></span><span class="profile-v72-map-copy"><b>Tarde</b><small>Contraste quente.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="night" {% if style_pref == 'night' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-night"><i data-lucide="moon-star" width="20"></i></span><span class="profile-v72-map-copy"><b>Escuro</b><small>Feito para a noite.</small><em>Selecionar</em></span></label>
+              <label class="profile-v72-map-style"><input type="radio" name="map_style" value="rain" {% if style_pref == 'rain' %}checked{% endif %}><span class="profile-v72-map-preview profile-v72-preview-rain"><i data-lucide="cloud-rain" width="20"></i></span><span class="profile-v72-map-copy"><b>Chuva</b><small>Maior contraste em tempo fechado.</small><em>Selecionar</em></span></label>
+            </div>
+          </div>
+
+          <div class="profile-v72-subsection profile-v72-grid-gap-top">
+            <div class="profile-v72-subhead"><span>CORES</span><b>Cor da rota e dos destaques</b></div>
+            <div class="profile-v72-accent-options">
+              {% set accent_pref = current_user['map_accent'] or 'violet' %}
+              {% for accent,label,color in [('violet','Vano Maps','#F59A62'),('orange','Pêssego','#FFC39B'),('blue','Terracota','#D9703F'),('green','Areia','#FFFBF2'),('rose','Carvão','#27231F')] %}
+              <label class="profile-v72-accent"><input type="radio" name="map_accent" value="{{ accent }}" {% if accent_pref == accent %}checked{% endif %}><span class="profile-v72-accent-dot" style="--accent-preview:{{ color }}"></span><span>{{ label }}</span></label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="profile-v72-detail" id="vehicle">
+        <summary><span class="profile-v72-detail-icon"><i data-lucide="car-front" width="18"></i></span><span class="profile-v72-detail-copy"><b>Meu veículo</b><small>Dados do carro e postos preferidos</small></span><i class="profile-v72-chev" data-lucide="chevron-down" width="18"></i></summary>
+        <div class="profile-v72-detail-body">
+          <div class="profile-v72-grid-two">
+            <label class="profile-v72-field"><span>Marca</span><input type="text" name="vehicle_make" value="{{ current_user['vehicle_make'] or '' }}" placeholder="Ex.: Fiat"></label>
+            <label class="profile-v72-field"><span>Modelo</span><input type="text" name="vehicle_model" value="{{ current_user['vehicle_model'] or '' }}" placeholder="Ex.: Argo"></label>
+            <label class="profile-v72-field"><span>Placa</span><input type="text" name="vehicle_plate" autocapitalize="characters" maxlength="8" value="{{ current_user['vehicle_plate'] or '' }}" placeholder="ABC1D23" autocomplete="off"></label>
+            <label class="profile-v72-field"><span>Ano</span><input name="vehicle_year" type="text" maxlength="4" value="{{ current_user['vehicle_year'] or '' }}" inputmode="numeric" placeholder="2024"></label>
+          </div>
+          <div class="profile-v72-subhead profile-v72-grid-gap-top"><span>POSTOS</span><b>Redes preferidas</b></div>
+          <div class="profile-v72-fuel-list">{% for network in ['Shell','Ipiranga','Petrobras','ALE','Rodoil','Outros'] %}<label><input type="checkbox" name="fuel_networks" value="{{ network }}" {% if network in fuel_networks %}checked{% endif %}><span>{{ network }}</span></label>{% endfor %}</div>
+        </div>
+      </details>
+
+      <button class="profile-v72-save" id="profileSaveBtn" type="submit"><span class="profile-v108-save-icon"><i data-lucide="check" width="17"></i></span><span class="profile-v108-save-copy"><b>Salvar alterações</b><small id="profileSaveHint">Tudo atualizado</small></span></button>
+    </form>
+
+    <section class="profile-v72-links" aria-label="Ações da conta">
+      <a href="{{ url_for('notifications_page') }}"><span class="profile-v72-link-icon"><i data-lucide="bell" width="17"></i></span><span><b>Notificações</b><small>Alertas e avisos da conta</small></span><i data-lucide="chevron-right" width="17"></i></a>
+      <a href="{{ url_for('help_page') }}"><span class="profile-v72-link-icon"><i data-lucide="circle-help" width="17"></i></span><span><b>Ajuda e FAQ</b><small>Suporte e dúvidas frequentes</small></span><i data-lucide="chevron-right" width="17"></i></a>
+    </section>
+    <section class="profile-danger-zone" id="accountDanger" aria-labelledby="accountDangerTitle">
+      <h2 id="accountDangerTitle">Excluir conta</h2>
+      <p>Essa ação é permanente. Preferências, sessões e dados vinculados à conta serão removidos conforme a Política de Privacidade.</p>
+      <form method="post" action="{{ url_for('account_delete') }}" id="accountDeleteForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if (current_user['auth_provider'] or 'password') == 'password' %}<label class="profile-v72-field"><span>Senha atual</span><input type="password" name="password" autocomplete="current-password" required></label>{% endif %}
+        <label class="profile-v72-field"><span>Digite EXCLUIR para confirmar</span><input type="text" name="confirmation" autocomplete="off" spellcheck="false" maxlength="7" pattern="EXCLUIR" required placeholder="EXCLUIR"></label>
+        <div class="danger-actions"><button class="btn btn-danger" type="submit"><i data-lucide="trash-2" width="16"></i>Excluir minha conta</button><a class="btn btn-ghost" href="{{ url_for('account_delete_page') }}">Saiba como funciona</a></div>
+      </form>
+    </section>
+  </div>
+</main>
+<script>
+const vanoT=(v)=>window.VANO_I18N?.t?.(String(v))||String(v);
+const vanoRuntime=window.VANO_RUNTIME||{};
+if(location.hash==='#settings'||location.hash==='#appSettings'){const d=document.getElementById('appSettings');if(d){d.open=true;setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'start'}),40)}}
+if(location.hash==='#family'||location.hash==='#vehicle'||location.hash==='#places'){const d=document.querySelector(location.hash);if(d){d.open=true;setTimeout(()=>d.scrollIntoView({behavior:'smooth',block:'start'}),40)}}
+const inviteBtn=document.getElementById('createFamilyInvite'),inviteBox=document.getElementById('inviteBox'),inviteUrl=document.getElementById('inviteUrl'),copyInvite=document.getElementById('copyInvite');
+inviteBtn?.addEventListener('click',async()=>{vanoRuntime.setBusy?.(inviteBtn,true,'Criando convite…');try{const {data}=await vanoRuntime.fetchJSON('/api/family-invite',{method:'POST',headers:{'X-CSRF-Token':{{ csrf_token()|tojson }}}},12000);inviteUrl.value=data.url||'';inviteBox.classList.add('show');inviteUrl.focus();inviteUrl.select()}catch(e){vanoRuntime.toast?.(vanoT(e.message||'Não foi possível criar o convite.'),'error')}finally{vanoRuntime.setBusy?.(inviteBtn,false)}});
+copyInvite?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(inviteUrl.value);copyInvite.textContent='Copiado';vanoRuntime.toast?.('Link copiado.','success',2200)}catch{inviteUrl.select();document.execCommand('copy')}});
+document.querySelectorAll('[data-remove-link]').forEach(btn=>btn.addEventListener('click',async()=>{const ok=await (vanoRuntime.confirm?.({title:'Remover vínculo?',message:'Essa conta deixará de receber os avisos vinculados ao seu perfil.',confirmText:'Remover',danger:true})??Promise.resolve(false));if(!ok)return;vanoRuntime.setBusy?.(btn,true);try{await vanoRuntime.fetchJSON(`/api/family-link/${btn.dataset.removeLink}/remove`,{method:'POST',headers:{'X-CSRF-Token':{{ csrf_token()|tojson }}}},12000);location.reload()}catch(e){vanoRuntime.setBusy?.(btn,false);vanoRuntime.toast?.(vanoT(e.message||'Não foi possível remover o vínculo.'),'error')}}));
+const profileForm=document.getElementById('settings'),profileSaveBtn=document.getElementById('profileSaveBtn'),profileSaveHint=document.getElementById('profileSaveHint');
+let profileDirty=false;
+const markProfileDirty=()=>{if(profileDirty)return;profileDirty=true;profileSaveBtn?.classList.add('is-dirty');if(profileSaveHint)profileSaveHint.textContent='Alterações pendentes'};
+profileForm?.querySelectorAll('input,select').forEach(el=>{if(el.type==='hidden'||el.readOnly)return;el.addEventListener('input',markProfileDirty,{passive:true});el.addEventListener('change',markProfileDirty,{passive:true})});
+profileForm?.addEventListener('submit',()=>{profileSaveBtn?.classList.add('is-saving');if(profileSaveHint)profileSaveHint.textContent='Salvando…'});
+document.querySelectorAll('.profile-v108-quicknav a').forEach(link=>link.addEventListener('click',()=>{const target=document.querySelector(link.getAttribute('href'));if(target?.tagName==='DETAILS')target.open=true}));
+
+let profileSubmitting=false;
+profileForm?.addEventListener('submit',()=>{profileSubmitting=true});
+window.addEventListener('beforeunload',event=>{if(profileDirty&&!profileSubmitting){event.preventDefault();event.returnValue=''}});
+const accountDeleteForm=document.getElementById('accountDeleteForm');
+accountDeleteForm?.addEventListener('submit',async event=>{if(accountDeleteForm.dataset.confirmed==='1')return;event.preventDefault();const ok=await (vanoRuntime.confirm?.({title:'Excluir sua conta permanentemente?',message:'Essa ação não pode ser desfeita. Confirme somente se deseja remover sua conta VANO MAPS.',confirmText:'Excluir conta',danger:true})??Promise.resolve(false));if(ok){accountDeleteForm.dataset.confirmed='1';accountDeleteForm.requestSubmit()}});
+</script>
+{% endblock %}

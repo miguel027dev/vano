@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Política de Privacidade · VANO MAPS{% endblock %}
+{% block content %}
+<main class="page">
+  <div class="container">
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">VANO MAPS · privacidade</p>
+        <h1 class="page-title">Política de Privacidade</h1>
+        <p class="page-subtitle">Como a VANO MAPS trata dados de conta, localização, rotas e dados técnicos para manter a navegação funcional e segura.</p>
+      </div>
+    </div>
+    <section class="panel">
+      <div class="panel-body legal-copy">
+        <p><strong>Última atualização:</strong> setembro de 2026.</p>
+        <h2>1. Dados tratados</h2>
+        <p>A VANO MAPS pode tratar dados como nome, e-mail, IP, aparelhos conectados, preferências, localização aproximada ou precisa durante o uso do mapa, últimas rotas e informações técnicas necessárias para autenticação, segurança e funcionamento do serviço.</p>
+        <h2>2. Proteção e criptografia</h2>
+        <p>Dados vinculados diretamente à conta do usuário devem ser protegidos com controles de acesso, criptografia quando aplicável, comunicação segura e monitoramento de abuso. O objetivo é reduzir exposição indevida e preservar a segurança da conta.</p>
+        <h2>3. Dados de trajeto e análise</h2>
+        <p>Dados operacionais de trajetos, como tempo estimado, ponto de origem aproximado, destino, duração, distância e informações usadas para análise de desempenho podem ser separados dos dados diretos de identidade da conta, buscando reduzir vínculo com nome, e-mail e demais dados pessoais.</p>
+        <h2>4. Finalidades</h2>
+        <p>Os dados são usados para calcular rotas, melhorar tempo de resposta, exibir alertas, prevenir fraude, manter a conta segura, diagnosticar falhas e melhorar a experiência de navegação.</p>
+        <h2>5. Compartilhamento</h2>
+        <p>A VANO MAPS não deve vender dados pessoais dos usuários. Dados podem ser processados por provedores técnicos necessários ao funcionamento, como hospedagem, banco de dados, mapas, autenticação e monitoramento.</p>
+        <h2>6. Segurança</h2>
+        <p>Aplicamos medidas como autenticação, limitação de requisições, logs de auditoria, controle de sessão, proteção de endpoints e revisão contínua da infraestrutura.</p>
+        <h2>7. Direitos e controles do usuário</h2>
+        <p>O usuário pode solicitar acesso, correção, portabilidade quando aplicável, oposição, revogação de consentimento ou outras medidas relacionadas aos seus dados. Usuários autenticados também podem excluir a própria conta diretamente pelo Perfil.</p>
+        <h2>8. Exclusão da conta</h2>
+        <p>A exclusão pelo Perfil remove a conta e os dados pessoais de navegação associados ao usuário dentro do VANO. Alguns registros estritamente operacionais ou necessários para segurança podem ser mantidos somente de forma anonimizada, sem o identificador da conta.</p>
+        <h2>9. Retenção e provedores</h2>
+        <p>O tempo de retenção depende da finalidade do dado. Informações operacionais podem ser descartadas, agregadas ou anonimizadas quando deixam de ser necessárias. Serviços de infraestrutura, mapas, autenticação e hospedagem podem possuir seus próprios prazos técnicos de retenção.</p>
+      </div>
+    </section>
+    {% if current_user %}
+    <section class="panel" id="direitos" style="margin-top:18px">
+      <div class="panel-head"><div><p class="eyebrow">SEUS DADOS</p><h2 style="margin:4px 0 0">Solicitação de privacidade</h2></div></div>
+      <div class="panel-body">
+        <form action="{{ url_for('privacy_request_create') }}" method="post" class="form-grid">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="field"><span>Tipo de solicitação</span><select class="select" name="request_type">{% for key,label in privacy_request_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
+          <label class="field full"><span>Detalhes</span><textarea class="textarea" name="message" rows="4" maxlength="1200" placeholder="Explique o que você precisa. Não envie senhas ou dados bancários."></textarea></label>
+          <div class="field full"><button class="btn btn-primary" type="submit"><i data-lucide="send" width="16"></i>Enviar solicitação</button> <a class="btn btn-ghost" href="{{ url_for('account_delete_page') }}"><i data-lucide="trash-2" width="16"></i>Excluir conta</a></div>
+        </form>
+        {% if recent_privacy_requests %}<div class="table-wrap" style="margin-top:18px"><table class="table"><thead><tr><th>Protocolo</th><th>Tipo</th><th>Status</th><th>Data</th></tr></thead><tbody>{% for r in recent_privacy_requests %}<tr><td><code>{{ r['protocol'] }}</code></td><td>{{ privacy_request_types.get(r['request_type'],r['request_type']) }}</td><td>{{ r['status'] }}</td><td>{{ r['created_at'][:10] }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}
