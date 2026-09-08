@@ -23,8 +23,6 @@
       <a href="{{ url_for('admin_benchmark') }}"><i data-lucide="flask-conical" width="17"></i><span><b>Benchmark</b><small>testes de rotas</small></span></a>
     </nav>
 
-    <section class="admin268-command-strip" aria-label="Resumo operacional"><div class="admin268-command-live"><i></i><span>Sistema operacional</span></div><div><small>BUILD</small><b>{{ vano_build_id }}</b></div><div><small>LATÊNCIA</small><b>{{ infra['summary']['avg_latency_ms'] }} ms</b></div><div><small>CAPACIDADE</small><b>{{ extra['simultaneous_used'] }}/{{ extra['simultaneous_capacity'] }}</b></div><a href="{{ url_for('admin_benchmark') }}"><i data-lucide="flask-conical" width="14"></i>Benchmark</a></section>
-
     <section class="admin240-overview">
       <article class="admin240-kpi primary"><span class="kpi-icon"><i data-lucide="radio" width="18"></i></span><div><small>ATIVOS AGORA</small><b id="heroConcurrentNow">{{ extra['simultaneous_now'] }}</b><span>janela de 5 minutos</span></div></article>
       <article class="admin240-kpi"><span class="kpi-icon"><i data-lucide="route" width="18"></i></span><div><small>ROTAS HOJE</small><b>{{ stats['routes_today'] }}</b><span>{{ stats['routes_24h'] }} nas últimas 24h</span></div></article>
