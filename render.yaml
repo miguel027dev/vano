@@ -8,7 +8,7 @@ services:
     runtime: python
     plan: free
     buildCommand: python -m pip install --upgrade pip && python -m pip install -r requirements.txt && python -m py_compile app.py db_backend.py mobile_routes.py vano_osint_bridge.py
-    startCommand: VANO_SKIP_DB_INIT=1 RAIRO_DB_INIT_ONLY=1 python -c "from app import init_db_with_retry; init_db_with_retry()" && VANO_SKIP_DB_INIT=1 python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 6 --timeout 120 --keep-alive 5 --access-logfile - --error-logfile -
+    startCommand: VANO_SKIP_DB_INIT=1 RAIRO_DB_INIT_ONLY=1 python -c "from app import init_db_with_retry; init_db_with_retry()" && VANO_SKIP_DB_INIT=1 python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 6 --timeout 120 --keep-alive 10 --access-logfile - --error-logfile -
     healthCheckPath: /healthz
     envVars:
       # DATABASE_URL is the canonical PostgreSQL connection string used by VANO MAPS. Legacy resource names are retained to preserve the existing database.
@@ -53,6 +53,12 @@ services:
         value: "2.8"
       - key: RAIRO_DISTRIBUTED_ROUTING_ENABLED
         value: "1"
+      # Urban/medium routes stay on the central fast lane. Nodes are reserved
+      # for genuinely heavy calculations where the extra network hop pays off.
+      - key: RAIRO_HEAVY_ROUTE_MIN_KM
+        value: "40"
+      - key: RAIRO_NODE_BUNDLED_PREFETCH_ENABLED
+        value: "0"
       - key: RAIRO_NODE_ROUTE_TIMEOUT
         value: "10"
       - key: RAIRO_NODE_ROUTE_ATTEMPTS
@@ -62,11 +68,15 @@ services:
       - key: CENTRAL_API_SECRET
         sync: false
       - key: RAIRO_CANDIDATE_POOL_TTL
-        value: "16"
+        value: "20"
       - key: RAIRO_ROUTE_CONTEXT_TTL
-        value: "14"
+        value: "18"
+      - key: RAIRO_ROUTE_CACHE_TTL_LIVE
+        value: "12"
+      - key: RAIRO_ROUTE_RESULT_CACHE_TTL
+        value: "30"
       - key: RAIRO_FLOW_QUERY_TTL
-        value: "8"
+        value: "12"
       - key: RAIRO_FLOW_PRUNE_INTERVAL
         value: "600"
       - key: RAIRO_SECRET_KEY
@@ -102,7 +112,7 @@ services:
       - key: PUBLIC_SITE_URL
         value: https://vanomaps.online
       - key: VANO_BUILD_ID
-        value: 266.0.0
+        value: 269.0.0
       - key: VANO_KEEPALIVE_URL
         value: https://vanomaps.online
       # V264 global search providers. No secret/key is required; PHOTON_URL can
