@@ -10,7 +10,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v230.js') }}?v={{ vano_build_id }}-276">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v230.js') }}?v={{ vano_build_id }}-277">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
@@ -1745,6 +1745,63 @@ html.vano-native-map-active #map .mapboxgl-control-container {
   opacity:0!important;
   pointer-events:none!important;
 }
+
+
+/* ==================================================================
+   VANO V277 — premium navigation HUD lift + native-map compositor polish
+   ================================================================== */
+@media (max-width:899px) and (orientation:portrait){
+  body.body-nav{
+    --vano-hud-lift:44px;
+    --vano-hud-card-h:72px;
+  }
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+    bottom:calc(max(8px,env(safe-area-inset-bottom)) + 44px)!important;
+    min-height:72px!important;
+    padding:6px 7px!important;
+    border-radius:24px!important;
+    box-shadow:0 12px 34px rgba(13,17,24,.15),inset 0 1px 0 rgba(255,255,255,.96)!important;
+    transform:translate3d(0,0,0)!important;
+    will-change:transform!important;
+  }
+  body.body-nav #activeNav .nav-summary-row{height:60px!important;min-height:60px!important;border-radius:18px!important}
+  body.body-nav #activeNav .nav-summary-item,
+  body.body-nav #activeNav .nav-summary-primary{height:60px!important;min-height:60px!important;padding:8px 11px!important}
+  body.body-nav #activeNav .nav-summary-primary{padding-left:13px!important;border-radius:17px!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:17px!important;line-height:1!important}
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:23px!important;line-height:1!important}
+  body.body-nav #activeNav .nav-summary-item small{font-size:7px!important;letter-spacing:.085em!important}
+  body.body-nav .ws-app #navControlStack{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 140px)!important}
+  body.body-nav .ws-app #vanoSpeedometerV220,
+  body.body-nav .ws-app .floating-speedo{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 143px)!important}
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{
+    bottom:calc(max(8px,env(safe-area-inset-bottom)) + 147px)!important;
+    height:36px!important;min-height:36px!important;
+  }
+  body.body-nav .ws-app #navAltHint.nav-alt-hint{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 198px)!important}
+  body.body-nav .mapboxgl-ctrl-bottom-left,
+  body.body-nav .mapboxgl-ctrl-bottom-right{bottom:calc(max(6px,env(safe-area-inset-bottom)) + 118px)!important}
+}
+@media (max-width:390px) and (orientation:portrait){
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{bottom:calc(max(6px,env(safe-area-inset-bottom)) + 38px)!important;min-height:68px!important;padding:5px 6px!important}
+  body.body-nav #activeNav .nav-summary-row{height:56px!important;min-height:56px!important}
+  body.body-nav #activeNav .nav-summary-item,
+  body.body-nav #activeNav .nav-summary-primary{height:56px!important;min-height:56px!important}
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:21px!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:15.5px!important}
+  body.body-nav .ws-app #navControlStack{bottom:calc(max(6px,env(safe-area-inset-bottom)) + 132px)!important}
+  body.body-nav .ws-app #vanoSpeedometerV220,
+  body.body-nav .ws-app .floating-speedo{bottom:calc(max(6px,env(safe-area-inset-bottom)) + 135px)!important}
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{bottom:calc(max(6px,env(safe-area-inset-bottom)) + 139px)!important}
+}
+@media (orientation:landscape) and (max-height:680px) and (max-width:1200px){
+  body.body-nav{--vano-land-safe-b:max(18px,calc(env(safe-area-inset-bottom) + 14px))}
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{bottom:var(--vano-land-safe-b)!important}
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{bottom:calc(var(--vano-land-safe-b) + 67px)!important}
+}
+html.vano-native-map-active #map .mapboxgl-canvas-container{visibility:hidden!important}
+html.vano-native-map-active #map .mapboxgl-control-container{visibility:hidden!important}
+
 </style>{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -2105,7 +2162,7 @@ html.vano-native-map-active #map .mapboxgl-control-container {
 (()=>{
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v230.js') ~ '?v=' ~ vano_build_id ~ '-276')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v230.js') ~ '?v=' ~ vano_build_id ~ '-277')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;
