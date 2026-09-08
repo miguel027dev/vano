@@ -986,6 +986,121 @@ body.body-nav .nav-maneuver-top{box-shadow:0 8px 22px rgba(19,23,31,.11)!importa
 body.body-nav :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn){box-shadow:0 6px 16px rgba(20,22,27,.10)!important}
 @media(max-width:430px){body.body-nav #navExitBtn.nav-exit-main{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;border-radius:13px!important}}
 
+
+/* VANO V272 — driver viewport + lower navigation polish. */
+body.body-nav #activeNav.nav-panel.nav-minimal{
+  min-height:calc(84px + env(safe-area-inset-bottom))!important;
+  padding:6px max(12px,calc(env(safe-area-inset-right) + 10px)) max(9px,calc(env(safe-area-inset-bottom) + 7px)) max(12px,calc(env(safe-area-inset-left) + 10px))!important;
+  border-radius:23px 23px 0 0!important;
+  border-top:1px solid rgba(20,24,31,.055)!important;
+  background:#fff!important;
+  box-shadow:0 -8px 26px rgba(18,22,29,.095)!important;
+}
+body.body-nav #activeNav.nav-panel.nav-minimal:before{
+  top:2px!important;width:38px!important;height:2px!important;background:rgba(87,91,99,.18)!important;box-shadow:none!important;
+}
+body.body-nav #activeNav .vano-nav-dock-head{
+  min-height:16px!important;height:16px!important;padding:0 5px 3px!important;margin:0!important;
+}
+body.body-nav #activeNav .vano-nav-live{
+  gap:5px!important;font-size:7px!important;letter-spacing:.13em!important;color:#8A9099!important;
+}
+body.body-nav #activeNav .vano-nav-live i{
+  width:5px!important;height:5px!important;flex-basis:5px!important;box-shadow:0 0 0 3px rgba(245,154,98,.10)!important;
+}
+body.body-nav #activeNav .nav-summary-row{
+  height:57px!important;min-height:57px!important;grid-template-columns:1.18fr .92fr 1fr!important;gap:0!important;padding:3px!important;
+  border-radius:18px!important;border:1px solid rgba(22,27,34,.06)!important;background:#F5F6F8!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.88)!important;overflow:hidden!important;
+}
+body.body-nav #activeNav .nav-summary-item,
+body.body-nav #activeNav .nav-summary-primary{
+  height:49px!important;min-height:49px!important;padding:6px 10px!important;border:0!important;border-radius:13px!important;
+  background:transparent!important;box-shadow:none!important;justify-content:center!important;overflow:hidden!important;
+}
+body.body-nav #activeNav .nav-summary-item + .nav-summary-item{border-left:1px solid rgba(25,29,36,.065)!important;border-radius:0!important}
+body.body-nav #activeNav .nav-summary-primary{
+  background:#fff!important;border:1px solid rgba(245,154,98,.18)!important;border-radius:14px!important;
+}
+body.body-nav #activeNav .nav-summary-primary:after{display:none!important;content:none!important}
+body.body-nav #activeNav .nav-summary-label{gap:5px!important;margin-bottom:3px!important}
+body.body-nav #activeNav .nav-summary-label svg{width:10px!important;height:10px!important;flex-basis:10px!important;color:#9298A1!important}
+body.body-nav #activeNav .nav-summary-primary .nav-summary-label svg{color:#D9703F!important}
+body.body-nav #activeNav .nav-summary-item small{font-size:6.8px!important;line-height:1!important;letter-spacing:.105em!important;color:#8B919A!important}
+body.body-nav #activeNav .nav-summary-item strong{font-size:16px!important;line-height:1!important;letter-spacing:-.045em!important;color:#1F2329!important}
+body.body-nav #activeNav .nav-summary-primary strong{font-size:20px!important;letter-spacing:-.055em!important;color:#D66D3C!important}
+body.body-nav #activeNav .traffic-suggestion,
+body.body-nav #activeNav .reroute{margin-top:7px!important;border-radius:15px!important;box-shadow:0 6px 18px rgba(20,24,32,.055)!important}
+
+/* Keep the entire lower control area on one visual grid. */
+body.body-nav #navControlStack{
+  right:max(11px,calc(env(safe-area-inset-right) + 9px))!important;
+  bottom:calc(max(10px,env(safe-area-inset-bottom)) + 97px)!important;
+  gap:7px!important;z-index:45!important;
+}
+body.body-nav #navControlStack :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn){
+  width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;border-radius:14px!important;
+  box-shadow:0 5px 15px rgba(20,23,30,.10)!important;
+}
+body.body-nav #navExitBtn.nav-exit-main{
+  width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;border-radius:14px!important;
+  box-shadow:0 6px 16px rgba(126,31,37,.17)!important;
+}
+body.body-nav #vanoSpeedometerV220{
+  left:max(11px,calc(env(safe-area-inset-left) + 9px))!important;
+  bottom:calc(max(10px,env(safe-area-inset-bottom)) + 98px)!important;
+  width:56px!important;height:56px!important;min-width:56px!important;min-height:56px!important;
+  border-width:2px!important;box-shadow:0 5px 15px rgba(0,0,0,.18)!important;
+}
+body.body-nav #vanoSpeedValueV220{font-size:22px!important}
+
+/* Mapbox-required attribution stays compact and out of the driving controls. */
+body.body-nav .mapboxgl-ctrl-bottom-left{
+  left:max(76px,calc(env(safe-area-inset-left) + 74px))!important;
+  bottom:calc(max(6px,env(safe-area-inset-bottom)) + 89px)!important;
+  z-index:39!important;
+}
+body.body-nav .mapboxgl-ctrl-attrib.mapboxgl-compact{margin:0 0 2px 4px!important}
+
+/* Route selection card: cleaner density, less vertical noise. */
+#routeState.vano-route-studio{padding:3px 0 10px!important}
+#routeState.vano-route-studio .vr-hero{
+  padding:14px 14px!important;border-radius:21px!important;
+  background:linear-gradient(160deg,#fff 0%,#FFF9F5 100%)!important;
+  box-shadow:0 10px 28px rgba(44,35,29,.075),inset 0 1px 0 rgba(255,255,255,.92)!important;
+}
+#routeState.vano-route-studio .vr-copy h2{font-size:23px!important;line-height:1.05!important}
+#routeState.vano-route-studio .vr-copy p{font-size:11px!important;line-height:1.35!important;margin-top:4px!important}
+#routeState.vano-route-studio .route-time{min-width:96px!important;padding:11px 10px!important;border-radius:17px!important;box-shadow:none!important}
+#routeState.vano-route-studio .route-time span{font-size:29px!important}
+#routeState .route-variants{gap:8px!important;padding:2px 0 5px!important}
+#routeState .route-variant{min-height:78px!important;padding:10px 11px!important;border-radius:16px!important;box-shadow:0 6px 17px rgba(20,24,32,.045)!important}
+#routeState .route-variant.active{transform:none!important;box-shadow:0 8px 20px rgba(217,112,63,.09)!important}
+#routeState .start-trip-cta{min-height:61px!important;border-radius:19px!important;box-shadow:0 12px 26px rgba(217,112,63,.20)!important}
+#routeState .vano-route-more{margin-top:8px!important;border-radius:17px!important;box-shadow:none!important}
+#routeState .vano-route-more>summary{min-height:47px!important}
+
+html[data-vano-theme="black"] body.body-nav #activeNav.nav-panel.nav-minimal{background:#171719!important;border-top-color:rgba(255,255,255,.055)!important;box-shadow:0 -8px 26px rgba(0,0,0,.34)!important}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-row{background:#202024!important;border-color:rgba(255,255,255,.055)!important;box-shadow:none!important}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item + .nav-summary-item{border-left-color:rgba(255,255,255,.06)!important}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary{background:#272326!important;border-color:rgba(245,154,98,.18)!important}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item strong{color:#F7F7F8!important}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary strong{color:#F59A62!important}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item small{color:#96969E!important}
+html[data-vano-theme="black"] #routeState.vano-route-studio .vr-hero{background:linear-gradient(160deg,#242225,#19181A)!important;box-shadow:0 10px 28px rgba(0,0,0,.24)!important}
+
+@media(max-width:390px){
+  body.body-nav #activeNav.nav-panel.nav-minimal{padding-left:9px!important;padding-right:9px!important}
+  body.body-nav #activeNav .nav-summary-row{grid-template-columns:1.15fr .9fr 1fr!important}
+  body.body-nav #activeNav .nav-summary-item,body.body-nav #activeNav .nav-summary-primary{padding-left:7px!important;padding-right:7px!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:14.5px!important}
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:18.5px!important}
+  body.body-nav #navControlStack :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn),body.body-nav #navExitBtn.nav-exit-main{width:41px!important;height:41px!important;min-width:41px!important;min-height:41px!important;border-radius:13px!important}
+  body.body-nav #vanoSpeedometerV220{width:52px!important;height:52px!important;min-width:52px!important;min-height:52px!important}
+  body.body-nav #vanoSpeedValueV220{font-size:20px!important}
+  body.body-nav .mapboxgl-ctrl-bottom-left{left:max(68px,calc(env(safe-area-inset-left) + 66px))!important}
+}
+
 </style>{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
