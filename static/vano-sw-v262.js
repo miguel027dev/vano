@@ -1,6 +1,6 @@
-/* VANO MAPS V264 — atomic, conservative offline cache. */
-const BUILD='264.0.0';
-const CACHE=`vano-maps-v264-${BUILD}`;
+/* VANO MAPS V262 — atomic, conservative offline cache. */
+const BUILD='262.0.0';
+const CACHE=`vano-maps-v262-${BUILD}`;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
