@@ -951,22 +951,6 @@ html[data-vano-theme="black"] #routeState .route-variant.active{
   #routeState .route-variant{flex-basis:min(164px,54vw)!important}
 }
 
-
-/* VANO MAPS V268 — route close control: same navigation stack, clear destructive action. */
-body.body-nav #navExitBtn.nav-exit-stack{
-  display:grid!important;visibility:visible!important;pointer-events:auto!important;position:relative!important;
-  width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;padding:0!important;
-  place-items:center!important;border-radius:16px!important;border:1px solid rgba(222,61,70,.22)!important;
-  background:linear-gradient(180deg,#fff8f8 0%,#fff0f1 100%)!important;color:#dc3540!important;
-  box-shadow:0 9px 22px rgba(92,24,29,.13),inset 0 1px 0 rgba(255,255,255,.92)!important;
-  transition:transform .13s ease,background .16s ease,color .16s ease,box-shadow .16s ease!important;
-}
-body.body-nav #navExitBtn.nav-exit-stack:hover{background:#ffe8ea!important;color:#c92f39!important;box-shadow:0 11px 25px rgba(92,24,29,.17)!important}
-body.body-nav #navExitBtn.nav-exit-stack:active{transform:scale(.94)!important}
-body.body-nav #navExitBtn.nav-exit-stack svg{width:20px!important;height:20px!important;stroke-width:2.35!important}
-html[data-vano-theme="black"] body.body-nav #navExitBtn.nav-exit-stack{background:linear-gradient(180deg,#32191d,#281518)!important;color:#ff747d!important;border-color:rgba(255,116,125,.23)!important;box-shadow:0 9px 22px rgba(0,0,0,.26)!important}
-@media(max-width:640px){body.body-nav #navExitBtn.nav-exit-stack{width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;border-radius:16px!important}}
-
 </style>{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -1011,7 +995,6 @@ html[data-vano-theme="black"] body.body-nav #navExitBtn.nav-exit-stack{backgroun
       <button type="button" class="nav-drawer-btn" id="navDrawerOptions" aria-label="Abrir opções" title="Opções"><i data-lucide="ellipsis" width="18"></i></button>
       <button type="button" class="nav-drawer-btn nav-drawer-support" id="navDrawerSupport" aria-label="Abrir apoio durante o trajeto" title="Apoio durante o trajeto"><i data-lucide="shield-check" width="18"></i></button>
     </div>
-    <button type="button" class="nav-stack-btn nav-exit-stack" id="navExitBtn" aria-label="Encerrar trajeto" title="Encerrar trajeto"><i data-lucide="x" width="20"></i></button>
     <button type="button" class="nav-stack-btn nav-report-main" id="quickAlertBtn" aria-label="Informar ocorrência" title="Informar ocorrência"><i data-lucide="triangle-alert" width="19"></i></button>
     <button type="button" class="nav-stack-btn nav-recenter-main" id="navDrawerRecenter" aria-label="Recalibrar câmera e seguir minha posição" title="Recalibrar câmera"><i data-lucide="crosshair" width="19"></i></button>
     <button type="button" class="nav-audio-toggle active nav-audio-main" id="soundBtn" aria-label="Desativar orientações por voz" title="Áudio ligado"><i data-lucide="volume-2" width="19"></i></button>
@@ -1266,7 +1249,7 @@ html[data-vano-theme="black"] body.body-nav #navExitBtn.nav-exit-stack{backgroun
   <div class="nav-alt-hint" id="navAltHint" aria-live="polite"><div class="nav-alt-copy"><small>ROTA MAIS RÁPIDA</small><b id="navAltHintText">Tem uma rota mais rápida, quer trocar pra ela?</b><em id="navAltHintMeta"></em></div><button type="button" class="nav-alt-accept" id="navAltAccept">Trocar</button><button type="button" class="nav-alt-dismiss" id="navAltDismiss" aria-label="Manter rota atual"><i data-lucide="x" width="13"></i></button></div>
 
   <section class="nav-panel nav-minimal" id="activeNav" aria-live="polite">
-    <div class="vano-nav-dock-head"><span class="vano-nav-live"><i></i>EM ROTA</span><div class="vano-nav-head-actions"><span class="vano-nav-dock-caption">Atualização em tempo real</span></div></div>
+    <div class="vano-nav-dock-head"><span class="vano-nav-live"><i></i>EM ROTA</span><div class="vano-nav-head-actions"><span class="vano-nav-dock-caption">Atualização em tempo real</span><button type="button" class="nav-exit-btn" id="navExitBtn" aria-label="Sair da rota" title="Sair da rota"><i data-lucide="x" width="15"></i></button></div></div>
     <div class="nav-summary-row">
       <div class="nav-summary-item nav-summary-primary"><span class="nav-summary-label"><i data-lucide="flag" width="11"></i><small>CHEGADA</small></span><strong id="arrivalTime">—</strong></div>
       <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="timer" width="11"></i><small>FALTAM</small></span><strong id="remainingMinutes">—</strong></div>
@@ -1394,14 +1377,11 @@ html[data-vano-theme="black"] body.body-nav #navExitBtn.nav-exit-stack{backgroun
     exitBtn.addEventListener('click',ev=>{
       ev.preventDefault();
       ev.stopPropagation();
-      if(exitBtn.dataset.exiting==='1')return;
-      exitBtn.dataset.exiting='1';
-      exitBtn.disabled=true;
       const primary=document.getElementById('navSearchBtn');
       const secondary=document.getElementById('arrivalFinishBtn');
       const fire=el=>!!el&&el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
-      if(fire(primary)){setTimeout(()=>{exitBtn.dataset.exiting='';exitBtn.disabled=false},900);return}
-      if(fire(secondary)){setTimeout(()=>{exitBtn.dataset.exiting='';exitBtn.disabled=false},900);return}
+      if(fire(primary))return;
+      if(fire(secondary))return;
       document.body.classList.remove('body-nav');
       document.getElementById('activeNav')?.classList.remove('show');
       document.getElementById('planSheet')?.classList.remove('hidden');

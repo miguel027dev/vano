@@ -40,7 +40,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "269.0.0").strip() or "269.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "267.0.0").strip() or "267.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -229,12 +229,11 @@ RAIRO_NODE_STATUS_LOCK = threading.Lock()
 RAIRO_DISTRIBUTED_ROUTING_ENABLED = os.environ.get("RAIRO_DISTRIBUTED_ROUTING_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
 RAIRO_NODE_ROUTE_TIMEOUT = max(4.0, min(30.0, float(os.environ.get("RAIRO_NODE_ROUTE_TIMEOUT", "10") or 10)))
 RAIRO_NODE_ROUTE_ATTEMPTS = max(1, min(6, int(os.environ.get("RAIRO_NODE_ROUTE_ATTEMPTS", "2") or 2)))
-RAIRO_NODE_BUNDLED_PREFETCH_ENABLED = os.environ.get("RAIRO_NODE_BUNDLED_PREFETCH_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
 # V123.3 — heavy-route orchestration. Routes from 8 km up to 3,000 km can use
 # hedged requests across multiple healthy Route Nodes. A hedge is launched only
 # when the previous worker is slow/failing, avoiding a naive N-way duplicate on
 # every trip (important because Mapbox limits are per access token, not server).
-RAIRO_HEAVY_ROUTE_MIN_KM = max(0.0, min(5000.0, float(os.environ.get("RAIRO_HEAVY_ROUTE_MIN_KM", "40") or 40)))
+RAIRO_HEAVY_ROUTE_MIN_KM = max(0.0, min(5000.0, float(os.environ.get("RAIRO_HEAVY_ROUTE_MIN_KM", "8") or 8)))
 RAIRO_HEAVY_ROUTE_MAX_KM = max(RAIRO_HEAVY_ROUTE_MIN_KM, min(10000.0, float(os.environ.get("RAIRO_HEAVY_ROUTE_MAX_KM", "3000") or 3000)))
 RAIRO_HEAVY_ROUTE_MAX_FANOUT = max(2, min(8, int(os.environ.get("RAIRO_HEAVY_ROUTE_MAX_FANOUT", "5") or 5)))
 RAIRO_HEAVY_ROUTE_TOTAL_ATTEMPTS = max(2, min(16, int(os.environ.get("RAIRO_HEAVY_ROUTE_TOTAL_ATTEMPTS", "8") or 8)))
@@ -1197,7 +1196,7 @@ def _call_route_node(cfg, job_payload, prefetch, headers, timeout_override=None,
     }
     _reserve_node(cfg.get("index"))
     try:
-        if prefetch and RAIRO_NODE_BUNDLED_PREFETCH_ENABLED and job_payload.get("mode") in {"fastest", "safest", "smart"}:
+        if prefetch and job_payload.get("mode") in {"fastest", "safest", "smart"}:
             target = cfg["url"] + str(cfg.get("precalc_path") or "/v1/route/precalculate")
             body = dict(job_payload)
             body["modes"] = ["safest", "fastest", "smart"]
@@ -1362,15 +1361,6 @@ def dispatch_route_to_nodes(job_payload, prefetch=False):
         meta["reason"] = "central_secret_missing"
         log_central_fallback(meta["reason"])
         return None, meta
-
-    # V269 fast-lane: ordinary urban and medium trips should not pay an extra
-    # network hop to a Route Node before the Central can call Mapbox directly.
-    distance_km = _job_direct_distance_km(job_payload)
-    if distance_km < RAIRO_HEAVY_ROUTE_MIN_KM:
-        meta["reason"] = "central_fast_lane"
-        meta["distance_km"] = round(distance_km, 2)
-        return None, meta
-
     candidates = _dispatch_node_candidates(job_payload)
     if not candidates:
         meta["reason"] = "no_available_nodes"
@@ -1482,7 +1472,7 @@ _ROUTE_PROVIDER_CACHE_TTL = max(10, min(90, int(os.environ.get("RAIRO_ROUTE_CACH
 # X18: live driving traffic gets only a tiny dedupe window so switching UI modes
 # does not repeat identical requests, while a fresh navigation calculation never
 # relies on meaningfully stale traffic. Non-live profiles can safely cache longer.
-_ROUTE_PROVIDER_CACHE_TTL_LIVE = max(0, min(15, int(os.environ.get("RAIRO_ROUTE_CACHE_TTL_LIVE", "12"))))
+_ROUTE_PROVIDER_CACHE_TTL_LIVE = max(0, min(15, int(os.environ.get("RAIRO_ROUTE_CACHE_TTL_LIVE", "8"))))
 _ROUTE_PROVIDER_CACHE_TTL_STATIC = max(20, min(180, int(os.environ.get("RAIRO_ROUTE_CACHE_TTL_STATIC", "55"))))
 
 # V84 — single-flight for identical Directions requests. Safe and Fast route
@@ -1540,7 +1530,7 @@ def _route_mapbox_get(url, params, timeout=12):
 # route history; those side effects happen only on the confirmed request.
 _ROUTE_RESULT_CACHE = {}
 _ROUTE_RESULT_CACHE_LOCK = threading.Lock()
-_ROUTE_RESULT_CACHE_TTL = max(8, min(45, int(os.environ.get("RAIRO_ROUTE_RESULT_CACHE_TTL", "30"))))
+_ROUTE_RESULT_CACHE_TTL = max(8, min(45, int(os.environ.get("RAIRO_ROUTE_RESULT_CACHE_TTL", "22"))))
 
 def _route_result_cache_get(key):
     now = time.time()
@@ -1608,7 +1598,7 @@ _ROUTE_CANDIDATE_POOL_CACHE = {}
 _ROUTE_CANDIDATE_POOL_LOCK = threading.Lock()
 _ROUTE_CANDIDATE_POOL_INFLIGHT = {}
 _ROUTE_CANDIDATE_POOL_INFLIGHT_LOCK = threading.Lock()
-_ROUTE_CANDIDATE_POOL_TTL = max(6, min(30, int(os.environ.get("RAIRO_CANDIDATE_POOL_TTL", "20"))))
+_ROUTE_CANDIDATE_POOL_TTL = max(6, min(30, int(os.environ.get("RAIRO_CANDIDATE_POOL_TTL", "16"))))
 
 def _candidate_pool_cache_get(key):
     now=time.time()
@@ -1655,13 +1645,12 @@ def _candidate_pool_get_or_build(key,builder,wait_timeout=32):
         result=builder();_candidate_pool_cache_put(key,result);return result,"fallback"
     return copy.deepcopy(job["result"]),"built" if leader else "shared-inflight"
 
-def _candidate_pool_cache_key(slat,slon,elat,elon,profile,depart_at,adaptive,variant_budget,base_exclusions,extra_excludes,start_bearing,start_speed,reroute,mode_tier="standard"):
+def _candidate_pool_cache_key(slat,slon,elat,elon,profile,depart_at,adaptive,variant_budget,base_exclusions,extra_excludes,start_bearing,start_speed,reroute):
     return (
         round(float(slat),5),round(float(slon),5),round(float(elat),5),round(float(elon),5),str(profile),str(depart_at),bool(adaptive),int(variant_budget),
         None if start_bearing is None else round(float(start_bearing),-1),None if start_speed is None else round(float(start_speed),0),bool(reroute),
         tuple(sorted(str(x) for x in (extra_excludes or []))),
         tuple((round(float(x[0]),5),round(float(x[1]),5)) for x in (base_exclusions or [])[:18]),
-        str(mode_tier or "standard"),
     )
 
 def _route_cache_get(key, ttl_seconds=None):
@@ -1701,7 +1690,7 @@ SECURE_COOKIE = True
 app = Flask(__name__, template_folder="templates")
 app.config.update(
     COMPRESS_MIMETYPES=["text/html", "text/css", "text/javascript", "application/javascript", "application/json", "image/svg+xml"],
-    COMPRESS_LEVEL=3,
+    COMPRESS_LEVEL=6,
     COMPRESS_MIN_SIZE=512,
     SEND_FILE_MAX_AGE_DEFAULT=timedelta(days=30),
 )
@@ -5456,7 +5445,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
         if excludes:
             params["exclude"] = ",".join(excludes)
     direct_km = haversine_m(start_lat, start_lon, end_lat, end_lon) / 1000.0
-    timeout = 28 if direct_km > 1200 else (16 if direct_km > 300 else 10)
+    timeout = 28 if direct_km > 1200 else 20
     cache_key = (
         round(float(start_lon), 5), round(float(start_lat), 5),
         round(float(end_lon), 5), round(float(end_lat), 5),
@@ -5574,29 +5563,17 @@ def mapbox_routes_via(points, depart_at="now", start_bearing=None, start_speed=N
 
 
 def route_signature(route):
-    if isinstance(route, dict):
-        cached = route.get("_vano_signature_cache")
-        if isinstance(cached, str):
-            return cached
     coords = ((route or {}).get("geometry") or {}).get("coordinates") or []
     if not coords:
         return ""
     step = max(1, len(coords)//18)
     sample = coords[::step][:20]
     raw = "|".join(f"{float(c[0]):.4f},{float(c[1]):.4f}" for c in sample if len(c) >= 2)
-    value = hashlib.sha256(raw.encode("utf-8")).hexdigest()[:18]
-    if isinstance(route, dict):
-        route["_vano_signature_cache"] = value
-    return value
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:18]
 
 
 def route_spatial_cells(route, cell_m=72):
-    """Coarse geometry fingerprint with per-route memoization."""
-    cache_key = f"_vano_spatial_cells_{int(cell_m)}"
-    if isinstance(route, dict):
-        cached = route.get(cache_key)
-        if isinstance(cached, set):
-            return cached
+    """Coarse geometry fingerprint: detects same-road alternatives despite polyline noise."""
     coords = ((route or {}).get("geometry") or {}).get("coordinates") or []
     valid = [(float(c[0]), float(c[1])) for c in coords if len(c) >= 2]
     if len(valid) < 2:
@@ -5608,39 +5585,7 @@ def route_spatial_cells(route, cell_m=72):
     cells = {(int(round(lat/lat_step)), int(round(lon/lon_step))) for lon,lat in valid[::stride]}
     lon, lat = valid[-1]
     cells.add((int(round(lat/lat_step)), int(round(lon/lon_step))))
-    if isinstance(route, dict):
-        route[cache_key] = cells
     return cells
-
-
-def _select_route_enrichment_pool(routes, limit=8):
-    """Keep purpose-built variants while bounding CPU and JSON response size."""
-    ranked = sorted(list(routes or []), key=lambda r: float(r.get("duration") or 10**12))
-    if len(ranked) <= limit:
-        return ranked
-    selected, seen = [], set()
-
-    def add(route):
-        if not route or len(selected) >= limit:
-            return
-        sig = route_signature(route) or f"anon-{id(route)}"
-        if sig in seen:
-            return
-        seen.add(sig)
-        selected.append(route)
-
-    for route in ranked[:3]:
-        add(route)
-    for flag in ("_safety_variant", "_micro_route", "_adaptive_variant", "_event_variant"):
-        for route in ranked:
-            if route.get(flag):
-                add(route)
-                break
-    for route in ranked:
-        add(route)
-        if len(selected) >= limit:
-            break
-    return selected
 
 def route_overlap_ratio(a, b):
     ca, cb = route_spatial_cells(a), route_spatial_cells(b)
@@ -5957,59 +5902,7 @@ def route_traffic_metrics(route):
 
 
 
-_ROUTE_FLOW_ROWS_CACHE = {}
-_ROUTE_FLOW_ROWS_CACHE_LOCK = threading.Lock()
-
-
-def _live_flow_rows_for_routes(routes):
-    """Fetch Live Flow cells once for a candidate set instead of once per route."""
-    coords = []
-    for route in list(routes or [])[:8]:
-        geometry = ((route or {}).get("geometry") or {}).get("coordinates") or []
-        if not geometry:
-            continue
-        stride = max(1, len(geometry)//180)
-        coords.extend(geometry[::stride])
-    if not coords:
-        return []
-    try:
-        lons = [float(c[0]) for c in coords if len(c) >= 2]
-        lats = [float(c[1]) for c in coords if len(c) >= 2]
-    except Exception:
-        return []
-    if not lons or not lats:
-        return []
-    pad = 0.004
-    bounds = (min(lats)-pad, min(lons)-pad, max(lats)+pad, max(lons)+pad)
-    key = tuple(round(x, 3) for x in bounds)
-    now_ts = time.time()
-    with _ROUTE_FLOW_ROWS_CACHE_LOCK:
-        item = _ROUTE_FLOW_ROWS_CACHE.get(key)
-        if item and now_ts-item[0] < _FLOW_QUERY_CACHE_TTL:
-            return copy.deepcopy(item[1])
-    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=20)).replace(microsecond=0).isoformat()
-    try:
-        rows = get_db().execute('''
-            SELECT cell_lat,cell_lon,direction_bucket,AVG(speed_kmh) avg_speed,
-                   COUNT(*) samples,COUNT(DISTINCT source_hash) sources,MAX(created_at) updated_at
-            FROM flow_samples
-            WHERE created_at>=? AND cell_lat BETWEEN ? AND ? AND cell_lon BETWEEN ? AND ?
-            GROUP BY cell_lat,cell_lon,direction_bucket
-            HAVING COUNT(DISTINCT source_hash) >= 3
-            LIMIT 320
-        ''', (cutoff, bounds[0], bounds[2], bounds[1], bounds[3])).fetchall()
-        out = [dict(row) for row in rows]
-    except Exception:
-        out = []
-    with _ROUTE_FLOW_ROWS_CACHE_LOCK:
-        _ROUTE_FLOW_ROWS_CACHE[key] = (now_ts, copy.deepcopy(out))
-        if len(_ROUTE_FLOW_ROWS_CACHE) > 120:
-            for old_key,_ in sorted(_ROUTE_FLOW_ROWS_CACHE.items(), key=lambda kv: kv[1][0])[:30]:
-                _ROUTE_FLOW_ROWS_CACHE.pop(old_key, None)
-    return out
-
-
-def route_live_flow_metrics(route, shared_rows=None):
+def route_live_flow_metrics(route):
     """Cruza a geometria da rota com células anônimas do Vano Maps Live Flow."""
     coords = ((route or {}).get("geometry") or {}).get("coordinates") or []
     if len(coords) < 2:
@@ -6018,7 +5911,18 @@ def route_live_flow_metrics(route, shared_rows=None):
     lats = [float(c[1]) for c in coords if len(c) >= 2]
     if not lons or not lats:
         return {"live_flow_score": 0, "live_flow_cells": 0, "live_flow_confidence": 0, "live_flow_points": []}
-    rows = shared_rows if shared_rows is not None else _live_flow_rows_for_routes([route])
+    db = get_db()
+    prune_flow_samples(db)
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=20)).replace(microsecond=0).isoformat()
+    pad = 0.004
+    rows = db.execute('''
+        SELECT cell_lat,cell_lon,direction_bucket,AVG(speed_kmh) avg_speed,COUNT(*) samples,COUNT(DISTINCT source_hash) sources,MAX(created_at) updated_at
+        FROM flow_samples
+        WHERE created_at>=? AND cell_lat BETWEEN ? AND ? AND cell_lon BETWEEN ? AND ?
+        GROUP BY cell_lat,cell_lon,direction_bucket
+        HAVING COUNT(DISTINCT source_hash) >= 3
+        LIMIT 220
+    ''', (cutoff, min(lats)-pad, max(lats)+pad, min(lons)-pad, max(lons)+pad)).fetchall()
     hits = []
     for row in rows:
         d = min_distance_to_geometry_m(float(row["cell_lat"]), float(row["cell_lon"]), coords)
@@ -11294,11 +11198,9 @@ def api_route():
         extra_excludes = list(dict.fromkeys(motorcycle_excludes + professional_excludes + user_excludes)) or None
         route_base_exclusions = hard_exclusions if (user_nav["professional_driver"] and not fastest_mode) else None
         route_extra_excludes = extra_excludes
-        pool_mode_tier = "fast" if fastest_mode else "safety"
         pool_key = _candidate_pool_cache_key(
             slat,slon,elat,elon,travel_profile,depart_at,adaptive_requested,variant_budget,
             route_base_exclusions,route_extra_excludes,start_bearing,start_speed,reroute_request,
-            pool_mode_tier,
         )
         candidate_pool_cache_hit = False
         candidate_pool_reuse = "none"
@@ -11306,36 +11208,31 @@ def api_route():
             def build_candidate_pool():
                 routes_local, provider_local, base_count_local = motorized_candidate_routes(
                     slon, slat, elon, elat, travel_profile, depart_at=depart_at,
-                    micro_budget=min(5, variant_budget + 1),
+                    micro_budget=min(8, variant_budget + 3),
                     mapbox_exclusions=route_base_exclusions, extra_excludes=route_extra_excludes,
                     start_bearing=start_bearing, start_speed=start_speed, reroute=reroute_request,
                 )
-                if adaptive_requested and provider_local == "mapbox" and not fastest_mode:
-                    routes_local = ensure_adaptive_route_pool(
-                        routes_local, slon, slat, elon, elat, depart_at,
-                        target=3, budget=1,
-                        base_exclusions=route_base_exclusions, extra_excludes=route_extra_excludes,
-                    )
+                if adaptive_requested and provider_local == "mapbox":
+                    routes_local = ensure_adaptive_route_pool(routes_local, slon, slat, elon, elat, depart_at, target=3, budget=min(2,variant_budget), base_exclusions=route_base_exclusions, extra_excludes=route_extra_excludes)
                 if provider_local == "mapbox":
-                    dense_budget = (1 if direct_distance_km < 14 else 2) if fastest_mode else (2 if direct_distance_km < 18 else min(3, max(2, variant_budget)))
                     routes_local.extend(build_dense_micro_route_pool(
                         routes_local, slon, slat, elon, elat, depart_at,
-                        budget=dense_budget,
+                        budget=min(6, variant_budget + 2),
                         base_exclusions=route_base_exclusions, extra_excludes=route_extra_excludes,
                     ))
-                    if fastest_mode and direct_distance_km >= 24 and routes_local:
+                    if routes_local:
                         baseline_probe=min(routes_local,key=lambda r:float(r.get("duration") or 10**12))
                         probe_traffic=route_traffic_metrics(baseline_probe)
-                        if float(probe_traffic.get("traffic_score") or 0)>=86 or int(probe_traffic.get("severe_segments") or 0)>=6:
-                            routes_local.extend(build_fast_micro_routes(routes_local, slon, slat, elon, elat, depart_at)[:2])
+                        if float(probe_traffic.get("traffic_score") or 0)>=72 or int(probe_traffic.get("severe_segments") or 0)>=4:
+                            routes_local.extend(build_fast_micro_routes(routes_local, slon, slat, elon, elat, depart_at))
                     exact = {}
                     for candidate in routes_local:
                         sig = route_signature(candidate) or f"anon-{id(candidate)}"
                         best = exact.get(sig)
                         if best is None or float(candidate.get("duration") or 10**12) < float(best.get("duration") or 10**12): exact[sig] = candidate
-                    routes_local = sorted(exact.values(), key=lambda r: float(r.get("duration", 10**12)))[:10]
+                    routes_local = sorted(exact.values(), key=lambda r: float(r.get("duration", 10**12)))[:18]
                 return {"routes":routes_local,"primary_provider":provider_local,"mapbox_base_count":base_count_local}
-            pooled,candidate_pool_reuse=_candidate_pool_get_or_build(pool_key,build_candidate_pool,wait_timeout=14)
+            pooled,candidate_pool_reuse=_candidate_pool_get_or_build(pool_key,build_candidate_pool,wait_timeout=30)
             candidate_pool_cache_hit=candidate_pool_reuse in {"cache","shared-inflight"}
             routes=pooled["routes"];primary_provider=pooled["primary_provider"];mapbox_base_count=int(pooled.get("mapbox_base_count") or 0)
         else:
@@ -11361,7 +11258,7 @@ def api_route():
         try:
             routes.extend(build_safety_bypass_routes(
                 routes, slon, slat, elon, elat, block_points, depart_at=depart_at,
-                budget=min(3, max(2, variant_budget)),
+                budget=min(6, variant_budget + 2),
             ))
         except Exception:
             app.logger.exception("Could not build admin-area bypass variants")
@@ -11450,7 +11347,7 @@ def api_route():
         if safety_avoidance:
             safe_variants = build_safety_bypass_routes(
                 routes, slon, slat, elon, elat, safety_avoidance, depart_at=depart_at,
-                budget=min(3, max(2, variant_budget)),
+                budget=min(5, variant_budget + 1),
             )
             routes.extend(safe_variants)
             # Exact dedupe only. A one-block safety detour may intentionally overlap
@@ -11473,13 +11370,11 @@ def api_route():
     safety_bias = clamp(requested_safety_bias * (1-history_strength) + float(learned["safety_bias"]) * history_strength + user_nav["safety_delta"], 0, 100)
     traffic_bias = clamp(requested_traffic_bias * (1-history_strength) + float(learned["traffic_bias"]) * history_strength + user_nav["traffic_delta"], 0, 100)
 
-    enrichment_routes = _select_route_enrichment_pool(routes, limit=8 if is_motorized_profile(travel_profile) else 6)
-    shared_flow_rows = _live_flow_rows_for_routes(enrichment_routes) if is_motorized_profile(travel_profile) else []
     enriched = []
-    for idx, route in enumerate(enrichment_routes):
+    for idx, route in enumerate(routes[:14]):
         metrics = route_risk_metrics(route, reports, risk_zones, local_hour, travel_profile)
         traffic = route_traffic_metrics(route) if is_motorized_profile(travel_profile) else {"traffic_score": 0, "traffic_level": "—", "congested_distance_km": 0, "severe_segments": 0, "traffic_segments": []}
-        flow = route_live_flow_metrics(route, shared_flow_rows) if is_motorized_profile(travel_profile) else {"live_flow_score": 0, "live_flow_cells": 0, "live_flow_confidence": 0, "live_flow_points": []}
+        flow = route_live_flow_metrics(route) if is_motorized_profile(travel_profile) else {"live_flow_score": 0, "live_flow_cells": 0, "live_flow_confidence": 0, "live_flow_points": []}
         if is_motorized_profile(travel_profile) and int(flow.get("live_flow_cells") or 0) > 0:
             mapbox_score = float(traffic.get("traffic_score") or 0)
             live_score = float(flow.get("live_flow_score") or 0)
@@ -11577,7 +11472,7 @@ def api_route():
         # almost all of the same trip.
         if not smart_micro_locked and (route_overlap_ratio(smart, fastest) >= .93 or route_overlap_ratio(smart, safest) >= .93):
             best_spark = float(smart.get("rairo_score",0) or 0)
-            diverse_smart = [r for r in (eligible or candidate_pool) if route_overlap_ratio(r, fastest) < .93 and route_overlap_ratio(r, safest) < .93 and float(r.get("rairo_score",0) or 0) >= best_spark-10]
+            diverse_smart = [r for r in (eligible or candidate_pool) if route_overlap_ratio(r, fastest) < .93 and route_overlap_ratio(r, safest) < .93 and float(r.get("rairo_score",0) or 0) >= best_rairo-10]
             if diverse_smart:
                 smart = max(diverse_smart, key=lambda r:(float(r.get("rairo_score",0)), -float(r.get("duration",0))))
     else:
