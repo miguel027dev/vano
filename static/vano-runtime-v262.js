@@ -1,6 +1,6 @@
 (()=>{
   'use strict';
-  const BUILD=(window.VANO&&window.VANO.build)||'264.0.0';
+  const BUILD=(window.VANO&&window.VANO.build)||'262.0.0';
   const DEFAULT_TIMEOUT=15000;
   class VanoHttpError extends Error{
     constructor(message,{status=0,code='',data=null,retryAfter='',url=''}={}){super(message);this.name='VanoHttpError';this.status=status;this.code=code;this.data=data;this.retryAfter=retryAfter;this.url=url;}

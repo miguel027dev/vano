@@ -6863,14 +6863,3 @@ html[data-vano-theme="black"] .vano-confirm-card{background:#211e1b;color:#fff9f
   html[data-vano-theme="black"] body.body-nav #activeNav.nav-panel.nav-minimal{border:1px solid rgba(255,255,255,.11)!important}
 }
 @media(max-width:380px){body.body-nav #activeNav.nav-panel.nav-minimal{left:6px!important;right:6px!important;border-radius:19px!important}}
-
-/* V264 — GPS puck compositor hint. Mapbox updates the marker transform every
-   animation frame; keeping it on its own compositor layer avoids tiny layout
-   stalls without adding a second CSS transition on top of the motion model. */
-.ws-app .mapboxgl-marker.user-marker,
-.ws-app .mapboxgl-marker.vano-user-puck-v230,
-.ws-app .user-marker.vano-uploaded-user{
-  will-change:transform;
-  backface-visibility:hidden;
-  -webkit-backface-visibility:hidden;
-}
