@@ -40,7 +40,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "264.0.0").strip() or "264.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "265.0.0").strip() or "265.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -1746,6 +1746,11 @@ def security_headers(response):
         response.headers["Cache-Control"] = "no-store, max-age=0"
     if request.path == "/healthz":
         response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+    elif request.path == "/api/benchmark/route":
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Accept, Content-Type"
         response.headers["Cache-Control"] = "no-store, max-age=0"
     elif request.path.startswith("/static/"):
         # Critical map/runtime bundles must be revalidated. Keeping them
@@ -9382,9 +9387,8 @@ def _admin_single_node_snapshot(node_index, refresh=False):
 
 
 @app.route("/admin/benchmark")
-@admin_required
 def admin_benchmark():
-    """Internal route lab. Browser calls /api/route with prefetch=1 so tests do not pollute route history."""
+    """Temporarily public route lab. Only this admin-namespaced page is public."""
     return render_template(
         "admin_benchmark.html",
         mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
@@ -11313,24 +11317,37 @@ def _heavy_route_central_fallback(slat, slon, elat, elon, travel_profile, mode, 
     }
 
 
-@app.route("/api/route")
-def api_route():
+@app.route("/api/benchmark/route", defaults={"public_benchmark": True})
+@app.route("/api/route", defaults={"public_benchmark": False})
+def api_route(public_benchmark=False):
     truthy = {"1", "true", "on", "yes"}
     prefetch_requested = str(request.args.get("prefetch", "0")).strip().lower() in truthy
-    benchmark_requested = str(request.headers.get("X-VANO-Benchmark", "0")).strip().lower() in truthy
-    if benchmark_requested:
+    benchmark_header_requested = str(request.headers.get("X-VANO-Benchmark", "0")).strip().lower() in truthy
+    benchmark_requested = bool(public_benchmark or benchmark_header_requested)
+
+    # The dedicated benchmark endpoint is intentionally public for uptime/QA.
+    # The legacy benchmark header on /api/route remains admin-only so a caller
+    # cannot turn the normal route endpoint into an unrestricted guest bypass.
+    if benchmark_header_requested and not public_benchmark:
         user = current_user()
         if not user or str(user["role"] or "") != "admin":
-            return jsonify({"ok": False, "error": "benchmark_admin_required", "message": "Benchmark disponível somente para administradores."}), 403
+            return jsonify({"ok": False, "error": "benchmark_admin_required", "message": "Benchmark interno disponível somente para administradores."}), 403
+    if benchmark_requested:
         prefetch_requested = True
-    rate_bucket = "route-benchmark" if benchmark_requested else ("route-prefetch" if prefetch_requested else "route")
-    rate_limit_max = 120 if benchmark_requested else (36 if prefetch_requested else 30)
+
+    if public_benchmark:
+        rate_bucket, rate_limit_max = "route-benchmark-public", 60
+    elif benchmark_requested:
+        rate_bucket, rate_limit_max = "route-benchmark-admin", 120
+    else:
+        rate_bucket = "route-prefetch" if prefetch_requested else "route"
+        rate_limit_max = 36 if prefetch_requested else 30
     if not rate_limit(rate_bucket, rate_limit_max, 60):
         return jsonify({"error": "Muitos cálculos de rota. Aguarde um instante."}), 429
 
     trial_id = re.sub(r"[^A-Za-z0-9_-]", "", str(request.args.get("trial_id", "") or ""))[:64]
     existing_guest_trials = guest_trial_ids() if not session.get("user_id") else []
-    if not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
+    if (not benchmark_requested) and not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
         return jsonify({
             "error": "Crie uma conta ou entre para continuar.",
             "code": "guest_route_limit_reached",
