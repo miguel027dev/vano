@@ -45,7 +45,24 @@ def register_mobile_routes(app, core: dict) -> None:
     # V275 — native navigation workload contract. The Android app can do the
     # high-frequency, deterministic work locally while the server keeps route
     # generation, traffic intelligence, safety scoring and reroute calculation.
-    nav_contract_version = 1
+    nav_contract_version = 2
+
+    def mobile_mapbox_config():
+        token = str(core.get("MAPBOX_ACCESS_TOKEN") or "").strip()
+        style_day = str(core.get("MAPBOX_STYLE") or core.get("MAPBOX_STYLE_DAY") or "").strip()
+        style_afternoon = str(core.get("MAPBOX_STYLE_AFTERNOON") or style_day).strip()
+        style_night = str(core.get("MAPBOX_STYLE_NIGHT") or style_day).strip()
+        return {
+            "enabled": bool(token and style_day),
+            "engine": "mapbox-android",
+            "sdk_target": "11.29.1",
+            "access_token": token,
+            "styles": {
+                "day": style_day,
+                "afternoon": style_afternoon or style_day,
+                "night": style_night or style_day,
+            },
+        }
 
     def mobile_navigation_policy():
         return {
@@ -87,6 +104,7 @@ def register_mobile_routes(app, core: dict) -> None:
                 "route_cache_keep": 3,
             },
             "render": {
+                "engine": "mapbox-android",
                 "fps_low": 30,
                 "fps_normal": 45,
                 "fps_high": 60,
@@ -278,6 +296,7 @@ def register_mobile_routes(app, core: dict) -> None:
             "navigation_config_endpoint": "/api/mobile/navigation/config",
             "telemetry_batch_endpoint": "/api/mobile/navigation/batch",
             "navigation": mobile_navigation_policy(),
+            "mapbox": mobile_mapbox_config(),
         })
         response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
         response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
@@ -289,6 +308,7 @@ def register_mobile_routes(app, core: dict) -> None:
             "ok": True,
             "server_build": server_build,
             "navigation": mobile_navigation_policy(),
+            "mapbox": mobile_mapbox_config(),
         })
         response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=900"
         response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
