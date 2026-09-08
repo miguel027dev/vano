@@ -2,6 +2,19 @@
 {% block legacy_map_assets %}{% endblock %}
 {% block title %}VANO MAPS — rotas seguras em tempo real{% endblock %}
 {% block head %}
+<script>
+(()=>{
+  try{
+    const q=new URLSearchParams(location.search);
+    if(q.get('web_map')==='1'||q.has('shared'))return;
+    const bridge=window.VanoNative||window.ViennaNative;
+    if(!bridge||typeof bridge.nativeMapScreenAvailable!=='function'||typeof bridge.openNativeMapScreen!=='function')return;
+    if(!bridge.nativeMapScreenAvailable())return;
+    window.__VANO_NATIVE_SCREEN_HANDOFF=true;
+    bridge.openNativeMapScreen(JSON.stringify({contract_version:3,source:'map-index',config:'/api/mobile/native-map/config',session:'/api/mobile/native-map/session'}));
+  }catch(e){console.debug('[VANO MAPS:native-screen-handoff]',e)}
+})();
+</script>
 <link rel="preconnect" href="https://api.mapbox.com" crossorigin>
 <link rel="dns-prefetch" href="//api.mapbox.com">
 <link rel="preload" href="{{ url_for('static', filename='icons/vano/destination.svg') }}" as="image" type="image/svg+xml">
@@ -10,7 +23,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v230.js') }}?v={{ vano_build_id }}-277">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v230.js') }}?v={{ vano_build_id }}-278">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
@@ -2160,6 +2173,7 @@ html.vano-native-map-active #map .mapboxgl-control-container{visibility:hidden!i
 // Load Mapbox first, verify the global exists, and only then execute the VANO MAPS
 // map core. This avoids a blank map when a regional CDN request is slow/fails.
 (()=>{
+  if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
   const MAIN={{ (url_for('static', filename='vano-map-v230.js') ~ '?v=' ~ vano_build_id ~ '-277')|tojson }};

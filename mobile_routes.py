@@ -41,11 +41,12 @@ def register_mobile_routes(app, core: dict) -> None:
     remember_login_days = int(core["REMEMBER_LOGIN_DAYS"])
     server_build = str(core.get("VANO_BUILD_ID") or "275.0.0")
     record_activity = core.get("record_activity")
+    csrf_token_fn = core.get("csrf_token")
 
     # V275 — native navigation workload contract. The Android app can do the
     # high-frequency, deterministic work locally while the server keeps route
     # generation, traffic intelligence, safety scoring and reroute calculation.
-    nav_contract_version = 2
+    nav_contract_version = 3
 
     def mobile_mapbox_config():
         token = str(core.get("MAPBOX_ACCESS_TOKEN") or "").strip()
@@ -54,7 +55,7 @@ def register_mobile_routes(app, core: dict) -> None:
         style_night = str(core.get("MAPBOX_STYLE_NIGHT") or style_day).strip()
         return {
             "enabled": bool(token and style_day),
-            "engine": "mapbox-android",
+            "engine": "mapbox-maps-android",
             "sdk_target": "11.29.1",
             "access_token": token,
             "styles": {
@@ -67,7 +68,10 @@ def register_mobile_routes(app, core: dict) -> None:
     def mobile_navigation_policy():
         return {
             "contract_version": nav_contract_version,
+            "architecture": "native-map-screen-v1",
             "processing": {
+                "map_rendering": "device",
+                "hud_rendering": "device",
                 "camera": "device",
                 "gps_smoothing": "device",
                 "speed_filter": "device",
@@ -85,16 +89,18 @@ def register_mobile_routes(app, core: dict) -> None:
                 "safety_scoring": "server",
                 "micro_routing": "server",
                 "reroute_calculation": "server",
+                "event_disruption": "server",
             },
             "navigation": {
                 "off_route_threshold_m": 500,
                 "off_route_confirm_ms": 2200,
-                "gps_moving_interval_ms": 1000,
-                "gps_fastest_interval_ms": 500,
-                "gps_stationary_interval_ms": 3000,
-                "gps_min_distance_m": 3,
-                "progress_tick_ms": 250,
-                "voice_tick_ms": 250,
+                "gps_moving_interval_ms": 500,
+                "gps_fastest_interval_ms": 250,
+                "gps_stationary_interval_ms": 2500,
+                "gps_min_distance_m": 1,
+                "progress_tick_ms": 100,
+                "camera_target_tick_ms": 100,
+                "voice_tick_ms": 200,
                 "server_progress_sync_ms": 15000,
                 "traffic_refresh_ms": 30000,
                 "alerts_refresh_ms": 20000,
@@ -104,21 +110,76 @@ def register_mobile_routes(app, core: dict) -> None:
                 "route_cache_keep": 3,
             },
             "render": {
-                "engine": "mapbox-android",
+                "engine": "mapbox-maps-android",
+                "native_map_only_during_map_screen": True,
+                "webview_map_engine": False,
+                "target_fps": 60,
                 "fps_low": 30,
-                "fps_normal": 45,
+                "fps_normal": 60,
                 "fps_high": 60,
                 "prefer_native_location": True,
+                "coalesce_camera_updates": True,
+                "avoid_overlapping_camera_animations": True,
                 "pause_nonessential_when_backgrounded": True,
             },
             "route_payload": {
                 "geometry": "geojson",
                 "steps": True,
                 "road_controls": True,
+                "speed_limits": True,
                 "voice_prompts": True,
+                "traffic_live_via_endpoint": True,
+                "events_live_via_endpoint": True,
+                "compact_payload_contract_version": 1,
                 "mobile_compact_query": "mobile_compact=1",
                 "mobile_compact_header": "X-VANO-Mobile-Compact: 1",
                 "max_delivered_routes": 3,
+            },
+        }
+
+    def native_map_endpoints():
+        return {
+            "search": "/api/search-suggestions",
+            "geocode": "/api/geocode",
+            "route": "/api/route",
+            "alerts": "/api/alerts",
+            "alerts_quick": "/api/alerts/quick",
+            "road_awareness": "/api/road-awareness",
+            "traffic_recommendation": "/api/traffic-recommendation",
+            "event_route_check": "/api/event-route-check",
+            "nearby_drivers": "/api/nearby-drivers",
+            "presence": "/api/presence",
+            "saved_places": "/api/saved-places",
+            "parking_nearby": "/api/parking-nearby",
+            "weather_now": "/api/weather-now",
+            "share_route": "/api/share-route",
+            "live_trip": "/api/live-trip",
+            "telemetry_batch": "/api/mobile/navigation/batch",
+        }
+
+    def native_map_ui_contract():
+        return {
+            "screen": "android-native",
+            "webview_required": False,
+            "design_source": "vano-map-v277",
+            "portrait": True,
+            "landscape": True,
+            "dark_mode": True,
+            "hud": {
+                "maneuver_card": True,
+                "street_chip": True,
+                "speedometer": True,
+                "arrival_card": True,
+                "route_picker": True,
+                "side_controls": True,
+                "traffic_radar": True,
+                "alerts": True,
+            },
+            "handoff": {
+                "availability_method": "nativeMapScreenAvailable",
+                "open_method": "openNativeMapScreen",
+                "web_fallback": True,
+                "debug_web_query": "web_map=1",
             },
         }
 
@@ -294,8 +355,12 @@ def register_mobile_routes(app, core: dict) -> None:
             "entry": "/mobile/entry",
             "route_endpoint": "/api/route",
             "navigation_config_endpoint": "/api/mobile/navigation/config",
+            "native_map_config_endpoint": "/api/mobile/native-map/config",
+            "native_map_session_endpoint": "/api/mobile/native-map/session",
             "telemetry_batch_endpoint": "/api/mobile/navigation/batch",
+            "native_map_screen": True,
             "navigation": mobile_navigation_policy(),
+            "native_map": native_map_ui_contract(),
             "mapbox": mobile_mapbox_config(),
         })
         response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
@@ -308,9 +373,57 @@ def register_mobile_routes(app, core: dict) -> None:
             "ok": True,
             "server_build": server_build,
             "navigation": mobile_navigation_policy(),
+            "native_map": native_map_ui_contract(),
             "mapbox": mobile_mapbox_config(),
         })
         response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=900"
+        response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
+        return response
+
+    @app.get("/api/mobile/native-map/config")
+    def mobile_native_map_config():
+        response = jsonify({
+            "ok": True,
+            "server_build": server_build,
+            "contract_version": nav_contract_version,
+            "mapbox": mobile_mapbox_config(),
+            "native_map": native_map_ui_contract(),
+            "navigation": mobile_navigation_policy(),
+            "endpoints": native_map_endpoints(),
+            "route_request": {
+                "query": {"mobile_compact": 1, "adaptive": 1},
+                "headers": {"X-VANO-Mobile-Compact": "1"},
+            },
+        })
+        response.headers["Cache-Control"] = "public, max-age=120, stale-while-revalidate=600"
+        response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
+        return response
+
+    @app.get("/api/mobile/native-map/session")
+    def mobile_native_map_session():
+        user = current_user()
+        logged_in = bool(user and user["is_active"])
+        csrf_value = ""
+        if callable(csrf_token_fn):
+            try:
+                csrf_value = str(csrf_token_fn() or "")
+            except Exception:
+                csrf_value = ""
+        response = jsonify({
+            "ok": True,
+            "server_build": server_build,
+            "contract_version": nav_contract_version,
+            "logged_in": logged_in,
+            "csrf": csrf_value,
+            "entry": "/mobile/entry",
+            "endpoints": native_map_endpoints(),
+            "route_request": {
+                "query": {"mobile_compact": 1, "adaptive": 1},
+                "headers": {"X-VANO-Mobile-Compact": "1"},
+            },
+        })
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
         response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
         return response
 
@@ -359,6 +472,7 @@ def register_mobile_routes(app, core: dict) -> None:
             "entry": "/mobile/entry",
             "server_build": server_build,
             "navigation_contract": nav_contract_version,
+            "native_map_screen": True,
         })
         response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
         return response
