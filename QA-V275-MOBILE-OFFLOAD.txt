@@ -1,0 +1,37 @@
+VANO MAPS — SERVER v275 MOBILE OFFLOAD
+
+BASE
+- Full server based on the user's stable vano-dc235... server package.
+- Current UI preserved with the approved V274 portrait/landscape files.
+- No visual redesign was introduced by the mobile-offload work.
+
+SERVER CHANGES
+- GET /api/mobile/bootstrap now exists (the Android 2.1.6 startup warmup already calls this path).
+- GET /api/mobile/navigation/config publishes the device/server workload contract.
+- POST /api/mobile/navigation/batch accepts batched lightweight client events (max 32/request; raw location not persisted here).
+- GET /api/route supports opt-in mobile_compact=1 or X-VANO-Mobile-Compact: 1.
+- Compact mobile delivery returns the selected route + up to two useful alternatives and strips server-only fields.
+- Full route payload remains cached server-side; web behavior is unchanged without the opt-in.
+- Mobile bootstrap/config/batch/health skip request-audit and authenticated-IP writes to keep high-frequency traffic cheap.
+- Flask compression level reduced from 6 to 3 to spend less CPU per dynamic JSON response.
+- Gunicorn keep-alive raised from 5s to 10s.
+- Existing Smart-route typo best_rairo -> best_spark corrected.
+- Build id: 275.0.0.
+
+NEXT AAB DEVICE-SIDE WORK
+- GPS smoothing, speed/bearing filters.
+- Camera and look-ahead animation.
+- Polyline progress / travelled-route trimming.
+- Distance-to-maneuver and local voice timing.
+- Alert/road-control visibility filtering.
+- Off-route detection locally; server called only for actual reroute calculation.
+- Route/UI state cache and batched telemetry.
+
+VALIDATION
+- app.py / mobile_routes.py / db_backend.py / vano_osint_bridge.py: py_compile OK.
+- app.py and mobile_routes.py: AST parse OK.
+- Mobile compact helper: isolated functional test OK.
+- New endpoint decorators: AST-enumerated and verified.
+- V274 map JS: node --check OK.
+- Current V274 template and map JS copied byte-for-byte from the approved V274 modified-only package.
+- Full Flask runtime smoke test was not possible in this container because Flask/Werkzeug are not installed here; render.yaml installs requirements.txt before startup.

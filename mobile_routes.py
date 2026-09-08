@@ -39,6 +39,70 @@ def register_mobile_routes(app, core: dict) -> None:
     rate_limit = core["rate_limit"]
     remember_cookie_name = core["REMEMBER_COOKIE_NAME"]
     remember_login_days = int(core["REMEMBER_LOGIN_DAYS"])
+    server_build = str(core.get("VANO_BUILD_ID") or "275.0.0")
+    record_activity = core.get("record_activity")
+
+    # V275 — native navigation workload contract. The Android app can do the
+    # high-frequency, deterministic work locally while the server keeps route
+    # generation, traffic intelligence, safety scoring and reroute calculation.
+    nav_contract_version = 1
+
+    def mobile_navigation_policy():
+        return {
+            "contract_version": nav_contract_version,
+            "processing": {
+                "camera": "device",
+                "gps_smoothing": "device",
+                "speed_filter": "device",
+                "bearing_filter": "device",
+                "route_progress": "device",
+                "route_trim": "device",
+                "maneuver_tracking": "device",
+                "voice_timing": "device",
+                "alert_visibility": "device",
+                "off_route_detection": "device",
+                "ui_state": "device",
+                "route_generation": "server",
+                "route_selection": "server",
+                "traffic_global": "server",
+                "safety_scoring": "server",
+                "micro_routing": "server",
+                "reroute_calculation": "server",
+            },
+            "navigation": {
+                "off_route_threshold_m": 500,
+                "off_route_confirm_ms": 2200,
+                "gps_moving_interval_ms": 1000,
+                "gps_fastest_interval_ms": 500,
+                "gps_stationary_interval_ms": 3000,
+                "gps_min_distance_m": 3,
+                "progress_tick_ms": 250,
+                "voice_tick_ms": 250,
+                "server_progress_sync_ms": 15000,
+                "traffic_refresh_ms": 30000,
+                "alerts_refresh_ms": 20000,
+                "telemetry_flush_ms": 30000,
+                "telemetry_batch_max": 24,
+                "route_cache_ttl_s": 120,
+                "route_cache_keep": 3,
+            },
+            "render": {
+                "fps_low": 30,
+                "fps_normal": 45,
+                "fps_high": 60,
+                "prefer_native_location": True,
+                "pause_nonessential_when_backgrounded": True,
+            },
+            "route_payload": {
+                "geometry": "geojson",
+                "steps": True,
+                "road_controls": True,
+                "voice_prompts": True,
+                "mobile_compact_query": "mobile_compact=1",
+                "mobile_compact_header": "X-VANO-Mobile-Compact: 1",
+                "max_delivered_routes": 3,
+            },
+        }
 
     # One canonical setting for the APK bridge. Keep legacy aliases only as
     # compatibility fallbacks so old deployments do not break silently.
@@ -202,11 +266,79 @@ def register_mobile_routes(app, core: dict) -> None:
         response.headers["Cache-Control"] = "no-store, max-age=0"
         return response
 
+    @app.get("/api/mobile/bootstrap")
+    def mobile_bootstrap():
+        # Tiny, cacheable response used by Android during process startup.
+        response = jsonify({
+            "ok": True,
+            "server_build": server_build,
+            "mobile_bridge": True,
+            "entry": "/mobile/entry",
+            "route_endpoint": "/api/route",
+            "navigation_config_endpoint": "/api/mobile/navigation/config",
+            "telemetry_batch_endpoint": "/api/mobile/navigation/batch",
+            "navigation": mobile_navigation_policy(),
+        })
+        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+        response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
+        return response
+
+    @app.get("/api/mobile/navigation/config")
+    def mobile_navigation_config():
+        response = jsonify({
+            "ok": True,
+            "server_build": server_build,
+            "navigation": mobile_navigation_policy(),
+        })
+        response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=900"
+        response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
+        return response
+
+    @app.post("/api/mobile/navigation/batch")
+    def mobile_navigation_batch():
+        # The next Android build batches lightweight telemetry instead of doing
+        # one HTTP request per navigation tick. Raw location is intentionally not
+        # persisted here. This endpoint is cheap even when the audit trail is off.
+        if not rate_limit("mobile-navigation-batch", 90, 60):
+            return jsonify({"ok": False, "error": "rate_limited"}), 429
+        data = request.get_json(silent=True) or {}
+        events = data.get("events") or []
+        if not isinstance(events, list):
+            return jsonify({"ok": False, "error": "invalid_events"}), 400
+        events = events[:32]
+        counters = {}
+        for item in events:
+            if not isinstance(item, dict):
+                continue
+            kind = re.sub(r"[^a-z0-9_-]", "", str(item.get("type") or "event").lower())[:32] or "event"
+            counters[kind] = counters.get(kind, 0) + 1
+        if callable(record_activity) and os.environ.get("VANO_MOBILE_BATCH_AUDIT", "0").strip().lower() in {"1", "true", "yes", "on"}:
+            try:
+                record_activity("performance", {
+                    "target": "mobile_navigation_batch",
+                    "label": f"{sum(counters.values())} events",
+                    "types": counters,
+                }, status_code=202, method="BATCH", path="/api/mobile/navigation/batch", endpoint="mobile_navigation_batch")
+            except Exception:
+                pass
+        response = jsonify({
+            "ok": True,
+            "accepted": sum(counters.values()),
+            "next_flush_ms": int(mobile_navigation_policy()["navigation"]["telemetry_flush_ms"]),
+        })
+        response.status_code = 202
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        return response
+
     @app.get("/mobile/health")
     def mobile_health():
-        return jsonify({
+        response = jsonify({
             "ok": True,
             "mobile_bridge": True,
             "google_configured": bool(google_ready()),
             "entry": "/mobile/entry",
+            "server_build": server_build,
+            "navigation_contract": nav_contract_version,
         })
+        response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
+        return response

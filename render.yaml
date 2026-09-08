@@ -8,7 +8,7 @@ services:
     runtime: python
     plan: free
     buildCommand: python -m pip install --upgrade pip && python -m pip install -r requirements.txt && python -m py_compile app.py db_backend.py mobile_routes.py vano_osint_bridge.py
-    startCommand: VANO_SKIP_DB_INIT=1 RAIRO_DB_INIT_ONLY=1 python -c "from app import init_db_with_retry; init_db_with_retry()" && VANO_SKIP_DB_INIT=1 python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 6 --timeout 120 --keep-alive 5 --access-logfile - --error-logfile -
+    startCommand: VANO_SKIP_DB_INIT=1 RAIRO_DB_INIT_ONLY=1 python -c "from app import init_db_with_retry; init_db_with_retry()" && VANO_SKIP_DB_INIT=1 python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 6 --timeout 120 --keep-alive 10 --access-logfile - --error-logfile -
     healthCheckPath: /healthz
     envVars:
       # DATABASE_URL is the canonical PostgreSQL connection string used by VANO MAPS. Legacy resource names are retained to preserve the existing database.
@@ -102,7 +102,7 @@ services:
       - key: PUBLIC_SITE_URL
         value: https://vanomaps.online
       - key: VANO_BUILD_ID
-        value: 266.0.0
+        value: 275.0.0
       - key: VANO_KEEPALIVE_URL
         value: https://vanomaps.online
       # V264 global search providers. No secret/key is required; PHOTON_URL can

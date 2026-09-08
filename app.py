@@ -40,7 +40,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "267.0.0").strip() or "267.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "275.0.0").strip() or "275.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -1580,9 +1580,70 @@ def _record_route_history_from_payload(payload, slat, slon, elat, elon, mode):
     except Exception:
         pass
 
+_MOBILE_ROUTE_KEEP_FIELDS = {
+    "id", "distance", "duration", "duration_min", "geometry", "steps", "profile", "badges",
+    "routing_provider", "routing_profile_used", "route_signature",
+    "micro_route", "micro_strategy", "micro_streets", "micro_traffic_relief",
+    "eta_gain_s", "eta_gain_min", "adaptive_variant", "safety_variant",
+    "safety_score", "safety_conservative_score", "safety_level", "safety_level_label",
+    "data_confidence", "decision_confidence", "risk_exposure_pct", "hotspot_risk",
+    "traffic_score", "traffic_level", "congested_distance_km", "severe_segments",
+    "live_flow_score", "live_flow_confidence",
+    "road_controls", "road_controls_count", "known_speed_limits", "speed_limit_points",
+    "incidents_count", "closures_count", "eta_delta_vs_fastest_min", "safety_gain_vs_fastest",
+}
+
+def _mobile_compact_route_payload(payload):
+    """Trim route delivery for the native client without changing route selection.
+
+    The full payload remains cached/server-side. Android receives the selected
+    route plus at most two useful alternatives and only fields needed for local
+    navigation. This reduces JSON serialization, transfer and WebView/native
+    parsing while preserving the current web response by default.
+    """
+    result = copy.deepcopy(payload)
+    routes = list(result.get("routes") or [])
+    selected_id = result.get("selected_id")
+    selected = next((r for r in routes if str(r.get("id")) == str(selected_id)), routes[0] if routes else None)
+    ranked = []
+    if selected is not None:
+        ranked.append(selected)
+    # Prefer semantically useful alternatives (fastest/safest/smart) before ETA order.
+    for badge in ("fastest", "safest", "smart"):
+        for route in routes:
+            if route in ranked:
+                continue
+            if badge in (route.get("badges") or []):
+                ranked.append(route)
+                break
+    for route in sorted(routes, key=lambda r: float(r.get("duration") or 10**12)):
+        if route not in ranked:
+            ranked.append(route)
+        if len(ranked) >= 3:
+            break
+    ranked = ranked[:3]
+    compact = []
+    for route in ranked:
+        compact.append({k: copy.deepcopy(v) for k, v in route.items() if k in _MOBILE_ROUTE_KEEP_FIELDS})
+    result["routes"] = compact
+    result["mobile_delivery"] = {
+        "compact": True,
+        "contract_version": 1,
+        "route_count": len(compact),
+        "full_payload_cached_server_side": True,
+        "processing_hint": "device-navigation-v1",
+    }
+    return result
+
 def _finish_route_payload(payload, cache_key, prefetch_requested, trial_id, slat, slon, elat, elon, mode, cache_hit=False):
     _route_result_cache_put(cache_key, payload)
     result = copy.deepcopy(payload)
+    mobile_compact = (
+        str(request.args.get("mobile_compact", "0")).strip().lower() in {"1", "true", "yes", "on"}
+        or str(request.headers.get("X-VANO-Mobile-Compact", "0")).strip().lower() in {"1", "true", "yes", "on"}
+    )
+    if mobile_compact:
+        result = _mobile_compact_route_payload(result)
     if prefetch_requested:
         # Explicit marker lets the browser know this response is safe to display
         # only after confirmation. No guest credit/history is touched here.
@@ -1690,7 +1751,7 @@ SECURE_COOKIE = True
 app = Flask(__name__, template_folder="templates")
 app.config.update(
     COMPRESS_MIMETYPES=["text/html", "text/css", "text/javascript", "application/javascript", "application/json", "image/svg+xml"],
-    COMPRESS_LEVEL=6,
+    COMPRESS_LEVEL=3,
     COMPRESS_MIN_SIZE=512,
     SEND_FILE_MAX_AGE_DEFAULT=timedelta(days=30),
 )
@@ -2650,7 +2711,11 @@ def record_request_activity(response):
         endpoint = request.endpoint or ""
         # Static files are already covered by web-server/CDN logs; recording them
         # would drown out the user journey and create unnecessary database writes.
-        if endpoint != "static" and request.path != "/healthz" and endpoint != "api_telemetry_event":
+        fast_mobile_paths = {
+            "/api/mobile/bootstrap", "/api/mobile/navigation/config",
+            "/api/mobile/navigation/batch", "/mobile/health",
+        }
+        if endpoint != "static" and request.path != "/healthz" and endpoint != "api_telemetry_event" and request.path not in fast_mobile_paths:
             started = getattr(g, "rairo_request_started", None)
             duration = int((time.monotonic() - started) * 1000) if started else 0
             meta = {
@@ -2875,7 +2940,11 @@ def restore_persistent_login():
 @app.before_request
 def record_authenticated_ip():
     uid = session.get("user_id")
-    if not uid or request.endpoint in {"static", "healthz"}:
+    fast_mobile_paths = {
+        "/api/mobile/bootstrap", "/api/mobile/navigation/config",
+        "/api/mobile/navigation/batch", "/mobile/health",
+    }
+    if not uid or request.endpoint in {"static", "healthz"} or request.path in fast_mobile_paths:
         return
     record_user_access(uid)
 
@@ -2971,6 +3040,7 @@ def enforce_profile_onboarding():
     allowed = {
         "onboarding", "logout", "google_login", "google_callback", "login", "register",
         "healthz", "static", "frame_test", "embed",
+        "mobile_bootstrap", "mobile_navigation_config", "mobile_navigation_batch", "mobile_health",
     }
     if endpoint in allowed or endpoint.startswith("static"):
         return
@@ -11472,7 +11542,7 @@ def api_route():
         # almost all of the same trip.
         if not smart_micro_locked and (route_overlap_ratio(smart, fastest) >= .93 or route_overlap_ratio(smart, safest) >= .93):
             best_spark = float(smart.get("rairo_score",0) or 0)
-            diverse_smart = [r for r in (eligible or candidate_pool) if route_overlap_ratio(r, fastest) < .93 and route_overlap_ratio(r, safest) < .93 and float(r.get("rairo_score",0) or 0) >= best_rairo-10]
+            diverse_smart = [r for r in (eligible or candidate_pool) if route_overlap_ratio(r, fastest) < .93 and route_overlap_ratio(r, safest) < .93 and float(r.get("rairo_score",0) or 0) >= best_spark-10]
             if diverse_smart:
                 smart = max(diverse_smart, key=lambda r:(float(r.get("rairo_score",0)), -float(r.get("duration",0))))
     else:
