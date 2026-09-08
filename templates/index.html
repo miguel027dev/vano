@@ -10,7 +10,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v230.js') }}?v={{ vano_build_id }}">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v230.js') }}?v={{ vano_build_id }}-274">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
@@ -1397,6 +1397,342 @@ html[data-vano-theme="black"] #routeState.vano-route-studio .vr-hero{background:
   body.body-nav #vanoSpeedValueV220{font-size:20px!important}
 }
 
+
+/* ==================================================================
+   VANO V274 — final lower HUD lift + portrait/landscape polish
+   Keeps the whole driving instrument cluster on one spacing system.
+   ================================================================== */
+@media (max-width:899px){
+  body.body-nav{
+    --vano-hud-lift:20px;
+    --vano-hud-card-h:64px;
+    --vano-hud-edge:8px;
+    --vano-hud-control:44px;
+    --vano-hud-gap:8px;
+  }
+
+  /* Raise the complete lower HUD by ~20 px, preserving relative geometry. */
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+    bottom:calc(max(6px,env(safe-area-inset-bottom)) + var(--vano-hud-lift))!important;
+    min-height:64px!important;
+    padding:5px 6px!important;
+    border-radius:23px!important;
+    border-color:rgba(27,31,38,.095)!important;
+    background:rgba(252,252,253,.99)!important;
+    box-shadow:0 10px 30px rgba(15,19,27,.135),inset 0 1px 0 rgba(255,255,255,.96)!important;
+    transform:translateZ(0)!important;
+    contain:layout paint style!important;
+  }
+  body.body-nav #activeNav .nav-summary-row{
+    min-height:52px!important;
+    height:52px!important;
+    grid-template-columns:1.24fr .92fr .96fr!important;
+    border-radius:17px!important;
+  }
+  body.body-nav #activeNav .nav-summary-item,
+  body.body-nav #activeNav .nav-summary-primary{
+    min-height:52px!important;
+    height:52px!important;
+    padding:7px 10px!important;
+  }
+  body.body-nav #activeNav .nav-summary-primary{
+    padding-left:12px!important;
+    border-radius:16px!important;
+    background:linear-gradient(135deg,rgba(245,154,98,.14),rgba(245,154,98,.045))!important;
+  }
+  body.body-nav #activeNav .nav-summary-item + .nav-summary-item{
+    border-left-color:rgba(27,31,38,.068)!important;
+  }
+  body.body-nav #activeNav .nav-summary-label{margin-bottom:4px!important;gap:4px!important}
+  body.body-nav #activeNav .nav-summary-item small{
+    font-size:7px!important;
+    font-weight:850!important;
+    letter-spacing:.09em!important;
+    color:#8B9098!important;
+  }
+  body.body-nav #activeNav .nav-summary-item strong{
+    font-size:16px!important;
+    font-weight:900!important;
+    letter-spacing:-.045em!important;
+  }
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:21px!important}
+
+  body.body-nav .ws-app #navControlStack{
+    bottom:calc(max(6px,env(safe-area-inset-bottom)) + 110px)!important;
+    gap:7px!important;
+  }
+  body.body-nav #navControlStack :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn),
+  body.body-nav #navExitBtn.nav-exit-main{
+    width:44px!important;
+    height:44px!important;
+    min-width:44px!important;
+    min-height:44px!important;
+    border-radius:15px!important;
+    border-width:1px!important;
+    box-shadow:0 6px 18px rgba(15,18,24,.135)!important;
+    transform:translateZ(0)!important;
+  }
+  body.body-nav #navExitBtn.nav-exit-main{
+    background:#E5484D!important;
+    border-color:rgba(255,255,255,.12)!important;
+    box-shadow:0 7px 20px rgba(126,31,37,.22)!important;
+  }
+
+  body.body-nav .ws-app #vanoSpeedometerV220,
+  body.body-nav .ws-app .floating-speedo{
+    bottom:calc(max(6px,env(safe-area-inset-bottom)) + 114px)!important;
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+    border-width:2px!important;
+    box-shadow:0 6px 18px rgba(0,0,0,.19)!important;
+    transform:translateZ(0)!important;
+  }
+  body.body-nav #vanoSpeedValueV220{font-size:22px!important;font-weight:850!important}
+
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{
+    bottom:calc(max(6px,env(safe-area-inset-bottom)) + 118px)!important;
+    height:35px!important;
+    min-height:35px!important;
+    border-radius:18px!important;
+    background:rgba(27,28,31,.955)!important;
+    box-shadow:0 6px 18px rgba(12,14,18,.17)!important;
+  }
+  body.body-nav #navStreetChip span{
+    font-size:11.2px!important;
+    font-weight:830!important;
+    letter-spacing:-.014em!important;
+  }
+
+  /* Compact attribution remains accessible and moves together with the HUD. */
+  body.body-nav .mapboxgl-ctrl-bottom-left,
+  body.body-nav .mapboxgl-ctrl-bottom-right{
+    bottom:calc(max(5px,env(safe-area-inset-bottom)) + 90px)!important;
+  }
+
+  /* Alternative/reroute surfaces inherit the raised dock position without layout jumps. */
+  body.body-nav #activeNav .traffic-suggestion,
+  body.body-nav #activeNav .reroute{will-change:transform,opacity!important}
+
+  html[data-vano-theme="black"] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal,
+  html[data-vano-theme="dark"] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+    background:rgba(23,23,25,.99)!important;
+    border-color:rgba(255,255,255,.075)!important;
+    box-shadow:0 11px 32px rgba(0,0,0,.40),inset 0 1px 0 rgba(255,255,255,.035)!important;
+  }
+  html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary,
+  html[data-vano-theme="dark"] body.body-nav #activeNav .nav-summary-primary{
+    background:linear-gradient(135deg,rgba(245,154,98,.15),rgba(245,154,98,.05))!important;
+  }
+}
+
+/* Narrow portrait: preserve the lift without squeezing the three metrics. */
+@media (max-width:390px) and (orientation:portrait){
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+    left:7px!important;
+    right:7px!important;
+    bottom:calc(max(4px,env(safe-area-inset-bottom)) + 20px)!important;
+    padding:5px!important;
+    border-radius:21px!important;
+  }
+  body.body-nav #activeNav .nav-summary-row{grid-template-columns:1.20fr .92fr .98fr!important}
+  body.body-nav #activeNav .nav-summary-item,
+  body.body-nav #activeNav .nav-summary-primary{padding-left:8px!important;padding-right:8px!important}
+  body.body-nav #activeNav .nav-summary-primary{padding-left:10px!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:14.7px!important}
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:19.2px!important}
+  body.body-nav #activeNav .nav-summary-item small{font-size:6.5px!important;letter-spacing:.075em!important}
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{left:76px!important;right:59px!important}
+  body.body-nav #navControlStack :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn),
+  body.body-nav #navExitBtn.nav-exit-main{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;border-radius:14px!important}
+  body.body-nav .ws-app #vanoSpeedometerV220,
+  body.body-nav .ws-app .floating-speedo{width:53px!important;height:53px!important;min-width:53px!important;min-height:53px!important}
+  body.body-nav #vanoSpeedValueV220{font-size:20px!important}
+}
+
+/* ==================================================================
+   LANDSCAPE PHONE MODE
+   Dedicated geometry: compact information cluster + maximum map area.
+   ================================================================== */
+@media (orientation:landscape) and (max-height:680px) and (max-width:1200px){
+  body.body-nav{
+    --vano-land-safe-l:max(12px,calc(env(safe-area-inset-left) + 10px));
+    --vano-land-safe-r:max(12px,calc(env(safe-area-inset-right) + 10px));
+    --vano-land-safe-b:max(10px,calc(env(safe-area-inset-bottom) + 8px));
+    --vano-land-dock-w:min(49vw,500px);
+  }
+
+  /* Route metrics become a compact floating instrument dock. */
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{
+    left:calc(var(--vano-land-safe-l) + 68px)!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:var(--vano-land-safe-b)!important;
+    width:var(--vano-land-dock-w)!important;
+    max-width:500px!important;
+    min-height:58px!important;
+    padding:4px 5px!important;
+    border-radius:19px!important;
+    box-shadow:0 8px 24px rgba(15,19,27,.15),inset 0 1px 0 rgba(255,255,255,.94)!important;
+  }
+  body.body-nav #activeNav .nav-summary-row{
+    height:50px!important;
+    min-height:50px!important;
+    grid-template-columns:1.18fr .92fr .98fr!important;
+    border-radius:15px!important;
+  }
+  body.body-nav #activeNav .nav-summary-item,
+  body.body-nav #activeNav .nav-summary-primary{
+    height:50px!important;
+    min-height:50px!important;
+    padding:6px 9px!important;
+  }
+  body.body-nav #activeNav .nav-summary-primary{padding-left:11px!important;border-radius:14px!important}
+  body.body-nav #activeNav .nav-summary-label{margin-bottom:3px!important}
+  body.body-nav #activeNav .nav-summary-item small{font-size:6.4px!important;letter-spacing:.075em!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:14.8px!important}
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:19px!important}
+
+  /* Speedometer anchors the dock instead of floating above it. */
+  body.body-nav .ws-app #vanoSpeedometerV220,
+  body.body-nav .ws-app .floating-speedo{
+    left:var(--vano-land-safe-l)!important;
+    right:auto!important;
+    bottom:calc(var(--vano-land-safe-b) + 1px)!important;
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+    z-index:47!important;
+  }
+
+  /* Street name lives immediately above the route dock. */
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{
+    left:calc(var(--vano-land-safe-l) + 68px)!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:calc(var(--vano-land-safe-b) + 66px)!important;
+    width:var(--vano-land-dock-w)!important;
+    max-width:500px!important;
+    height:31px!important;
+    min-height:31px!important;
+    padding:0 12px!important;
+    border-radius:16px!important;
+  }
+  body.body-nav #navStreetChip span{font-size:10.5px!important}
+
+  /* Right-side controls stay reachable with the thumb and never cover the dock. */
+  body.body-nav .ws-app #navControlStack{
+    right:var(--vano-land-safe-r)!important;
+    left:auto!important;
+    bottom:var(--vano-land-safe-b)!important;
+    gap:6px!important;
+    z-index:48!important;
+  }
+  body.body-nav #navControlStack :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn),
+  body.body-nav #navExitBtn.nav-exit-main{
+    width:42px!important;
+    height:42px!important;
+    min-width:42px!important;
+    min-height:42px!important;
+    border-radius:14px!important;
+  }
+
+  /* Maneuver card becomes shorter/wider so the road ahead stays visible. */
+  body.body-nav .ws-app #navManeuverTop.nav-maneuver-top{
+    box-sizing:border-box!important;
+    left:var(--vano-land-safe-l)!important;
+    right:auto!important;
+    top:max(10px,calc(env(safe-area-inset-top) + 8px))!important;
+    width:min(50vw,500px)!important;
+    max-width:500px!important;
+    min-height:78px!important;
+    padding:10px 13px!important;
+    border-radius:20px!important;
+    box-shadow:0 8px 24px rgba(15,19,27,.12)!important;
+  }
+  body.body-nav #navManeuverTop .nav-maneuver-icon{
+    width:58px!important;
+    height:58px!important;
+    min-width:58px!important;
+    min-height:58px!important;
+    border-radius:18px!important;
+  }
+  body.body-nav #navManeuverTop .nav-maneuver-copy{min-width:0!important}
+  body.body-nav #navManeuverTop .nav-maneuver-copy small{font-size:7px!important;letter-spacing:.10em!important}
+  body.body-nav #navManeuverTop .nav-maneuver-copy b{font-size:19px!important;line-height:1.05!important}
+  body.body-nav #navManeuverTop .nav-maneuver-copy span{font-size:13px!important;line-height:1.1!important}
+
+  /* Alternative route banner follows the same left-side grid. */
+  body.body-nav .ws-app #navAltHint.nav-alt-hint{
+    left:var(--vano-land-safe-l)!important;
+    right:auto!important;
+    width:min(50vw,500px)!important;
+    max-width:500px!important;
+    bottom:calc(var(--vano-land-safe-b) + 106px)!important;
+  }
+
+  /* Attribution stays compact, away from the speedometer and route dock. */
+  body.body-nav .mapboxgl-ctrl-bottom-left{
+    left:var(--vano-land-safe-l)!important;
+    bottom:calc(var(--vano-land-safe-b) + 64px)!important;
+  }
+  body.body-nav .mapboxgl-ctrl-bottom-right{
+    right:calc(var(--vano-land-safe-r) + 48px)!important;
+    bottom:var(--vano-land-safe-b)!important;
+  }
+
+  /* Planner/route selection also gets a true landscape layout. */
+  body:not(.body-nav) #planSheet{
+    left:max(10px,calc(env(safe-area-inset-left) + 8px))!important;
+    right:auto!important;
+    bottom:max(10px,calc(env(safe-area-inset-bottom) + 8px))!important;
+    width:min(45vw,470px)!important;
+    max-width:470px!important;
+    max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    border-radius:22px!important;
+  }
+  body:not(.body-nav) #planSheet:not(.sheet-collapsed):not(.hidden){max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important}
+
+  /* Incident sheet uses width, not excessive height, in landscape. */
+  body.body-nav #quickAlertSheet .quick-alert-card{
+    left:auto!important;
+    right:max(10px,calc(env(safe-area-inset-right) + 8px))!important;
+    bottom:max(10px,calc(env(safe-area-inset-bottom) + 8px))!important;
+    width:min(52vw,560px)!important;
+    max-width:560px!important;
+    max-height:calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    overflow:auto!important;
+    border-radius:22px!important;
+  }
+}
+
+/* Very short landscape displays (small Androids / browser chrome visible). */
+@media (orientation:landscape) and (max-height:430px) and (max-width:950px){
+  body.body-nav{--vano-land-dock-w:min(47vw,420px)}
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal{min-height:54px!important;padding:3px 4px!important;border-radius:17px!important}
+  body.body-nav #activeNav .nav-summary-row{height:46px!important;min-height:46px!important}
+  body.body-nav #activeNav .nav-summary-item,
+  body.body-nav #activeNav .nav-summary-primary{height:46px!important;min-height:46px!important;padding-top:5px!important;padding-bottom:5px!important}
+  body.body-nav #activeNav .nav-summary-item small{font-size:6px!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:13.5px!important}
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:17.5px!important}
+  body.body-nav .ws-app #vanoSpeedometerV220,
+  body.body-nav .ws-app .floating-speedo{width:52px!important;height:52px!important;min-width:52px!important;min-height:52px!important}
+  body.body-nav #vanoSpeedValueV220{font-size:20px!important}
+  body.body-nav .ws-app #activeNav.nav-panel.nav-minimal,
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{left:calc(var(--vano-land-safe-l) + 64px)!important}
+  body.body-nav .ws-app #navStreetChip.nav-street-chip{bottom:calc(var(--vano-land-safe-b) + 61px)!important;height:29px!important;min-height:29px!important}
+  body.body-nav .ws-app #navManeuverTop.nav-maneuver-top{width:min(47vw,420px)!important;min-height:68px!important;padding:8px 10px!important;border-radius:18px!important}
+  body.body-nav #navManeuverTop .nav-maneuver-icon{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;border-radius:16px!important}
+  body.body-nav #navManeuverTop .nav-maneuver-copy small{display:none!important}
+  body.body-nav #navManeuverTop .nav-maneuver-copy b{font-size:17px!important}
+  body.body-nav #navManeuverTop .nav-maneuver-copy span{font-size:12px!important}
+  body.body-nav #navControlStack :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn),
+  body.body-nav #navExitBtn.nav-exit-main{width:39px!important;height:39px!important;min-width:39px!important;min-height:39px!important;border-radius:13px!important}
+}
+
 </style>{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -1757,7 +2093,7 @@ html[data-vano-theme="black"] #routeState.vano-route-studio .vr-hero{background:
 (()=>{
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v230.js') ~ '?v=' ~ vano_build_id)|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v230.js') ~ '?v=' ~ vano_build_id ~ '-274')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;
