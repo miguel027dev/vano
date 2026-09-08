@@ -40,7 +40,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "265.0.0").strip() or "265.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "266.0.0").strip() or "266.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -1749,7 +1749,7 @@ def security_headers(response):
         response.headers["Cache-Control"] = "no-store, max-age=0"
     elif request.path == "/api/benchmark/route":
         response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = "Accept, Content-Type"
         response.headers["Cache-Control"] = "no-store, max-age=0"
     elif request.path.startswith("/static/"):
@@ -11321,6 +11321,23 @@ def _heavy_route_central_fallback(slat, slon, elat, elon, travel_profile, mode, 
 @app.route("/api/route", defaults={"public_benchmark": False})
 def api_route(public_benchmark=False):
     truthy = {"1", "true", "on", "yes"}
+
+    # A bare GET/HEAD to the public benchmark URL is an uptime probe, not a
+    # route calculation. Keep it extremely cheap and return 200 so monitors can
+    # watch the endpoint without inventing coordinates or consuming routing work.
+    route_coord_keys = {"start_lat", "start_lon", "end_lat", "end_lon", "origin", "destination"}
+    if public_benchmark and not any(key in request.args for key in route_coord_keys):
+        return jsonify({
+            "ok": True,
+            "service": "vano-benchmark-route",
+            "status": "ready",
+            "build": VANO_BUILD_ID,
+            "usage": {
+                "coords": "/api/benchmark/route?start_lat=-23.5505&start_lon=-46.6333&end_lat=-23.5874&end_lon=-46.6576&profile=driving",
+                "pairs": "/api/benchmark/route?origin=-23.5505,-46.6333&destination=-23.5874,-46.6576&profile=driving",
+            },
+        }), 200
+
     prefetch_requested = str(request.args.get("prefetch", "0")).strip().lower() in truthy
     benchmark_header_requested = str(request.headers.get("X-VANO-Benchmark", "0")).strip().lower() in truthy
     benchmark_requested = bool(public_benchmark or benchmark_header_requested)
@@ -11356,11 +11373,32 @@ def api_route(public_benchmark=False):
             "register_url": url_for("register"),
         }), 401
 
+    def _coord_pair(name):
+        raw = str(request.args.get(name, "") or "").strip()
+        if not raw:
+            return None
+        pieces = [part.strip() for part in raw.split(",", 1)]
+        if len(pieces) != 2:
+            return None
+        try:
+            return float(pieces[0]), float(pieces[1])
+        except ValueError:
+            return None
+
     try:
-        slat = float(request.args["start_lat"]); slon = float(request.args["start_lon"])
-        elat = float(request.args["end_lat"]); elon = float(request.args["end_lon"])
+        origin_pair = _coord_pair("origin")
+        destination_pair = _coord_pair("destination")
+        if origin_pair and destination_pair:
+            slat, slon = origin_pair
+            elat, elon = destination_pair
+        else:
+            slat = float(request.args["start_lat"]); slon = float(request.args["start_lon"])
+            elat = float(request.args["end_lat"]); elon = float(request.args["end_lon"])
     except (KeyError, ValueError):
-        return jsonify({"error": "Origem/destino inválidos."}), 400
+        return jsonify({
+            "error": "Origem/destino inválidos.",
+            "hint": "Use start_lat/start_lon/end_lat/end_lon ou origin=lat,lon&destination=lat,lon.",
+        }), 400
 
     if not all([-90 <= slat <= 90, -90 <= elat <= 90, -180 <= slon <= 180, -180 <= elon <= 180]):
         return jsonify({"error": "Coordenadas inválidas."}), 400
