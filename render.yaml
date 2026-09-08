@@ -102,9 +102,19 @@ services:
       - key: PUBLIC_SITE_URL
         value: https://vanomaps.online
       - key: VANO_BUILD_ID
-        value: 262.0.0
+        value: 264.0.0
       - key: VANO_KEEPALIVE_URL
         value: https://vanomaps.online
+      # V264 global search providers. No secret/key is required; PHOTON_URL can
+      # later be changed to a private/self-hosted instance without a client update.
+      - key: GEOPF_GEOCODE_URL
+        value: https://data.geopf.fr/geocodage/search
+      - key: PHOTON_URL
+        value: https://photon.komoot.io/api
+      - key: PHOTON_ENABLED
+        value: "1"
+      - key: PHOTON_MIN_INTERVAL
+        value: "0.8"
       - key: DATABASE_POOL_MIN
         value: 1
       - key: DATABASE_POOL_MAX
