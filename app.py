@@ -40,7 +40,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "266.0.0").strip() or "266.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "267.0.0").strip() or "267.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -160,12 +160,6 @@ MAPBOX_ACCENT_PRESETS = {
 }
 MAPBOX_GEOCODING_URL = "https://api.mapbox.com/search/geocode/v6"
 MAPBOX_SEARCHBOX_URL = "https://api.mapbox.com/search/searchbox/v1"
-# V264 — complementary geocoders. GeoPF is the official French address/POI
-# service. Photon is a best-effort OSM fallback and can be replaced by a
-# self-hosted instance through PHOTON_URL without changing the mobile client.
-GEOPF_GEOCODE_URL = os.environ.get("GEOPF_GEOCODE_URL", "https://data.geopf.fr/geocodage/search").strip()
-PHOTON_URL = os.environ.get("PHOTON_URL", "https://photon.komoot.io/api").strip().rstrip("/")
-PHOTON_ENABLED = os.environ.get("PHOTON_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
 BRASILAPI_CEP_URL = "https://brasilapi.com.br/api/cep/v2"
 VIACEP_URL = "https://viacep.com.br/ws"
 MAPBOX_DIRECTIONS_URL = "https://api.mapbox.com/directions/v5/mapbox"
@@ -283,12 +277,6 @@ def _make_http_session(pool=32):
 
 _NODE_HTTP = _make_http_session(max(64, min(512, int(os.environ.get("RAIRO_NODE_HTTP_POOL", "192") or 192))))
 _MAPBOX_HTTP = _make_http_session(48)
-_OPEN_GEO_HTTP = _make_http_session(20)
-_PHOTON_CACHE = {}
-_PHOTON_CACHE_LOCK = threading.Lock()
-_PHOTON_RATE_LOCK = threading.Lock()
-_PHOTON_LAST_REQUEST_AT = 0.0
-_PHOTON_MIN_INTERVAL = max(.35, min(3.0, float(os.environ.get("PHOTON_MIN_INTERVAL", ".8") or .8)))
 
 
 def _env_bool(name, default=True):
@@ -1746,11 +1734,6 @@ def security_headers(response):
         response.headers["Cache-Control"] = "no-store, max-age=0"
     if request.path == "/healthz":
         response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Cache-Control"] = "no-store, max-age=0"
-    elif request.path == "/api/benchmark/route":
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Accept, Content-Type"
         response.headers["Cache-Control"] = "no-store, max-age=0"
     elif request.path.startswith("/static/"):
         # Critical map/runtime bundles must be revalidated. Keeping them
@@ -4075,10 +4058,6 @@ EUROPE_POSTCODE_RE = re.compile(
 # Explicit country names are used only to narrow an intentional international
 # search. If no country is written, no country filter is sent to Mapbox.
 EUROPE_COUNTRY_HINTS = {
-    # Kept under the legacy variable name because older code imports it, but V264
-    # accepts explicit countries beyond Europe as well.
-    "brasil":"br", "brazil":"br",
-    "russia":"ru", "federacao russa":"ru", "russian federation":"ru", "россия":"ru",
     "portugal":"pt", "portuguesa":"pt",
     "espanha":"es", "spain":"es", "espana":"es",
     "franca":"fr", "france":"fr",
@@ -4112,11 +4091,7 @@ def _international_query_context(query):
     clean = re.sub(r"\s+", " ", (query or "").strip())
     country = _explicit_country_hint(clean)
     pure_postcode = bool(EUROPE_POSTCODE_RE.fullmatch(clean.upper())) and not CEP_RE.fullmatch(clean)
-    # A comma-separated city/region/country is already a strong geographic hint.
-    # Removing the current-GPS bias in that case keeps global addresses global,
-    # even when the country is not in our small explicit alias table.
-    geo_suffix = bool(re.search(r",\s*[^,0-9]{2,48}$", clean, re.UNICODE))
-    return {"country": country, "pure_postcode": pure_postcode, "explicit_geography": bool(country or geo_suffix)}
+    return {"country": country, "pure_postcode": pure_postcode}
 
 
 def normalize_location_query(value):
@@ -4471,7 +4446,6 @@ def _mapbox_result(feature, query_meta=None, source="mapbox"):
         return None
     context = props.get("context") or {}
     postcode = ((context.get("postcode") or {}).get("name") or "").strip()
-    country_name = ((context.get("country") or {}).get("name") or "").strip()
     address_ctx = context.get("address") or {}
     street_ctx = context.get("street") or {}
     address_number = (address_ctx.get("address_number") or "").strip()
@@ -4513,7 +4487,6 @@ def _mapbox_result(feature, query_meta=None, source="mapbox"):
         "type": feature_type,
         "mapbox_id": props.get("mapbox_id") or feature.get("id", ""),
         "postcode": postcode,
-        "country": country_name,
         "address_number": address_number,
         "street": street_name,
         "accuracy": accuracy,
@@ -4564,15 +4537,10 @@ SEARCH_LEADING_NOISE_RE = re.compile(
 
 
 def _search_normalize(value):
-    """Unicode-aware normalization used by global place ranking.
-
-    V263 discarded every non-Latin character, which made Cyrillic searches rank
-    almost randomly. Keep letters/digits from every writing system while still
-    folding Latin accents (São -> sao) for tolerant matching.
-    """
     value = unicodedata.normalize("NFKD", str(value or ""))
-    value = "".join(ch for ch in value if not unicodedata.combining(ch)).lower()
-    return re.sub(r"\s+", " ", "".join(ch if ch.isalnum() else " " for ch in value)).strip()
+    value = "".join(ch for ch in value if not unicodedata.combining(ch))
+    value = value.lower()
+    return re.sub(r"[^a-z0-9]+", " ", value).strip()
 
 
 def _search_tokens(value):
@@ -4596,8 +4564,8 @@ def _search_cache_key(query, proximity):
     q = _search_normalize(query)
     if proximity:
         # ~1 km cells keep cache useful without mixing distant neighborhoods.
-        return f"search-v264:{q}:{float(proximity[1]):.2f}:{float(proximity[0]):.2f}"
-    return f"search-v264:{q}:global"
+        return f"search-v163:{q}:{float(proximity[1]):.2f}:{float(proximity[0]):.2f}"
+    return f"search-v163:{q}:global"
 
 
 def _search_cache_get(key, ttl_seconds=900):
@@ -4699,232 +4667,6 @@ def _searchbox_category(props):
     return ("Empresa / local", "business")
 
 
-
-def _as_scalar(value, default=""):
-    if isinstance(value, (list, tuple)):
-        return next((str(x).strip() for x in value if str(x).strip()), default)
-    return str(value or default).strip()
-
-
-def _looks_like_france_search(query, proximity=None):
-    country = _explicit_country_hint(query)
-    if country:
-        return country == "fr"
-    if not proximity:
-        return False
-    try:
-        lon, lat = float(proximity[0]), float(proximity[1])
-    except Exception:
-        return False
-    # Metropolitan France + Corsica. Overseas territories still work when the
-    # query explicitly contains France; this box is only a provider-selection hint.
-    return -5.8 <= lon <= 10.0 and 41.0 <= lat <= 51.8
-
-
-def _geopf_category(props):
-    raw = " ".join(str(x) for x in (props.get("category") or [])) if isinstance(props.get("category"), list) else str(props.get("category") or "")
-    text = _search_normalize(raw)
-    mapping = [
-        (("hopital", "clinique", "sante", "medical"), ("Santé", "hospital")),
-        (("pharmacie",), ("Pharmacie", "pharmacy")),
-        (("ecole", "college", "lycee", "universite", "enseignement"), ("Educação", "school")),
-        (("aeroport", "aerodrome"), ("Aeroporto", "airport")),
-        (("gare", "station", "transport"), ("Terminal / estação", "terminal")),
-        (("parking",), ("Estacionamento", "parking")),
-        (("restaurant", "cafe"), ("Restaurante", "food")),
-        (("hotel",), ("Hotel", "hotel")),
-        (("parc", "jardin"), ("Parque", "park")),
-        (("commerce", "centre commercial"), ("Comércio", "shop")),
-    ]
-    for needles, result in mapping:
-        if any(n in text for n in needles):
-            return result
-    return (raw or "Local", "poi")
-
-
-def geopf_france_forward(query, proximity=None, language=None, index="poi"):
-    raw = re.sub(r"\s+", " ", str(query or "").strip())[:240]
-    if not raw or not GEOPF_GEOCODE_URL:
-        return []
-    params = {"q": raw, "index": index, "limit": 8, "returntruegeometry": "false"}
-    if proximity:
-        try:
-            params["lon"], params["lat"] = f"{float(proximity[0]):.6f}", f"{float(proximity[1]):.6f}"
-        except Exception:
-            pass
-    response = _OPEN_GEO_HTTP.get(GEOPF_GEOCODE_URL, params=params, timeout=(2.2, 5.5), headers={"Accept": "application/geo+json, application/json"})
-    if not response.ok:
-        return []
-    out = []
-    for idx, feature in enumerate((response.json() or {}).get("features") or []):
-        props = feature.get("properties") or {}
-        pair = (feature.get("geometry") or {}).get("coordinates") or []
-        if len(pair) < 2:
-            continue
-        try:
-            lon, lat = float(pair[0]), float(pair[1])
-        except Exception:
-            continue
-        feature_type = str(props.get("_type") or index or "poi").lower()
-        is_poi = feature_type == "poi" or index == "poi"
-        name = _as_scalar(props.get("toponym") or props.get("name") or props.get("label"), raw)
-        city = _as_scalar(props.get("city"))
-        postcode = _as_scalar(props.get("postcode"))
-        street = _as_scalar(props.get("street"))
-        number = _as_scalar(props.get("housenumber") or props.get("number"))
-        label = _as_scalar(props.get("label")) or ", ".join(x for x in [name, street, number, postcode, city, "France"] if x)
-        category, category_key = _geopf_category(props) if is_poi else (("Rua" if feature_type == "street" else "Endereço"), ("street" if feature_type == "street" else "address"))
-        extra = props.get("extrafields") or {}
-        provider_id = _as_scalar(extra.get("cleabs") or props.get("id")) or hashlib.sha1(f"{name}|{lat:.6f}|{lon:.6f}".encode()).hexdigest()[:18]
-        score = float(props.get("score") or 0)
-        item = {
-            "label": label or name, "name": name or label or raw, "address": label or "",
-            "category": category, "category_key": category_key,
-            "lat": lat, "lon": lon, "display_lat": lat, "display_lon": lon,
-            "entrance_lat": None, "entrance_lon": None,
-            "type": "poi" if is_poi else ("street" if feature_type == "street" else "address"),
-            "mapbox_id": f"geopf:{provider_id}", "postcode": postcode, "country": "France",
-            "address_number": number, "street": street,
-            "accuracy": "point", "match_confidence": "high" if score >= .75 else "medium",
-            "precision_label": "IGN / BAN" if not is_poi else "IGN / BD TOPO",
-            "source": "fr-geopf", "cep_query": False,
-            "rank": max(0.0, 24.0 - min(1.0, score) * 18.0) + idx * 1.5,
-        }
-        if proximity:
-            try:
-                item["distance_m"] = round(haversine_m(float(proximity[1]), float(proximity[0]), lat, lon))
-            except Exception:
-                pass
-        out.append(item)
-    return out
-
-
-def _photon_cached(key, ttl=1200):
-    now = time.time()
-    with _PHOTON_CACHE_LOCK:
-        row = _PHOTON_CACHE.get(key)
-        if not row:
-            return None
-        ts, payload = row
-        if now - ts > ttl:
-            _PHOTON_CACHE.pop(key, None)
-            return None
-        return [dict(x) for x in payload]
-
-
-def photon_forward_search(query, proximity=None, language=None):
-    """Best-effort global OSM fallback.
-
-    The default endpoint is Photon's public demo and is deliberately throttled +
-    cached. PHOTON_URL can point to a private/self-hosted Photon for production
-    scale without an app update.
-    """
-    global _PHOTON_LAST_REQUEST_AT
-    raw = re.sub(r"\s+", " ", str(query or "").strip())[:240]
-    if not PHOTON_ENABLED or not PHOTON_URL or len(raw) < 3:
-        return []
-    country = _explicit_country_hint(raw) or ""
-    prox_key = "global"
-    if proximity:
-        try:
-            prox_key = f"{float(proximity[1]):.2f}:{float(proximity[0]):.2f}"
-        except Exception:
-            pass
-    key = f"{_search_normalize(raw)}|{country}|{prox_key}|{(language or '')[:5]}"
-    cached = _photon_cached(key)
-    if cached is not None:
-        return cached
-    # Be conservative with the shared demo server. We never sleep a request
-    # thread just to consume quota; if another fallback ran recently, Mapbox/
-    # GeoPF results are returned immediately and the next query can use Photon.
-    with _PHOTON_RATE_LOCK:
-        now = time.monotonic()
-        if now - _PHOTON_LAST_REQUEST_AT < _PHOTON_MIN_INTERVAL:
-            return []
-        _PHOTON_LAST_REQUEST_AT = now
-    lang = (language or preferred_language()).split("-", 1)[0].lower()
-    params = {"q": raw, "limit": 8, "lang": lang}
-    if proximity and not country:
-        try:
-            params.update({"lon": f"{float(proximity[0]):.6f}", "lat": f"{float(proximity[1]):.6f}", "zoom": 13})
-        except Exception:
-            pass
-    response = _OPEN_GEO_HTTP.get(PHOTON_URL, params=params, timeout=(2.2, 5.5), headers={
-        "Accept": "application/geo+json, application/json",
-        "User-Agent": "VANO-MAPS/264 (+https://vanomaps.online)",
-    })
-    if not response.ok:
-        return []
-    out = []
-    for idx, feature in enumerate((response.json() or {}).get("features") or []):
-        props = feature.get("properties") or {}
-        pair = (feature.get("geometry") or {}).get("coordinates") or []
-        if len(pair) < 2:
-            continue
-        try:
-            lon, lat = float(pair[0]), float(pair[1])
-        except Exception:
-            continue
-        name = _as_scalar(props.get("name") or props.get("street") or props.get("city"), raw)
-        street = _as_scalar(props.get("street"))
-        number = _as_scalar(props.get("housenumber"))
-        postcode = _as_scalar(props.get("postcode"))
-        city = _as_scalar(props.get("city") or props.get("locality") or props.get("district"))
-        state = _as_scalar(props.get("state"))
-        country_name = _as_scalar(props.get("country"))
-        category, category_key = _osm_category(props)
-        osm_key = str(props.get("osm_key") or "").lower()
-        osm_value = str(props.get("osm_value") or "").lower()
-        is_address = bool(number and street)
-        item_type = "address" if is_address else ("street" if osm_key == "highway" else "poi")
-        if item_type != "poi":
-            category, category_key = (("Endereço", "address") if item_type == "address" else ("Rua", "street"))
-        label = ", ".join(x for x in [name, " ".join(x for x in [street, number] if x).strip(), city, state, postcode, country_name] if x)
-        osm_id = _as_scalar(props.get("osm_id")) or hashlib.sha1(f"{name}|{lat:.6f}|{lon:.6f}".encode()).hexdigest()[:18]
-        item = {
-            "label": label or name, "name": name, "address": label or "",
-            "category": category, "category_key": category_key,
-            "lat": lat, "lon": lon, "display_lat": lat, "display_lon": lon,
-            "entrance_lat": None, "entrance_lon": None,
-            "type": item_type, "mapbox_id": f"photon:{osm_id}",
-            "postcode": postcode, "country": country_name, "address_number": number, "street": street,
-            "accuracy": "point", "match_confidence": "", "precision_label": "OpenStreetMap",
-            "source": "osm-photon", "cep_query": False, "rank": 18.0 + idx * 2.0,
-        }
-        if proximity:
-            try:
-                item["distance_m"] = round(haversine_m(float(proximity[1]), float(proximity[0]), lat, lon))
-            except Exception:
-                pass
-        out.append(item)
-    with _PHOTON_CACHE_LOCK:
-        if len(_PHOTON_CACHE) > 500:
-            cutoff = time.time() - 1200
-            for cache_key, (ts, _rows) in list(_PHOTON_CACHE.items()):
-                if ts < cutoff:
-                    _PHOTON_CACHE.pop(cache_key, None)
-        _PHOTON_CACHE[key] = (time.time(), [dict(x) for x in out])
-    return out
-
-
-def _strong_provider_match(candidates, query, kind):
-    qn = _search_normalize(query)
-    if not qn:
-        return False
-    qtokens = _search_tokens(query)
-    for item in candidates:
-        if kind == "poi" and str(item.get("type") or "") != "poi":
-            continue
-        nn = _search_normalize(item.get("name") or str(item.get("label") or "").split(",", 1)[0])
-        combined = _search_normalize(" ".join([str(item.get("name") or ""), str(item.get("label") or ""), str(item.get("address") or "")]))
-        if nn == qn or nn.startswith(qn):
-            return True
-        if len(qn) >= 5 and qn in nn:
-            return True
-        if qtokens and all(_soft_token_match(t, combined) for t in qtokens):
-            return True
-    return False
-
 def _query_search_intent(query):
     raw = re.sub(r"\s+", " ", str(query or "").strip())
     meta = parse_brazil_location_query(raw)
@@ -4997,7 +4739,6 @@ def _mapbox_searchbox_result(feature, query, proximity=None, provider_rank=0):
     address = full_address or place_formatted
     context = props.get("context") or {}
     postcode = str(((context.get("postcode") or {}).get("name") or "")).strip()
-    country_name = str(((context.get("country") or {}).get("name") or "")).strip()
     street = str(((context.get("street") or {}).get("name") or "")).strip()
     address_ctx = context.get("address") or {}
     address_number = str(address_ctx.get("address_number") or "").strip()
@@ -5020,7 +4761,6 @@ def _mapbox_searchbox_result(feature, query, proximity=None, provider_rank=0):
         "type": feature_type,
         "mapbox_id": props.get("mapbox_id") or feature.get("id", ""),
         "postcode": postcode,
-        "country": country_name,
         "address_number": address_number,
         "street": street,
         "accuracy": str(coords.get("accuracy") or "point"),
@@ -5182,11 +4922,11 @@ def _combined_search_rank(item, query, proximity=None):
     return round(base, 3)
 
 def smart_location_search(query, proximity=None):
-    """Multi-provider, intent-aware global location search.
+    """Intent-aware location search.
 
-    Mapbox is the fast global primary. France additionally uses the official IGN
-    GeoPF indexes. Photon/OSM is a throttled, cached fallback for weak POI
-    coverage and can be switched to a private instance using only an env var.
+    CEP/house-number queries are resolved as addresses; street queries prioritize
+    the matching street; named places (shopping, hospital, school, business, etc.)
+    prioritize POIs. Distance only breaks ties among semantically relevant hits.
     """
     cache_key = _search_cache_key(query, proximity)
     cached = _search_cache_get(cache_key)
@@ -5197,82 +4937,60 @@ def smart_location_search(query, proximity=None):
     query_meta = intent["meta"]
     international = _international_query_context(query)
     search_language = preferred_language()
-    effective_proximity = None if international.get("explicit_geography") else proximity
-    candidates, errors = [], []
-    kind = intent["kind"]
+    effective_proximity = None if international.get("country") else proximity
+    candidates = []
+    errors = []
 
-    jobs = []
-    if kind in {"cep", "cep_number", "address", "street"}:
-        jobs.append(("geocode", lambda: mapbox_forward_geocode(query, effective_proximity, search_language)))
-        if kind in {"address", "street"} and mapbox_ready():
-            jobs.append(("searchbox-secondary", lambda: mapbox_searchbox_forward(query, effective_proximity, search_language)))
-    else:
-        if mapbox_ready():
-            jobs.append(("searchbox", lambda: mapbox_searchbox_forward(query, effective_proximity, search_language)))
-        jobs.append(("geocode-secondary", lambda: mapbox_forward_geocode(query, effective_proximity, search_language)))
-
-    if _looks_like_france_search(query, proximity):
-        if kind in {"address", "street", "cep", "cep_number"}:
-            jobs.append(("fr-address", lambda: geopf_france_forward(query, proximity, search_language, "address")))
-        else:
-            jobs.append(("fr-poi", lambda: geopf_france_forward(query, proximity, search_language, "poi")))
-            jobs.append(("fr-address-secondary", lambda: geopf_france_forward(query, proximity, search_language, "address")))
-
-    # Providers are independent; waiting for them sequentially made the refined
-    # search feel much slower than the fastest provider. Merge them concurrently.
-    if jobs:
-        with ThreadPoolExecutor(max_workers=min(5, len(jobs))) as pool:
-            futures = {pool.submit(fn): label for label, fn in jobs}
-            for future, label in list(futures.items()):
-                try:
-                    candidates.extend(future.result() or [])
-                except Exception as exc:
-                    errors.append(f"{label}: {exc}")
-
-    # OSM fallback: use it when the global primary has weak semantic coverage,
-    # for short named-place searches (the 'Cor'/'InCor' case), and for Russia
-    # where additional OSM toponyms materially improve small-place coverage.
-    normalized_query = _search_normalize(query)
-    explicit_country = international.get("country") or ""
-    place_query = kind not in {"cep", "cep_number", "address", "street"}
-    needs_osm = place_query and (
-        explicit_country == "ru"
-        or len(normalized_query) <= 5
-        or len(candidates) < 4
-        or not _strong_provider_match(candidates, query, "poi")
-    )
-    if needs_osm:
+    def collect(fn, label):
         try:
-            candidates.extend(photon_forward_search(query, effective_proximity, search_language) or [])
+            rows = fn() or []
+            candidates.extend(rows)
+            return bool(rows)
         except Exception as exc:
-            errors.append(f"photon: {exc}")
+            errors.append(f"{label}: {exc}")
+            return False
 
-    merged, seen_ids, seen_geo = [], set(), set()
+    kind = intent["kind"]
+    if kind in {"cep", "cep_number", "address", "street"}:
+        collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode")
+        # For a street/address query Search Box is only a secondary source. It can
+        # recover named buildings without being allowed to dominate the ranking.
+        if kind in {"address", "street"} and mapbox_ready():
+            collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox-secondary")
+    else:
+        # Place/business searches always query Search Box first, then Geocoding as
+        # a secondary source for locality/street fallbacks.
+        if mapbox_ready():
+            collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox")
+        collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode-secondary")
+
+    merged, seen = [], set()
     for item in candidates:
         try:
             lat, lon = float(item["lat"]), float(item["lon"])
         except Exception:
             continue
         name_key = _search_normalize(item.get("name") or str(item.get("label") or "").split(",", 1)[0])
-        provider_key = item.get("mapbox_id") or f"{round(lat,5)}:{round(lon,5)}:{name_key[:90]}"
-        geo_key = f"{round(lat,4)}:{round(lon,4)}:{name_key[:64]}"
+        key = item.get("mapbox_id") or f"{round(lat,5)}:{round(lon,5)}:{name_key[:90]}"
         if item.get("source") == "cep-authoritative":
-            provider_key = f"cep:{query_meta.get('cep')}:{query_meta.get('number') or ''}"
-        if provider_key in seen_ids or geo_key in seen_geo:
+            key = f"cep:{query_meta.get('cep')}:{query_meta.get('number') or ''}"
+        if key in seen:
             continue
-        seen_ids.add(provider_key); seen_geo.add(geo_key)
+        seen.add(key)
         item["rank"] = _combined_search_rank(item, query, effective_proximity)
         merged.append(item)
 
     merged.sort(key=lambda x: (float(x.get("rank", 9999)), float(x.get("distance_m", 1e12)), str(x.get("label", ""))))
 
+    # CEP + number: if the authoritative canonical result exists, it must be the
+    # first thing the UI sees and it must visibly preserve the typed number.
     if kind in {"cep", "cep_number"}:
         authoritative = [x for x in merged if x.get("source") == "cep-authoritative"]
         rest = [x for x in merged if x.get("source") != "cep-authoritative"]
         if authoritative:
             merged = authoritative + rest
 
-    final = merged[:12]
+    final = merged[:10]
     for item in final:
         item.pop("rank", None)
     if final:
@@ -9387,8 +9105,9 @@ def _admin_single_node_snapshot(node_index, refresh=False):
 
 
 @app.route("/admin/benchmark")
+@admin_required
 def admin_benchmark():
-    """Temporarily public route lab. Only this admin-namespaced page is public."""
+    """Internal route lab. Browser calls /api/route with prefetch=1 so tests do not pollute route history."""
     return render_template(
         "admin_benchmark.html",
         mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
@@ -11317,54 +11036,24 @@ def _heavy_route_central_fallback(slat, slon, elat, elon, travel_profile, mode, 
     }
 
 
-@app.route("/api/benchmark/route", defaults={"public_benchmark": True})
-@app.route("/api/route", defaults={"public_benchmark": False})
-def api_route(public_benchmark=False):
+@app.route("/api/route")
+def api_route():
     truthy = {"1", "true", "on", "yes"}
-
-    # A bare GET/HEAD to the public benchmark URL is an uptime probe, not a
-    # route calculation. Keep it extremely cheap and return 200 so monitors can
-    # watch the endpoint without inventing coordinates or consuming routing work.
-    route_coord_keys = {"start_lat", "start_lon", "end_lat", "end_lon", "origin", "destination"}
-    if public_benchmark and not any(key in request.args for key in route_coord_keys):
-        return jsonify({
-            "ok": True,
-            "service": "vano-benchmark-route",
-            "status": "ready",
-            "build": VANO_BUILD_ID,
-            "usage": {
-                "coords": "/api/benchmark/route?start_lat=-23.5505&start_lon=-46.6333&end_lat=-23.5874&end_lon=-46.6576&profile=driving",
-                "pairs": "/api/benchmark/route?origin=-23.5505,-46.6333&destination=-23.5874,-46.6576&profile=driving",
-            },
-        }), 200
-
     prefetch_requested = str(request.args.get("prefetch", "0")).strip().lower() in truthy
-    benchmark_header_requested = str(request.headers.get("X-VANO-Benchmark", "0")).strip().lower() in truthy
-    benchmark_requested = bool(public_benchmark or benchmark_header_requested)
-
-    # The dedicated benchmark endpoint is intentionally public for uptime/QA.
-    # The legacy benchmark header on /api/route remains admin-only so a caller
-    # cannot turn the normal route endpoint into an unrestricted guest bypass.
-    if benchmark_header_requested and not public_benchmark:
+    benchmark_requested = str(request.headers.get("X-VANO-Benchmark", "0")).strip().lower() in truthy
+    if benchmark_requested:
         user = current_user()
         if not user or str(user["role"] or "") != "admin":
-            return jsonify({"ok": False, "error": "benchmark_admin_required", "message": "Benchmark interno disponível somente para administradores."}), 403
-    if benchmark_requested:
+            return jsonify({"ok": False, "error": "benchmark_admin_required", "message": "Benchmark disponível somente para administradores."}), 403
         prefetch_requested = True
-
-    if public_benchmark:
-        rate_bucket, rate_limit_max = "route-benchmark-public", 60
-    elif benchmark_requested:
-        rate_bucket, rate_limit_max = "route-benchmark-admin", 120
-    else:
-        rate_bucket = "route-prefetch" if prefetch_requested else "route"
-        rate_limit_max = 36 if prefetch_requested else 30
+    rate_bucket = "route-benchmark" if benchmark_requested else ("route-prefetch" if prefetch_requested else "route")
+    rate_limit_max = 120 if benchmark_requested else (36 if prefetch_requested else 30)
     if not rate_limit(rate_bucket, rate_limit_max, 60):
         return jsonify({"error": "Muitos cálculos de rota. Aguarde um instante."}), 429
 
     trial_id = re.sub(r"[^A-Za-z0-9_-]", "", str(request.args.get("trial_id", "") or ""))[:64]
     existing_guest_trials = guest_trial_ids() if not session.get("user_id") else []
-    if (not benchmark_requested) and not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
+    if not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
         return jsonify({
             "error": "Crie uma conta ou entre para continuar.",
             "code": "guest_route_limit_reached",
@@ -11373,32 +11062,11 @@ def api_route(public_benchmark=False):
             "register_url": url_for("register"),
         }), 401
 
-    def _coord_pair(name):
-        raw = str(request.args.get(name, "") or "").strip()
-        if not raw:
-            return None
-        pieces = [part.strip() for part in raw.split(",", 1)]
-        if len(pieces) != 2:
-            return None
-        try:
-            return float(pieces[0]), float(pieces[1])
-        except ValueError:
-            return None
-
     try:
-        origin_pair = _coord_pair("origin")
-        destination_pair = _coord_pair("destination")
-        if origin_pair and destination_pair:
-            slat, slon = origin_pair
-            elat, elon = destination_pair
-        else:
-            slat = float(request.args["start_lat"]); slon = float(request.args["start_lon"])
-            elat = float(request.args["end_lat"]); elon = float(request.args["end_lon"])
+        slat = float(request.args["start_lat"]); slon = float(request.args["start_lon"])
+        elat = float(request.args["end_lat"]); elon = float(request.args["end_lon"])
     except (KeyError, ValueError):
-        return jsonify({
-            "error": "Origem/destino inválidos.",
-            "hint": "Use start_lat/start_lon/end_lat/end_lon ou origin=lat,lon&destination=lat,lon.",
-        }), 400
+        return jsonify({"error": "Origem/destino inválidos."}), 400
 
     if not all([-90 <= slat <= 90, -90 <= elat <= 90, -180 <= slon <= 180, -180 <= elon <= 180]):
         return jsonify({"error": "Coordenadas inválidas."}), 400

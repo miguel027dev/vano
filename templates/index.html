@@ -758,6 +758,199 @@ html[data-vano-theme="black"] .vano-user-puck-v230 .vano-puck-inline{filter:drop
 .route-marker.alert-marker .alert-visual{transform:scale(1.16)!important;transform-origin:center bottom!important}
 .body-nav .mapboxgl-marker.route-marker.alert-marker{opacity:.98!important}
 .body-nav.nav-drive-fast .mapboxgl-marker.route-marker.alert-marker{opacity:.94!important}
+
+/* VANO MAPS V267 — route experience polish + quick exit */
+body.body-nav #activeNav.nav-panel.nav-minimal{
+  overflow:visible!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(255,251,247,.95))!important;
+  box-shadow:0 -24px 58px rgba(19,23,31,.16),0 -1px 0 rgba(255,255,255,.92) inset!important;
+}
+body.body-nav #activeNav .vano-nav-dock-head{
+  height:auto!important;
+  min-height:34px!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  padding:2px 2px 8px!important;
+}
+body.body-nav #activeNav .vano-nav-head-actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-width:0!important;
+}
+body.body-nav #activeNav .vano-nav-dock-caption{
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  font-size:8px!important;
+  letter-spacing:.08em!important;
+}
+body.body-nav #activeNav .nav-exit-btn{
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  min-height:30px!important;
+  border:1px solid rgba(19,23,31,.08)!important;
+  border-radius:12px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(244,239,235,.96))!important;
+  color:#5f5650!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-shadow:0 8px 22px rgba(20,24,32,.09),inset 0 1px 0 rgba(255,255,255,.9)!important;
+  transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease,color .16s ease!important;
+}
+body.body-nav #activeNav .nav-exit-btn:hover{
+  transform:translateY(-1px)!important;
+  color:#2f2b28!important;
+  box-shadow:0 10px 24px rgba(20,24,32,.12),inset 0 1px 0 rgba(255,255,255,.92)!important;
+}
+body.body-nav #activeNav .nav-exit-btn:active{transform:scale(.96)!important}
+body.body-nav #activeNav .nav-summary-row{
+  padding:4px!important;
+  border:1px solid rgba(19,23,31,.055)!important;
+  border-radius:20px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(249,243,238,.88))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.86),0 10px 26px rgba(20,24,32,.055)!important;
+  gap:7px!important;
+}
+body.body-nav #activeNav .nav-summary-item{
+  min-height:56px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,242,237,.94))!important;
+  border:1px solid rgba(19,23,31,.05)!important;
+  box-shadow:0 6px 16px rgba(20,24,32,.05),inset 0 1px 0 rgba(255,255,255,.92)!important;
+}
+body.body-nav #activeNav .nav-summary-primary{
+  background:linear-gradient(135deg,rgba(255,240,230,.98),rgba(255,250,246,.97))!important;
+  border-color:rgba(245,154,98,.24)!important;
+  box-shadow:0 10px 22px rgba(217,112,63,.12),inset 0 1px 0 rgba(255,255,255,.95)!important;
+}
+body.body-nav #activeNav .nav-summary-item strong{font-size:17px!important;letter-spacing:-.03em!important}
+body.body-nav #activeNav .nav-summary-primary strong{font-size:22px!important}
+body.body-nav #activeNav .nav-summary-item small{font-size:7.2px!important;letter-spacing:.14em!important}
+body.body-nav #activeNav .traffic-suggestion,
+body.body-nav #activeNav .reroute{
+  margin-top:10px!important;
+  border-radius:18px!important;
+  border:1px solid rgba(19,23,31,.05)!important;
+  box-shadow:0 12px 28px rgba(20,24,32,.06)!important;
+}
+#routeState.vano-route-studio{
+  padding:4px 1px 12px!important;
+}
+#routeState.vano-route-studio .vr-hero{
+  padding:16px 16px!important;
+  border-radius:24px!important;
+  background:
+    radial-gradient(circle at right top,rgba(245,154,98,.20),rgba(245,154,98,0) 34%),
+    linear-gradient(155deg,rgba(255,255,255,.99) 0%,rgba(255,247,241,.98) 54%,rgba(255,251,248,.98) 100%)!important;
+  box-shadow:0 18px 40px rgba(71,46,29,.10),inset 0 1px 0 rgba(255,255,255,.92)!important;
+}
+#routeState.vano-route-studio .vr-copy h2{font-size:25px!important;letter-spacing:-.045em!important}
+#routeState.vano-route-studio .vr-copy p{font-size:12px!important;max-width:32ch!important}
+#routeState.vano-route-studio .route-time{
+  min-width:104px!important;
+  padding:14px 12px!important;
+  border-radius:20px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(255,241,231,.96))!important;
+  border:1px solid rgba(245,154,98,.20)!important;
+  box-shadow:0 10px 26px rgba(217,112,63,.10)!important;
+}
+#routeState.vano-route-studio .route-time span{font-size:32px!important;line-height:1!important}
+#routeState.vano-route-studio .route-time small{font-size:11px!important;margin-top:4px!important}
+#routeState .vano-route-decision{
+  padding:7px 11px!important;
+  border:1px solid rgba(245,154,98,.14)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6)!important;
+}
+#routeState .route-variants{
+  padding:2px 1px 6px!important;
+  gap:10px!important;
+}
+#routeState .route-variant{
+  flex:0 0 min(172px,46vw)!important;
+  min-height:84px!important;
+  padding:12px 12px!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(249,243,238,.95))!important;
+  border:1px solid rgba(19,23,31,.05)!important;
+  box-shadow:0 10px 24px rgba(20,24,32,.055)!important;
+}
+#routeState .route-variant.active{
+  transform:translateY(-1px)!important;
+  border-color:rgba(245,154,98,.28)!important;
+  box-shadow:0 16px 28px rgba(217,112,63,.12)!important;
+  background:linear-gradient(180deg,rgba(255,248,243,.99),rgba(255,241,231,.97))!important;
+}
+#routeState .route-variant b{font-size:20px!important;letter-spacing:-.04em!important}
+#routeState .route-variant span{font-size:11px!important;font-weight:780!important}
+#routeState .route-variant em{font-size:10px!important;line-height:1.35!important}
+#routeState .start-trip-cta{
+  min-height:68px!important;
+  margin-top:4px!important;
+  border-radius:22px!important;
+  box-shadow:0 18px 40px rgba(217,112,63,.27),inset 0 1px 0 rgba(255,255,255,.62),inset 0 -1px 0 rgba(132,59,26,.12)!important;
+}
+#routeState .start-trip-copy b{font-size:16px!important;letter-spacing:-.03em!important}
+#routeState .start-trip-copy small{font-size:10px!important;opacity:.94!important}
+#routeState .vano-route-more{
+  margin-top:10px!important;
+  border-radius:20px!important;
+  box-shadow:0 12px 28px rgba(20,24,32,.05)!important;
+}
+#routeState .vano-route-more>summary{
+  min-height:52px!important;
+  padding:0 14px!important;
+}
+html[data-vano-theme="black"] body.body-nav #activeNav.nav-panel.nav-minimal{
+  background:linear-gradient(180deg,rgba(22,19,17,.96),rgba(16,14,13,.94))!important;
+  box-shadow:0 -24px 58px rgba(0,0,0,.38),0 -1px 0 rgba(255,255,255,.03) inset!important;
+}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-row{
+  background:linear-gradient(180deg,rgba(28,24,21,.9),rgba(22,19,17,.86))!important;
+  border-color:rgba(255,255,255,.04)!important;
+}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item{
+  background:linear-gradient(180deg,rgba(35,30,27,.96),rgba(24,21,19,.94))!important;
+  border-color:rgba(255,255,255,.04)!important;
+  box-shadow:0 8px 18px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary{
+  background:linear-gradient(135deg,rgba(54,35,26,.92),rgba(29,24,20,.97))!important;
+  border-color:rgba(245,154,98,.20)!important;
+}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-exit-btn{
+  background:linear-gradient(180deg,rgba(34,29,26,.96),rgba(22,19,17,.94))!important;
+  border-color:rgba(255,255,255,.06)!important;
+  color:#f0e6df!important;
+  box-shadow:0 8px 22px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+html[data-vano-theme="black"] #routeState.vano-route-studio .vr-hero{
+  background:
+    radial-gradient(circle at right top,rgba(245,154,98,.18),rgba(245,154,98,0) 32%),
+    linear-gradient(155deg,rgba(30,26,24,.98) 0%,rgba(22,19,17,.97) 54%,rgba(18,16,15,.97) 100%)!important;
+  box-shadow:0 18px 38px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.04)!important;
+}
+html[data-vano-theme="black"] #routeState.vano-route-studio .route-time,
+html[data-vano-theme="black"] #routeState .route-variant,
+html[data-vano-theme="black"] #routeState .vano-route-more{
+  background:linear-gradient(180deg,rgba(31,27,24,.98),rgba(23,20,18,.95))!important;
+  border-color:rgba(255,255,255,.05)!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.24)!important;
+}
+html[data-vano-theme="black"] #routeState .route-variant.active{
+  background:linear-gradient(180deg,rgba(58,39,29,.96),rgba(28,23,20,.96))!important;
+  border-color:rgba(245,154,98,.20)!important;
+}
+@media (max-width:640px){
+  body.body-nav #activeNav .nav-exit-btn{width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;border-radius:11px!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:15px!important}
+  body.body-nav #activeNav .nav-summary-primary strong{font-size:19px!important}
+  #routeState.vano-route-studio .vr-hero{padding:14px 14px!important}
+  #routeState .route-variant{flex-basis:min(164px,54vw)!important}
+}
+
 </style>{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -1056,7 +1249,7 @@ html[data-vano-theme="black"] .vano-user-puck-v230 .vano-puck-inline{filter:drop
   <div class="nav-alt-hint" id="navAltHint" aria-live="polite"><div class="nav-alt-copy"><small>ROTA MAIS RÁPIDA</small><b id="navAltHintText">Tem uma rota mais rápida, quer trocar pra ela?</b><em id="navAltHintMeta"></em></div><button type="button" class="nav-alt-accept" id="navAltAccept">Trocar</button><button type="button" class="nav-alt-dismiss" id="navAltDismiss" aria-label="Manter rota atual"><i data-lucide="x" width="13"></i></button></div>
 
   <section class="nav-panel nav-minimal" id="activeNav" aria-live="polite">
-    <div class="vano-nav-dock-head" aria-hidden="true"><span class="vano-nav-live"><i></i>EM ROTA</span><span class="vano-nav-dock-caption">Atualização em tempo real</span></div>
+    <div class="vano-nav-dock-head"><span class="vano-nav-live"><i></i>EM ROTA</span><div class="vano-nav-head-actions"><span class="vano-nav-dock-caption">Atualização em tempo real</span><button type="button" class="nav-exit-btn" id="navExitBtn" aria-label="Sair da rota" title="Sair da rota"><i data-lucide="x" width="15"></i></button></div></div>
     <div class="nav-summary-row">
       <div class="nav-summary-item nav-summary-primary"><span class="nav-summary-label"><i data-lucide="flag" width="11"></i><small>CHEGADA</small></span><strong id="arrivalTime">—</strong></div>
       <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="timer" width="11"></i><small>FALTAM</small></span><strong id="remainingMinutes">—</strong></div>
@@ -1171,6 +1364,34 @@ html[data-vano-theme="black"] .vano-user-puck-v230 .vano-puck-inline{filter:drop
   }
   window.__VANO_SHOW_MAP_BOOT_ERROR=showMapBootError;
   boot();
+})();
+</script>
+
+<script>
+// VANO MAPS V267 — quick route exit without exposing extra UI chrome.
+(()=>{
+  const bind=()=>{
+    const exitBtn=document.getElementById('navExitBtn');
+    if(!exitBtn||exitBtn.dataset.bound==='1')return;
+    exitBtn.dataset.bound='1';
+    exitBtn.addEventListener('click',ev=>{
+      ev.preventDefault();
+      ev.stopPropagation();
+      const primary=document.getElementById('navSearchBtn');
+      const secondary=document.getElementById('arrivalFinishBtn');
+      const fire=el=>!!el&&el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
+      if(fire(primary))return;
+      if(fire(secondary))return;
+      document.body.classList.remove('body-nav');
+      document.getElementById('activeNav')?.classList.remove('show');
+      document.getElementById('planSheet')?.classList.remove('hidden');
+      document.getElementById('routeState')?.style && (document.getElementById('routeState').style.display='none');
+      document.getElementById('welcomeState')?.style && (document.getElementById('welcomeState').style.display='');
+    },true);
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});
+  else bind();
+  new MutationObserver(bind).observe(document.documentElement,{childList:true,subtree:true});
 })();
 </script>
 {% endblock %}
