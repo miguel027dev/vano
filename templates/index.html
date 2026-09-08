@@ -758,6 +758,95 @@ html[data-vano-theme="black"] .vano-user-puck-v230 .vano-puck-inline{filter:drop
 .route-marker.alert-marker .alert-visual{transform:scale(1.16)!important;transform-origin:center bottom!important}
 .body-nav .mapboxgl-marker.route-marker.alert-marker{opacity:.98!important}
 .body-nav.nav-drive-fast .mapboxgl-marker.route-marker.alert-marker{opacity:.94!important}
+
+/* VANO MAPS V269 — premium route card, polished exit button, camera UX finishing */
+#routeState .route-glance-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin:10px 0 14px!important;
+}
+#routeState .route-glance-card{
+  position:relative!important;
+  min-height:86px!important;
+  padding:14px 14px 13px!important;
+  border-radius:20px!important;
+  border:1px solid rgba(19,23,31,.06)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(249,243,238,.95))!important;
+  box-shadow:0 12px 28px rgba(20,24,32,.055),inset 0 1px 0 rgba(255,255,255,.88)!important;
+  overflow:hidden!important;
+}
+#routeState .route-glance-card::after{
+  content:''!important;position:absolute!important;inset:auto -18px -18px auto!important;width:54px!important;height:54px!important;border-radius:50%!important;background:radial-gradient(circle,rgba(245,154,98,.16),rgba(245,154,98,0) 70%)!important;pointer-events:none!important;
+}
+#routeState .route-glance-primary{background:linear-gradient(145deg,rgba(255,242,233,.99),rgba(255,251,247,.98))!important;border-color:rgba(245,154,98,.18)!important;box-shadow:0 18px 32px rgba(217,112,63,.12),inset 0 1px 0 rgba(255,255,255,.92)!important}
+#routeState .route-glance-card small{display:block!important;font-size:9px!important;letter-spacing:.16em!important;font-weight:850!important;color:#8b7464!important;margin-bottom:7px!important}
+#routeState .route-glance-card b{display:block!important;font-size:20px!important;line-height:1.04!important;letter-spacing:-.05em!important;color:#251d18!important}
+#routeState .route-glance-card span{display:block!important;margin-top:7px!important;font-size:11px!important;line-height:1.32!important;color:#7b6a60!important}
+#routeState .route-card{
+  margin-top:12px!important;
+  border-radius:22px!important;
+  border:1px solid rgba(19,23,31,.06)!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.99),rgba(249,245,241,.96))!important;
+  box-shadow:0 18px 42px rgba(20,24,32,.07),inset 0 1px 0 rgba(255,255,255,.92)!important;
+  overflow:hidden!important;
+}
+#routeState .route-card.fast-selected{background:linear-gradient(180deg,rgba(255,249,244,.995),rgba(255,242,231,.97))!important;border-color:rgba(245,154,98,.18)!important;box-shadow:0 20px 44px rgba(217,112,63,.10),inset 0 1px 0 rgba(255,255,255,.92)!important}
+#routeState .route-card-top{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:12px!important;padding:16px 16px 10px!important}
+#routeState .route-card-top h3{margin:0!important;font-size:19px!important;line-height:1.1!important;letter-spacing:-.04em!important;color:#241d19!important}
+#routeState .route-card-top .mins{display:grid!important;place-items:center!important;min-width:72px!important;height:56px!important;padding:0 12px!important;border-radius:18px!important;background:linear-gradient(145deg,rgba(255,242,232,.99),rgba(255,255,255,.98))!important;border:1px solid rgba(245,154,98,.18)!important;box-shadow:0 8px 20px rgba(217,112,63,.10)!important;font-size:24px!important;font-weight:900!important;letter-spacing:-.05em!important;color:#2a1e19!important}
+#routeState .route-deep-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;padding:0 16px 14px!important}
+#routeState .route-deep-chip{min-height:72px!important;padding:12px!important;border-radius:17px!important;border:1px solid rgba(19,23,31,.05)!important;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,243,239,.95))!important;box-shadow:0 8px 18px rgba(20,24,32,.045)!important}
+#routeState .route-deep-chip small{display:block!important;font-size:8px!important;letter-spacing:.16em!important;color:#8b7769!important;font-weight:850!important;margin-bottom:6px!important}
+#routeState .route-deep-chip b{display:block!important;font-size:14px!important;line-height:1.2!important;color:#211a16!important}
+#routeState .route-deep-chip span{display:block!important;margin-top:5px!important;font-size:10px!important;line-height:1.32!important;color:#716157!important}
+#routeState .route-story-line{display:flex!important;align-items:center!important;gap:8px!important;margin:0 16px 14px!important;padding:12px 13px!important;border-radius:16px!important;background:linear-gradient(180deg,rgba(255,244,236,.95),rgba(255,251,248,.92))!important;border:1px solid rgba(245,154,98,.14)!important;color:#6f513f!important}
+#routeState .route-story-line i{width:26px!important;height:26px!important;display:grid!important;place-items:center!important;border-radius:10px!important;background:rgba(245,154,98,.14)!important;color:#d9703f!important;flex:0 0 auto!important}
+#routeState .route-story-line span{font-size:11px!important;line-height:1.36!important}
+#routeState .route-ai{margin:0 16px 16px!important;padding-top:14px!important;border-top:1px solid rgba(19,23,31,.07)!important}
+#routeState .traffic-line,#routeState .smart-note,#routeState .risk-note{margin:0 16px 12px!important;border-radius:16px!important;padding:12px 13px!important}
+#routeState .route-variants{padding-bottom:8px!important}
+body.body-nav #activeNav #navTripGlance{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin-top:10px!important}
+body.body-nav #activeNav .nav-trip-chip{min-height:54px!important;padding:10px 11px!important;border-radius:16px!important;border:1px solid rgba(19,23,31,.05)!important;background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(249,242,236,.9))!important;box-shadow:0 10px 24px rgba(20,24,32,.05)!important}
+body.body-nav #activeNav .nav-trip-chip small{display:block!important;font-size:7px!important;letter-spacing:.16em!important;color:#90786b!important;font-weight:900!important;margin-bottom:5px!important}
+body.body-nav #activeNav .nav-trip-chip b{display:block!important;font-size:11px!important;line-height:1.24!important;color:#231b17!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body.body-nav #navExitBtn{
+  color:var(--vg-danger)!important;
+  border-color:rgba(255,255,255,.09)!important;
+  background:rgba(9,12,15,.94)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.23)!important;
+}
+body.body-nav #navExitBtn:hover{background:rgba(17,20,24,.96)!important}
+body.body-nav #navExitBtn:active{transform:scale(.93)!important}
+body.body-nav #navControlStack{gap:8px!important}
+body.body-nav #activeNav.nav-panel.nav-minimal{animation:vano-nav-dock-rise-v269 .34s cubic-bezier(.22,1,.36,1)!important}
+#routeState.vano-route-ready{animation:vano-route-ready-rise-v269 .34s cubic-bezier(.22,1,.36,1)!important}
+@keyframes vano-route-ready-rise-v269{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes vano-nav-dock-rise-v269{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+html[data-vano-theme="black"] #routeState .route-glance-card,
+html[data-vano-theme="black"] #routeState .route-card,
+html[data-vano-theme="black"] #routeState .route-deep-chip,
+html[data-vano-theme="black"] #routeState .route-story-line,
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-trip-chip{
+  background:linear-gradient(180deg,rgba(30,26,24,.98),rgba(21,19,18,.95))!important;
+  border-color:rgba(255,255,255,.05)!important;
+  box-shadow:0 14px 30px rgba(0,0,0,.24)!important;
+}
+html[data-vano-theme="black"] #routeState .route-glance-primary{background:linear-gradient(145deg,rgba(58,39,29,.96),rgba(29,24,21,.97))!important;border-color:rgba(245,154,98,.16)!important}
+html[data-vano-theme="black"] #routeState .route-glance-card b,
+html[data-vano-theme="black"] #routeState .route-card-top h3,
+html[data-vano-theme="black"] #routeState .route-deep-chip b,
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-trip-chip b{color:#f7f0ea!important}
+html[data-vano-theme="black"] #routeState .route-glance-card span,
+html[data-vano-theme="black"] #routeState .route-deep-chip span,
+html[data-vano-theme="black"] #routeState .route-story-line span,
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-trip-chip small{color:#ccb6a9!important}
+@media (max-width:680px){
+  #routeState .route-glance-grid,#routeState .route-deep-grid,body.body-nav #activeNav #navTripGlance{grid-template-columns:1fr!important}
+  #routeState .route-card-top{padding-bottom:6px!important}
+  #routeState .route-card-top .mins{min-width:64px!important;height:52px!important;font-size:21px!important}
+}
+
 </style>{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -1002,6 +1091,11 @@ html[data-vano-theme="black"] .vano-user-puck-v230 .vano-puck-inline{filter:drop
           <div class="route-time"><span id="selectedDuration">—</span><small id="selectedDistance">—</small></div>
         </div>
       </div>
+      <div class="route-glance-grid" id="routeGlanceGrid" aria-label="Resumo do trajeto">
+        <div class="route-glance-card route-glance-primary"><small>TEMPO</small><b id="routeGlanceEta">—</b><span id="routeGlanceEtaMeta">pronto para sair</span></div>
+        <div class="route-glance-card"><small>ESTRATÉGIA</small><b id="routeGlanceMode">Mais segura</b><span id="routeGlanceModeMeta">equilíbrio entre tempo e contexto</span></div>
+        <div class="route-glance-card"><small>TRAJETO</small><b id="routeGlanceDistance">—</b><span id="routeGlanceDistanceMeta">analisando rota</span></div>
+      </div>
 
       <div class="vano-route-mode-row">
         <div class="segment" id="routeModeSegment" aria-label="Prioridade da rota">
@@ -1064,6 +1158,11 @@ html[data-vano-theme="black"] .vano-user-puck-v230 .vano-puck-inline{filter:drop
       <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="timer" width="11"></i><small>FALTAM</small></span><strong id="remainingMinutes">—</strong></div>
       <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="route" width="11"></i><small>DISTÂNCIA</small></span><strong id="remainingKm">—</strong></div>
       <button type="button" class="nav-search-btn" id="navSearchBtn" aria-label="Pesquisar outro destino" title="Pesquisar outro destino"><i data-lucide="search" width="20"></i></button>
+    </div>
+    <div class="nav-trip-glance" id="navTripGlance" aria-label="Situação do trajeto">
+      <div class="nav-trip-chip"><small>ROTA</small><b id="navTripMode">—</b></div>
+      <div class="nav-trip-chip"><small>VIA</small><b id="navTripRoad">—</b></div>
+      <div class="nav-trip-chip"><small>STATUS</small><b id="navTripStatus">Fluxo estável</b></div>
     </div>
     <div class="traffic-suggestion" id="trafficSuggestion">
       <div class="traffic-suggestion-main"><div class="traffic-suggestion-icon"><i data-lucide="route" width="18"></i></div><div><small>Rota mais rápida encontrada</small><b id="trafficSuggestionTitle">Alternativa disponível</b><span id="trafficSuggestionCopy">Existe uma opção com ETA melhor.</span></div></div>
