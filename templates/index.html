@@ -951,6 +951,41 @@ html[data-vano-theme="black"] #routeState .route-variant.active{
   #routeState .route-variant{flex-basis:min(164px,54vw)!important}
 }
 
+/* VANO V271 — navigation fast path: clean exit + lower compositor cost. */
+body.body-nav #navExitBtn.nav-exit-main{
+  display:grid!important;
+  place-items:center!important;
+  position:relative!important;
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  min-height:48px!important;
+  border-radius:16px!important;
+  border:1px solid rgba(197,38,48,.20)!important;
+  background:#E5484D!important;
+  color:#fff!important;
+  box-shadow:0 8px 18px rgba(118,26,31,.18)!important;
+  transform:translateZ(0)!important;
+  will-change:transform!important;
+}
+body.body-nav #navExitBtn.nav-exit-main:hover{background:#D93D43!important;color:#fff!important}
+body.body-nav #navExitBtn.nav-exit-main:active{transform:scale(.94) translateZ(0)!important}
+html[data-vano-theme="black"] body.body-nav #navExitBtn.nav-exit-main{
+  background:#D9444A!important;
+  color:#fff!important;
+  border-color:rgba(255,116,125,.22)!important;
+  box-shadow:0 8px 18px rgba(0,0,0,.20)!important;
+}
+/* While driving, glass blur costs GPU every time the map moves. Keep the same hierarchy with opaque surfaces. */
+body.body-nav :is(#activeNav,.nav-maneuver-top,.nav-street-chip,.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn,.traffic-radar,.nav-alt-hint,.traffic-suggestion){
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+}
+body.body-nav #activeNav.nav-panel.nav-minimal{box-shadow:0 -8px 24px rgba(19,23,31,.10)!important}
+body.body-nav .nav-maneuver-top{box-shadow:0 8px 22px rgba(19,23,31,.11)!important}
+body.body-nav :is(.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn){box-shadow:0 6px 16px rgba(20,22,27,.10)!important}
+@media(max-width:430px){body.body-nav #navExitBtn.nav-exit-main{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;border-radius:13px!important}}
+
 </style>{% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -995,6 +1030,7 @@ html[data-vano-theme="black"] #routeState .route-variant.active{
       <button type="button" class="nav-drawer-btn" id="navDrawerOptions" aria-label="Abrir opções" title="Opções"><i data-lucide="ellipsis" width="18"></i></button>
       <button type="button" class="nav-drawer-btn nav-drawer-support" id="navDrawerSupport" aria-label="Abrir apoio durante o trajeto" title="Apoio durante o trajeto"><i data-lucide="shield-check" width="18"></i></button>
     </div>
+    <button type="button" class="nav-stack-btn nav-exit-main" id="navExitBtn" aria-label="Encerrar trajeto" title="Encerrar trajeto"><i data-lucide="x" width="20"></i></button>
     <button type="button" class="nav-stack-btn nav-report-main" id="quickAlertBtn" aria-label="Informar ocorrência" title="Informar ocorrência"><i data-lucide="triangle-alert" width="19"></i></button>
     <button type="button" class="nav-stack-btn nav-recenter-main" id="navDrawerRecenter" aria-label="Recalibrar câmera e seguir minha posição" title="Recalibrar câmera"><i data-lucide="crosshair" width="19"></i></button>
     <button type="button" class="nav-audio-toggle active nav-audio-main" id="soundBtn" aria-label="Desativar orientações por voz" title="Áudio ligado"><i data-lucide="volume-2" width="19"></i></button>
@@ -1249,7 +1285,7 @@ html[data-vano-theme="black"] #routeState .route-variant.active{
   <div class="nav-alt-hint" id="navAltHint" aria-live="polite"><div class="nav-alt-copy"><small>ROTA MAIS RÁPIDA</small><b id="navAltHintText">Tem uma rota mais rápida, quer trocar pra ela?</b><em id="navAltHintMeta"></em></div><button type="button" class="nav-alt-accept" id="navAltAccept">Trocar</button><button type="button" class="nav-alt-dismiss" id="navAltDismiss" aria-label="Manter rota atual"><i data-lucide="x" width="13"></i></button></div>
 
   <section class="nav-panel nav-minimal" id="activeNav" aria-live="polite">
-    <div class="vano-nav-dock-head"><span class="vano-nav-live"><i></i>EM ROTA</span><div class="vano-nav-head-actions"><span class="vano-nav-dock-caption">Atualização em tempo real</span><button type="button" class="nav-exit-btn" id="navExitBtn" aria-label="Sair da rota" title="Sair da rota"><i data-lucide="x" width="15"></i></button></div></div>
+    <div class="vano-nav-dock-head"><span class="vano-nav-live"><i></i>EM ROTA</span><div class="vano-nav-head-actions"><span class="vano-nav-dock-caption">Atualização em tempo real</span></div></div>
     <div class="nav-summary-row">
       <div class="nav-summary-item nav-summary-primary"><span class="nav-summary-label"><i data-lucide="flag" width="11"></i><small>CHEGADA</small></span><strong id="arrivalTime">—</strong></div>
       <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="timer" width="11"></i><small>FALTAM</small></span><strong id="remainingMinutes">—</strong></div>
@@ -1367,31 +1403,4 @@ html[data-vano-theme="black"] #routeState .route-variant.active{
 })();
 </script>
 
-<script>
-// VANO MAPS V267 — quick route exit without exposing extra UI chrome.
-(()=>{
-  const bind=()=>{
-    const exitBtn=document.getElementById('navExitBtn');
-    if(!exitBtn||exitBtn.dataset.bound==='1')return;
-    exitBtn.dataset.bound='1';
-    exitBtn.addEventListener('click',ev=>{
-      ev.preventDefault();
-      ev.stopPropagation();
-      const primary=document.getElementById('navSearchBtn');
-      const secondary=document.getElementById('arrivalFinishBtn');
-      const fire=el=>!!el&&el.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
-      if(fire(primary))return;
-      if(fire(secondary))return;
-      document.body.classList.remove('body-nav');
-      document.getElementById('activeNav')?.classList.remove('show');
-      document.getElementById('planSheet')?.classList.remove('hidden');
-      document.getElementById('routeState')?.style && (document.getElementById('routeState').style.display='none');
-      document.getElementById('welcomeState')?.style && (document.getElementById('welcomeState').style.display='');
-    },true);
-  };
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind,{once:true});
-  else bind();
-  new MutationObserver(bind).observe(document.documentElement,{childList:true,subtree:true});
-})();
-</script>
 {% endblock %}
