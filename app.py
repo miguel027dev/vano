@@ -7490,7 +7490,7 @@ def web_app_manifest():
 @app.route("/vienna-sw.js")
 def raigo_service_worker():
     # /vienna-sw.js remains as a compatibility alias for already-installed clients.
-    response = app.send_static_file("vano-sw-v262.js")
+    response = app.send_static_file("vano-sw-v300.js")
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Service-Worker-Allowed"] = "/"
     response.headers["X-VANO-Build"] = VANO_BUILD_ID
