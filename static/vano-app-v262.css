@@ -6772,7 +6772,7 @@ button:disabled,[aria-disabled="true"]{cursor:not-allowed;opacity:.58}
 
 /* The Mapbox DOM must never escape above application drawers/modals. */
 .ws-app,#map,.mapboxgl-map{isolation:isolate;z-index:var(--vano-layer-map)!important}
-.mapboxgl-marker,.mapboxgl-marker.vano-user-puck-v230,.vano-user-puck-v230,.user-marker,.vano-uploaded-user{z-index:var(--vano-layer-marker)!important}
+.mapboxgl-marker,.mapboxgl-marker.vano-user-puck-v300,.vano-user-puck-v300,.user-marker,.vano-uploaded-user{z-index:var(--vano-layer-marker)!important}
 .mapboxgl-marker{pointer-events:none}
 .mapboxgl-marker [data-vano-interactive-marker],.mapboxgl-marker.vano-alert-marker{pointer-events:auto}
 .account-drawer,.vano-routine-sheet,.quick-alert-sheet{z-index:var(--vano-layer-drawer)!important}

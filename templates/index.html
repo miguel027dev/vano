@@ -26,7 +26,7 @@
 <link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-300">
 
 {% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}"><link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-300">
 
 
 
@@ -276,7 +276,8 @@
 
       <div class="vano-route-mode-row">
         <div class="segment" id="routeModeSegment" aria-label="Prioridade da rota">
-          <button type="button" class="active safe" data-route-mode="safest"><span class="route-option-icon"><i data-lucide="shield-check" width="15"></i></span><span class="route-option-copy"><b>Mais segura</b><small>Equilíbrio</small></span></button>
+          <button type="button" class="active safe" data-route-mode="safest"><span class="route-option-icon"><i data-lucide="shield-check" width="15"></i></span><span class="route-option-copy"><b>Mais segura</b><small>Prioriza segurança</small></span></button>
+          <button type="button" class="smart" data-route-mode="smart"><span class="route-option-icon"><i data-lucide="sparkles" width="15"></i></span><span class="route-option-copy"><b>Spark</b><small>Tempo + trânsito + segurança</small></span></button>
           <button type="button" class="fast" data-route-mode="fastest"><span class="route-option-icon"><i data-lucide="zap" width="15"></i></span><span class="route-option-copy"><b>Mais rápida</b><small>Menor ETA</small></span></button>
         </div>
       </div>

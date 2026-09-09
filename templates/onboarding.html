@@ -37,9 +37,9 @@ html,body{max-width:100%;overflow-x:hidden}
     </section>
 
     <section class="ob-section">
-      <div class="ob-section-title"><div class="ico"><i data-lucide="route" width="17"></i></div><div><b>Preferência de rota</b><span>Define o equilíbrio inicial entre tempo, segurança e trânsito.</span></div></div>
+      <div class="ob-section-title"><div class="ico"><i data-lucide="route" width="17"></i></div><div><b>Preferência de rota</b><span>Escolha como o VANO deve priorizar tempo, segurança e trânsito.</span></div></div>
       <div class="preference-list">
-        <div class="pref"><input id="prefBalanced" type="radio" name="route_preference" value="balanced" {% if not user['route_preference'] or user['route_preference']=='balanced' %}checked{% endif %}><label for="prefBalanced"><span class="pref-icon"><i data-lucide="scale" width="17"></i></span><div><b>Equilibrado</b><span>Tempo, segurança e trânsito com pesos próximos.</span></div><span class="radio-dot"></span></label></div>
+        <div class="pref"><input id="prefBalanced" type="radio" name="route_preference" value="balanced" {% if not user['route_preference'] or user['route_preference']=='balanced' %}checked{% endif %}><label for="prefBalanced"><span class="pref-icon"><i data-lucide="scale" width="17"></i></span><div><b>Spark</b><span>Equilíbrio inteligente entre tempo, trânsito e segurança.</span></div><span class="radio-dot"></span></label></div>
         <div class="pref"><input id="prefSafe" type="radio" name="route_preference" value="safety_first" {% if user['route_preference']=='safety_first' %}checked{% endif %}><label for="prefSafe"><span class="pref-icon"><i data-lucide="shield-check" width="17"></i></span><div><b>Priorizar segurança</b><span>Permite pequenos desvios quando houver ganho objetivo.</span></div><span class="radio-dot"></span></label></div>
         <div class="pref"><input id="prefFast" type="radio" name="route_preference" value="fast_first" {% if user['route_preference']=='fast_first' %}checked{% endif %}><label for="prefFast"><span class="pref-icon"><i data-lucide="gauge" width="17"></i></span><div><b>Priorizar tempo</b><span>Favorece ETA e trânsito sem desligar a leitura da via.</span></div><span class="radio-dot"></span></label></div>
       </div>

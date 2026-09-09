@@ -1,18 +1,17 @@
 /* VANO MAPS V262 — atomic, conservative offline cache. */
-const BUILD='281.0.0-driver-polish';
-const CACHE=`vano-maps-v281-${BUILD}`;
+const BUILD='300.0.0';
+const CACHE=`vano-maps-v300-${BUILD}`;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
   '/static/vano-theme-v230.js',
-  '/static/vano-map-v232.js',
-  '/static/vano-navigation-v280.css',
-  '/static/vano-navigation-runtime-v280.js',
+  '/static/vano-map-v300.js',
+  '/static/vano-navigation-v300.css',
   '/static/vano-maps-icon-64.png',
   '/static/vano-maps-icon-192.png',
   '/static/vano-maps-icon-512.png'
 ];
-const CORE_RE=/\/static\/(vano-app-v262\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v232\.js|vano-navigation-v280\.css|vano-navigation-runtime-v280\.js)$/;
+const CORE_RE=/\/static\/(vano-app-v262\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v300\.js|vano-navigation-v300\.css)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 

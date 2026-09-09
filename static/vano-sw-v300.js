@@ -1,5 +1,5 @@
 /* VANO MAPS V300 — atomic, conservative offline cache. */
-const BUILD='300.0.0-map-refactor';
+const BUILD='300.1.0-navigation-refactor';
 const CACHE=`vano-maps-v300-${BUILD}`;
 const PRECACHE=[
   '/static/vano-app-v262.css',
@@ -7,11 +7,12 @@ const PRECACHE=[
   '/static/vano-theme-v230.js',
   '/static/vano-map-v300.js',
   '/static/vano-map-v300.css',
+  '/static/vano-navigation-v300.css',
   '/static/vano-maps-icon-64.png',
   '/static/vano-maps-icon-192.png',
   '/static/vano-maps-icon-512.png'
 ];
-const CORE_RE=/\/static\/(vano-app-v262\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v300\.js|vano-map-v300\.css)$/;
+const CORE_RE=/\/static\/(vano-app-v262\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v300\.js|vano-map-v300\.css|vano-navigation-v300\.css)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 
