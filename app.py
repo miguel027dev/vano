@@ -7456,6 +7456,36 @@ def keepalive_probe():
     return jsonify({"ok": True, "service": "vano", "ts": int(time.time())}), 200
 
 
+@app.get("/.well-known/assetlinks.json")
+def android_asset_links():
+    """Digital Asset Links for the VANO MAPS Trusted Web Activity."""
+    payload = [{
+        "relation": ["delegate_permission/common.handle_all_urls"],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.vano.maps",
+            "sha256_cert_fingerprints": [
+                "3E:F0:11:85:08:60:D0:AE:62:9E:8D:93:FB:74:9D:70:6A:3E:C5:0E:DC:38:69:71:C4:A6:13:7A:A3:50:63:46",
+                "65:D1:8D:53:B2:5B:D5:D6:0C:CF:59:E0:DC:36:18:1D:2D:19:15:D3:07:69:E7:52:68:B7:CD:94:21:F4:BC:88",
+            ],
+        },
+    }]
+    response = app.response_class(
+        json.dumps(payload, separators=(",", ":")),
+        mimetype="application/json",
+    )
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
+@app.get("/manifest.webmanifest")
+def web_app_manifest():
+    response = app.send_static_file("manifest.webmanifest")
+    response.headers["Content-Type"] = "application/manifest+json; charset=utf-8"
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
 @app.route("/vano-sw.js")
 @app.route("/vienna-sw.js")
 def raigo_service_worker():

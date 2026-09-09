@@ -32,7 +32,7 @@
   <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}" type="image/png">
   <link rel="alternate icon" href="{{ url_for('static', filename='vano-maps-icon-64.png') }}" type="image/png">
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}?v={{ vano_build_id }}">
+  <link rel="manifest" href="{{ url_for('web_app_manifest') }}?v={{ vano_build_id }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="VANO MAPS">
   <meta property="og:locale" content="{{ active_locale|replace('-','_') }}">
