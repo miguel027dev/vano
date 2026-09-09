@@ -23,9 +23,10 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v231.js') }}?v={{ vano_build_id }}-279">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v232.js') }}?v={{ vano_build_id }}-281">
 
 {% endblock %}
+{% block final_map_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v280.css') }}?v={{ vano_build_id }}-281">{% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
 
 
@@ -2176,7 +2177,7 @@ html.vano-native-map-active #map .mapboxgl-control-container{visibility:hidden!i
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v231.js') ~ '?v=' ~ vano_build_id ~ '-279')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v232.js') ~ '?v=' ~ vano_build_id ~ '-281')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;
@@ -2232,5 +2233,6 @@ html.vano-native-map-active #map .mapboxgl-control-container{visibility:hidden!i
   boot();
 })();
 </script>
+<script src="{{ url_for('static', filename='vano-navigation-runtime-v280.js') }}?v={{ vano_build_id }}-281"></script>
 
 {% endblock %}
