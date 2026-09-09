@@ -123,7 +123,14 @@
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner-v263.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_map_surface %}
-  <script>try{if(/VANO-MAPS-Android\//i.test(navigator.userAgent)){document.documentElement.classList.add('vano-native-android')}}catch(_){}</script>
+  <script>try{
+    const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);
+    const installed=!!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+    const twaRef=/^android-app:\/\/com\.vano\.maps(?:\/|$)/i.test(document.referrer||'');
+    if(uaAndroid||installed||twaRef){
+      document.documentElement.classList.add('vano-native-android','vano-installed-app');
+    }
+  }catch(_){}</script>
   {% endif %}
 </head>
 <body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
