@@ -1,5 +1,5 @@
 /* VANO MAPS V300 — atomic, conservative offline cache. */
-const BUILD='300.1.0-navigation-refactor';
+const BUILD='300.2.0-orange-hud-polish';
 const CACHE=`vano-maps-v300-${BUILD}`;
 const PRECACHE=[
   '/static/vano-app-v262.css',

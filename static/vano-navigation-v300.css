@@ -1,27 +1,185 @@
-/* VANO MAPS Navigation V300 — canonical navigation surface. */
-:root{--vano-nav-purple:#7457f6;--vano-nav-purple-strong:#6548ef;--vano-nav-ink:#171820;--vano-nav-muted:#777b88;--vano-nav-surface:rgba(255,255,255,.965);--vano-nav-line:rgba(23,24,32,.08);--vano-nav-shadow:0 12px 38px rgba(24,22,36,.14);--vano-safe-bottom:max(8px,env(safe-area-inset-bottom));--vano-safe-right:max(10px,env(safe-area-inset-right));--vano-safe-left:max(10px,env(safe-area-inset-left));}
-/* User puck: 42 px visual, 48 px GPS weak ring. Never cover an entire lane. */
-.mapboxgl-marker.vano-user-puck-v300,.vano-user-puck-v300{width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important;background:transparent!important;transform-origin:50% 50%!important;z-index:68!important;will-change:transform!important}
-.vano-user-puck-v300 .vano-puck-inline{width:42px!important;height:42px!important;display:block!important;overflow:visible!important}.vano-user-puck-v300 .vano-puck-halo{fill:rgba(255,255,255,.96);stroke:rgba(23,24,32,.16);stroke-width:1.6}.vano-user-puck-v300 .vano-puck-face{fill:var(--vano-nav-purple);stroke:#fff;stroke-width:2.2;stroke-linejoin:round}.vano-user-puck-v300 .vano-puck-core{fill:rgba(255,255,255,.23)}.vano-user-puck-v300 .vano-puck-accuracy{position:absolute!important;inset:50% auto auto 50%!important;width:48px!important;height:48px!important;transform:translate(-50%,-50%)!important;border:1px solid rgba(116,87,246,.18)!important;border-radius:50%!important;background:rgba(116,87,246,.06)!important;opacity:0!important;transition:opacity .18s ease!important}.vano-user-puck-v300.is-gps-weak .vano-puck-accuracy{opacity:1!important}
-html[data-vano-theme="black"] .vano-user-puck-v300 .vano-puck-halo,body[data-mood="night"] .vano-user-puck-v300 .vano-puck-halo{fill:#f7f7fb;stroke:rgba(255,255,255,.38)}
-/* Navigation UI: one authoritative geometry. */
-body.body-nav #navManeuverTop{position:absolute!important;z-index:72!important;top:max(12px,calc(env(safe-area-inset-top) + 8px))!important;left:var(--vano-safe-left)!important;width:min(420px,calc(100vw - 20px))!important;min-height:72px!important;padding:10px 12px!important;display:grid!important;grid-template-columns:48px minmax(0,1fr)!important;align-items:center!important;gap:10px!important;border:1px solid var(--vano-nav-line)!important;border-radius:18px!important;background:var(--vano-nav-surface)!important;box-shadow:0 8px 30px rgba(24,22,36,.12)!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important;transform:none!important}
-body.body-nav #navManeuverTop .nav-maneuver-icon{width:48px!important;height:48px!important;border-radius:14px!important;background:rgba(116,87,246,.10)!important;color:var(--vano-nav-purple)!important;display:grid!important;place-items:center!important}body.body-nav #navManeuverTop .maneuver-glyph{font-size:28px!important;font-weight:800!important;line-height:1!important}body.body-nav #navManeuverTop small{font-size:8px!important;letter-spacing:.09em!important;color:var(--vano-nav-muted)!important}body.body-nav #navManeuverTop b{font-size:17px!important;line-height:1.12!important;color:var(--vano-nav-ink)!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}body.body-nav #navManeuverTop #nextDistance{font-size:12px!important;color:var(--vano-nav-muted)!important}
-body.body-nav #navStreetChip{position:absolute!important;z-index:69!important;left:50%!important;right:auto!important;bottom:calc(var(--vano-safe-bottom) + 82px)!important;top:auto!important;width:auto!important;max-width:min(68vw,390px)!important;min-height:30px!important;padding:7px 11px!important;border:1px solid var(--vano-nav-line)!important;border-radius:999px!important;background:rgba(255,255,255,.94)!important;color:#565a66!important;box-shadow:0 6px 20px rgba(24,22,36,.09)!important;transform:translateX(-50%)!important;font-size:11px!important;font-weight:700!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
-body.body-nav #activeNav.nav-panel.nav-minimal{position:absolute!important;z-index:71!important;left:var(--vano-safe-left)!important;right:var(--vano-safe-right)!important;bottom:var(--vano-safe-bottom)!important;width:auto!important;max-width:none!important;min-height:64px!important;padding:6px!important;border:1px solid var(--vano-nav-line)!important;border-radius:18px!important;background:var(--vano-nav-surface)!important;box-shadow:var(--vano-nav-shadow)!important;backdrop-filter:blur(20px)!important;-webkit-backdrop-filter:blur(20px)!important;overflow:visible!important;transform:translateY(calc(100% + 26px))!important;opacity:0!important;transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .16s ease!important}body.body-nav #activeNav.nav-panel.nav-minimal.show{transform:none!important;opacity:1!important}
-body.body-nav #activeNav .vano-nav-dock-head{display:none!important}body.body-nav #activeNav .nav-summary-row{display:grid!important;grid-template-columns:1.05fr 1fr 1fr 42px!important;gap:4px!important;align-items:stretch!important;min-height:50px!important}body.body-nav #activeNav .nav-summary-item{height:50px!important;min-width:0!important;padding:7px 8px!important;border-radius:12px!important;background:rgba(247,247,250,.88)!important;display:flex!important;flex-direction:column!important;justify-content:center!important}body.body-nav #activeNav .nav-summary-item:before{display:none!important}body.body-nav #activeNav .nav-summary-label{display:flex!important;align-items:center!important;gap:4px!important;color:#989ba5!important}body.body-nav #activeNav .nav-summary-item small{font-size:7px!important;letter-spacing:.08em!important;color:#989ba5!important;margin:0!important}body.body-nav #activeNav .nav-summary-item strong{margin-top:3px!important;font-size:15px!important;line-height:1!important;color:var(--vano-nav-ink)!important;font-weight:800!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}body.body-nav #activeNav .nav-summary-primary strong{color:var(--vano-nav-purple-strong)!important;font-size:17px!important}body.body-nav #activeNav .nav-search-btn{width:42px!important;height:50px!important;border:0!important;border-radius:12px!important;background:rgba(116,87,246,.10)!important;color:var(--vano-nav-purple)!important;display:grid!important;place-items:center!important}
-body.body-nav #navControlStack{position:absolute!important;z-index:74!important;right:var(--vano-safe-right)!important;bottom:calc(var(--vano-safe-bottom) + 78px)!important;top:auto!important;width:44px!important;min-width:44px!important;display:flex!important;flex-direction:column!important;gap:7px!important;align-items:center!important;transform:none!important}body.body-nav #navExitBtn,body.body-nav #quickAlertBtn,body.body-nav #navDrawerRecenter,body.body-nav #soundBtn,body.body-nav #navDrawerToggle{box-sizing:border-box!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;max-width:44px!important;max-height:44px!important;border:1px solid var(--vano-nav-line)!important;border-radius:14px!important;background:rgba(255,255,255,.96)!important;color:#595d68!important;box-shadow:0 6px 20px rgba(24,22,36,.10)!important;display:grid!important;place-items:center!important;padding:0!important}body.body-nav #navExitBtn{color:#b84d55!important}body.body-nav #quickAlertBtn{color:#d0832d!important}body.body-nav #navDrawerRecenter{color:var(--vano-nav-purple)!important}body.body-nav #soundBtn.active{background:rgba(116,87,246,.10)!important;color:var(--vano-nav-purple)!important;border-color:rgba(116,87,246,.20)!important}body.body-nav #navExitBtn:active,body.body-nav #quickAlertBtn:active,body.body-nav #navDrawerRecenter:active,body.body-nav #soundBtn:active,body.body-nav #navDrawerToggle:active{transform:scale(.94)!important}
-body.body-nav #vanoSpeedometerV220{position:absolute!important;z-index:70!important;left:var(--vano-safe-left)!important;bottom:calc(var(--vano-safe-bottom) + 80px)!important;width:48px!important;height:48px!important;border:2px solid rgba(31,33,42,.14)!important;border-radius:15px!important;background:rgba(255,255,255,.96)!important;color:var(--vano-nav-ink)!important;box-shadow:0 6px 20px rgba(24,22,36,.10)!important;display:grid!important;place-items:center!important}body.body-nav #vanoSpeedometerV220 strong{font-size:16px!important;font-weight:850!important}body.body-nav #vanoSpeedometerV220.over-limit{border-color:#d84b57!important;color:#c63643!important}
-/* States */body.body-nav[data-nav-camera-state="FREE_LOOK"] #navDrawerRecenter{animation:vanoRecenterPulse 1.7s ease-in-out infinite}body.body-nav[data-nav-camera-state="REROUTING"] #rerouteNotice.show{display:flex!important}body.body-nav[data-nav-camera-state="ARRIVAL"] #navManeuverTop{opacity:.72!important}@keyframes vanoRecenterPulse{0%,100%{box-shadow:0 6px 20px rgba(24,22,36,.10)}50%{box-shadow:0 6px 24px rgba(116,87,246,.24)}}
-/* Landscape is a real layout, not compressed portrait. */
-@media (orientation:landscape) and (max-height:620px){body.body-nav #navManeuverTop{left:var(--vano-safe-left)!important;top:max(10px,calc(env(safe-area-inset-top) + 6px))!important;width:min(300px,34vw)!important;min-height:64px!important;grid-template-columns:42px minmax(0,1fr)!important;padding:8px 10px!important}body.body-nav #navManeuverTop .nav-maneuver-icon{width:42px!important;height:42px!important}body.body-nav #navManeuverTop b{font-size:14px!important}body.body-nav #activeNav.nav-panel.nav-minimal{left:var(--vano-safe-left)!important;right:auto!important;bottom:var(--vano-safe-bottom)!important;width:min(300px,34vw)!important}body.body-nav #activeNav .nav-summary-row{grid-template-columns:1fr 1fr 1fr!important}body.body-nav #activeNav .nav-search-btn{display:none!important}body.body-nav #navStreetChip{left:calc(var(--vano-safe-left) + min(150px,17vw))!important;bottom:calc(var(--vano-safe-bottom) + 72px)!important;max-width:min(280px,32vw)!important}body.body-nav #navControlStack{right:var(--vano-safe-right)!important;bottom:var(--vano-safe-bottom)!important;flex-direction:row!important;width:auto!important;min-width:0!important}body.body-nav #vanoSpeedometerV220{left:auto!important;right:var(--vano-safe-right)!important;bottom:calc(var(--vano-safe-bottom) + 52px)!important}.mapboxgl-marker.vano-user-puck-v300,.vano-user-puck-v300{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important}.vano-user-puck-v300 .vano-puck-inline{width:38px!important;height:38px!important}}
-@media (max-width:390px){body.body-nav #activeNav .nav-summary-item{padding:6px!important}body.body-nav #activeNav .nav-summary-item strong{font-size:13px!important}body.body-nav #activeNav .nav-summary-primary strong{font-size:15px!important}body.body-nav #navManeuverTop{width:calc(100vw - 20px)!important}body.body-nav #navControlStack{right:max(8px,env(safe-area-inset-right))!important}.mapboxgl-marker.vano-user-puck-v300,.vano-user-puck-v300{width:39px!important;height:39px!important;min-width:39px!important;min-height:39px!important}.vano-user-puck-v300 .vano-puck-inline{width:39px!important;height:39px!important}}
+/* VANO MAPS Navigation V300.2 — canonical orange driver HUD. */
+:root{
+  --vano-nav-accent:#F47A45;
+  --vano-nav-accent-strong:#D96535;
+  --vano-nav-accent-soft:#FFF2EA;
+  --vano-nav-accent-wash:rgba(244,122,69,.10);
+  --vano-nav-ink:#20232A;
+  --vano-nav-muted:#858A95;
+  --vano-nav-line:rgba(25,28,35,.085);
+  --vano-nav-surface:rgba(255,255,255,.975);
+  --vano-nav-soft:#F6F7F9;
+  --vano-nav-shadow:0 14px 40px rgba(24,27,34,.14),0 2px 8px rgba(24,27,34,.05);
+  --vano-safe-bottom:max(8px,env(safe-area-inset-bottom));
+  --vano-safe-right:max(10px,env(safe-area-inset-right));
+  --vano-safe-left:max(10px,env(safe-area-inset-left));
+  --vano-hud-gap:10px;
+  --vano-summary-h:58px;
+}
+
+/* One sizing model. This layer intentionally wins over legacy map CSS. */
+body.body-nav #activeNav *,body.body-nav #navManeuverTop *,body.body-nav #navControlStack *{box-sizing:border-box}
+
+/* User marker — orange, compact, high contrast on light and black maps. */
+.mapboxgl-marker.vano-user-puck-v300,.vano-user-puck-v300{
+  width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+  display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important;
+  background:transparent!important;transform-origin:50% 50%!important;z-index:68!important;will-change:transform!important;
+}
+.vano-user-puck-v300 .vano-puck-inline{width:40px!important;height:40px!important;display:block!important;overflow:visible!important}
+.vano-user-puck-v300 .vano-puck-halo{fill:#fff;stroke:rgba(26,29,36,.16);stroke-width:1.45}
+.vano-user-puck-v300 .vano-puck-face{fill:var(--vano-nav-accent)!important;stroke:#fff;stroke-width:2.25;stroke-linejoin:round}
+.vano-user-puck-v300 .vano-puck-core{fill:rgba(255,255,255,.30)}
+.vano-user-puck-v300 .vano-puck-accuracy{
+  position:absolute!important;left:50%!important;top:50%!important;width:50px!important;height:50px!important;
+  transform:translate(-50%,-50%)!important;border:1px solid rgba(244,122,69,.20)!important;border-radius:50%!important;
+  background:rgba(244,122,69,.07)!important;opacity:0!important;transition:opacity .18s ease!important;z-index:-1!important;
+}
+.vano-user-puck-v300.is-gps-weak .vano-puck-accuracy{opacity:1!important}
+html[data-vano-theme="black"] .vano-user-puck-v300 .vano-puck-halo,body[data-mood="night"] .vano-user-puck-v300 .vano-puck-halo{fill:#fff;stroke:rgba(255,255,255,.45)}
+
+/* Top maneuver card. */
+body.body-nav #navManeuverTop{
+  position:absolute!important;z-index:72!important;
+  top:max(10px,calc(env(safe-area-inset-top) + 8px))!important;left:var(--vano-safe-left)!important;right:auto!important;
+  width:min(430px,calc(100vw - 20px))!important;min-height:74px!important;height:auto!important;
+  padding:9px 11px!important;margin:0!important;display:grid!important;grid-template-columns:52px minmax(0,1fr)!important;
+  align-items:center!important;gap:10px!important;border:1px solid var(--vano-nav-line)!important;border-radius:20px!important;
+  background:var(--vano-nav-surface)!important;color:var(--vano-nav-ink)!important;box-shadow:0 10px 32px rgba(24,27,34,.13)!important;
+  backdrop-filter:blur(20px) saturate(135%)!important;-webkit-backdrop-filter:blur(20px) saturate(135%)!important;
+  transform:none!important;overflow:hidden!important;
+}
+body.body-nav #navManeuverTop:after{content:"";position:absolute;inset:auto 0 0;height:2px;background:linear-gradient(90deg,var(--vano-nav-accent),rgba(244,122,69,0));opacity:.9}
+body.body-nav #navManeuverTop .nav-maneuver-icon{
+  width:52px!important;height:52px!important;min-width:52px!important;border-radius:15px!important;
+  background:var(--vano-nav-accent-soft)!important;color:var(--vano-nav-accent-strong)!important;display:grid!important;place-items:center!important;
+}
+body.body-nav #navManeuverTop .maneuver-glyph{font-size:30px!important;font-weight:850!important;line-height:1!important;color:var(--vano-nav-accent-strong)!important;transform:none!important}
+body.body-nav #navManeuverTop .nav-maneuver-copy{min-width:0!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-rows:auto auto!important;align-items:end!important;column-gap:9px!important}
+body.body-nav #navManeuverTop small{grid-column:1/-1!important;margin:0 0 3px!important;font-size:7.5px!important;line-height:1!important;letter-spacing:.11em!important;font-weight:850!important;color:#9296A0!important}
+body.body-nav #navManeuverTop b{min-width:0!important;font-size:17px!important;line-height:1.12!important;letter-spacing:-.35px!important;color:var(--vano-nav-ink)!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+body.body-nav #navManeuverTop #nextDistance{font-size:14px!important;line-height:1!important;font-weight:850!important;color:var(--vano-nav-accent-strong)!important;white-space:nowrap!important}
+body.body-nav.nav-drive-turn #navManeuverTop,body.body-nav.nav-drive-junction #navManeuverTop,body.body-nav.nav-drive-roundabout #navManeuverTop{box-shadow:0 12px 36px rgba(24,27,34,.15),0 0 0 2px rgba(244,122,69,.10)!important}
+
+/* Bottom trip information card — compact, stable and readable at a glance. */
+body.body-nav #activeNav.nav-panel.nav-minimal{
+  position:absolute!important;z-index:71!important;left:var(--vano-safe-left)!important;right:var(--vano-safe-right)!important;
+  bottom:var(--vano-safe-bottom)!important;top:auto!important;width:auto!important;max-width:none!important;min-height:72px!important;height:auto!important;
+  padding:7px!important;margin:0!important;border:1px solid var(--vano-nav-line)!important;border-radius:22px!important;
+  background:var(--vano-nav-surface)!important;color:var(--vano-nav-ink)!important;box-shadow:var(--vano-nav-shadow)!important;
+  backdrop-filter:blur(22px) saturate(135%)!important;-webkit-backdrop-filter:blur(22px) saturate(135%)!important;
+  overflow:visible!important;transform:translate3d(0,calc(100% + 30px),0)!important;opacity:0!important;
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .16s ease!important;
+}
+body.body-nav #activeNav.nav-panel.nav-minimal.show{transform:translate3d(0,0,0)!important;opacity:1!important}
+body.body-nav #activeNav .vano-nav-dock-head{display:none!important}
+body.body-nav #activeNav .nav-summary-row{
+  width:100%!important;min-width:0!important;height:var(--vano-summary-h)!important;min-height:var(--vano-summary-h)!important;
+  display:grid!important;grid-template-columns:1.18fr .94fr .98fr!important;gap:0!important;align-items:stretch!important;
+  border:1px solid rgba(25,28,35,.045)!important;border-radius:16px!important;background:var(--vano-nav-soft)!important;overflow:hidden!important;
+}
+body.body-nav #activeNav .nav-summary-item,body.body-nav #activeNav .nav-summary-primary{
+  min-width:0!important;height:100%!important;padding:8px 10px!important;margin:0!important;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;text-align:left!important;
+}
+body.body-nav #activeNav .nav-summary-item + .nav-summary-item{border-left:1px solid rgba(25,28,35,.065)!important}
+body.body-nav #activeNav .nav-summary-primary{background:linear-gradient(135deg,#FFF5EF 0%,#FFF9F6 100%)!important}
+body.body-nav #activeNav .nav-summary-label{width:100%!important;min-width:0!important;margin:0 0 4px!important;display:flex!important;align-items:center!important;gap:4px!important;line-height:1!important;color:#969AA4!important}
+body.body-nav #activeNav .nav-summary-label svg{width:10px!important;height:10px!important;min-width:10px!important;color:#989CA5!important;stroke-width:2!important}
+body.body-nav #activeNav .nav-summary-primary .nav-summary-label svg{color:var(--vano-nav-accent-strong)!important}
+body.body-nav #activeNav .nav-summary-item small{min-width:0!important;margin:0!important;font-size:6.8px!important;line-height:1!important;letter-spacing:.095em!important;font-weight:850!important;color:#9498A2!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+body.body-nav #activeNav .nav-summary-item strong{display:block!important;width:100%!important;max-width:100%!important;margin:0!important;font-size:16px!important;line-height:1.05!important;letter-spacing:-.5px!important;font-weight:850!important;color:#252830!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-variant-numeric:tabular-nums!important}
+body.body-nav #activeNav .nav-summary-primary strong{font-size:20px!important;letter-spacing:-.75px!important;color:var(--vano-nav-accent-strong)!important}
+body.body-nav #activeNav #navSearchBtn{display:none!important}
+
+/* Traffic suggestion and reroute live inside the same card without breaking its width. */
+body.body-nav #activeNav .traffic-suggestion{margin-top:7px!important;border:1px solid rgba(244,122,69,.15)!important;border-radius:15px!important;background:#FFF9F5!important;box-shadow:none!important;overflow:hidden!important}
+body.body-nav #activeNav .traffic-suggestion-icon{background:var(--vano-nav-accent-soft)!important;color:var(--vano-nav-accent-strong)!important}
+body.body-nav #activeNav .traffic-suggestion small{color:#8D9098!important}body.body-nav #activeNav .traffic-suggestion b{color:#24272E!important}body.body-nav #activeNav .traffic-suggestion span{color:#747984!important}
+body.body-nav #activeNav .traffic-accept{background:var(--vano-nav-accent)!important;color:#fff!important;border:0!important}
+body.body-nav #activeNav .traffic-dismiss{background:#F0F1F4!important;color:#656A74!important;border:0!important}
+body.body-nav #activeNav .reroute{max-width:100%!important;margin-top:6px!important;color:#737781!important}.loading{border-top-color:var(--vano-nav-accent)!important}
+
+/* Road name is visually attached to navigation, but does not overlap controls. */
+body.body-nav #navStreetChip{
+  position:absolute!important;z-index:69!important;left:50%!important;right:auto!important;top:auto!important;
+  bottom:calc(var(--vano-safe-bottom) + 82px)!important;width:auto!important;max-width:min(62vw,400px)!important;min-height:32px!important;height:32px!important;
+  padding:0 12px!important;border:1px solid rgba(25,28,35,.09)!important;border-radius:12px!important;background:rgba(255,255,255,.955)!important;
+  color:#565B65!important;box-shadow:0 7px 22px rgba(24,27,34,.10)!important;backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important;
+  transform:translateX(-50%)!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;
+}
+body.body-nav #navStreetChip span{min-width:0!important;max-width:100%!important;font-size:11px!important;line-height:1!important;font-weight:750!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+
+/* Driver controls — same geometry and same neutral surface. */
+body.body-nav #navControlStack{
+  position:absolute!important;z-index:74!important;right:var(--vano-safe-right)!important;bottom:calc(var(--vano-safe-bottom) + 84px)!important;top:auto!important;
+  width:42px!important;min-width:42px!important;display:flex!important;flex-direction:column!important;gap:7px!important;align-items:center!important;transform:none!important;
+}
+body.body-nav #navExitBtn,body.body-nav #quickAlertBtn,body.body-nav #navDrawerRecenter,body.body-nav #soundBtn,body.body-nav #navDrawerToggle{
+  box-sizing:border-box!important;width:42px!important;height:42px!important;min-width:42px!important;min-height:42px!important;max-width:42px!important;max-height:42px!important;
+  margin:0!important;padding:0!important;border:1px solid var(--vano-nav-line)!important;border-radius:13px!important;background:rgba(255,255,255,.97)!important;
+  color:#606570!important;box-shadow:0 7px 20px rgba(24,27,34,.10)!important;display:grid!important;place-items:center!important;backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important;
+}
+body.body-nav #navExitBtn{color:#B84D55!important}body.body-nav #quickAlertBtn{color:var(--vano-nav-accent-strong)!important}body.body-nav #navDrawerRecenter{color:var(--vano-nav-accent-strong)!important}
+body.body-nav #soundBtn.active{background:var(--vano-nav-accent-soft)!important;color:var(--vano-nav-accent-strong)!important;border-color:rgba(244,122,69,.18)!important}
+body.body-nav #navExitBtn:active,body.body-nav #quickAlertBtn:active,body.body-nav #navDrawerRecenter:active,body.body-nav #soundBtn:active,body.body-nav #navDrawerToggle:active{transform:scale(.94)!important}
+
+/* Speedometer. */
+body.body-nav #vanoSpeedometerV220{
+  position:absolute!important;z-index:70!important;left:var(--vano-safe-left)!important;bottom:calc(var(--vano-safe-bottom) + 84px)!important;
+  width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;padding:0!important;
+  border:2px solid rgba(25,28,35,.11)!important;border-radius:15px!important;background:rgba(255,255,255,.97)!important;color:var(--vano-nav-ink)!important;
+  box-shadow:0 7px 22px rgba(24,27,34,.11)!important;display:grid!important;place-items:center!important;pointer-events:none!important;
+}
+body.body-nav #vanoSpeedometerV220 strong{font-size:17px!important;line-height:1!important;font-weight:880!important;letter-spacing:-.45px!important;color:inherit!important;font-variant-numeric:tabular-nums!important}
+body.body-nav #vanoSpeedometerV220.over-limit{border-color:#D84B57!important;color:#C73744!important;background:#FFF7F7!important}
+
+/* Camera state feedback. */
+body.body-nav[data-nav-camera-state="FREE_LOOK"] #navDrawerRecenter{animation:vanoRecenterPulse 1.7s ease-in-out infinite}
+body.body-nav[data-nav-camera-state="REROUTING"] #rerouteNotice.show{display:flex!important}
+body.body-nav[data-nav-camera-state="ARRIVAL"] #navManeuverTop{opacity:.72!important}
+@keyframes vanoRecenterPulse{0%,100%{box-shadow:0 7px 20px rgba(24,27,34,.10)}50%{box-shadow:0 7px 25px rgba(244,122,69,.27)}}
+
+/* Alert library: orange for normal navigation alerts, red only for danger. */
+.route-marker.alert-marker{width:44px!important;height:48px!important;min-width:44px!important;min-height:48px!important;overflow:visible!important;background:transparent!important;border:0!important;padding:0!important;filter:none!important;transform-origin:50% 100%!important}
+.route-marker.alert-marker .alert-visual{width:44px!important;height:46px!important;transform:none!important;display:block!important;position:relative!important}
+.route-marker.alert-marker .alert-ground{position:absolute!important;left:50%!important;bottom:0!important;width:22px!important;height:6px!important;transform:translateX(-50%)!important;border-radius:50%!important;background:rgba(20,21,28,.12)!important;filter:blur(2px)!important}
+.route-marker.alert-marker .alert-bubble{position:absolute!important;left:50%!important;bottom:5px!important;width:40px!important;height:40px!important;transform:translateX(-50%)!important;border-radius:14px 14px 14px 5px!important;background:rgba(255,255,255,.98)!important;border:1px solid rgba(25,28,35,.09)!important;box-shadow:0 6px 16px rgba(23,24,32,.13)!important;display:grid!important;place-items:center!important}
+.route-marker.alert-marker .alert-ring,.route-marker.alert-marker .alert-face,.route-marker.alert-marker .alert-icon{width:30px!important;height:30px!important;display:grid!important;place-items:center!important}.route-marker.alert-marker .alert-ring{border-radius:10px!important;background:var(--vano-nav-accent-wash)!important}.route-marker.alert-marker .alert-icon-svg{width:24px!important;height:24px!important}.route-marker.alert-marker .alert-icon-svg .fg{fill:#424751!important}.route-marker.alert-marker .alert-icon-svg .light{fill:#fff!important}.route-marker.alert-marker .alert-icon-svg .accent{fill:var(--vano-nav-accent)!important}.route-marker.alert-marker .alert-icon-svg .stroke{fill:none!important;stroke:#5E6370!important;stroke-width:1.4!important;stroke-linecap:round!important;stroke-linejoin:round!important}.route-marker.alert-marker .alert-icon-svg .stroke-fill{fill:#fff!important;stroke:#5E6370!important;stroke-width:1.2!important}
+.route-marker.alert-marker[data-kind="security"] .alert-ring,.route-marker.alert-marker[data-kind="accident"] .alert-ring,.route-marker.alert-marker[data-kind="block"] .alert-ring{background:rgba(216,75,87,.10)!important}.route-marker.alert-marker[data-kind="security"] .alert-icon-svg .accent,.route-marker.alert-marker[data-kind="accident"] .alert-icon-svg .accent,.route-marker.alert-marker[data-kind="block"] .alert-icon-svg .accent{fill:#D84B57!important}
+body.body-nav.nav-drive-fast .route-marker.alert-marker{opacity:.86!important;transform:scale(.94)!important}
+
+/* Small portrait phones. */
+@media (max-width:390px){
+  :root{--vano-summary-h:54px;--vano-safe-left:max(8px,env(safe-area-inset-left));--vano-safe-right:max(8px,env(safe-area-inset-right))}
+  body.body-nav #navManeuverTop{width:calc(100vw - 16px)!important;grid-template-columns:48px minmax(0,1fr)!important;min-height:68px!important;padding:8px 9px!important;border-radius:18px!important}
+  body.body-nav #navManeuverTop .nav-maneuver-icon{width:48px!important;height:48px!important;border-radius:14px!important}body.body-nav #navManeuverTop .maneuver-glyph{font-size:28px!important}body.body-nav #navManeuverTop b{font-size:15px!important}body.body-nav #navManeuverTop #nextDistance{font-size:12.5px!important}
+  body.body-nav #activeNav.nav-panel.nav-minimal{padding:6px!important;border-radius:19px!important;min-height:66px!important}
+  body.body-nav #activeNav .nav-summary-item,body.body-nav #activeNav .nav-summary-primary{padding:7px 7px!important}
+  body.body-nav #activeNav .nav-summary-item strong{font-size:14px!important}body.body-nav #activeNav .nav-summary-primary strong{font-size:18px!important}body.body-nav #activeNav .nav-summary-item small{font-size:6.2px!important}
+  body.body-nav #navStreetChip{bottom:calc(var(--vano-safe-bottom) + 76px)!important;max-width:58vw!important;height:30px!important;min-height:30px!important}
+  body.body-nav #navControlStack{right:var(--vano-safe-right)!important;bottom:calc(var(--vano-safe-bottom) + 78px)!important}
+  body.body-nav #vanoSpeedometerV220{left:var(--vano-safe-left)!important;bottom:calc(var(--vano-safe-bottom) + 78px)!important;width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important}
+  .mapboxgl-marker.vano-user-puck-v300,.vano-user-puck-v300{width:38px!important;height:38px!important;min-width:38px!important;min-height:38px!important}.vano-user-puck-v300 .vano-puck-inline{width:38px!important;height:38px!important}
+}
+@media (max-width:350px){body.body-nav #activeNav .nav-summary-item,body.body-nav #activeNav .nav-summary-primary{padding:6px 5px!important}body.body-nav #activeNav .nav-summary-item strong{font-size:12.5px!important}body.body-nav #activeNav .nav-summary-primary strong{font-size:16.5px!important}body.body-nav #activeNav .nav-summary-item small{font-size:5.7px!important}}
+
+/* Landscape: left information rail + right controls, with the map kept open in the middle. */
+@media (orientation:landscape) and (max-height:650px){
+  :root{--vano-safe-left:max(10px,env(safe-area-inset-left));--vano-safe-right:max(10px,env(safe-area-inset-right));--vano-summary-h:52px}
+  body.body-nav #navManeuverTop{left:var(--vano-safe-left)!important;top:max(8px,calc(env(safe-area-inset-top) + 6px))!important;width:min(320px,36vw)!important;min-height:64px!important;grid-template-columns:44px minmax(0,1fr)!important;padding:7px 9px!important;border-radius:18px!important}
+  body.body-nav #navManeuverTop .nav-maneuver-icon{width:44px!important;height:44px!important;border-radius:13px!important}body.body-nav #navManeuverTop .maneuver-glyph{font-size:26px!important}body.body-nav #navManeuverTop small{display:none!important}body.body-nav #navManeuverTop b{font-size:14px!important}body.body-nav #navManeuverTop #nextDistance{font-size:12px!important}
+  body.body-nav #activeNav.nav-panel.nav-minimal{left:var(--vano-safe-left)!important;right:auto!important;bottom:var(--vano-safe-bottom)!important;width:min(320px,36vw)!important;padding:6px!important;border-radius:19px!important;min-height:64px!important}
+  body.body-nav #activeNav .nav-summary-row{grid-template-columns:1.15fr .93fr .98fr!important}body.body-nav #activeNav .nav-summary-item,body.body-nav #activeNav .nav-summary-primary{padding:6px 7px!important}body.body-nav #activeNav .nav-summary-item strong{font-size:13px!important}body.body-nav #activeNav .nav-summary-primary strong{font-size:16px!important}body.body-nav #activeNav .nav-summary-item small{font-size:5.8px!important}
+  body.body-nav #navStreetChip{left:calc(var(--vano-safe-left) + min(160px,18vw))!important;bottom:calc(var(--vano-safe-bottom) + 74px)!important;max-width:min(300px,34vw)!important}
+  body.body-nav #navControlStack{right:var(--vano-safe-right)!important;bottom:var(--vano-safe-bottom)!important;flex-direction:row!important;width:auto!important;min-width:0!important}
+  body.body-nav #vanoSpeedometerV220{left:auto!important;right:var(--vano-safe-right)!important;bottom:calc(var(--vano-safe-bottom) + 50px)!important}
+  .mapboxgl-marker.vano-user-puck-v300,.vano-user-puck-v300{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important}.vano-user-puck-v300 .vano-puck-inline{width:36px!important;height:36px!important}
+}
+
+/* Black mode preserves hierarchy and orange identity. */
+html[data-vano-theme="black"] body.body-nav #navManeuverTop,html[data-vano-theme="black"] body.body-nav #activeNav.nav-panel.nav-minimal,html[data-vano-theme="black"] body.body-nav #navStreetChip,html[data-vano-theme="black"] body.body-nav #navExitBtn,html[data-vano-theme="black"] body.body-nav #quickAlertBtn,html[data-vano-theme="black"] body.body-nav #navDrawerRecenter,html[data-vano-theme="black"] body.body-nav #soundBtn,html[data-vano-theme="black"] body.body-nav #navDrawerToggle,html[data-vano-theme="black"] body.body-nav #vanoSpeedometerV220{background:rgba(25,26,31,.97)!important;color:#F5F5F7!important;border-color:rgba(255,255,255,.10)!important}
+html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-row{background:#202126!important;border-color:rgba(255,255,255,.06)!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item,html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary{background:transparent!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary{background:rgba(244,122,69,.09)!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item + .nav-summary-item{border-left-color:rgba(255,255,255,.07)!important}
+html[data-vano-theme="black"] body.body-nav #navManeuverTop b,html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item strong{color:#F5F5F7!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary strong,html[data-vano-theme="black"] body.body-nav #navManeuverTop #nextDistance{color:#FF9A6B!important}html[data-vano-theme="black"] body.body-nav #navStreetChip{color:#D5D6DB!important}html[data-vano-theme="black"] body.body-nav #activeNav .traffic-suggestion{background:rgba(244,122,69,.08)!important;border-color:rgba(244,122,69,.16)!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-bubble{background:rgba(27,28,34,.98)!important;border-color:rgba(255,255,255,.10)!important;box-shadow:0 7px 18px rgba(0,0,0,.28)!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-icon-svg .fg{fill:#E8E8ED!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-icon-svg .stroke{stroke:#CACBD1!important}
+
 @media (prefers-reduced-motion:reduce){body.body-nav #activeNav.nav-panel.nav-minimal,.vano-user-puck-v300 .vano-puck-accuracy,body.body-nav #navExitBtn,body.body-nav #quickAlertBtn,body.body-nav #navDrawerRecenter,body.body-nav #soundBtn,body.body-nav #navDrawerToggle{transition:none!important;animation:none!important}}
-html[data-vano-theme="black"] body.body-nav #navManeuverTop,html[data-vano-theme="black"] body.body-nav #activeNav.nav-panel.nav-minimal,html[data-vano-theme="black"] body.body-nav #navStreetChip,html[data-vano-theme="black"] body.body-nav #navExitBtn,html[data-vano-theme="black"] body.body-nav #quickAlertBtn,html[data-vano-theme="black"] body.body-nav #navDrawerRecenter,html[data-vano-theme="black"] body.body-nav #soundBtn,html[data-vano-theme="black"] body.body-nav #navDrawerToggle,html[data-vano-theme="black"] body.body-nav #vanoSpeedometerV220{background:rgba(24,25,31,.96)!important;color:#f5f5f8!important;border-color:rgba(255,255,255,.10)!important}html[data-vano-theme="black"] body.body-nav #navManeuverTop b,html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item strong{color:#f5f5f8!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item{background:rgba(255,255,255,.055)!important}html[data-vano-theme="black"] body.body-nav #navStreetChip{color:#d1d2d8!important}
-
-
-/* Canonical alert library: one visual family, compact and non-obstructive. */
-.route-marker.alert-marker{width:46px!important;height:50px!important;min-width:46px!important;min-height:50px!important;overflow:visible!important;background:transparent!important;border:0!important;padding:0!important;filter:none!important;transform-origin:50% 100%!important}
-.route-marker.alert-marker .alert-visual{width:46px!important;height:48px!important;transform:none!important;display:block!important;position:relative!important}.route-marker.alert-marker .alert-ground{position:absolute!important;left:50%!important;bottom:0!important;width:24px!important;height:7px!important;transform:translateX(-50%)!important;border-radius:50%!important;background:rgba(20,21,28,.13)!important;filter:blur(2px)!important}.route-marker.alert-marker .alert-bubble{position:absolute!important;left:50%!important;bottom:5px!important;width:42px!important;height:42px!important;transform:translateX(-50%)!important;border-radius:15px 15px 15px 5px!important;background:rgba(255,255,255,.97)!important;border:1px solid rgba(23,24,32,.09)!important;box-shadow:0 6px 16px rgba(23,24,32,.14)!important;display:grid!important;place-items:center!important}.route-marker.alert-marker .alert-ring,.route-marker.alert-marker .alert-face,.route-marker.alert-marker .alert-icon{width:32px!important;height:32px!important;display:grid!important;place-items:center!important}.route-marker.alert-marker .alert-ring{border-radius:11px!important;background:rgba(116,87,246,.08)!important}.route-marker.alert-marker .alert-icon-svg{width:25px!important;height:25px!important}.route-marker.alert-marker .alert-icon-svg .fg{fill:#3f4350!important}.route-marker.alert-marker .alert-icon-svg .light{fill:#fff!important}.route-marker.alert-marker .alert-icon-svg .accent{fill:var(--vano-nav-purple)!important}.route-marker.alert-marker .alert-icon-svg .stroke{fill:none!important;stroke:#5e6370!important;stroke-width:1.4!important;stroke-linecap:round!important;stroke-linejoin:round!important}.route-marker.alert-marker .alert-icon-svg .stroke-fill{fill:#fff!important;stroke:#5e6370!important;stroke-width:1.2!important}
-.route-marker.alert-marker[data-kind="security"] .alert-ring,.route-marker.alert-marker[data-kind="accident"] .alert-ring,.route-marker.alert-marker[data-kind="block"] .alert-ring{background:rgba(216,75,87,.10)!important}.route-marker.alert-marker[data-kind="security"] .alert-icon-svg .accent,.route-marker.alert-marker[data-kind="accident"] .alert-icon-svg .accent,.route-marker.alert-marker[data-kind="block"] .alert-icon-svg .accent{fill:#d84b57!important}.route-marker.alert-marker[data-kind="radar"] .alert-ring{background:rgba(116,87,246,.11)!important}
-body.body-nav.nav-drive-fast .route-marker.alert-marker{opacity:.84!important;transform:scale(.92)!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-bubble{background:rgba(27,28,35,.97)!important;border-color:rgba(255,255,255,.10)!important;box-shadow:0 7px 18px rgba(0,0,0,.28)!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-icon-svg .fg{fill:#e8e8ef!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-icon-svg .stroke{stroke:#c9cad2!important}
