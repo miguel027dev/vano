@@ -1,6 +1,6 @@
-/* VANO MAPS V301 — atomic, conservative offline cache. */
-const BUILD='301.0.0-planner-polish';
-const CACHE=`vano-maps-v301-${BUILD}`;
+/* VANO MAPS V302 — atomic, conservative offline cache. */
+const BUILD='302.0.0-driver-hud-camera';
+const CACHE=`vano-maps-v302-${BUILD}`;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',

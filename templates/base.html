@@ -32,7 +32,7 @@
   <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}" type="image/png">
   <link rel="alternate icon" href="{{ url_for('static', filename='vano-maps-icon-64.png') }}" type="image/png">
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}">
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}?v={{ vano_build_id }}">
+  <link rel="manifest" href="{{ url_for('web_app_manifest') }}?v={{ vano_build_id }}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="VANO MAPS">
   <meta property="og:locale" content="{{ active_locale|replace('-','_') }}">
@@ -120,10 +120,19 @@
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-app-v262.css') }}?v={{ vano_build_id }}">
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner-v263.css') }}?v={{ vano_build_id }}">{% endif %}
+  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-v300.css') }}?v={{ vano_build_id }}-301">{% endif %}
+  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner-v263.css') }}?v={{ vano_build_id }}-302">{% endif %}
+  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-302">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_map_surface %}
-  <script>try{if(/VANO-MAPS-Android\//i.test(navigator.userAgent)){document.documentElement.classList.add('vano-native-android')}}catch(_){}</script>
+  <script>try{
+    const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);
+    const installed=!!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches);
+    const twaRef=/^android-app:\/\/com\.vano\.maps(?:\/|$)/i.test(document.referrer||'');
+    if(uaAndroid||installed||twaRef){
+      document.documentElement.classList.add('vano-native-android','vano-installed-app');
+    }
+  }catch(_){}</script>
   {% endif %}
 </head>
 <body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">

@@ -23,10 +23,10 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-301">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-302">
 
 {% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}"><link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-301">
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
 
 
 
@@ -330,6 +330,12 @@
   <div class="nav-alt-hint" id="navAltHint" aria-live="polite"><div class="nav-alt-copy"><small>ROTA MAIS RÁPIDA</small><b id="navAltHintText">Tem uma rota mais rápida, quer trocar pra ela?</b><em id="navAltHintMeta"></em></div><button type="button" class="nav-alt-accept" id="navAltAccept">Trocar</button><button type="button" class="nav-alt-dismiss" id="navAltDismiss" aria-label="Manter rota atual"><i data-lucide="x" width="13"></i></button></div>
 
   <section class="nav-panel nav-minimal" id="activeNav" aria-live="polite">
+    <div class="vano-nav-tripline">
+      <span class="vano-nav-trip-icon" aria-hidden="true"><i data-lucide="navigation" width="15"></i></span>
+      <span class="vano-nav-trip-copy"><small id="navTripStatus">EM ROTA · CÂMERA SEGUINDO</small><b id="navDestinationName">Destino</b></span>
+      <span class="vano-nav-trip-live" aria-hidden="true"><i></i>AO VIVO</span>
+    </div>
+    <div class="vano-nav-progress" aria-hidden="true"><span id="navTripProgress"></span></div>
     <div class="vano-nav-dock-head"><span class="vano-nav-live"><i></i>EM ROTA</span><div class="vano-nav-head-actions"><span class="vano-nav-dock-caption">Atualização em tempo real</span></div></div>
     <div class="nav-summary-row">
       <div class="nav-summary-item nav-summary-primary"><span class="nav-summary-label"><i data-lucide="flag" width="11"></i><small>CHEGADA</small></span><strong id="arrivalTime">—</strong></div>
@@ -392,7 +398,7 @@
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-301')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-302')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;
