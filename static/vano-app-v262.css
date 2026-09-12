@@ -6863,3 +6863,43 @@ html[data-vano-theme="black"] .vano-confirm-card{background:#211e1b;color:#fff9f
   html[data-vano-theme="black"] body.body-nav #activeNav.nav-panel.nav-minimal{border:1px solid rgba(255,255,255,.11)!important}
 }
 @media(max-width:380px){body.body-nav #activeNav.nav-panel.nav-minimal{left:6px!important;right:6px!important;border-radius:19px!important}}
+
+/* ============================================================
+   VANO V301 — global finishing pass
+   Small, low-risk interaction/accessibility improvements shared by the app.
+   ============================================================ */
+.vano-app-root :is(button,a,[role="button"],input,select,textarea){
+  -webkit-tap-highlight-color:transparent;
+}
+.vano-app-root :is(button,a,[role="button"]){
+  touch-action:manipulation;
+}
+.vano-app-root button:not(:disabled),
+.vano-app-root [role="button"]:not([aria-disabled="true"]){cursor:pointer}
+.vano-app-root :is(button,input,select,textarea,a):focus-visible{
+  outline:3px solid rgba(217,112,63,.28);
+  outline-offset:2px;
+}
+.vano-app-root :is(button,input,select,textarea):disabled,
+.vano-app-root [aria-disabled="true"]{
+  cursor:not-allowed!important;
+  opacity:.56;
+}
+.vano-app-root :is(.panel,.card,.auth-card,.sheet,.account-drawer,.prefs-drawer,.safety-drawer,.destination-confirm){
+  min-width:0;
+}
+.vano-app-root :is(h1,h2,h3,.page-title,.planner-heading-copy b,.route-head h2){
+  text-wrap:balance;
+}
+.vano-app-root img{max-width:100%}
+.ws-app :is(.map-btn,.options-btn,.floating-locate,.nav-stack-btn,.nav-audio-toggle,.row-btn,.planner-adjust-btn){
+  will-change:transform;
+}
+@media(hover:hover) and (pointer:fine){
+  .ws-app :is(.map-btn,.options-btn,.floating-locate,.nav-stack-btn,.nav-audio-toggle,.row-btn):hover{
+    transform:translateY(-1px);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .vano-app-root :is(.map-btn,.options-btn,.floating-locate,.nav-stack-btn,.nav-audio-toggle,.row-btn,.planner-adjust-btn){will-change:auto}
+}

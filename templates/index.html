@@ -23,7 +23,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-300">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-301">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}"><link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-301">
@@ -224,15 +224,15 @@
     <button type="button" class="vano-planner-toggle-v221" id="planGrab" aria-expanded="false" aria-controls="welcomeState routeState" aria-label="Expandir painel de destino"><span class="vano-planner-toggle-chevron" aria-hidden="true"></span></button>
     <div class="welcome planner-welcome" id="welcomeState">
       <div class="planner-heading">
-        <div class="planner-heading-copy"><small>VANO MAPS</small><b>Para onde vamos?</b></div>
+        <div class="planner-heading-copy"><small>PLANEJAR ROTA</small><b>Para onde vamos?</b></div>
         <div class="chip-weather planner-weather" id="weatherPill" aria-live="polite"><i data-lucide="cloud-sun" width="15"></i><span id="weatherPillValue">--°</span></div>
       </div>
 
       <div class="planner-search-row">
         <div class="search-card planner-search-card" aria-label="Buscar destino, endereço ou lugar">
           <div class="origin-hidden"><input type="text" id="originInput" class="location-input" autocomplete="off"><button type="button" id="locateBtn"></button><button type="button" id="swapBtn"></button></div>
-          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input type="text" id="destinationInput" class="location-input" placeholder="Para onde você vai?" autocomplete="off" enterkeyhint="search"><button type="button" id="voiceSearchBtn" class="row-btn voice-search-btn" aria-label="Pesquisar endereço por voz" title="Pesquisar por voz"><i data-lucide="mic" width="17"></i></button></div>
-          <div class="search-results" id="searchResults"></div>
+          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input type="text" id="destinationInput" class="location-input" placeholder="Busque endereço, lugar ou destino" autocomplete="off" enterkeyhint="search" inputmode="search" role="combobox" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false"><button type="button" id="voiceSearchBtn" class="row-btn voice-search-btn" aria-label="Pesquisar endereço por voz" title="Pesquisar por voz"><i data-lucide="mic" width="17"></i></button></div>
+          <div class="search-results" id="searchResults" role="listbox" aria-label="Resultados da busca"></div>
         </div>
         <button type="button" class="planner-adjust-btn" id="prefsBtn" aria-label="Ajustes de mapa e rota" title="Ajustes"><i data-lucide="sliders-horizontal" width="19"></i><span>Mapa</span></button>
       </div>
@@ -392,7 +392,7 @@
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-300')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-301')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;

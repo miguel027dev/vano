@@ -389,3 +389,206 @@ html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .s
   body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn,
   body.vano-map-surface:not(.body-nav) #planSheet .search-results{transition:none!important;animation:none!important}
 }
+
+/* ========================================================================== 
+   VANO MAPS V301 — planner polish + keyboard-safe search
+   Loaded after the map shell so this component owns its final geometry.
+   ========================================================================== */
+body.vano-map-surface:not(.body-nav) #planSheet{
+  --v301-panel:rgba(255,252,248,.965);
+  --v301-panel-solid:#fffaf6;
+  --v301-field:rgba(255,255,255,.94);
+  --v301-soft:#f8f2ec;
+  --v301-ink:#26211e;
+  --v301-muted:#7e746d;
+  --v301-line:rgba(91,70,56,.13);
+  --v301-accent:#D9703F;
+  --v301-accent-soft:rgba(217,112,63,.10);
+  isolation:isolate!important;
+  overflow:visible!important;
+  padding:8px 11px 13px!important;
+  border:1px solid rgba(101,79,65,.13)!important;
+  border-radius:28px!important;
+  background:linear-gradient(180deg,rgba(255,253,250,.985),rgba(255,249,244,.965))!important;
+  box-shadow:0 22px 64px rgba(52,39,31,.16),0 3px 12px rgba(52,39,31,.055),inset 0 1px 0 rgba(255,255,255,.95)!important;
+  backdrop-filter:blur(24px) saturate(132%)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(132%)!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{
+  height:148px!important;
+  min-height:148px!important;
+  max-height:148px!important;
+  --planner-collapsed-h:148px!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet.planner-search-active{
+  z-index:78!important;
+  overflow:visible!important;
+  box-shadow:0 24px 72px rgba(52,39,31,.19),0 0 0 1px rgba(217,112,63,.045),inset 0 1px 0 rgba(255,255,255,.96)!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .vano-planner-toggle-v221{
+  width:66px!important;height:22px!important;min-width:66px!important;min-height:22px!important;
+  margin:0 auto 6px!important;
+  background:transparent!important;color:#a0968f!important;
+  border-radius:999px!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .vano-planner-toggle-v221::before{
+  content:"";position:absolute;width:34px;height:4px;border-radius:99px;background:currentColor;opacity:.42;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .vano-planner-toggle-chevron{opacity:0!important}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-heading{
+  margin:0 4px 9px!important;min-height:24px!important;align-items:flex-end!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-heading-copy small{
+  display:block!important;margin:0 0 3px!important;color:var(--v301-accent)!important;
+  font-size:8px!important;font-weight:900!important;letter-spacing:.15em!important;line-height:1!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-heading-copy b{
+  color:var(--v301-ink)!important;font-size:20px!important;font-weight:870!important;letter-spacing:-.62px!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed .planner-heading-copy small{display:none!important}
+body.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed .planner-heading-copy b{font-size:18px!important;letter-spacing:-.42px!important}
+
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-row{
+  grid-template-columns:minmax(0,1fr) 58px!important;gap:8px!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card.search-card{
+  height:64px!important;min-height:64px!important;max-height:64px!important;padding:3px 5px!important;
+  border:1px solid var(--v301-line)!important;border-radius:20px!important;background:var(--v301-field)!important;
+  box-shadow:0 9px 24px rgba(52,39,31,.065),inset 0 1px 0 rgba(255,255,255,.96)!important;
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease,transform .18s ease!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card.search-card:focus-within{
+  border-color:rgba(217,112,63,.42)!important;background:#fff!important;
+  box-shadow:0 0 0 4px rgba(217,112,63,.10),0 12px 30px rgba(52,39,31,.09)!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-location-row.location-row{
+  height:56px!important;min-height:56px!important;max-height:56px!important;
+  grid-template-columns:42px minmax(0,1fr) 42px!important;gap:1px!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-icon{
+  width:38px!important;height:38px!important;border-radius:13px!important;
+  background:var(--v301-accent-soft)!important;color:var(--v301-accent)!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-icon svg{width:18px!important;height:18px!important;stroke-width:2.25!important}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .location-input#destinationInput,
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .location-input#destinationInput:hover,
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .location-input#destinationInput:focus,
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .location-input#destinationInput:focus-visible{
+  height:56px!important;min-height:56px!important;line-height:56px!important;padding:0 7px!important;
+  color:var(--v301-ink)!important;caret-color:var(--v301-accent)!important;font-size:16px!important;font-weight:670!important;
+  letter-spacing:-.22px!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .location-input#destinationInput::placeholder{
+  color:#9a9089!important;font-weight:560!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .voice-search-btn{
+  width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;
+  border:1px solid rgba(217,112,63,.11)!important;border-radius:13px!important;
+  background:#fff7f1!important;color:var(--v301-accent)!important;
+  box-shadow:none!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .voice-search-btn.listening{
+  background:#fff0e7!important;color:#b9552d!important;box-shadow:0 0 0 4px rgba(217,112,63,.10)!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn{
+  width:58px!important;min-width:58px!important;height:64px!important;min-height:64px!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;
+  border:1px solid var(--v301-line)!important;border-radius:20px!important;background:rgba(255,255,255,.90)!important;
+  color:#6f665f!important;box-shadow:0 9px 24px rgba(52,39,31,.055)!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn span{display:block!important;font-size:8px!important;font-weight:850!important;line-height:1!important}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn svg{width:18px!important;height:18px!important}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn:hover,
+body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn:focus-visible{
+  border-color:rgba(217,112,63,.28)!important;background:#fff3ea!important;color:var(--v301-accent)!important;
+}
+
+body.vano-map-surface:not(.body-nav) #planSheet .planner-capabilities{padding-top:10px!important;gap:6px!important}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-capabilities span{
+  background:rgba(255,255,255,.70)!important;border-color:rgba(91,70,56,.08)!important;color:#786f69!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-preset,
+body.vano-map-surface:not(.body-nav) #planSheet .nearby-service{
+  border-color:rgba(91,70,56,.09)!important;background:rgba(255,255,255,.76)!important;
+  box-shadow:0 6px 18px rgba(52,39,31,.035)!important;
+  transition:transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-preset:hover,
+body.vano-map-surface:not(.body-nav) #planSheet .nearby-service:hover{
+  transform:translateY(-1px)!important;border-color:rgba(217,112,63,.18)!important;background:#fff!important;box-shadow:0 9px 22px rgba(52,39,31,.06)!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet .planner-preset:active,
+body.vano-map-surface:not(.body-nav) #planSheet .nearby-service:active{transform:scale(.985)!important}
+
+body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .search-results,
+body.vano-map-surface .ws-app>.search-results.search-results-portal{
+  padding:7px!important;border:1px solid rgba(91,70,56,.13)!important;border-radius:20px!important;
+  background:rgba(255,253,250,.99)!important;color:var(--v301-ink)!important;
+  box-shadow:0 22px 64px rgba(52,39,31,.20),inset 0 1px 0 rgba(255,255,255,.95)!important;
+  backdrop-filter:blur(22px) saturate(126%)!important;-webkit-backdrop-filter:blur(22px) saturate(126%)!important;
+  scrollbar-width:thin!important;scrollbar-color:rgba(217,112,63,.25) transparent!important;
+}
+body.vano-map-surface .ws-app>.search-results.search-results-portal{position:absolute!important;z-index:140!important;overflow:auto!important;overscroll-behavior:contain!important}
+body.vano-map-surface .search-results .search-label{padding:8px 9px 7px!important;color:#887e76!important;font-size:9px!important;font-weight:820!important;letter-spacing:.035em!important}
+body.vano-map-surface .search-results .search-item,
+body.vano-map-surface .search-results .search-suggestion{
+  width:100%!important;min-height:60px!important;border:0!important;border-radius:14px!important;
+  transition:background .14s ease,transform .14s ease!important;
+}
+body.vano-map-surface .search-results .search-item:hover,
+body.vano-map-surface .search-results .search-suggestion:hover,
+body.vano-map-surface .search-results .search-item:focus-visible,
+body.vano-map-surface .search-results .search-suggestion:focus-visible{
+  outline:0!important;background:#fff1e7!important;box-shadow:inset 0 0 0 1px rgba(217,112,63,.08)!important;
+}
+body.vano-map-surface .search-results .search-item:active,
+body.vano-map-surface .search-results .search-suggestion:active{transform:scale(.992)!important}
+
+/* Keep the field visible while the software keyboard changes the visual viewport. */
+@media(max-width:899px){
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet,
+  body.vano-map-surface.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active{
+    transition:none!important;
+  }
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet{
+    bottom:max(8px,calc(var(--vano-keyboard-bottom,0px) + 8px))!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet.planner-search-active.sheet-collapsed{
+    overflow:visible!important;
+  }
+}
+
+@media(max-width:380px){
+  body.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{height:142px!important;min-height:142px!important;max-height:142px!important;--planner-collapsed-h:142px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .planner-search-row{grid-template-columns:minmax(0,1fr) 52px!important;gap:6px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card.search-card{height:60px!important;min-height:60px!important;max-height:60px!important;border-radius:18px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .planner-location-row.location-row{height:52px!important;min-height:52px!important;max-height:52px!important;grid-template-columns:38px minmax(0,1fr) 40px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .location-input#destinationInput{height:52px!important;min-height:52px!important;line-height:52px!important;padding-inline:4px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .planner-search-icon{width:35px!important;height:35px!important;border-radius:12px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn{width:52px!important;min-width:52px!important;height:60px!important;min-height:60px!important;border-radius:18px!important}
+}
+
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet{
+  --v301-field:rgba(36,32,29,.96);--v301-soft:#2d2824;--v301-ink:#fff8f2;--v301-muted:#b7aaa1;--v301-line:rgba(255,248,242,.105);--v301-accent:#F59A62;--v301-accent-soft:rgba(245,154,98,.12);
+  background:linear-gradient(180deg,rgba(31,28,26,.985),rgba(23,21,19,.98))!important;
+  border-color:rgba(255,248,242,.10)!important;
+  box-shadow:0 24px 72px rgba(0,0,0,.40),inset 0 1px 0 rgba(255,255,255,.035)!important;
+}
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card.search-card,
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .planner-adjust-btn{
+  background:rgba(37,33,30,.96)!important;border-color:rgba(255,248,242,.10)!important;color:#f8eee8!important;
+}
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card.search-card:focus-within{
+  background:#292420!important;border-color:rgba(245,154,98,.42)!important;box-shadow:0 0 0 4px rgba(245,154,98,.10),0 14px 34px rgba(0,0,0,.28)!important;
+}
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .planner-search-icon,
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .voice-search-btn{background:#312a25!important;color:#ffc29a!important;border-color:rgba(255,248,242,.08)!important}
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .planner-preset,
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .nearby-service,
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .planner-capabilities span{background:rgba(255,255,255,.035)!important;border-color:rgba(255,248,242,.08)!important}
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card .search-results,
+html[data-vano-theme="black"] body.vano-map-surface .ws-app>.search-results.search-results-portal{background:rgba(31,28,26,.995)!important;border-color:rgba(255,248,242,.10)!important;color:#fff8f2!important;box-shadow:0 24px 68px rgba(0,0,0,.50)!important}
+html[data-vano-theme="black"] body.vano-map-surface .search-results .search-item:hover,
+html[data-vano-theme="black"] body.vano-map-surface .search-results .search-suggestion:hover,
+html[data-vano-theme="black"] body.vano-map-surface .search-results .search-item:focus-visible,
+html[data-vano-theme="black"] body.vano-map-surface .search-results .search-suggestion:focus-visible{background:#362e28!important}
