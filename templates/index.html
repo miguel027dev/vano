@@ -23,7 +23,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-302">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-310">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
@@ -250,6 +250,11 @@
         <button type="button" class="planner-preset planner-preset-personalize" id="quickPrefs"><span class="planner-preset-icon"><i data-lucide="sliders-horizontal" width="16"></i></span><span><b>Personalizar</b><small>Rota, mapa e voz</small></span></button>
       </div>
 
+      <div class="planner-smart-destinations" id="plannerSmartDestinations" hidden>
+        <div class="planner-smart-head"><span>PARA AGORA</span><small>baseado no seu uso</small></div>
+        <div class="planner-smart-scroll" id="plannerSmartDestinationList"></div>
+      </div>
+
       <div class="planner-expanded" id="plannerExpanded">
         <div class="planner-section-head"><div><small>PERTO DE VOCÊ</small><b>O que você precisa agora?</b></div><span>Toque para buscar no mapa</span></div>
         <div class="nearby-services" aria-label="Serviços próximos">
@@ -280,6 +285,12 @@
           <button type="button" class="smart" data-route-mode="smart"><span class="route-option-icon"><i data-lucide="sparkles" width="15"></i></span><span class="route-option-copy"><b>Spark</b><small>Tempo + trânsito + segurança</small></span></button>
           <button type="button" class="fast" data-route-mode="fastest"><span class="route-option-icon"><i data-lucide="zap" width="15"></i></span><span class="route-option-copy"><b>Mais rápida</b><small>Menor ETA</small></span></button>
         </div>
+      </div>
+
+      <div class="vano-smart-balance" id="smartBalanceBox" aria-label="Equilíbrio da rota inteligente">
+        <div class="vano-smart-balance-head"><span><i data-lucide="sliders-horizontal" width="14"></i><b>Equilíbrio Spark</b></span><small id="smartBalanceLabel">Equilibrado</small></div>
+        <div class="vano-smart-balance-scale"><span>Mais rápida</span><input id="smartBalance" type="range" min="0" max="100" step="5" value="55" aria-label="Equilibrar rapidez e segurança"><span>Mais segura</span></div>
+        <p id="smartBalanceHint">Ajusta quanto o VANO aceita alguns minutos extras para reduzir exposição e instabilidade.</p>
       </div>
 
       <div class="vr-section-head vano-alternatives-head"><span>Outras opções</span><small id="routeChooserCount">comparando rotas</small></div>
@@ -323,10 +334,12 @@
 
   <section class="nav-maneuver-top" id="navManeuverTop" aria-live="polite">
     <div class="nav-maneuver-icon"><span class="maneuver-glyph" id="maneuverGlyph">↑</span></div>
-    <div class="nav-maneuver-copy"><small>PRÓXIMA MANOBRA</small><b id="nextInstruction">Siga em frente</b><span id="nextDistance">—</span></div>
+    <div class="nav-maneuver-copy"><small>PRÓXIMA MANOBRA</small><b id="nextInstruction">Siga em frente</b><span id="nextDistance">—</span><div class="nav-following-step" id="navFollowingStep" aria-live="off"><span>DEPOIS</span><b id="followingInstruction">Continue pela via</b><em id="followingDistance">—</em></div></div>
   </section>
 
   <div class="nav-street-chip" id="navStreetChip" aria-live="polite"><span id="nextStreet">Via indicada</span></div>
+  <div class="nav-connectivity-pill" id="navConnectivityPill" aria-live="polite" hidden><i data-lucide="wifi-off" width="12"></i><span>Sem internet · rota atual preservada</span></div>
+  <div class="nav-context-alert" id="navContextAlert" aria-live="polite" hidden><span class="nav-context-icon"><i data-lucide="triangle-alert" width="13"></i></span><span class="nav-context-copy"><small id="navContextLabel">ATENÇÃO À FRENTE</small><b id="navContextText">Condição na rota</b></span><em id="navContextDistance">—</em></div>
   <div class="nav-alt-hint" id="navAltHint" aria-live="polite"><div class="nav-alt-copy"><small>ROTA MAIS RÁPIDA</small><b id="navAltHintText">Tem uma rota mais rápida, quer trocar pra ela?</b><em id="navAltHintMeta"></em></div><button type="button" class="nav-alt-accept" id="navAltAccept">Trocar</button><button type="button" class="nav-alt-dismiss" id="navAltDismiss" aria-label="Manter rota atual"><i data-lucide="x" width="13"></i></button></div>
 
   <section class="nav-panel nav-minimal" id="activeNav" aria-live="polite">
@@ -339,7 +352,7 @@
     <div class="vano-nav-dock-head"><span class="vano-nav-live"><i></i>EM ROTA</span><div class="vano-nav-head-actions"><span class="vano-nav-dock-caption">Atualização em tempo real</span></div></div>
     <div class="nav-summary-row">
       <div class="nav-summary-item nav-summary-primary"><span class="nav-summary-label"><i data-lucide="flag" width="11"></i><small>CHEGADA</small></span><strong id="arrivalTime">—</strong></div>
-      <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="timer" width="11"></i><small>FALTAM</small></span><strong id="remainingMinutes">—</strong></div>
+      <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="timer" width="11"></i><small>FALTAM</small></span><strong id="remainingMinutes">—</strong><em class="nav-eta-confidence" id="navEtaConfidence">—</em></div>
       <div class="nav-summary-item"><span class="nav-summary-label"><i data-lucide="route" width="11"></i><small>DISTÂNCIA</small></span><strong id="remainingKm">—</strong></div>
       <button type="button" class="nav-search-btn" id="navSearchBtn" aria-label="Pesquisar outro destino" title="Pesquisar outro destino"><i data-lucide="search" width="20"></i></button>
     </div>
@@ -376,6 +389,7 @@
       <small>VOCÊ CHEGOU</small>
       <h2 id="arrivalDestinationName">Destino</h2>
       <p id="arrivalDestinationMeta">A rota foi concluída.</p>
+      <div class="vano-arrival-metrics" id="arrivalMetrics"><div><small>TEMPO</small><b id="arrivalTripTime">—</b></div><div><small>DISTÂNCIA</small><b id="arrivalTripDistance">—</b></div><div><small>ROTA</small><b id="arrivalTripMode">—</b></div><div><small>AJUSTES</small><b id="arrivalTripReroutes">0</b></div></div>
       <div class="vano-arrival-actions"><button type="button" class="arrival-secondary" id="arrivalParkingBtn"><i data-lucide="square-parking" width="17"></i>Estacionamentos</button><button type="button" class="arrival-primary" id="arrivalFinishBtn">Encerrar</button></div>
     </div>
   </section>
@@ -398,7 +412,7 @@
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-302')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-310')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;

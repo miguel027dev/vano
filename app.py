@@ -41,7 +41,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "275.0.0").strip() or "275.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "310.0.0").strip() or "310.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -9912,21 +9912,54 @@ def api_recent_destinations():
     user = current_user()
     if not user:
         return jsonify({"results": []})
+    # Rank by recency + frequency + hour-of-day affinity instead of returning a
+    # purely chronological list. This keeps the quick-destination surface useful
+    # without storing any extra location history beyond the existing route rows.
     rows = get_db().execute(
         """
-        SELECT destination_label, destination_lat, destination_lon, MAX(created_at) last_used, COUNT(*) uses
+        SELECT destination_label, destination_lat, destination_lon, created_at
         FROM route_history
         WHERE user_id=? AND destination_label<>''
-        GROUP BY destination_label, destination_lat, destination_lon
-        ORDER BY last_used DESC
-        LIMIT 6
+        ORDER BY created_at DESC
+        LIMIT 120
         """,
         (user["id"],),
     ).fetchall()
-    return jsonify({"results": [
-        {"label": r["destination_label"], "lat": r["destination_lat"], "lon": r["destination_lon"], "uses": r["uses"]}
-        for r in rows
-    ]})
+    now = datetime.now()
+    buckets = {}
+    for row in rows:
+        label = str(row["destination_label"] or "").strip()
+        if not label:
+            continue
+        key = (label, round(float(row["destination_lat"] or 0), 5), round(float(row["destination_lon"] or 0), 5))
+        item = buckets.setdefault(key, {
+            "label": label,
+            "lat": row["destination_lat"],
+            "lon": row["destination_lon"],
+            "uses": 0,
+            "latest": None,
+            "hour_hits": 0,
+        })
+        item["uses"] += 1
+        dt = parse_iso(row["created_at"])
+        if dt:
+            if item["latest"] is None or dt > item["latest"]:
+                item["latest"] = dt
+            hour_delta = min((dt.hour - now.hour) % 24, (now.hour - dt.hour) % 24)
+            if hour_delta <= 1:
+                item["hour_hits"] += 1
+    ranked = []
+    for item in buckets.values():
+        latest = item.pop("latest", None)
+        age_h = max(0.0, (now - latest.replace(tzinfo=None)).total_seconds() / 3600.0) if latest else 9999.0
+        recency = max(0.0, 34.0 - min(34.0, age_h / 5.0))
+        frequency = min(42.0, item["uses"] * 5.5)
+        hour_affinity = min(24.0, item.pop("hour_hits", 0) * 8.0)
+        item["smart_score"] = round(recency + frequency + hour_affinity, 1)
+        item["reason"] = "Bom para este horário" if hour_affinity >= 8 else ("Destino frequente" if item["uses"] >= 3 else "Usado recentemente")
+        ranked.append(item)
+    ranked.sort(key=lambda x: (-x["smart_score"], -x["uses"], x["label"].lower()))
+    return jsonify({"results": ranked[:6]})
 
 
 @app.route("/api/geocode")
