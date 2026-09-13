@@ -1,7 +1,7 @@
-/* VANO MAPS V310 — atomic offline cache with bounded map-region recovery. */
-const BUILD='310.0.0-navigation-experience';
-const CACHE=`vano-maps-v310-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v310-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V312 — navigation motion + canonical orange route cache. */
+const BUILD='312.0.0-navigation-motion';
+const CACHE=`vano-maps-v312-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v312-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',

@@ -187,11 +187,11 @@ body.vano-map-surface .permission button{border:0!important;border-radius:12px!i
 .vano-user-puck-v300{
   position:relative!important;width:40px!important;height:48px!important;display:grid!important;place-items:center!important;
   transform-origin:50% 52%!important;pointer-events:none!important;filter:drop-shadow(0 4px 5px rgba(18,24,32,.23));
-  transition:filter .18s ease!important;
+  transition:filter .2s ease!important;
 }
 .vano-user-puck-v300 .vano-puck-inline{display:block!important;width:40px!important;height:48px!important;overflow:visible!important}
-.vano-user-puck-v300 .vano-puck-accuracy{position:absolute!important;left:50%!important;top:54%!important;width:54px!important;height:54px!important;transform:translate(-50%,-50%)!important;border-radius:50%!important;background:rgba(244,122,69,.09)!important;border:1px solid rgba(244,122,69,.12)!important;opacity:0!important;transition:opacity .2s ease!important;z-index:-1!important}
-.vano-user-puck-v300.is-gps-weak .vano-puck-accuracy{opacity:1!important;width:64px!important;height:64px!important;background:rgba(244,122,69,.07)!important}
+.vano-user-puck-v300 .vano-puck-accuracy{position:absolute!important;left:50%!important;top:54%!important;width:54px!important;height:54px!important;transform:translate(-50%,-50%)!important;border-radius:50%!important;background:rgba(255,120,0,.075)!important;border:1px solid rgba(255,120,0,.14)!important;opacity:0!important;transition:opacity .2s ease!important;z-index:-1!important}
+.vano-user-puck-v300.is-gps-weak .vano-puck-accuracy{opacity:1!important;width:64px!important;height:64px!important;background:rgba(255,120,0,.06)!important}
 .vano-user-puck-v300.is-moving{filter:drop-shadow(0 5px 6px rgba(18,24,32,.25))}
 
 /* ---------- Navigation layout ---------- */

@@ -1,6 +1,8 @@
 /* VANO MAPS Navigation V300.2 — canonical orange driver HUD. */
 :root{
   --vano-nav-accent:#F47A45;
+  --vano-route-orange:#FF7800;
+  --vano-route-orange-light:#FF9D3F;
   --vano-nav-accent-strong:#D96535;
   --vano-nav-accent-soft:#FFF2EA;
   --vano-nav-accent-wash:rgba(244,122,69,.10);
@@ -26,17 +28,20 @@ body.body-nav #activeNav *,body.body-nav #navManeuverTop *,body.body-nav #navCon
   display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none!important;
   background:transparent!important;transform-origin:50% 50%!important;z-index:68!important;will-change:transform!important;
 }
-.vano-user-puck-v300 .vano-puck-inline{width:40px!important;height:40px!important;display:block!important;overflow:visible!important}
+.vano-user-puck-v300 .vano-puck-inline{width:40px!important;height:40px!important;display:block!important;overflow:visible!important;transform-origin:50% 58%!important;transition:transform .18s cubic-bezier(.2,.8,.2,1),filter .18s ease!important}
+.vano-user-puck-v300.is-moving .vano-puck-inline{transform:translateY(-.4px) scale(1.035)!important;filter:drop-shadow(0 2px 2px rgba(255,120,0,.12))!important}
 .vano-user-puck-v300 .vano-puck-halo{fill:#fff;stroke:rgba(26,29,36,.16);stroke-width:1.45}
-.vano-user-puck-v300 .vano-puck-face{fill:var(--vano-nav-accent)!important;stroke:#fff;stroke-width:2.25;stroke-linejoin:round}
-.vano-user-puck-v300 .vano-puck-core{fill:rgba(255,255,255,.30)}
+.vano-user-puck-v300 .vano-puck-face{fill:var(--vano-route-orange)!important;stroke:#fff;stroke-width:2.25;stroke-linejoin:round}
+.vano-user-puck-v300 .vano-puck-core{fill:rgba(255,255,255,.34);transition:opacity .18s ease!important}.vano-user-puck-v300.is-moving .vano-puck-core{opacity:.92}
 .vano-user-puck-v300 .vano-puck-accuracy{
   position:absolute!important;left:50%!important;top:50%!important;width:50px!important;height:50px!important;
-  transform:translate(-50%,-50%)!important;border:1px solid rgba(244,122,69,.20)!important;border-radius:50%!important;
-  background:rgba(244,122,69,.07)!important;opacity:0!important;transition:opacity .18s ease!important;z-index:-1!important;
+  transform:translate(-50%,-50%)!important;border:1px solid rgba(255,120,0,.22)!important;border-radius:50%!important;
+  background:rgba(255,120,0,.065)!important;opacity:0!important;transition:opacity .2s ease,width .28s ease,height .28s ease!important;z-index:-1!important;
 }
-.vano-user-puck-v300.is-gps-weak .vano-puck-accuracy{opacity:1!important}
+.vano-user-puck-v300.is-gps-weak .vano-puck-accuracy{opacity:1!important;animation:vanoPuckAccuracyPulse 1.8s ease-in-out infinite!important}
 html[data-vano-theme="black"] .vano-user-puck-v300 .vano-puck-halo,body[data-mood="night"] .vano-user-puck-v300 .vano-puck-halo{fill:#fff;stroke:rgba(255,255,255,.45)}
+
+@keyframes vanoPuckAccuracyPulse{0%,100%{opacity:.52;transform:translate(-50%,-50%) scale(.96)}50%{opacity:.86;transform:translate(-50%,-50%) scale(1.08)}}
 
 /* Top maneuver card. */
 body.body-nav #navManeuverTop{
@@ -182,7 +187,7 @@ html[data-vano-theme="black"] body.body-nav #navManeuverTop,html[data-vano-theme
 html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-row{background:#202126!important;border-color:rgba(255,255,255,.06)!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item,html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary{background:transparent!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary{background:rgba(244,122,69,.09)!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item + .nav-summary-item{border-left-color:rgba(255,255,255,.07)!important}
 html[data-vano-theme="black"] body.body-nav #navManeuverTop b,html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item strong{color:#F5F5F7!important}html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary strong,html[data-vano-theme="black"] body.body-nav #navManeuverTop #nextDistance{color:#FF9A6B!important}html[data-vano-theme="black"] body.body-nav #navStreetChip{color:#D5D6DB!important}html[data-vano-theme="black"] body.body-nav #activeNav .traffic-suggestion{background:rgba(244,122,69,.08)!important;border-color:rgba(244,122,69,.16)!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-bubble{background:rgba(27,28,34,.98)!important;border-color:rgba(255,255,255,.10)!important;box-shadow:0 7px 18px rgba(0,0,0,.28)!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-icon-svg .fg{fill:#E8E8ED!important}html[data-vano-theme="black"] .route-marker.alert-marker .alert-icon-svg .stroke{stroke:#CACBD1!important}
 
-@media (prefers-reduced-motion:reduce){body.body-nav #activeNav.nav-panel.nav-minimal,.vano-user-puck-v300 .vano-puck-accuracy,body.body-nav #navExitBtn,body.body-nav #quickAlertBtn,body.body-nav #navDrawerRecenter,body.body-nav #soundBtn,body.body-nav #navDrawerToggle{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){body.body-nav #activeNav.nav-panel.nav-minimal,.vano-user-puck-v300 .vano-puck-accuracy,.vano-user-puck-v300 .vano-puck-inline,body.body-nav #navExitBtn,body.body-nav #quickAlertBtn,body.body-nav #navDrawerRecenter,body.body-nav #soundBtn,body.body-nav #navDrawerToggle{transition:none!important;animation:none!important}}
 
 /* ========================================================================== 
    VANO MAPS V302 — driver HUD polish
