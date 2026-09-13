@@ -41,7 +41,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "316.0.0").strip() or "316.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "317.0.0").strip() or "317.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -4634,8 +4634,8 @@ def _search_cache_key(query, proximity):
     q = _search_normalize(query)
     if proximity:
         # ~1 km cells keep cache useful without mixing distant neighborhoods.
-        return f"search-v163:{q}:{float(proximity[1]):.2f}:{float(proximity[0]):.2f}"
-    return f"search-v163:{q}:global"
+        return f"search-v317:{q}:{float(proximity[1]):.2f}:{float(proximity[0]):.2f}"
+    return f"search-v317:{q}:global"
 
 
 def _search_cache_get(key, ttl_seconds=900):
@@ -4708,9 +4708,13 @@ def _searchbox_category(props):
     categories = props.get("poi_category") or []
     if isinstance(categories, str):
         categories = [categories]
+    category_ids = props.get("poi_category_ids") or []
+    if isinstance(category_ids, str):
+        category_ids = [category_ids]
     values = " ".join(str(x).lower() for x in categories)
+    ids = " ".join(str(x).lower().replace("_", " ") for x in category_ids)
     maki = str(props.get("maki") or "").lower()
-    text = f"{values} {maki}"
+    text = f"{values} {ids} {maki}"
     # Keep malls separate from ordinary stores. A query such as "shopping Butantã"
     # should rank the mall itself above shops located inside or near it.
     if any(n in text for n in ("shopping mall", "shopping center", "shopping centre", "mall")):
@@ -4736,6 +4740,45 @@ def _searchbox_category(props):
             return result
     return ("Empresa / local", "business")
 
+
+SEARCH_CATEGORY_QUERY_TERMS = {
+    "mall": {"shopping", "mall", "center", "centre", "centro", "comercial"},
+    "hospital": {"hospital", "hospitais", "clinica", "clinicas", "medica", "medico", "upa"},
+    "pharmacy": {"farmacia", "farmacias", "drogaria", "drogarias"},
+    "school": {"escola", "colegio", "faculdade", "universidade", "etec", "senai", "educacao"},
+    "airport": {"aeroporto", "airport", "aerodromo", "terminal", "aeroportuario"},
+    "terminal": {"terminal", "rodoviaria", "estacao", "metro", "trem"},
+    "parking": {"estacionamento", "parking", "garagem"},
+    "fuel": {"posto", "combustivel", "gasolina", "etanol"},
+    "food": {"restaurante", "restaurantes", "cafe", "cafeteria", "lanchonete"},
+    "bank": {"banco", "agencia", "bancaria", "caixa", "eletronico"},
+    "hotel": {"hotel", "pousada", "hostel"},
+    "park": {"parque", "praca"},
+    "shop": {"mercado", "supermercado", "loja", "comercio"},
+}
+
+# Canonical Search Box category ids. These are optional refinements: if Mapbox
+# changes/doesn't support one, the normal text search still runs immediately after.
+SEARCHBOX_CATEGORY_FILTERS = {
+    "mall": "shopping_mall",
+    "hospital": "hospital",
+    "pharmacy": "pharmacy",
+    "airport": "airport",
+    "parking": "parking",
+    "fuel": "gas_station",
+    "hotel": "hotel",
+    "park": "park",
+}
+
+def _query_entity_tokens(query, wanted_category=""):
+    tokens = _search_tokens(query)
+    category_terms = SEARCH_CATEGORY_QUERY_TERMS.get(str(wanted_category or ""), set())
+    return [t for t in tokens if t not in category_terms]
+
+def _token_coverage(tokens, value):
+    if not tokens:
+        return 0.0
+    return sum(1 for token in tokens if _soft_token_match(token, value)) / max(1, len(tokens))
 
 def _query_search_intent(query):
     raw = re.sub(r"\s+", " ", str(query or "").strip())
@@ -4774,7 +4817,8 @@ def _query_search_intent(query):
         kind = "address"
     else:
         kind = "poi"
-    return {"kind": kind, "shopping": shopping, "wanted_category": wanted_category, "meta": meta, "normalized": normalized, "pure_cep": pure_cep}
+    entity_tokens = _query_entity_tokens(raw, wanted_category)
+    return {"kind": kind, "shopping": shopping, "wanted_category": wanted_category, "entity_tokens": entity_tokens, "meta": meta, "normalized": normalized, "pure_cep": pure_cep}
 
 def _mapbox_searchbox_result(feature, query, proximity=None, provider_rank=0):
     props = feature.get("properties") or {}
@@ -4825,6 +4869,7 @@ def _mapbox_searchbox_result(feature, query, proximity=None, provider_rank=0):
         "address": address,
         "category": category,
         "category_key": category_key,
+        "category_ids": ([str(props.get("poi_category_ids"))] if isinstance(props.get("poi_category_ids"), str) else [str(x) for x in (props.get("poi_category_ids") or [])])[:8],
         "lat": nav_lat, "lon": nav_lon,
         "display_lat": lat, "display_lon": lon,
         "entrance_lat": None, "entrance_lon": None,
@@ -4849,11 +4894,11 @@ def _mapbox_searchbox_result(feature, query, proximity=None, provider_rank=0):
     return item
 
 
-def mapbox_searchbox_forward(query, proximity=None, language=None):
+def mapbox_searchbox_forward(query, proximity=None, language=None, *, poi_category=None, types=None, rank_offset=0):
     """POI/business + address search using Mapbox Search Box /forward.
 
-    This endpoint is intentionally used for generic names such as malls, cinemas,
-    companies and categories because Geocoding v6 is address-focused.
+    ``poi_category`` is used for strong category intent (for example a shopping
+    mall). We still run the unfiltered request as a fallback/secondary source.
     """
     raw = re.sub(r"\s+", " ", (query or "").strip())[:240]
     if not raw or not mapbox_ready():
@@ -4863,9 +4908,11 @@ def mapbox_searchbox_forward(query, proximity=None, language=None):
         "q": raw,
         "limit": 10,
         "language": (language or preferred_language()).split("-", 1)[0].lower(),
-        "types": "poi,address,street,postcode,place,locality,neighborhood",
+        "types": types or "poi,address,street,postcode,place,locality,neighborhood",
         "auto_complete": "true",
     }
+    if poi_category:
+        params["poi_category"] = str(poi_category)[:120]
     if context.get("country"):
         params["country"] = context["country"].lower()
     # An explicit foreign country should beat the user's current GPS bias.
@@ -4874,10 +4921,13 @@ def mapbox_searchbox_forward(query, proximity=None, language=None):
     payload = mapbox_get(f"{MAPBOX_SEARCHBOX_URL}/forward", params, timeout=5.5)
     out = []
     for idx, feature in enumerate((payload.get("features") or [])[:10]):
-        item = _mapbox_searchbox_result(feature, raw, proximity, provider_rank=idx * 2)
+        item = _mapbox_searchbox_result(feature, raw, proximity, provider_rank=rank_offset + idx * 2)
         if item:
+            if poi_category:
+                item["category_filtered"] = True
             out.append(item)
     return out
+
 
 def _combined_search_rank(item, query, proximity=None):
     if item.get("source") == "cep-authoritative":
@@ -4913,6 +4963,9 @@ def _combined_search_rank(item, query, proximity=None):
     item_type = str(item.get("type") or "")
     category_key = str(item.get("category_key") or "")
     category_text = _search_normalize(item.get("category") or "")
+    entity_tokens = list(intent.get("entity_tokens") or [])
+    entity_name_coverage = _token_coverage(entity_tokens, nn) if entity_tokens else 0.0
+    entity_context_coverage = _token_coverage(entity_tokens, labeln) if entity_tokens else 0.0
 
     if kind in {"cep", "cep_number"}:
         wanted_cep = str(intent["meta"].get("cep") or "")
@@ -4952,30 +5005,67 @@ def _combined_search_rank(item, query, proximity=None):
             base -= 42
         elif item_type in {"street", "address", "postcode"}:
             base += 66
+
+        wanted = str(intent.get("wanted_category") or "")
+        compatible = {
+            "mall": {"mall"}, "hospital": {"hospital"}, "pharmacy": {"pharmacy"},
+            "school": {"school"}, "airport": {"airport"}, "terminal": {"terminal"},
+            "parking": {"parking"}, "fuel": {"fuel"}, "food": {"food"},
+            "bank": {"bank"}, "hotel": {"hotel"}, "park": {"park"},
+            "shop": {"shop", "mall"},
+        }.get(wanted, {wanted} if wanted else set())
+        category_match = bool(wanted and category_key in compatible)
+
+        if wanted:
+            if category_match:
+                base -= 98
+            elif item_type == "poi":
+                base += 64
+            else:
+                base += 90
+
+            # Critical relevance rule: entity words (e.g. "Butantã" in
+            # "Shopping Butantã") need to occur in the POI *name*. If they only
+            # occur in the address/context, the result is probably a store located
+            # inside the requested mall rather than the mall itself.
+            if entity_tokens:
+                if entity_name_coverage >= 0.999:
+                    base -= 74 if category_match else 24
+                elif entity_name_coverage >= 0.5:
+                    base -= 30 if category_match else 4
+                elif entity_context_coverage >= 0.999:
+                    base += 155 if item_type == "poi" else 80
+                elif entity_context_coverage >= 0.5:
+                    base += 92 if item_type == "poi" else 48
+                else:
+                    base += 118
+
+            if category_match and (not entity_tokens or entity_name_coverage >= 0.999):
+                item["match_kind"] = "primary"
+                item["match_reason"] = "Nome e categoria correspondem à busca"
+            elif item_type == "poi" and entity_tokens and entity_name_coverage < 0.5 and entity_context_coverage >= 0.5:
+                item["match_kind"] = "related"
+                item["match_reason"] = "Local relacionado à região pesquisada"
+        elif qtokens:
+            # Generic named-place searches still favor name matches over words that
+            # only appear in the address/context.
+            if name_ratio >= 0.999:
+                base -= 38
+                item.setdefault("match_kind", "primary")
+                item.setdefault("match_reason", "Nome corresponde à busca")
+            elif name_ratio < 0.34 and all_ratio >= 0.67:
+                base += 48
+                item.setdefault("match_kind", "related")
+
         if intent["shopping"]:
             if category_key == "mall" or category_text == "shopping":
-                base -= 100
-            elif category_key == "shop":
-                base += 38
+                base -= 72
+            elif category_key in {"shop", "food", "bank", "pharmacy"}:
+                base += 72
             else:
-                base += 18
+                base += 22
             if "shopping" in nn or "mall" in nn:
-                base -= 42
-        wanted = str(intent.get("wanted_category") or "")
-        if wanted:
-            compatible = {
-                "mall": {"mall"}, "hospital": {"hospital"}, "pharmacy": {"pharmacy"},
-                "school": {"school"}, "airport": {"airport"}, "terminal": {"terminal"},
-                "parking": {"parking"}, "fuel": {"fuel"}, "food": {"food"},
-                "bank": {"bank"}, "hotel": {"hotel"}, "park": {"park"},
-                "shop": {"shop", "mall"},
-            }.get(wanted, {wanted})
-            if category_key in compatible:
-                base -= 92
-            elif item_type == "poi":
-                base += 54
-            else:
-                base += 82
+                base -= 34
 
     # Proximity decides between equally relevant alternatives, not between an
     # exact semantic match and an unrelated nearby place.
@@ -5028,8 +5118,18 @@ def smart_location_search(query, proximity=None):
         if kind in {"address", "street"} and mapbox_ready():
             collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox-secondary")
     else:
-        # Place/business searches always query Search Box first, then Geocoding as
-        # a secondary source for locality/street fallbacks.
+        # Strong category intent gets a category-filtered POI request first. For
+        # example, "Shopping Butantã" asks Mapbox for shopping_mall POIs before
+        # the generic text search, preventing shops inside the mall from winning.
+        wanted = str(intent.get("wanted_category") or "")
+        category_filter = SEARCHBOX_CATEGORY_FILTERS.get(wanted)
+        if mapbox_ready() and category_filter:
+            collect(lambda: mapbox_searchbox_forward(
+                query, effective_proximity, search_language,
+                poi_category=category_filter, types="poi", rank_offset=-30
+            ), "searchbox-category")
+        # Generic Search Box remains as coverage/fallback and Geocoding supplies
+        # locality/street fallbacks.
         if mapbox_ready():
             collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox")
         collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode-secondary")
@@ -5051,6 +5151,15 @@ def smart_location_search(query, proximity=None):
         merged.append(item)
 
     merged.sort(key=lambda x: (float(x.get("rank", 9999)), float(x.get("distance_m", 1e12)), str(x.get("label", ""))))
+
+    # When a strong primary entity exists, results that only match because they
+    # are *inside/near* that entity are still useful, but they belong at the end.
+    # This makes "Shopping X" show the shopping itself before its stores.
+    if kind == "poi" and any(x.get("match_kind") == "primary" for x in merged):
+        primary = [x for x in merged if x.get("match_kind") == "primary"]
+        neutral = [x for x in merged if x.get("match_kind") not in {"primary", "related"}]
+        related = [x for x in merged if x.get("match_kind") == "related"]
+        merged = primary + neutral + related
 
     # CEP + number: if the authoritative canonical result exists, it must be the
     # first thing the UI sees and it must visibly preserve the typed number.

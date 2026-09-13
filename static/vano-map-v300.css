@@ -764,3 +764,53 @@ body.vano-map-surface .gps-quality,body.vano-map-surface .connectivity-pill{font
 @media (forced-colors:active){
   body.vano-map-surface button,body.vano-map-surface input,body.vano-map-surface #planSheet{forced-color-adjust:auto!important}
 }
+
+/* V317 — search relevance presentation. The best semantic match must read as
+   the destination itself; related businesses remain useful without competing. */
+body.vano-map-surface .search-item.match-primary{
+  border:1px solid rgba(255,149,0,.52)!important;
+  background:linear-gradient(135deg,rgba(255,149,0,.10),rgba(255,255,255,.98) 48%)!important;
+  box-shadow:0 7px 20px rgba(53,35,9,.08)!important;
+}
+body.vano-map-surface .search-item.match-primary .result-topline b{
+  font-weight:850!important;
+}
+body.vano-map-surface .search-item.match-primary .result-icon{
+  background:rgba(255,149,0,.16)!important;
+  color:#A94D00!important;
+}
+body.vano-map-surface .search-item.match-related{
+  background:rgba(247,248,250,.88)!important;
+  border-color:rgba(20,24,30,.075)!important;
+}
+body.vano-map-surface .result-match-note{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  width:max-content!important;
+  max-width:100%!important;
+  margin-top:3px!important;
+  color:#747B84!important;
+  font-size:10.5px!important;
+  line-height:1.25!important;
+  font-weight:650!important;
+}
+body.vano-map-surface .result-match-note.primary{
+  color:#9A4A00!important;
+}
+body.vano-map-surface .search-item .result-meta.precise{
+  background:#FF9500!important;
+  color:#241400!important;
+  border-color:rgba(148,76,0,.12)!important;
+  font-weight:850!important;
+}
+body.vano-map-surface .search-item.match-related .result-meta{
+  color:#6E747C!important;
+}
+body.vano-map-surface[data-vano-theme="black"] .search-item.match-primary,
+html[data-vano-theme="black"] body.vano-map-surface .search-item.match-primary{
+  background:linear-gradient(135deg,rgba(255,149,0,.14),rgba(22,24,27,.98) 50%)!important;
+  border-color:rgba(255,166,43,.50)!important;
+}
+html[data-vano-theme="black"] body.vano-map-surface .result-match-note.primary{color:#FFB34E!important}
+html[data-vano-theme="black"] body.vano-map-surface .search-item.match-related{background:rgba(27,29,32,.92)!important}
