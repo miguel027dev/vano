@@ -594,3 +594,10 @@ html[data-vano-theme="black"] body.vano-map-surface #routeState #routeMoreConten
   body.vano-map-surface #routeState #routeMoreContent .preview-actions{grid-template-columns:1fr!important}
   body.vano-map-surface #routeState #routeMoreContent .preview-actions .sub-action{justify-content:flex-start!important;padding:8px 10px!important}
 }
+
+
+/* VANO V315 — recalibration control feedback */
+@keyframes vanoRecalibratePulse315{0%{transform:scale(1);box-shadow:0 8px 22px rgba(20,25,34,.15)}45%{transform:scale(.92);box-shadow:0 0 0 7px rgba(255,149,0,.18),0 8px 22px rgba(20,25,34,.12)}100%{transform:scale(1);box-shadow:0 8px 22px rgba(20,25,34,.15)}}
+body.vano-map-surface :is(#navDrawerRecenter,#recenterBtn).calibrating{color:#ff9500!important;animation:vanoRecalibratePulse315 .46s ease-in-out 2!important}
+body.vano-map-surface :is(#navDrawerRecenter,#recenterBtn).calibrating svg{transform:rotate(180deg);transition:transform .46s cubic-bezier(.2,.8,.2,1)!important}
+@media (prefers-reduced-motion:reduce){body.vano-map-surface :is(#navDrawerRecenter,#recenterBtn).calibrating{animation:none!important}body.vano-map-surface :is(#navDrawerRecenter,#recenterBtn).calibrating svg{transform:none!important}}

@@ -126,9 +126,9 @@
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-app-v262.css') }}?v={{ vano_build_id }}">
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-v300.css') }}?v={{ vano_build_id }}-314">{% endif %}
+  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-v300.css') }}?v={{ vano_build_id }}-315">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner-v263.css') }}?v={{ vano_build_id }}-302">{% endif %}
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-314">{% endif %}
+  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-315">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_map_surface %}
   <script>try{
@@ -177,7 +177,7 @@
 <script src="{{ url_for('static', filename='vano-runtime-v262.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
 <script>if(window.lucide){lucide.createIcons();} setTimeout(()=>document.querySelectorAll('.flash').forEach(x=>x.remove()),6000); if(window.parent!==window){window.parent.postMessage({type:'vano:ready',path:location.pathname},'*');}</script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}-311',{scope:'/'}).catch(()=>{}),{once:true});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}-315',{scope:'/'}).catch(()=>{}),{once:true});}</script>
 <script src="{{ url_for('static', filename='vano-telemetry-v123.js') }}?v={{ vano_build_id }}"></script>
 {% block scripts %}{% endblock %}
 </body>

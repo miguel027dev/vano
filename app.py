@@ -41,7 +41,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "314.0.0").strip() or "314.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "315.0.0").strip() or "315.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
