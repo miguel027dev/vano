@@ -23,7 +23,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-313">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-314">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
@@ -304,23 +304,32 @@
 
       <button class="primary start-trip-cta" id="startTripBtn" type="button" aria-label="Iniciar navegação"><span class="start-trip-icon"><i data-lucide="navigation" width="18"></i></span><span class="start-trip-copy"><b>Iniciar</b><small>Modo imersivo · câmera alinhada ao trajeto</small></span><span class="start-trip-arrow">›</span></button>
 
-      <details class="vano-route-more" id="routeMoreDetails">
-        <summary aria-expanded="false"><span><i data-lucide="sliders-horizontal" width="15"></i>Mais opções e detalhes</span><i data-lucide="chevron-down" width="16"></i></summary>
-        <div class="vano-route-more-content">
-          <div class="vr-control-block vano-transport-block">
-            <div class="route-choice-label"><span>Transporte</span><small>como você vai</small></div>
-            <div class="travel">
+      <section class="vano-route-more" id="routeMoreDetails" data-open="false" aria-label="Mais informações da rota">
+        <button type="button" class="vano-route-more-toggle" id="routeMoreToggle" aria-expanded="false" aria-controls="routeMoreContent">
+          <span class="vano-route-more-toggle-copy"><i data-lucide="info" width="16"></i><span><b>Mais informações</b><small>Transporte, detalhes, alertas e prévia</small></span></span>
+          <i class="vano-route-more-chevron" data-lucide="chevron-down" width="17" aria-hidden="true"></i>
+        </button>
+        <div class="vano-route-more-content" id="routeMoreContent" hidden aria-hidden="true">
+          <section class="vano-route-more-section vano-transport-block" aria-labelledby="routeTransportLabel">
+            <div class="vano-route-more-section-head" id="routeTransportLabel"><span>Transporte</span><small>como você vai</small></div>
+            <div class="travel" role="group" aria-label="Meio de transporte">
               <button type="button" class="active" data-profile="driving"><span class="route-option-icon"><i data-lucide="car-front" width="14"></i></span><span class="route-option-copy"><b>Carro</b><small>Dirigindo</small></span></button>
               <button type="button" data-profile="motorcycle"><span class="route-option-icon"><svg class="moto-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"></circle><circle cx="18" cy="17" r="3"></circle><path d="M9 17h5l2.3-5H12l-2 3-2.7-5H5.5M13 12l-1.8-3H14M16.3 12l2.2 1.5"></path></svg></span><span class="route-option-copy"><b>Moto</b><small>Motocicleta</small></span></button>
               <button type="button" data-profile="walking"><span class="route-option-icon"><i data-lucide="person-standing" width="14"></i></span><span class="route-option-copy"><b>A pé</b><small>Caminhando</small></span></button>
             </div>
-          </div>
-          <div class="route-card" id="routeCard"></div>
-          <section class="parking-nearby" id="parkingNearby"><div class="parking-head"><div><small>PERTO DO DESTINO</small><b>Estacionamentos próximos</b></div><span id="parkingSource">Mapa + caminhada</span></div><div class="parking-list" id="parkingList"></div></section>
-          <div class="sub-actions preview-actions"><button type="button" class="sub-action" id="shareRouteBtn"><i data-lucide="link-2" width="14"></i>Copiar link</button><button type="button" class="sub-action" id="showAlertsBtn"><i data-lucide="shield-alert" width="14"></i>Alertas</button><button type="button" class="sub-action" id="previewRouteBtn"><i data-lucide="move-3d" width="14"></i>Prévia 3D</button></div>
-          <p class="disclaimer">As condições reais da via sempre têm prioridade.</p>
+          </section>
+
+          <section class="vano-route-more-section vano-route-analysis-section" aria-labelledby="routeAnalysisLabel">
+            <div class="vano-route-more-section-head" id="routeAnalysisLabel"><span>Sobre esta rota</span><small>por que ela foi escolhida</small></div>
+            <div class="route-card" id="routeCard"></div>
+          </section>
+
+          <section class="parking-nearby vano-route-more-section" id="parkingNearby"><div class="parking-head"><div><small>PERTO DO DESTINO</small><b>Estacionamentos próximos</b></div><span id="parkingSource">Mapa + caminhada</span></div><div class="parking-list" id="parkingList"></div></section>
+
+          <div class="sub-actions preview-actions" aria-label="Ações da rota"><button type="button" class="sub-action" id="shareRouteBtn"><i data-lucide="link-2" width="14"></i><span>Copiar link</span></button><button type="button" class="sub-action" id="showAlertsBtn"><i data-lucide="shield-alert" width="14"></i><span>Alertas</span></button><button type="button" class="sub-action" id="previewRouteBtn"><i data-lucide="move-3d" width="14"></i><span>Prévia 3D</span></button></div>
+          <p class="disclaimer vano-route-more-disclaimer"><i data-lucide="triangle-alert" width="12"></i><span>As condições reais da via sempre têm prioridade.</span></p>
         </div>
-      </details>
+      </section>
     </div>
   </section>
 
@@ -415,7 +424,7 @@
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-313')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-314')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;

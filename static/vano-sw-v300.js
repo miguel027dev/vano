@@ -1,7 +1,7 @@
-/* VANO MAPS V313 — admin/options regression hotfix + bright route cache. */
-const BUILD='313.0.0-route-options-hotfix';
-const CACHE=`vano-maps-v313-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v313-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V314 — stable route details card + planner interaction hotfix. */
+const BUILD='314.0.0-route-details-hotfix';
+const CACHE=`vano-maps-v314-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v314-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
