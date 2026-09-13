@@ -41,7 +41,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "310.0.0").strip() or "310.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "311.0.0").strip() or "311.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -3027,7 +3027,6 @@ def onboarding_needed(user):
     return not (
         user["onboarding_completed_at"]
         and user["age"] is not None
-        and str(user["sex"] or "").strip()
         and user["is_app_driver"] is not None
     )
 
@@ -8158,7 +8157,10 @@ def onboarding():
             age = int(request.form.get("age", ""))
         except (TypeError, ValueError):
             age = 0
-        sex = str(request.form.get("sex", "")).strip().lower()
+        # V311: sex/gender is not required by routing or eligibility. New
+        # onboarding flows therefore do not collect it; preserve an existing
+        # value only for backwards compatibility with older accounts.
+        sex = str(user["sex"] or "prefer_not_say").strip().lower() or "prefer_not_say"
         driver_raw = str(request.form.get("is_app_driver", "")).strip().lower()
         route_preference = str(request.form.get("route_preference", "balanced")).strip().lower()
         night_mode = 1 if request.form.get("night_safety_mode") == "1" else 0
@@ -8166,11 +8168,11 @@ def onboarding():
         emergency_name = str(request.form.get("emergency_name", "")).strip()[:80]
         emergency_phone = re.sub(r"[^0-9+() .-]", "", str(request.form.get("emergency_phone", "")).strip())[:40]
         allowed_sex = {"female", "male", "intersex_other", "prefer_not_say"}
+        if sex not in allowed_sex:
+            sex = "prefer_not_say"
         errors=[]
         if age < 13 or age > 100:
             errors.append("Informe uma idade válida entre 13 e 100 anos.")
-        if sex not in allowed_sex:
-            errors.append("Escolha uma opção para sexo/gênero.")
         if driver_raw not in {"yes", "no"}:
             errors.append("Informe se você dirige por aplicativo.")
         if route_preference not in {"balanced", "safety_first", "fast_first"}:
@@ -8562,10 +8564,11 @@ def api_sos():
 
 
 def legal_identity_context():
+    """Public legal identity with VANO-first env names and legacy fallbacks."""
     return {
-        "legal_name": str(os.environ.get("RAIGO_LEGAL_NAME") or "VANO MAPS").strip()[:180],
-        "legal_cnpj": str(os.environ.get("RAIGO_LEGAL_CNPJ") or "").strip()[:32],
-        "privacy_email": str(os.environ.get("RAIGO_PRIVACY_EMAIL") or "").strip()[:220],
+        "legal_name": str(os.environ.get("VANO_LEGAL_NAME") or os.environ.get("RAIGO_LEGAL_NAME") or "VANO MAPS").strip()[:180],
+        "legal_cnpj": str(os.environ.get("VANO_LEGAL_CNPJ") or os.environ.get("RAIGO_LEGAL_CNPJ") or "").strip()[:32],
+        "privacy_email": str(os.environ.get("VANO_PRIVACY_EMAIL") or os.environ.get("RAIGO_PRIVACY_EMAIL") or "").strip()[:220],
         "activity_log_retention_days": ACTIVITY_LOG_RETENTION_DAYS,
     }
 

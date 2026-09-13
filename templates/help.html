@@ -1,38 +1,58 @@
 {% extends 'base.html' %}
 {% block title %}Ajuda · VANO MAPS{% endblock %}
-{% block head %}<style>.faq-shell{max-width:800px;margin:auto}.faq-hero{margin-bottom:17px}.faq-hero h1{font-size:32px;margin:0;letter-spacing:-1.3px}.faq-hero p{color:#89929d;line-height:1.55;font-size:12px}.faq-search{width:100%;height:46px;margin:4px 0 14px;border:1px solid rgba(255,255,255,.075);border-radius:13px;background:#0d0f12;color:#fff;padding:0 13px;outline:none}.faq{display:grid;gap:7px}.faq details{border:1px solid rgba(255,255,255,.065);border-radius:14px;background:rgba(255,255,255,.018);padding:0 13px}.faq summary{cursor:pointer;padding:14px 0;font-weight:830;font-size:12px;list-style:none}.faq summary::-webkit-details-marker{display:none}.faq details p{margin:0 0 14px;color:#89929e;font-size:11px;line-height:1.58}.faq details[open]{border-color:rgba(255,107,26,.18)}.faq-empty{display:none;color:#7f8893;text-align:center;padding:24px;font-size:11px}@media(max-width:640px){.faq-hero h1{font-size:27px}.faq details{border-radius:13px}}</style>{% endblock %}
-{% block content %}<main class="page"><div class="container faq-shell"><div class="faq-hero"><div class="eyebrow">Central de ajuda</div><h1>Ajuda e FAQ</h1><p>Pesquise dúvidas sobre GPS, rotas, conta, privacidade, mapa e configurações.</p></div><input type="text" class="faq-search" id="faqSearch" placeholder="Pesquisar dúvida…" autocomplete="off"><div class="faq" id="faqList">
-{% for q,a in [
-('Por que o GPS demora para aparecer?','O VANO MAPS tenta mostrar imediatamente a última posição válida salva no aparelho e, em paralelo, busca uma leitura nova. Se a permissão estiver bloqueada, ative Localização para o navegador.'),
-('A localização inicial é automática?','Sim. Quando o GPS está permitido, sua localização é usada automaticamente como origem. Você não precisa preencher o ponto inicial.'),
-('Como centralizo o mapa em mim?','Use o botão de mira no canto inferior esquerdo. Durante a navegação ele também reativa o acompanhamento automático da câmera.'),
-('Como o VANO MAPS escolhe a rota mais rápida?','No modo Rápida, o foco é o menor ETA disponível com trânsito e alternativas. O sistema também pode testar corredores diferentes e microrrotas.'),
-('Por que duas rotas às vezes parecem parecidas?','Alguns provedores devolvem alternativas com grande trecho em comum. O VANO MAPS compara geometrias e tenta encontrar corredores diferentes quando existe uma opção útil.'),
-('O que muda na rota Segura?','A rota Segura considera exposição a sinais de risco, qualidade dos sinais disponíveis e contexto do corredor. É uma estimativa e não uma garantia.'),
-('O que é o modo Spark?','É o modo inteligente do VANO: combina ETA, trânsito, desvio e sinais de segurança para procurar uma opção prática.'),
-('Posso mudar o modo depois de calcular?','Sim. Você pode alternar entre Segura, Rápida e VANO MAPS antes de iniciar a navegação.'),
-('Quem consegue ver minha presença no mapa?','A presença é opcional e invisível por padrão. Somente motoristas adultos que ativarem a função podem publicar uma presença aproximada e temporária.'),
-('O VANO MAPS mostra minha localização exata para outros usuários?','Não no recurso de presença próxima. A posição é arredondada antes de ser armazenada e não inclui nome, foto, e-mail ou placa para outros usuários.'),
-('Por que a presença não pode ser ativada em algumas contas?','Para reduzir exposição de localização, a publicação de presença fica disponível apenas para contas adultas marcadas como motorista de aplicativo.'),
-('Até que distância aparecem motoristas próximos?','No máximo cerca de 1,5 km, usando posições aproximadas e recentes.'),
-('Por que alguns semáforos ou placas não aparecem?','A sinalização depende da cobertura cartográfica e do zoom. Alguns locais podem estar incompletos ou desatualizados.'),
-('Posso salvar casa e trabalho?','Sim. Abra Perfil e use Casa e trabalho. Depois esses destinos aparecem como atalhos no mapa.'),
-('Posso mudar quilômetros para milhas?','Sim. Em Perfil > Configurações, altere a unidade entre quilômetros e milhas.'),
-('Posso cadastrar meu carro?','Sim. Marca, modelo, placa e ano podem ser salvos no perfil. Esses dados não aparecem publicamente no mapa.'),
-('Para que servem as redes de postos preferidas?','Elas ficam salvas no seu perfil para personalização de recursos de combustível e paradas.'),
-('Como altero o idioma?','Em Perfil > Configurações, selecione Português, English ou Español. A preferência fica salva na conta.'),
-('Como uso destinos recentes?','Toque no ícone de histórico dentro da busca. O VANO MAPS lista destinos usados anteriormente na sua conta.'),
-('Como inicio uma navegação?','Pesquise um destino, escolha a rota desejada e toque em Iniciar navegação. O GPS atual passa a acompanhar o progresso.'),
-('O que acontece se eu sair da rota?','O VANO MAPS compara sua posição com a geometria ativa e pode recalcular quando detecta afastamento consistente.'),
-('Como cancelo uma rota?','Durante a navegação, toque em Cancelar no HUD inferior.'),
-('Como funciona o SOS?','O botão SOS envia uma notificação interna para contas de confiança vinculadas e também abre o compartilhamento da sua localização. Ele não chama automaticamente serviços de emergência.'),
-('Como vinculo uma conta responsável?','Abra Perfil > Emergência e vínculo e crie um link de convite. A outra pessoa precisa entrar na própria conta e aceitar o vínculo.'),
-('Um responsável recebe minha localização o tempo todo?','Não. O vínculo não ativa rastreamento contínuo. A posição exata é compartilhada com a conta vinculada somente quando você aciona SOS.'),
-('Como troco o estilo do mapa?','Em Perfil > Configurações > Estilo do mapa, escolha VANO MAPS Standard ou VANO MAPS Streets e salve. O estilo é aplicado quando você voltar ao mapa.'),
-('Como saio da minha conta?','Abra o menu de opções no mapa e escolha Sair. O token persistente daquele dispositivo é revogado.'),
-('O login fica salvo?','Sim, enquanto a sessão persistente continuar válida. Fechar o navegador não equivale a sair da conta.'),
-('O que é o modo de simulação do admin?','É uma ferramenta de teste que move o marcador pela rota sem publicar coordenadas falsas no tráfego colaborativo ou no compartilhamento ao vivo.'),
-('Como posso deixar o aplicativo mais rápido?','Mantenha o navegador atualizado, permita localização precisa e evite modos de economia extrema de bateria que suspendem GPS e renderização do mapa.')
-] %}<details data-faq><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}
-</div><div class="faq-empty" id="faqEmpty">Nenhuma dúvida encontrada.</div></div></main>
-<script>(()=>{const i=document.getElementById('faqSearch'),items=[...document.querySelectorAll('[data-faq]')],empty=document.getElementById('faqEmpty');if(!i)return;i.addEventListener('input',()=>{const q=i.value.trim().toLocaleLowerCase();let n=0;items.forEach(x=>{const show=!q||x.textContent.toLocaleLowerCase().includes(q);x.style.display=show?'':'none';if(show)n++});empty.style.display=n?'none':'block'})})();</script>{% endblock %}
+{% block meta_description %}Central de ajuda do VANO MAPS: GPS, rotas, modo seguro, Spark, offline, conta, privacidade, SOS e solução de problemas.{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-legal-v311.css') }}?v={{ vano_build_id }}"><style>
+.faq-shell{max-width:900px;margin:auto}.faq-hero{margin-bottom:18px}.faq-hero h1{font-size:clamp(34px,7vw,52px);margin:5px 0 8px;letter-spacing:-2px}.faq-hero p{color:#8e97a2;line-height:1.6}.faq-search-wrap{position:relative;margin:17px 0}.faq-search-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#69727d}.faq-search{width:100%;height:50px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:#0d0f12;color:#fff;padding:0 14px 0 43px;outline:none}.faq-search:focus{border-color:rgba(245,154,98,.55);box-shadow:0 0 0 3px rgba(245,154,98,.07)}.faq-groups{display:grid;gap:18px}.faq-group{border:1px solid rgba(255,255,255,.07);border-radius:22px;background:rgba(255,255,255,.015);overflow:hidden}.faq-group-head{padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.055);display:flex;align-items:center;gap:10px}.faq-group-head i{color:var(--orange-2)}.faq-group-head b{font-size:12px}.faq{display:grid}.faq details{padding:0 17px;border-bottom:1px solid rgba(255,255,255,.045)}.faq details:last-child{border-bottom:0}.faq summary{cursor:pointer;padding:15px 28px 15px 0;font-weight:800;font-size:12px;list-style:none;position:relative}.faq summary:after{content:'+';position:absolute;right:0;top:13px;color:#717a85;font-size:18px;font-weight:400}.faq details[open] summary:after{content:'−'}.faq summary::-webkit-details-marker{display:none}.faq details p{margin:0 0 15px;color:#89929e;font-size:11px;line-height:1.6}.faq details[open]{background:rgba(255,255,255,.012)}.faq-empty{display:none;color:#7f8893;text-align:center;padding:32px;border:1px dashed rgba(255,255,255,.08);border-radius:18px}.help-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.help-actions a{padding:15px;border:1px solid rgba(255,255,255,.07);border-radius:16px;background:rgba(255,255,255,.018)}.help-actions b{display:block;font-size:11px}.help-actions span{display:block;margin-top:3px;color:#737c87;font-size:9px;line-height:1.4}@media(max-width:650px){.help-actions{grid-template-columns:1fr}.faq-shell{width:100%}}
+</style>{% endblock %}
+{% block content %}
+<main class="page" id="conteudo-principal"><div class="container faq-shell">
+  <header class="faq-hero"><div class="eyebrow">Central de ajuda</div><h1>Resolva rápido. Volte para a rota.</h1><p>Pesquise dúvidas sobre GPS, navegação, modo seguro, Spark, conta, privacidade, offline e recursos de emergência.</p></header>
+  <div class="faq-search-wrap"><i data-lucide="search" width="17"></i><input type="search" class="faq-search" id="faqSearch" placeholder="Pesquisar: GPS, rota, privacidade, offline…" autocomplete="off" aria-label="Pesquisar na central de ajuda"></div>
+
+  {% set groups = [
+    ('navigation','Navegação e GPS',[
+      ('Por que o GPS demora para aparecer?','O VANO tenta mostrar a última posição válida e, em paralelo, busca uma leitura nova. Verifique a permissão de localização, o modo de economia de bateria e se o navegador pode usar localização precisa.'),
+      ('O que acontece se eu sair da rota?','O VANO compara sua posição com a geometria ativa. Quando o afastamento é consistente — evitando reagir a um salto isolado do GPS — a rota pode ser recalculada automaticamente.'),
+      ('A câmera acompanha minha velocidade?','Sim. Durante a navegação, zoom, inclinação e distância à frente podem se adaptar à velocidade e à proximidade da próxima manobra.'),
+      ('Por que o marcador às vezes não fica exatamente na minha posição?','O sistema usa suavização e map matching para reduzir pulos de GPS. Em ruas paralelas, túneis ou locais com sinal ruim, a posição pode levar alguns segundos para estabilizar.'),
+      ('O VANO continua funcionando sem internet?','A sessão e recursos já carregados podem continuar disponíveis por algum tempo, incluindo partes do mapa que já foram visitadas. Pesquisar um destino novo ou recalcular completamente pode exigir conexão.'),
+      ('Como cancelo uma rota?','Durante a navegação, use o botão de encerrar/cancelar no HUD. O VANO preserva os destinos recentes para facilitar uma nova busca.')
+    ]),
+    ('route','Rotas, Spark e segurança',[
+      ('Qual a diferença entre Rápida, Segura e Spark?','Rápida prioriza ETA. Segura aceita pequenos desvios quando existe ganho objetivo de segurança. Spark busca equilíbrio entre tempo, trânsito, segurança e confiança dos dados.'),
+      ('O que significa “mais segura”?','É uma comparação entre alternativas usando os sinais disponíveis. Não significa que a rota esteja livre de crime, acidente, alagamento ou outros eventos.'),
+      ('Como funciona o controle Rapidez ↔ Segurança?','No modo Spark, esse controle ajusta o peso relativo usado para comparar alternativas. Ele não transforma uma rota bloqueada ou inválida em rota permitida.'),
+      ('A IA cria as rotas?','Não. As rotas são geradas pelo motor cartográfico. Quando habilitada, a IA apenas ajuda a reranquear candidatas já válidas usando métricas compactas; se ela falhar ou demorar, o VANO usa o algoritmo normal.'),
+      ('Por que uma rota segura pode levar alguns minutos a mais?','O VANO pode trocar um pequeno aumento de ETA por menor exposição a sinais de risco. A interface deve mostrar essa troca para você decidir.'),
+      ('Por que duas alternativas parecem iguais?','Provedores podem retornar caminhos com muitos trechos em comum. O VANO tenta remover duplicatas e procurar corredores diferentes quando houver benefício real.')
+    ]),
+    ('user-round','Conta e privacidade',[
+      ('Quais dados o VANO usa?','Depende dos recursos usados: dados de conta, preferências, localização necessária à navegação, histórico associado à conta, alertas comunitários e dados técnicos de segurança/desempenho. Veja a Política de Privacidade para detalhes.'),
+      ('O VANO usa idade ou gênero para dizer que uma rota é perigosa?','Não. A decisão de rota usa preferências explícitas, tempo, trânsito e sinais objetivos do corredor. Idade é usada para restringir recursos que publicam presença a terceiros.'),
+      ('Posso excluir minha conta?','Sim. Abra Perfil > Excluir conta. Contas com senha precisam confirmar a senha e digitar EXCLUIR. Há também uma página pública explicando o processo.'),
+      ('Como faço um pedido de privacidade?','Entre na sua conta, abra Política de Privacidade e use o formulário de solicitação. Você recebe um protocolo para acompanhar o pedido.'),
+      ('O login fica salvo?','Pode ficar, enquanto a sessão persistente continuar válida. Usar Sair revoga a sessão do dispositivo.'),
+      ('Quem vê minha presença no mapa?','A presença é opcional, desligada por padrão e restrita a contas adultas elegíveis. Quando ativa, a posição é reduzida em precisão antes de ser disponibilizada a outros usuários.')
+    ]),
+    ('shield-alert','SOS e alertas',[
+      ('Como funciona o SOS?','O SOS envia uma notificação interna às contas de confiança vinculadas e abre opções para compartilhar sua localização. Ele não substitui serviços públicos de emergência.'),
+      ('Um responsável recebe minha localização o tempo todo?','Não. O vínculo não cria rastreamento contínuo. A posição exata é compartilhada no fluxo de SOS conforme o recurso implementado.'),
+      ('Como confirmo um alerta?','Na página de Alertas, use Confirmar apenas quando você tiver informação razoável de que o evento ainda existe. Uma conta não pode confirmar o mesmo alerta repetidamente.'),
+      ('Por que um alerta desapareceu?','Alertas podem expirar, ser moderados, perder relevância ou ser removidos quando há sinais de erro ou abuso.')
+    ]),
+    ('settings','Configurações e aparência',[
+      ('Como troco o estilo do mapa?','Em Perfil > Configurações você pode escolher modo automático ou um estilo por período. O modo automático pode alternar entre dia, tarde/noite e condições configuradas pelo VANO.'),
+      ('Posso usar quilômetros ou milhas?','Sim. A unidade pode ser alterada no perfil e afeta velocidade e distância exibidas.'),
+      ('Posso salvar casa e trabalho?','Sim. Os atalhos ficam associados à sua conta e aparecem no mapa para iniciar rotas mais rapidamente.'),
+      ('Como deixo o app mais rápido?','Mantenha o navegador atualizado, evite economia extrema de bateria durante a navegação e permita localização precisa. Em aparelhos mais fracos, o VANO reduz alguns efeitos automaticamente.')
+    ])
+  ] %}
+
+  <div class="faq-groups" id="faqList">
+    {% for icon,title,items in groups %}<section class="faq-group" data-faq-group><header class="faq-group-head"><i data-lucide="{{ icon }}" width="17"></i><b>{{ title }}</b></header><div class="faq">{% for q,a in items %}<details data-faq><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}</div></section>{% endfor %}
+  </div>
+  <div class="faq-empty" id="faqEmpty">Nenhuma resposta encontrada. Tente uma palavra mais curta.</div>
+  <div class="help-actions"><a href="{{ url_for('privacy_policy') }}"><b>Privacidade</b><span>Dados, localização, IA e direitos.</span></a><a href="{{ url_for('terms_of_use') }}"><b>Termos de Uso</b><span>Regras e limites do serviço.</span></a><a href="{{ url_for('account_delete_page') }}"><b>Excluir conta</b><span>Veja o que é removido e como excluir.</span></a></div>
+</div></main>
+<script>(()=>{const input=document.getElementById('faqSearch'),items=[...document.querySelectorAll('[data-faq]')],groups=[...document.querySelectorAll('[data-faq-group]')],empty=document.getElementById('faqEmpty');if(!input)return;const norm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();input.addEventListener('input',()=>{const q=norm(input.value.trim());let total=0;items.forEach(x=>{const show=!q||norm(x.textContent).includes(q);x.hidden=!show;if(show)total++});groups.forEach(g=>{g.hidden=![...g.querySelectorAll('[data-faq]')].some(x=>!x.hidden)});empty.style.display=total?'none':'block'})})();</script>
+{% endblock %}

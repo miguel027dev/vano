@@ -22,9 +22,8 @@ html,body{max-width:100%;overflow-x:hidden}
     <section class="ob-section">
       <div class="ob-section-title"><div class="ico"><i data-lucide="user-round" width="17"></i></div><div><b>Informações básicas</b><span>Para concluir seu perfil e adaptar a experiência.</span></div></div>
       <div class="field-grid">
-        <div class="field"><label>Idade</label><input class="input" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 24"></div>
-        <div class="field"><label>Sexo/gênero</label><select class="select" name="sex" required><option value="" disabled {% if not user['sex'] %}selected{% endif %}>Selecione</option><option value="female" {% if user['sex']=='female' %}selected{% endif %}>Feminino</option><option value="male" {% if user['sex']=='male' %}selected{% endif %}>Masculino</option><option value="intersex_other" {% if user['sex']=='intersex_other' %}selected{% endif %}>Outro / intersexo</option><option value="prefer_not_say" {% if user['sex']=='prefer_not_say' %}selected{% endif %}>Prefiro não informar</option></select></div>
-        <div class="field full"><label>Unidade de distância</label><select class="select" name="distance_unit"><option value="km" {% if not user['distance_unit'] or user['distance_unit']=='km' %}selected{% endif %}>Quilômetros (km/h)</option><option value="mi" {% if user['distance_unit']=='mi' %}selected{% endif %}>Milhas (mph)</option></select></div>
+        <div class="field full"><label for="onboardingAge">Idade</label><input id="onboardingAge" class="input" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 24" aria-describedby="ageHint"><div id="ageHint" class="mini-note">Usada para elegibilidade de recursos restritos por idade, como presença próxima. Não entra como pontuação de risco da rota.</div></div>
+        <div class="field full"><label for="onboardingUnit">Unidade de distância</label><select id="onboardingUnit" class="select" name="distance_unit"><option value="km" {% if not user['distance_unit'] or user['distance_unit']=='km' %}selected{% endif %}>Quilômetros (km/h)</option><option value="mi" {% if user['distance_unit']=='mi' %}selected{% endif %}>Milhas (mph)</option></select></div>
       </div>
     </section>
 
@@ -51,7 +50,7 @@ html,body{max-width:100%;overflow-x:hidden}
       <div class="field-grid"><div class="field"><label>Nome</label><input type="text" class="input" name="emergency_name" maxlength="80" autocomplete="name" value="{{ user['emergency_name'] or '' }}" placeholder="Nome do contato"></div><div class="field"><label>Telefone</label><input type="text" class="input" name="emergency_phone" maxlength="40" inputmode="tel" autocomplete="tel" value="{{ user['emergency_phone'] or '' }}" placeholder="(11) 99999-9999"></div></div>
     </section>
 
-    <div class="privacy-note"><i data-lucide="lock-keyhole" width="17"></i><span><b style="color:#b5bfcd">Perfil não é pontuação de risco.</b> O VANO MAPS usa dados da via, alertas, bloqueios, pavimento, iluminação e evidências verificadas. Idade e sexo não viram automaticamente um rótulo de perigo.</span></div>
+    <div class="privacy-note"><i data-lucide="lock-keyhole" width="17"></i><span><b style="color:#b5bfcd">Menos dados, mais clareza.</b> O VANO não pede sexo/gênero no onboarding porque o motor de rotas não precisa desse dado. Idade é usada apenas para elegibilidade de recursos. <a href="{{ url_for('privacy_policy') }}" style="color:#9bbcff;text-decoration:underline">Veja a Política de Privacidade</a>.</span></div>
     <button class="btn btn-primary ob-submit" type="submit"><i data-lucide="sparkles" width="17"></i>Concluir e abrir o VANO MAPS</button>
     <div class="fine">Você pode alterar estas preferências depois em Perfil e Configurações.</div>
   </form>

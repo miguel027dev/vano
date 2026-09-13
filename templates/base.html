@@ -113,7 +113,13 @@
     .badge{font-weight:820}.table th{font-weight:850}.flash{backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
     @media(max-width:640px){body{padding-bottom:66px}.container,.nav{width:calc(100% - 18px)}.topbar{height:56px}.nav-actions{gap:5px}.btn-sm{min-height:36px;padding:8px 10px}.page{padding:16px 0 78px}.page-head{gap:12px;margin-bottom:18px}.page-title{font-size:27px;letter-spacing:-1px}.panel-head,.panel-body{padding:15px}.auth-wrap{padding:22px 10px 78px;align-items:start}.auth-card{margin-top:4vh;padding:20px 17px;border-radius:20px}.auth-card h1{font-size:27px}.mobile-dock{left:7px;right:7px;bottom:max(6px,env(safe-area-inset-bottom));height:55px;padding:5px;border-radius:17px;background:rgba(11,13,16,.93);border-color:rgba(255,255,255,.075);box-shadow:0 16px 42px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.035)}.mobile-dock a{font-weight:730}}
 
-  </style>
+  
+    /* V311 — keyboard/focus and public-navigation polish */
+    :focus-visible{outline:2px solid rgba(255,195,155,.92);outline-offset:3px}
+    .btn:focus-visible,.navlinks a:focus-visible,.navlinks button:focus-visible{outline:2px solid rgba(255,195,155,.92);outline-offset:2px}
+    footer a{text-underline-offset:3px}footer a:hover{text-decoration:underline}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
+</style>
   {% set vano_endpoint = request.endpoint or 'page' %}
   {% set vano_map_surface = vano_endpoint in ['index', 'map_page', 'embed_entry'] %}
   {% set vano_admin_surface = vano_endpoint == 'admin_dashboard' or vano_endpoint.startswith('admin_') %}
@@ -166,12 +172,12 @@
 {% block content %}{% endblock %}
 {% if current_user and not vano_admin_surface %}<nav class="mobile-dock {% if current_user['role']=='admin' %}admin-dock{% endif %}" aria-label="Navegação mobile"><a href="{{ url_for('map_page') }}"><i data-lucide="map"></i><span>Rotas</span></a><a href="{{ url_for('alerts_page') }}"><i data-lucide="siren"></i><span>Alertas</span></a><a href="{{ url_for('report_page') }}"><i data-lucide="plus-circle"></i><span>Denunciar</span></a><a href="{{ url_for('profile') }}"><i data-lucide="user"></i><span>Perfil</span></a>{% if current_user['role']=='admin' %}<a href="{{ url_for('admin_dashboard') }}"><i data-lucide="server-cog"></i><span>Admin</span></a>{% endif %}</nav>{% endif %}
 
-<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('about') }}">Como funciona</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a></span></div></footer>
+<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('about') }}">Como funciona</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a> · <a href="{{ url_for('account_delete_page') }}">Excluir conta</a></span></div></footer>
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
 <script src="{{ url_for('static', filename='vano-runtime-v262.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
 <script>if(window.lucide){lucide.createIcons();} setTimeout(()=>document.querySelectorAll('.flash').forEach(x=>x.remove()),6000); if(window.parent!==window){window.parent.postMessage({type:'vano:ready',path:location.pathname},'*');}</script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}-310',{scope:'/'}).catch(()=>{}),{once:true});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}-311',{scope:'/'}).catch(()=>{}),{once:true});}</script>
 <script src="{{ url_for('static', filename='vano-telemetry-v123.js') }}?v={{ vano_build_id }}"></script>
 {% block scripts %}{% endblock %}
 </body>

@@ -1,44 +1,15 @@
 {% extends 'base.html' %}
 {% block title %}Excluir conta · VANO MAPS{% endblock %}
+{% block meta_description %}Saiba como excluir permanentemente sua conta VANO MAPS e quais dados vinculados à conta são removidos.{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-legal-v311.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
-<main class="page">
-  <div class="container" style="max-width:860px">
-    <div class="page-head">
-      <div>
-        <p class="eyebrow">VANO MAPS · CONTA</p>
-        <h1 class="page-title">Excluir sua conta VANO MAPS</h1>
-        <p class="page-subtitle">Você pode excluir permanentemente sua conta e os dados pessoais associados diretamente pelo perfil.</p>
-      </div>
-    </div>
-
-    <section class="panel">
-      <div class="panel-body legal-copy">
-        <h2>O que acontece quando você exclui a conta?</h2>
-        <p>A exclusão remove permanentemente a conta e os dados pessoais de navegação associados ao usuário dentro do VANO MAPS, incluindo preferências, sessões e dados vinculados à conta conforme descrito na Política de Privacidade.</p>
-        <p>Registros estritamente operacionais que precisem ser mantidos por segurança podem permanecer apenas de forma anonimizada, sem vínculo com o identificador da conta.</p>
-
-        <h2>Como excluir</h2>
-        <ol>
-          <li>Entre na sua conta VANO MAPS.</li>
-          <li>Abra <strong>Perfil</strong>.</li>
-          <li>Vá até <strong>Excluir conta</strong>.</li>
-          <li>Se sua conta usa senha, confirme a senha atual.</li>
-          <li>Digite <strong>EXCLUIR</strong> e confirme a exclusão permanente.</li>
-        </ol>
-
-        {% if current_user %}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
-          <a class="btn btn-primary" href="{{ url_for('profile') }}#accountDanger"><i data-lucide="trash-2" width="16"></i>Ir para excluir conta</a>
-          <a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}"><i data-lucide="shield-check" width="16"></i>Política de Privacidade</a>
-        </div>
-        {% else %}
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px">
-          <a class="btn btn-primary" href="{{ url_for('login', next=url_for('profile') + '#accountDanger') }}"><i data-lucide="log-in" width="16"></i>Entrar para excluir minha conta</a>
-          <a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}"><i data-lucide="shield-check" width="16"></i>Política de Privacidade</a>
-        </div>
-        {% endif %}
-      </div>
-    </section>
-  </div>
-</main>
+<main class="page" id="conteudo-principal"><div class="legal-shell">
+  <section class="legal-hero"><div class="legal-hero__top"><div><p class="eyebrow">VANO MAPS · conta</p><h1>Excluir sua conta</h1><p>A exclusão é permanente. Antes de confirmar, veja o que acontece com sessões, preferências, histórico e registros operacionais.</p></div><span class="legal-updated"><i data-lucide="trash-2" width="14"></i>Ação irreversível</span></div></section>
+  <div class="legal-layout"><article class="legal-card legal-copy">
+    <section id="remove"><h2>O que é removido</h2><p>Quando a exclusão é concluída, o registro da conta e os dados pessoais vinculados por relacionamento direto no banco são removidos conforme as regras do sistema. Isso inclui preferências, sessões persistentes e outros dados que dependam da existência da conta.</p></section>
+    <section id="pode-ficar"><h2>O que pode permanecer</h2><p>Registros estritamente necessários para segurança, prevenção de abuso, integridade do serviço ou obrigação legal podem ser preservados quando houver fundamento válido. Sempre que possível, esses registros devem ser anonimizados ou desvinculados do identificador da conta.</p><div class="legal-callout"><i data-lucide="info" width="18"></i><div><b>Excluir conta não apaga dados controlados por terceiros.</b><span>Provedores externos usados durante a operação podem manter registros próprios segundo suas políticas e obrigações.</span></div></div></section>
+    <section id="como"><h2>Como excluir</h2><ol><li>Entre na sua conta.</li><li>Abra <strong>Perfil</strong>.</li><li>Vá até <strong>Excluir conta</strong>.</li><li>Se sua conta usa senha, confirme a senha atual.</li><li>Digite <strong>EXCLUIR</strong> e confirme.</li></ol><p>Contas autenticadas por provedor externo podem não exigir senha local no momento da exclusão.</p></section>
+    <section id="antes"><h2>Antes de confirmar</h2><p>Se o objetivo é apenas corrigir uma informação, saber quais dados existem ou tirar uma dúvida sobre privacidade, você pode usar uma solicitação de privacidade sem excluir toda a conta.</p><div class="legal-actions">{% if current_user %}<a class="btn btn-primary" href="{{ url_for('profile') }}#accountDanger"><i data-lucide="trash-2" width="16"></i>Ir para exclusão</a>{% else %}<a class="btn btn-primary" href="{{ url_for('login', next=url_for('profile') + '#accountDanger') }}"><i data-lucide="log-in" width="16"></i>Entrar para excluir</a>{% endif %}<a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}{% if current_user %}#direitos{% endif %}"><i data-lucide="shield-check" width="16"></i>Privacidade</a></div></section>
+  </article><aside class="legal-toc" aria-label="Exclusão de conta"><b>Nesta página</b><nav><a href="#remove">O que é removido</a><a href="#pode-ficar">O que pode permanecer</a><a href="#como">Como excluir</a><a href="#antes">Alternativas</a></nav></aside></div>
+</div></main>
 {% endblock %}

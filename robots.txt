@@ -4,5 +4,10 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /mobile/auth/
 Disallow: /logout
+Disallow: /profile
+Disallow: /notifications
+Disallow: /onboarding
+Disallow: /auth/
+Disallow: /login/google
 
 Sitemap: __PUBLIC_SITE_URL__/sitemap.xml

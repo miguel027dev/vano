@@ -1,14 +1,16 @@
 {% extends 'base.html' %}
 {% block title %}{{ code }} · VANO MAPS{% endblock %}
+{% block meta_description %}O VANO MAPS não conseguiu abrir esta página agora.{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-legal-v311.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
-<main class="page"><div class="container"><section class="panel vano-error-panel" style="max-width:720px;margin:70px auto"><div class="panel-body" style="padding:45px">
-  <div class="code-num" aria-hidden="true">{{ code }}</div>
-  <h1 class="page-title">{{ title }}</h1>
-  <p class="page-subtitle">{{ message }}</p>
-  <div class="vano-error-actions" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:20px">
-    {% if code in [429,500,502,503,504] %}<button class="btn btn-primary" type="button" onclick="location.reload()"><i data-lucide="refresh-cw" width="16"></i>Tentar novamente</button>{% endif %}
+<main class="page" id="conteudo-principal"><div class="container"><section class="error-v311" role="alert">
+  <div class="error-v311__code">ERRO {{ code }}</div><h1>{{ title }}</h1><p>{{ message }}</p>
+  <div class="error-v311__actions">
+    {% if code in [408,429,500,502,503,504] %}<button class="btn btn-primary" type="button" onclick="location.reload()"><i data-lucide="refresh-cw" width="16"></i>Tentar novamente</button>{% endif %}
     <button class="btn btn-ghost" type="button" onclick="history.length>1?history.back():location.assign('{{ url_for('index') }}')"><i data-lucide="arrow-left" width="16"></i>Voltar</button>
-    <a class="btn btn-ghost" href="{{ url_for('index') }}"><i data-lucide="home" width="16"></i>Início</a>
+    <a class="btn btn-ghost" href="{{ url_for('index') }}"><i data-lucide="map" width="16"></i>Abrir mapa</a>
+    <a class="btn btn-ghost" href="{{ url_for('help_page') }}"><i data-lucide="circle-help" width="16"></i>Ajuda</a>
   </div>
-</div></section></div></main>
+  {% if code == 404 %}<div class="error-v311__hint">O endereço pode ter mudado ou o conteúdo pode não existir mais.</div>{% elif code == 429 %}<div class="error-v311__hint">Muitas solicitações chegaram em pouco tempo. Aguarde um pouco antes de tentar de novo.</div>{% elif code >= 500 %}<div class="error-v311__hint">Sua conta e seus dados não foram apagados por causa desta tela. Tente novamente ou volte ao mapa.</div>{% endif %}
+</section></div></main>
 {% endblock %}

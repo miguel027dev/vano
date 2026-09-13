@@ -1,49 +1,132 @@
 {% extends 'base.html' %}
 {% block title %}Política de Privacidade · VANO MAPS{% endblock %}
+{% block meta_description %}Entenda quais dados o VANO MAPS trata, por que trata, como usa localização e rotas, quais provedores podem participar e como exercer seus direitos.{% endblock %}
+{% block og_title %}Política de Privacidade · VANO MAPS{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-legal-v311.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
-<main class="page">
-  <div class="container">
-    <div class="page-head">
-      <div>
-        <p class="eyebrow">VANO MAPS · privacidade</p>
-        <h1 class="page-title">Política de Privacidade</h1>
-        <p class="page-subtitle">Como a VANO MAPS trata dados de conta, localização, rotas e dados técnicos para manter a navegação funcional e segura.</p>
+<main class="page" id="conteudo-principal">
+  <div class="legal-shell">
+    <section class="legal-hero">
+      <div class="legal-hero__top">
+        <div>
+          <p class="eyebrow">VANO MAPS · privacidade</p>
+          <h1>Política de Privacidade</h1>
+          <p>Explicamos de forma direta quais dados podem ser tratados, por que eles são necessários e quais controles você tem sobre sua conta, localização e histórico de navegação.</p>
+        </div>
+        <span class="legal-updated"><i data-lucide="calendar-clock" width="14"></i>Atualizada em 13/09/2026</span>
       </div>
-    </div>
-    <section class="panel">
-      <div class="panel-body legal-copy">
-        <p><strong>Última atualização:</strong> setembro de 2026.</p>
-        <h2>1. Dados tratados</h2>
-        <p>A VANO MAPS pode tratar dados como nome, e-mail, IP, aparelhos conectados, preferências, localização aproximada ou precisa durante o uso do mapa, últimas rotas e informações técnicas necessárias para autenticação, segurança e funcionamento do serviço.</p>
-        <h2>2. Proteção e criptografia</h2>
-        <p>Dados vinculados diretamente à conta do usuário devem ser protegidos com controles de acesso, criptografia quando aplicável, comunicação segura e monitoramento de abuso. O objetivo é reduzir exposição indevida e preservar a segurança da conta.</p>
-        <h2>3. Dados de trajeto e análise</h2>
-        <p>Dados operacionais de trajetos, como tempo estimado, ponto de origem aproximado, destino, duração, distância e informações usadas para análise de desempenho podem ser separados dos dados diretos de identidade da conta, buscando reduzir vínculo com nome, e-mail e demais dados pessoais.</p>
-        <h2>4. Finalidades</h2>
-        <p>Os dados são usados para calcular rotas, melhorar tempo de resposta, exibir alertas, prevenir fraude, manter a conta segura, diagnosticar falhas e melhorar a experiência de navegação.</p>
-        <h2>5. Compartilhamento</h2>
-        <p>A VANO MAPS não deve vender dados pessoais dos usuários. Dados podem ser processados por provedores técnicos necessários ao funcionamento, como hospedagem, banco de dados, mapas, autenticação e monitoramento.</p>
-        <h2>6. Segurança</h2>
-        <p>Aplicamos medidas como autenticação, limitação de requisições, logs de auditoria, controle de sessão, proteção de endpoints e revisão contínua da infraestrutura.</p>
-        <h2>7. Direitos e controles do usuário</h2>
-        <p>O usuário pode solicitar acesso, correção, portabilidade quando aplicável, oposição, revogação de consentimento ou outras medidas relacionadas aos seus dados. Usuários autenticados também podem excluir a própria conta diretamente pelo Perfil.</p>
-        <h2>8. Exclusão da conta</h2>
-        <p>A exclusão pelo Perfil remove a conta e os dados pessoais de navegação associados ao usuário dentro do VANO. Alguns registros estritamente operacionais ou necessários para segurança podem ser mantidos somente de forma anonimizada, sem o identificador da conta.</p>
-        <h2>9. Retenção e provedores</h2>
-        <p>O tempo de retenção depende da finalidade do dado. Informações operacionais podem ser descartadas, agregadas ou anonimizadas quando deixam de ser necessárias. Serviços de infraestrutura, mapas, autenticação e hospedagem podem possuir seus próprios prazos técnicos de retenção.</p>
+      <div class="legal-summary">
+        <div class="legal-summary__item"><i data-lucide="map-pin" width="18"></i><b>Localização sob demanda</b><span>A localização é usada quando recursos de mapa, rota, SOS ou presença precisam dela.</span></div>
+        <div class="legal-summary__item"><i data-lucide="shield-check" width="18"></i><b>Controle do usuário</b><span>Você pode corrigir dados, pedir acesso, excluir a conta e enviar solicitações de privacidade.</span></div>
+        <div class="legal-summary__item"><i data-lucide="bot" width="18"></i><b>IA com dados reduzidos</b><span>Quando habilitado, o julgador de rotas recebe métricas compactas das alternativas, não a geometria completa do trajeto.</span></div>
       </div>
     </section>
+
+    <div class="legal-layout">
+      <article class="legal-card legal-copy">
+        <section id="quem-somos">
+          <h2>1. Quem trata os dados</h2>
+          <p>O controlador responsável pelo VANO MAPS é <strong>{{ legal_name }}</strong>{% if legal_cnpj %}, CNPJ {{ legal_cnpj }}{% endif %}. Esta política se aplica ao site, PWA, páginas de conta, recursos de navegação e APIs operadas pelo VANO MAPS.</p>
+          <div class="legal-contact-grid">
+            <div class="legal-contact"><small>Controlador</small><b>{{ legal_name }}</b></div>
+            <div class="legal-contact"><small>Canal de privacidade</small><b>{% if privacy_email %}<a href="mailto:{{ privacy_email }}">{{ privacy_email }}</a>{% else %}Solicitação autenticada nesta página{% endif %}</b></div>
+          </div>
+        </section>
+
+        <section id="dados">
+          <h2>2. Quais dados podem ser tratados</h2>
+          <p>O VANO MAPS aplica o princípio de necessidade: cada recurso deve usar apenas os dados compatíveis com sua finalidade. Dependendo das funções utilizadas, podem ser tratados:</p>
+          <ul>
+            <li><strong>Conta:</strong> nome, e-mail, idioma, método de autenticação, preferências e configurações.</li>
+            <li><strong>Localização e rota:</strong> coordenadas necessárias para calcular e acompanhar uma rota, origem, destino, progresso, distância, ETA e desvios.</li>
+            <li><strong>Segurança comunitária:</strong> alertas, confirmações, categoria, localização do alerta e informações fornecidas no relato.</li>
+            <li><strong>Dados técnicos:</strong> IP, navegador, dispositivo, identificadores de sessão, erros, métricas de desempenho e registros de segurança.</li>
+            <li><strong>Recursos opcionais:</strong> contato de emergência, casa/trabalho, veículo, preferências de combustível e presença aproximada quando o usuário elegível ativa esse recurso.</li>
+          </ul>
+          <div class="legal-callout"><i data-lucide="locate-fixed" width="18"></i><div><b>Geolocalização é tratada como dado pessoal.</b><span>O VANO não deve exigir localização quando a função solicitada não depende dela. O navegador ou sistema também pode permitir que você revogue a permissão.</span></div></div>
+        </section>
+
+        <section id="finalidades">
+          <h2>3. Para que os dados são usados</h2>
+          <ul>
+            <li>criar, autenticar e proteger a conta;</li>
+            <li>pesquisar lugares, calcular rotas, acompanhar navegação e recalcular desvios;</li>
+            <li>comparar tempo, trânsito, segurança e confiabilidade de alternativas;</li>
+            <li>entregar SOS, vínculo de confiança e notificações solicitadas;</li>
+            <li>prevenir abuso, fraude, automação maliciosa e acessos não autorizados;</li>
+            <li>diagnosticar falhas, melhorar estabilidade, desempenho e experiência do produto;</li>
+            <li>cumprir obrigações legais e responder a solicitações válidas quando aplicável.</li>
+          </ul>
+          <p>As bases legais dependem da operação concreta e podem incluir execução de serviço solicitado pelo usuário, legítimo interesse com avaliação de necessidade, cumprimento de obrigação legal e consentimento quando a legislação exigir.</p>
+        </section>
+
+        <section id="localizacao">
+          <h2>4. Localização, presença e segurança</h2>
+          <p>A posição precisa é usada para recursos que dependem dela, como navegação, recálculo, SOS e centralização do mapa. A <strong>presença próxima</strong> é separada da navegação: ela é opcional, fica desligada por padrão e só pode ser publicada por contas adultas elegíveis que aceitem o recurso.</p>
+          <p>Quando a presença próxima está ativa, o sistema reduz a precisão antes de disponibilizar a posição a outros usuários e não deve exibir nome, e-mail, foto ou placa junto dessa presença.</p>
+          <div class="legal-callout warning"><i data-lucide="triangle-alert" width="18"></i><div><b>Rotas e notas de segurança são estimativas.</b><span>Elas podem usar dados incompletos, atrasados ou incorretos e não representam garantia de ausência de risco.</span></div></div>
+        </section>
+
+        <section id="ia">
+          <h2>5. Inteligência de rotas e modelos de IA</h2>
+          <p>Quando a camada VANO AI Route Judge estiver habilitada, ela é usada para <strong>reranquear alternativas que já foram geradas e consideradas válidas pelo motor de rotas</strong>. O modelo não recebe autorização para inventar ruas, ignorar bloqueios ou substituir as regras determinísticas do VANO.</p>
+          <p>Para reduzir exposição, o julgador envia um resumo com métricas como ETA, distância, pontuação de segurança, exposição a risco, trânsito, incidentes e confiança. A implementação foi desenhada para não enviar a geometria completa nem a sequência bruta de coordenadas da rota ao modelo.</p>
+        </section>
+
+        <section id="compartilhamento">
+          <h2>6. Operadores e serviços externos</h2>
+          <p>Algumas operações dependem de provedores técnicos. Conforme o recurso usado, dados estritamente necessários podem ser processados por serviços de mapas e geocodificação, hospedagem, banco de dados, autenticação, entrega de conteúdo e modelos de IA. Esses provedores também podem manter seus próprios registros técnicos de acordo com seus termos.</p>
+          <p>O VANO MAPS <strong>não usa esta política como autorização para vender dados pessoais</strong>. Qualquer mudança relevante de finalidade deve ser refletida nesta página antes de se tornar prática regular.</p>
+        </section>
+
+        <section id="retencao">
+          <h2>7. Retenção e descarte</h2>
+          <p>Dados vinculados à conta são mantidos enquanto necessários para fornecer o serviço, proteger a conta ou cumprir uma obrigação aplicável. Quando deixam de ser necessários, devem ser removidos, agregados ou anonimizados conforme a finalidade.</p>
+          <p>Os registros operacionais de atividade configurados no VANO possuem janela de retenção de aproximadamente <strong>{{ activity_log_retention_days }} dias</strong>, sujeita a ajustes técnicos e exceções justificadas de segurança. Dados de provedores externos seguem também as políticas desses provedores.</p>
+        </section>
+
+        <section id="seguranca">
+          <h2>8. Segurança da informação</h2>
+          <p>O VANO utiliza controles como HTTPS, cookies de sessão protegidos, tokens anti-CSRF, limitação de requisições, autenticação, auditoria, validação de entrada e restrições de acesso administrativo. Nenhum sistema conectado à internet pode garantir risco zero; por isso, controles e dependências devem ser revisados continuamente.</p>
+        </section>
+
+        <section id="direitos-info">
+          <h2>9. Seus direitos</h2>
+          <p>Quando aplicável, você pode solicitar confirmação e acesso, correção, informações sobre compartilhamento, anonimização, bloqueio ou eliminação de dados desnecessários, portabilidade nos limites técnicos e legais, oposição, revisão de decisões e revogação de consentimento.</p>
+          <p>Para exclusão completa da conta, use <a href="{{ url_for('account_delete_page') }}">Excluir conta</a>. Usuários autenticados também podem registrar um pedido abaixo e acompanhar os protocolos recentes.</p>
+        </section>
+
+        <section id="menores">
+          <h2>10. Adolescentes e recursos restritos por idade</h2>
+          <p>O cadastro do VANO MAPS foi estruturado para contas a partir de 13 anos. Recursos que publicam presença aproximada para terceiros permanecem bloqueados para menores de 18 anos. Idade é usada para essa restrição e para regras de elegibilidade; características pessoais não devem virar automaticamente uma pontuação de risco da rota.</p>
+        </section>
+
+        <section id="alteracoes">
+          <h2>11. Alterações desta política</h2>
+          <p>Esta política pode ser atualizada quando o produto, fornecedores, regras de tratamento ou legislação mudarem. Alterações relevantes devem ser apresentadas com nova data de atualização e, quando necessário, com aviso no produto.</p>
+          <div class="legal-actions"><a class="btn btn-ghost" href="{{ url_for('terms_of_use') }}"><i data-lucide="file-text" width="16"></i>Termos de Uso</a><a class="btn btn-ghost" href="{{ url_for('help_page') }}"><i data-lucide="circle-help" width="16"></i>Central de ajuda</a></div>
+        </section>
+      </article>
+
+      <aside class="legal-toc" aria-label="Nesta política">
+        <b>Nesta página</b>
+        <nav><a href="#quem-somos">Quem trata</a><a href="#dados">Dados tratados</a><a href="#finalidades">Finalidades</a><a href="#localizacao">Localização</a><a href="#ia">IA de rotas</a><a href="#compartilhamento">Provedores</a><a href="#retencao">Retenção</a><a href="#seguranca">Segurança</a><a href="#direitos-info">Seus direitos</a><a href="#menores">Adolescentes</a></nav>
+      </aside>
+    </div>
+
     {% if current_user %}
-    <section class="panel" id="direitos" style="margin-top:18px">
-      <div class="panel-head"><div><p class="eyebrow">SEUS DADOS</p><h2 style="margin:4px 0 0">Solicitação de privacidade</h2></div></div>
-      <div class="panel-body">
-        <form action="{{ url_for('privacy_request_create') }}" method="post" class="form-grid">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <label class="field"><span>Tipo de solicitação</span><select class="select" name="request_type">{% for key,label in privacy_request_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
-          <label class="field full"><span>Detalhes</span><textarea class="textarea" name="message" rows="4" maxlength="1200" placeholder="Explique o que você precisa. Não envie senhas ou dados bancários."></textarea></label>
-          <div class="field full"><button class="btn btn-primary" type="submit"><i data-lucide="send" width="16"></i>Enviar solicitação</button> <a class="btn btn-ghost" href="{{ url_for('account_delete_page') }}"><i data-lucide="trash-2" width="16"></i>Excluir conta</a></div>
-        </form>
-        {% if recent_privacy_requests %}<div class="table-wrap" style="margin-top:18px"><table class="table"><thead><tr><th>Protocolo</th><th>Tipo</th><th>Status</th><th>Data</th></tr></thead><tbody>{% for r in recent_privacy_requests %}<tr><td><code>{{ r['protocol'] }}</code></td><td>{{ privacy_request_types.get(r['request_type'],r['request_type']) }}</td><td>{{ r['status'] }}</td><td>{{ r['created_at'][:10] }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+    <section class="legal-request" id="direitos">
+      <div class="panel">
+        <div class="panel-head"><div><p class="eyebrow">SEUS DADOS</p><h2 style="margin:4px 0 0">Solicitação de privacidade</h2></div><span class="badge">Conta autenticada</span></div>
+        <div class="panel-body">
+          <form action="{{ url_for('privacy_request_create') }}" method="post" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="field"><span>Tipo de solicitação</span><select class="select" name="request_type" required>{% for key,label in privacy_request_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
+            <label class="field full"><span>Detalhes <small class="muted">(opcional)</small></span><textarea class="textarea" name="message" rows="4" maxlength="1200" placeholder="Explique o que você precisa. Não envie senhas, documentos completos ou dados bancários."></textarea></label>
+            <div class="field full"><button class="btn btn-primary" type="submit"><i data-lucide="send" width="16"></i>Enviar solicitação</button> <a class="btn btn-ghost" href="{{ url_for('account_delete_page') }}"><i data-lucide="trash-2" width="16"></i>Excluir conta</a></div>
+          </form>
+          {% if recent_privacy_requests %}<div class="table-wrap" style="margin-top:18px"><table class="table"><thead><tr><th>Protocolo</th><th>Tipo</th><th>Status</th><th>Data</th></tr></thead><tbody>{% for r in recent_privacy_requests %}<tr><td><code>{{ r['protocol'] }}</code></td><td>{{ privacy_request_types.get(r['request_type'],r['request_type']) }}</td><td>{{ r['status'] }}</td><td>{{ r['created_at'][:10] }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+        </div>
       </div>
     </section>
     {% endif %}

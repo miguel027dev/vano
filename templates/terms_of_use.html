@@ -1,34 +1,53 @@
 {% extends 'base.html' %}
 {% block title %}Termos de Uso · VANO MAPS{% endblock %}
+{% block meta_description %}Leia as regras de uso do VANO MAPS, limites de navegação, alertas comunitários, segurança, contas e serviços externos.{% endblock %}
+{% block og_title %}Termos de Uso · VANO MAPS{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-legal-v311.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
-<main class="page">
-  <div class="container">
-    <div class="page-head">
-      <div>
-        <p class="eyebrow">VANO MAPS · termos</p>
-        <h1 class="page-title">Termos de Uso</h1>
-        <p class="page-subtitle">Regras básicas para uso responsável da plataforma e preservação da comunidade VANO MAPS.</p>
+<main class="page" id="conteudo-principal">
+  <div class="legal-shell">
+    <section class="legal-hero">
+      <div class="legal-hero__top">
+        <div><p class="eyebrow">VANO MAPS · termos</p><h1>Termos de Uso</h1><p>Estas regras existem para deixar claro o que o VANO faz, o que não consegue garantir e como usar recursos de navegação e comunidade de forma responsável.</p></div>
+        <span class="legal-updated"><i data-lucide="calendar-clock" width="14"></i>Atualizados em 13/09/2026</span>
       </div>
-    </div>
-    <section class="panel">
-      <div class="panel-body legal-copy">
-        <p><strong>Última atualização:</strong> agosto de 2026.</p>
-        <h2>1. Uso da plataforma</h2>
-        <p>A VANO MAPS oferece recursos de navegação, cálculo de rotas, alertas comunitários e informações de apoio. As estimativas podem variar conforme trânsito, sinal de GPS, disponibilidade de mapas e qualidade dos dados.</p>
-        <h2>2. Responsabilidade do usuário</h2>
-        <p>O usuário deve utilizar a plataforma de forma responsável, respeitando leis de trânsito, segurança viária, privacidade de terceiros e orientações das autoridades competentes.</p>
-        <h2>3. Denúncias e alertas</h2>
-        <p>É proibido criar denúncias falsas, manipular alertas, marcar ruas de forma enganosa, abusar de recursos comunitários ou tentar prejudicar a experiência de outros usuários.</p>
-        <h2>4. Abuso e medidas na conta</h2>
-        <p>Caso seja identificado uso abusivo, tentativa de exploração do serviço, denúncias falsas ou comportamento que prejudique a comunidade, a conta poderá ser analisada. Na primeira ocorrência, o usuário poderá ser comunicado. Em reincidência, poderão ser aplicadas medidas de limitação, suspensão ou ajustes na conta com foco em proteger o uso mútuo da plataforma.</p>
-        <h2>5. Disponibilidade</h2>
-        <p>A VANO MAPS pode passar por instabilidades, manutenção, indisponibilidade temporária de servidores, falhas de provedores externos ou limitação de recursos gratuitos de hospedagem.</p>
-        <h2>6. Segurança</h2>
-        <p>É proibido tentar acessar áreas administrativas, burlar autenticação, sobrecarregar serviços, explorar vulnerabilidades ou automatizar requisições de forma abusiva.</p>
-        <h2>7. Alterações</h2>
-        <p>Os termos podem ser atualizados para refletir mudanças na plataforma, legislação, segurança ou operação do serviço.</p>
+      <div class="legal-summary">
+        <div class="legal-summary__item"><i data-lucide="navigation" width="18"></i><b>Navegação assistiva</b><span>Rotas, ETAs e alertas auxiliam a decisão, mas não substituem sinalização, regras de trânsito e atenção ao ambiente.</span></div>
+        <div class="legal-summary__item"><i data-lucide="users" width="18"></i><b>Comunidade responsável</b><span>Relatos falsos, manipulação de confirmações e abuso dos recursos podem gerar limitações na conta.</span></div>
+        <div class="legal-summary__item"><i data-lucide="shield-alert" width="18"></i><b>Segurança sem promessa absoluta</b><span>Uma rota “mais segura” representa comparação de sinais disponíveis, não garantia de ausência de risco.</span></div>
       </div>
     </section>
+
+    <div class="legal-layout">
+      <article class="legal-card legal-copy">
+        <section id="aceite"><h2>1. Aceite e elegibilidade</h2><p>Ao criar conta ou continuar usando o VANO MAPS, você concorda com estes Termos e com a <a href="{{ url_for('privacy_policy') }}">Política de Privacidade</a>. O cadastro foi estruturado para pessoas com 13 anos ou mais. Recursos específicos podem exigir idade maior, perfil elegível ou consentimento adicional.</p></section>
+
+        <section id="servico"><h2>2. O que o VANO oferece</h2><p>O VANO MAPS reúne pesquisa de destinos, mapas, rotas, ETA, trânsito, alertas comunitários, comparação de alternativas, recursos de segurança e funções de conta. Alguns recursos dependem de GPS, internet, serviços de terceiros e cobertura cartográfica.</p><p>O produto pode testar algoritmos, pesos e modelos diferentes para melhorar a escolha entre alternativas, desde que as regras de segurança e validação permaneçam aplicáveis.</p></section>
+
+        <section id="navegacao"><h2>3. Navegação e direção responsável</h2><div class="legal-callout warning"><i data-lucide="car-front" width="18"></i><div><b>Não interaja com o aplicativo de forma que distraia você no trânsito.</b><span>Quando estiver conduzindo, priorize a via, a sinalização e orientações das autoridades. Se precisar alterar algo complexo, faça isso apenas quando estiver parado em local seguro.</span></div></div><p>Rotas, instruções, limites de velocidade, bloqueios, trânsito e horários podem estar incorretos ou desatualizados. O usuário continua responsável por obedecer leis, sinalização, restrições físicas, interdições e condições reais da via.</p></section>
+
+        <section id="seguranca"><h2>4. Rotas seguras e estimativas de risco</h2><p>Os modos Segura e Spark podem comparar exposição a alertas, zonas de atenção, trânsito, qualidade dos dados, desvios e outras evidências. Esses sinais são probabilísticos e podem ter lacunas. O VANO não declara que uma rota é livre de crime, acidente, alagamento, obra ou outro evento.</p><p>Se uma informação do mapa contrariar a realidade, a realidade e as orientações oficiais prevalecem.</p></section>
+
+        <section id="alertas"><h2>5. Alertas, denúncias e conteúdo comunitário</h2><p>Ao publicar um alerta, você confirma que está agindo de boa-fé e que não está tentando enganar outros usuários. Não publique dados pessoais desnecessários de terceiros, acusações sem base, conteúdo ofensivo ou informações destinadas a colocar alguém em risco.</p><p>Confirmações comunitárias aumentam ou reduzem a confiança de um sinal, mas não transformam um relato em informação oficial. O VANO pode ocultar, expirar, moderar ou remover conteúdo quando houver indícios de erro, abuso ou risco.</p></section>
+
+        <section id="conta"><h2>6. Conta e credenciais</h2><p>Você deve manter sua senha e dispositivos protegidos, usar informações de cadastro razoavelmente corretas e avisar por meio dos canais disponíveis se identificar acesso indevido. Contas não devem ser usadas para se passar por outra pessoa, contornar medidas de segurança ou operar automações abusivas.</p></section>
+
+        <section id="proibido"><h2>7. Usos proibidos</h2><ul><li>burlar autenticação, limites de uso, rate limits ou controles de acesso;</li><li>tentar acessar áreas administrativas sem autorização;</li><li>sobrecarregar deliberadamente serviços ou provedores;</li><li>explorar vulnerabilidades fora de um contexto autorizado de teste;</li><li>raspar ou redistribuir dados de terceiros em desacordo com licenças aplicáveis;</li><li>criar alertas falsos ou manipular métricas comunitárias;</li><li>usar o serviço de maneira ilegal ou para prejudicar outras pessoas.</li></ul></section>
+
+        <section id="terceiros"><h2>8. Serviços de terceiros</h2><p>Mapas, pesquisa de lugares, autenticação, hospedagem e recursos de IA podem depender de fornecedores externos. Uma indisponibilidade, limitação de quota, mudança de API ou falha nesses fornecedores pode afetar partes do VANO. O uso desses serviços também pode estar sujeito aos termos e políticas dos respectivos provedores.</p></section>
+
+        <section id="disponibilidade"><h2>9. Disponibilidade e mudanças</h2><p>O VANO pode passar por manutenção, falhas temporárias, alterações de interface, troca de fornecedores e mudanças de recurso. Podemos modificar ou descontinuar funções quando isso for necessário para segurança, custo, qualidade, conformidade ou evolução do produto.</p></section>
+
+        <section id="medidas"><h2>10. Medidas em caso de abuso</h2><p>Dependendo da gravidade, frequência e impacto, o VANO pode limitar uma função, remover conteúdo, encerrar sessões, suspender temporariamente ou desativar uma conta. Sempre que viável, medidas devem ser proporcionais ao risco e registrar motivo operacional ou de segurança.</p></section>
+
+        <section id="propriedade"><h2>11. Marca, software e licenças</h2><p>A identidade visual, interface e código próprio do VANO permanecem sujeitos aos direitos de seus titulares. Componentes, mapas, bibliotecas, ícones e dados de terceiros continuam sujeitos às respectivas licenças. Estes Termos não concedem direito de copiar ou redistribuir material além do permitido por lei ou licença aplicável.</p></section>
+
+        <section id="responsabilidade"><h2>12. Limites razoáveis</h2><p>O VANO é uma ferramenta de apoio à navegação. Na extensão permitida pela legislação aplicável, não assumimos que qualquer ETA, alerta ou pontuação seja infalível. Nada nestes Termos exclui direitos que não possam ser afastados por lei.</p></section>
+
+        <section id="alteracoes"><h2>13. Atualizações e contato</h2><p>Podemos atualizar estes Termos para refletir mudanças no produto, fornecedores, segurança ou legislação. A versão publicada nesta página indicará a data de atualização.</p><p>Questões sobre dados pessoais devem ser encaminhadas pela <a href="{{ url_for('privacy_policy') }}">Política de Privacidade</a>{% if privacy_email %} ou para <a href="mailto:{{ privacy_email }}">{{ privacy_email }}</a>{% endif %}.</p><div class="legal-actions"><a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}"><i data-lucide="shield-check" width="16"></i>Privacidade</a><a class="btn btn-ghost" href="{{ url_for('help_page') }}"><i data-lucide="circle-help" width="16"></i>Ajuda</a></div></section>
+      </article>
+      <aside class="legal-toc" aria-label="Nestes termos"><b>Nesta página</b><nav><a href="#aceite">Aceite</a><a href="#servico">Serviço</a><a href="#navegacao">Navegação</a><a href="#seguranca">Rotas seguras</a><a href="#alertas">Alertas</a><a href="#conta">Conta</a><a href="#proibido">Usos proibidos</a><a href="#terceiros">Terceiros</a><a href="#medidas">Abuso</a><a href="#responsabilidade">Limites</a></nav></aside>
+    </div>
   </div>
 </main>
 {% endblock %}

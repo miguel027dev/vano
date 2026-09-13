@@ -1,13 +1,23 @@
 {% extends 'base.html' %}
 {% block title %}Sobre a VANO MAPS{% endblock %}
-{% block meta_description %}Conheça a VANO MAPS e a proposta da plataforma de navegação inteligente.{% endblock %}
+{% block meta_description %}Conheça a VANO MAPS, a proposta de navegação adaptativa e os princípios usados para construir rotas mais claras, rápidas e responsáveis.{% endblock %}
 {% block og_title %}Sobre a VANO MAPS{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-legal-v311.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
-<main class="page">
-  <div class="container">
-    <div class="eyebrow">VANO MAPS</div>
-    <h1 class="page-title">Sobre a VANO MAPS</h1>
-    <p class="page-subtitle">Página institucional preparada para receber o conteúdo oficial da VANO MAPS.</p>
-  </div>
-</main>
+<main class="page" id="conteudo-principal"><div class="legal-shell">
+  <section class="legal-hero"><div class="legal-hero__top"><div><p class="eyebrow">VANO MAPS</p><h1>Navegação que entende que a cidade muda.</h1><p>O VANO MAPS nasce com uma ideia simples: uma boa rota não é só uma linha no mapa. Ela precisa reagir a trânsito, contexto, desvios, qualidade dos dados e preferências explícitas do usuário sem transformar a tela em distração.</p></div><span class="legal-updated"><i data-lucide="sparkles" width="14"></i>Produto em evolução</span></div></section>
+
+  <section class="section"><div class="public-grid">
+    <article class="public-info-card"><i data-lucide="route" width="21"></i><h3>Rotas com propósito</h3><p>Rápida quando tempo é prioridade, Segura quando há ganho objetivo e Spark quando faz sentido equilibrar ETA, trânsito e sinais de segurança.</p></article>
+    <article class="public-info-card"><i data-lucide="scan-search" width="21"></i><h3>Contexto, não promessa</h3><p>Alertas e pontuações ajudam a comparar alternativas. O produto não transforma estimativas em garantias e deve deixar a incerteza visível.</p></article>
+    <article class="public-info-card"><i data-lucide="gauge" width="21"></i><h3>Velocidade percebida</h3><p>Prefetch, cache, alternativas pré-calculadas e fallback existem para que o mapa continue útil mesmo quando uma API externa demora.</p></article>
+    <article class="public-info-card"><i data-lucide="shield-check" width="21"></i><h3>Privacidade por redução</h3><p>Dados sensíveis devem ser usados somente quando um recurso realmente depende deles. A camada de IA recebe métricas compactas, não a geometria completa da rota.</p></article>
+    <article class="public-info-card"><i data-lucide="accessibility" width="21"></i><h3>Interface para o momento certo</h3><p>Durante a direção, informação crítica precisa ser maior e mais simples; configurações detalhadas ficam fora do fluxo de navegação.</p></article>
+    <article class="public-info-card"><i data-lucide="refresh-cw" width="21"></i><h3>Falhar sem abandonar o usuário</h3><p>Quando IA, rede ou fornecedor externo falha, a experiência deve cair para um modo determinístico e continuar entregando uma rota utilizável.</p></article>
+  </div></section>
+
+  <section class="section"><div class="public-split"><article class="public-highlight"><p class="eyebrow">Princípio central</p><h2>O usuário precisa saber por que uma rota foi escolhida.</h2><p>O objetivo do VANO não é esconder complexidade atrás de uma palavra como “inteligente”. Sempre que possível, a interface deve explicar o custo e o benefício: tempo adicional, exposição reduzida, trânsito e qualidade dos sinais usados.</p><div class="public-pill-row"><span class="public-pill">ETA</span><span class="public-pill">Trânsito</span><span class="public-pill">Risco</span><span class="public-pill">Confiança</span><span class="public-pill">Desvio</span></div></article><article class="public-highlight"><p class="eyebrow">Transparência</p><h2>O que o VANO não promete.</h2><p>Nenhum mapa consegue enxergar tudo. GPS pode falhar, relatos podem atrasar e vias podem mudar. Por isso, o VANO deve ser tratado como apoio à decisão e nunca como substituto da sinalização, das leis de trânsito ou da atenção ao ambiente.</p><div class="legal-actions"><a class="btn btn-primary" href="{{ url_for('index') }}"><i data-lucide="map" width="16"></i>Abrir mapa</a><a class="btn btn-ghost" href="{{ url_for('about') }}">Como funciona</a></div></article></div></section>
+
+  <section class="section"><div class="panel"><div class="panel-body"><div class="page-head" style="margin:0"><div><p class="eyebrow">INSTITUCIONAL</p><h2 class="section-title" style="font-size:30px;margin-bottom:8px">{{ legal_name }}</h2><p class="page-subtitle">Informações legais e de privacidade ficam separadas da apresentação do produto para serem fáceis de encontrar.</p></div><div class="legal-actions"><a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}">Privacidade</a><a class="btn btn-ghost" href="{{ url_for('terms_of_use') }}">Termos</a><a class="btn btn-ghost" href="{{ url_for('help_page') }}">Ajuda</a></div></div></div></div></section>
+</div></main>
 {% endblock %}

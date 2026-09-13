@@ -131,7 +131,7 @@ services:
       - key: PUBLIC_SITE_URL
         value: https://vanomaps.online
       - key: VANO_BUILD_ID
-        value: 310.0.0
+        value: 311.0.0
       - key: VANO_KEEPALIVE_URL
         value: https://vanomaps.online
       # V264 global search providers. No secret/key is required; PHOTON_URL can
