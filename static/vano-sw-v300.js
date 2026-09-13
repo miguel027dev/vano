@@ -1,7 +1,7 @@
-/* VANO MAPS V315 — recalibration hotfix. */
-const BUILD='315.0.0-recalibration-hotfix';
-const CACHE=`vano-maps-v315-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v315-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V316 — accessibility and visual polish. */
+const BUILD='316.0.0-accessibility-polish';
+const CACHE=`vano-maps-v316-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v316-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
