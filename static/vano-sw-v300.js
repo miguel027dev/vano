@@ -1,7 +1,7 @@
-/* VANO MAPS V312 — navigation motion + canonical orange route cache. */
-const BUILD='312.0.0-navigation-motion';
-const CACHE=`vano-maps-v312-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v312-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V313 — admin/options regression hotfix + bright route cache. */
+const BUILD='313.0.0-route-options-hotfix';
+const CACHE=`vano-maps-v313-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v313-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',

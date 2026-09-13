@@ -23,7 +23,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-312">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-313">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
@@ -50,7 +50,7 @@
     <div class="resume-trip-actions"><button type="button" class="resume-trip-end" id="discardResumeTrip">Encerrar</button><button type="button" class="resume-trip-continue" id="continueResumeTrip">Continuar trajeto</button></div>
   </section>
 
-  <header class="header"><div class="header-actions"><button class="options-btn" id="optionsBtn" type="button" aria-label="Abrir opções"><i data-lucide="ellipsis" width="19"></i></button></div></header>
+  <header class="header"><div class="header-actions"><button class="options-btn" id="optionsBtn" type="button" aria-label="Abrir opções" aria-controls="accountDrawer" aria-expanded="false"><i data-lucide="ellipsis" width="19"></i></button></div></header>
 
   <aside class="permission" id="locationPermission" role="alert" aria-live="assertive">
     <div class="permission-icon"><i data-lucide="locate-fixed" width="19"></i></div>
@@ -88,8 +88,8 @@
 
 
 
-  <div class="account-backdrop" id="accountBackdrop"></div>
-  <section class="account-drawer{% if not current_user %} guest-account-drawer{% endif %}" id="accountDrawer" aria-label="Conta e preferências">
+  <div class="account-backdrop" id="accountBackdrop" aria-hidden="true"></div>
+  <section class="account-drawer{% if not current_user %} guest-account-drawer{% endif %}" id="accountDrawer" aria-label="Conta e preferências" aria-hidden="true">
     <div class="drawer-grab" aria-hidden="true"></div>
 
     {% if current_user %}
@@ -293,16 +293,19 @@
         <p id="smartBalanceHint">Ajusta quanto o VANO aceita alguns minutos extras para reduzir exposição e instabilidade.</p>
       </div>
 
+      {% if current_user and current_user['role'] == 'admin' %}
+      <div class="admin-route-test-slot" id="adminRouteTestSlot">
+        <button class="admin-route-test-btn" id="adminSimBtn" type="button" aria-label="Testar rota como administrador"><span class="admin-route-test-icon"><i data-lucide="flask-conical" width="17"></i></span><span class="admin-route-test-copy"><b>Testar rota</b><small>Admin · simula movimento, câmera, manobras e chegada</small></span><span class="admin-route-test-badge">TESTE</span></button>
+      </div>
+      {% endif %}
+
       <div class="vr-section-head vano-alternatives-head"><span>Outras opções</span><small id="routeChooserCount">comparando rotas</small></div>
       <div class="route-variants" id="routeVariants" aria-label="Rotas alternativas"></div>
 
       <button class="primary start-trip-cta" id="startTripBtn" type="button" aria-label="Iniciar navegação"><span class="start-trip-icon"><i data-lucide="navigation" width="18"></i></span><span class="start-trip-copy"><b>Iniciar</b><small>Modo imersivo · câmera alinhada ao trajeto</small></span><span class="start-trip-arrow">›</span></button>
-      {% if current_user and current_user['role'] == 'admin' %}
-      <button class="admin-route-test-btn" id="adminSimBtn" type="button" aria-label="Testar rota como administrador"><span class="admin-route-test-icon"><i data-lucide="flask-conical" width="17"></i></span><span class="admin-route-test-copy"><b>Testar rota</b><small>Admin · simula movimento, câmera, manobras e chegada</small></span><span class="admin-route-test-badge">TESTE</span></button>
-      {% endif %}
 
       <details class="vano-route-more" id="routeMoreDetails">
-        <summary><span><i data-lucide="sliders-horizontal" width="15"></i>Mais informações</span><i data-lucide="chevron-down" width="16"></i></summary>
+        <summary aria-expanded="false"><span><i data-lucide="sliders-horizontal" width="15"></i>Mais opções e detalhes</span><i data-lucide="chevron-down" width="16"></i></summary>
         <div class="vano-route-more-content">
           <div class="vr-control-block vano-transport-block">
             <div class="route-choice-label"><span>Transporte</span><small>como você vai</small></div>
@@ -412,7 +415,7 @@
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-312')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-313')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;

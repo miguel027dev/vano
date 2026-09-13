@@ -458,3 +458,34 @@ html.vano-native-map-active #map .mapboxgl-control-container{opacity:0!important
 .route-variant{position:relative}.route-variant .route-variant-signals{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}.route-variant .route-variant-signals i{font-style:normal;font-size:7.5px;font-weight:800;color:#777c84;background:rgba(31,34,40,.045);padding:3px 5px;border-radius:7px}.route-variant.active .route-variant-signals i{color:#a85632;background:rgba(244,122,69,.09)}
 html[data-vano-theme="black"] .vano-smart-balance,html[data-vano-theme="black"] .planner-smart-scroll button{background:#202126;border-color:rgba(255,255,255,.08);box-shadow:none}html[data-vano-theme="black"] .vano-smart-balance-head>span,html[data-vano-theme="black"] .planner-smart-scroll button b{color:#f2f2f4}html[data-vano-theme="black"] .vano-smart-balance p,html[data-vano-theme="black"] .planner-smart-scroll button small{color:#a6a8ae}html[data-vano-theme="black"] .planner-smart-scroll button>span{background:rgba(244,122,69,.12)}
 @media(max-width:520px){.vano-smart-balance{margin-top:6px;padding:10px 11px}.vano-smart-balance-scale>span{font-size:8px}.planner-smart-scroll button{min-width:124px}.route-variant .route-variant-signals{gap:3px}}
+
+
+/* ========================================================================== 
+   VANO MAPS V313 — regression hotfix: admin simulator, options and route line
+   ========================================================================== */
+:root{--vano-route-live:#FF9500;--vano-route-live-soft:#FFC266}
+body.vano-map-surface .admin-route-test-slot{display:block!important;margin:8px 0 3px!important}
+body.vano-map-surface .admin-route-test-slot .admin-route-test-btn{margin-top:0!important;border-color:rgba(255,149,0,.28)!important;background:linear-gradient(180deg,#fffaf1,#fff5e5)!important;box-shadow:0 8px 20px rgba(255,149,0,.10)!important}
+body.vano-map-surface .admin-route-test-slot .admin-route-test-icon{background:rgba(255,149,0,.13)!important;color:#D97700!important}
+body.vano-map-surface .admin-route-test-slot .admin-route-test-badge{background:#FF9500!important;color:#fff!important}
+html[data-vano-theme="black"] body.vano-map-surface .admin-route-test-slot .admin-route-test-btn{background:#25211c!important;border-color:rgba(255,149,0,.35)!important;color:#fff!important}
+
+/* Native <details> had legacy display:grid rules that kept content visible while closed. */
+body.vano-map-surface #routeState #routeMoreDetails:not([open])>.vano-route-more-content{display:none!important}
+body.vano-map-surface #routeState #routeMoreDetails[open]>.vano-route-more-content{display:grid!important}
+body.vano-map-surface #routeState #routeMoreDetails>summary{cursor:pointer!important;user-select:none!important;-webkit-user-select:none!important;touch-action:manipulation!important}
+body.vano-map-surface #routeState #routeMoreDetails>summary::-webkit-details-marker{display:none!important}
+body.vano-map-surface #routeState #routeMoreDetails>summary>svg:last-child{transition:transform .18s ease!important}
+body.vano-map-surface #routeState #routeMoreDetails[open]>summary>svg:last-child{transform:rotate(180deg)!important}
+body.vano-map-surface #routeState #routeMoreDetails[open]{overflow:visible!important}
+
+/* The three-dot options drawer must have one deterministic open/closed state. */
+body.vano-map-surface #accountBackdrop{visibility:hidden!important;opacity:0!important;pointer-events:none!important;transition:opacity .18s ease,visibility 0s linear .18s!important}
+body.vano-map-surface #accountBackdrop.show{visibility:visible!important;opacity:1!important;pointer-events:auto!important;transition:opacity .18s ease!important}
+body.vano-map-surface #accountDrawer{visibility:hidden!important;pointer-events:none!important}
+body.vano-map-surface #accountDrawer.show{visibility:visible!important;pointer-events:auto!important}
+body.vano-account-open{overflow:hidden!important}
+
+/* Keep route option taps independent from the draggable planner shell. */
+body.vano-map-surface #routeVariants .route-variant{touch-action:manipulation!important;-webkit-tap-highlight-color:transparent!important}
+body.vano-map-surface #routeVariants .route-variant.active{border-color:rgba(255,149,0,.34)!important;box-shadow:0 7px 18px rgba(255,149,0,.09)!important}

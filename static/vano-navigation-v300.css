@@ -1,8 +1,8 @@
 /* VANO MAPS Navigation V300.2 — canonical orange driver HUD. */
 :root{
   --vano-nav-accent:#F47A45;
-  --vano-route-orange:#FF7800;
-  --vano-route-orange-light:#FF9D3F;
+  --vano-route-orange:#FF9500;
+  --vano-route-orange-light:#FFC266;
   --vano-nav-accent-strong:#D96535;
   --vano-nav-accent-soft:#FFF2EA;
   --vano-nav-accent-wash:rgba(244,122,69,.10);
