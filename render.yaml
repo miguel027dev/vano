@@ -7,7 +7,7 @@ services:
     name: rairo
     runtime: python
     plan: free
-    buildCommand: python -m pip install --upgrade pip && python -m pip install -r requirements.txt && python -m py_compile app.py db_backend.py mobile_routes.py vano_osint_bridge.py
+    buildCommand: python -m pip install --upgrade pip && python -m pip install -r requirements.txt && python -m py_compile app.py db_backend.py mobile_routes.py vano_osint_bridge.py vano_ai_routing.py
     startCommand: VANO_SKIP_DB_INIT=1 RAIRO_DB_INIT_ONLY=1 python -c "from app import init_db_with_retry; init_db_with_retry()" && VANO_SKIP_DB_INIT=1 python -m gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 6 --timeout 120 --keep-alive 10 --access-logfile - --error-logfile -
     healthCheckPath: /healthz
     envVars:
@@ -91,6 +91,35 @@ services:
         value: "8"
       - key: MAPBOX_ACCESS_TOKEN
         sync: false
+      # VANO AI Route Judge — Ollama Cloud reranking. The API key stays server-side.
+      - key: ollama_key
+        sync: false
+      - key: VANO_AI_ROUTING_ENABLED
+        value: "1"
+      - key: VANO_AI_ROUTE_MODEL
+        value: "deepseek-v4.1-flash:cloud"
+      - key: VANO_OLLAMA_BASE_URL
+        value: "https://ollama.com/api"
+      - key: VANO_AI_ROUTE_MODES
+        value: "safest,smart"
+      - key: VANO_AI_ROUTE_SHADOW
+        value: "0"
+      - key: VANO_AI_ROUTE_TIMEOUT
+        value: "2.8"
+      - key: VANO_AI_ROUTE_PREFETCH_TIMEOUT
+        value: "4.8"
+      - key: VANO_AI_ROUTE_CACHE_TTL
+        value: "120"
+      - key: VANO_AI_ROUTE_MAX_CANDIDATES
+        value: "9"
+      - key: VANO_AI_SAFEST_SCORE_DELTA
+        value: "4.0"
+      - key: VANO_AI_SMART_MAX_DETOUR
+        value: "1.32"
+      - key: VANO_AI_ROUTE_MIN_CONFIDENCE
+        value: "0.55"
+      - key: VANO_AI_ROUTE_ON_REROUTE
+        value: "0"
       - key: HERE_TRAFFIC_API_KEY
         sync: false
       - key: RAIRO_ADMIN_EMAIL

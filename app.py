@@ -25,6 +25,7 @@ from urllib.parse import urlparse, urlencode
 
 import requests
 from requests.adapters import HTTPAdapter
+from vano_ai_routing import rerank_routes_with_ai
 try:
     from flask_compress import Compress
 except Exception:
@@ -11245,6 +11246,30 @@ def api_route():
                 "strategy": remote_meta.get("strategy") or "single-node-failover",
                 "policy": remote_meta.get("policy", {}),
             }
+            # VANO AI Route Judge runs at the Central even when a Route Node did
+            # the heavy geometry/safety work. The model only sees compact numeric
+            # route metrics and can choose only one of the already-valid IDs.
+            ai_remote = rerank_routes_with_ai(
+                remote_payload.get("routes") or [],
+                mode=mode, profile=travel_profile,
+                safety_bias=safety_bias_remote, traffic_bias=traffic_bias_remote,
+                local_hour=local_hour, night_active=bool(user_nav.get("night_active")),
+                current_selected_id=remote_payload.get("selected_id"),
+                prefetch=prefetch_requested, reroute=reroute_request,
+            )
+            remote_payload["ai_routing"] = ai_remote
+            if ai_remote.get("applied") and ai_remote.get("proposed_id") is not None:
+                proposed = next(
+                    (r for r in (remote_payload.get("routes") or []) if str(r.get("id")) == str(ai_remote.get("proposed_id"))),
+                    None,
+                )
+                if proposed is not None:
+                    remote_payload["selected_id"] = proposed.get("id")
+                    for route_row in remote_payload.get("routes") or []:
+                        badges = [b for b in (route_row.get("badges") or []) if b != mode]
+                        if str(route_row.get("id")) == str(proposed.get("id")) and mode in {"safest", "smart"}:
+                            badges.append(mode)
+                        route_row["badges"] = badges
             return _finish_route_payload(
                 remote_payload, result_cache_key, prefetch_requested, trial_id,
                 slat, slon, elat, elon, mode, cache_hit=False,
@@ -11535,10 +11560,12 @@ def api_route():
     )
     quietest = max(candidate_pool, key=lambda r: (r["quiet_score"], r.get("safety_level", 0), -r["duration"]))
 
+    smart_guard_pool = list(candidate_pool)
     if is_motorized_profile(travel_profile):
         min_level = int(fastest.get("safety_level", 0)) if user_nav["night_active"] else max(1, int(fastest.get("safety_level", 0)) - 1)
         eligible = [r for r in candidate_pool if float(r["duration"]) <= fastest_s * (1.34 if user_nav["night_active"] else 1.30) and int(r.get("safety_level", 0)) >= min_level]
-        smart = max(eligible or candidate_pool, key=lambda r: (float(r.get("rairo_score", 0)), int(r.get("safety_level", 0)), -float(r.get("duration", 0))))
+        smart_guard_pool = list(eligible or candidate_pool)
+        smart = max(smart_guard_pool, key=lambda r: (float(r.get("rairo_score", 0)), int(r.get("safety_level", 0)), -float(r.get("duration", 0))))
         smart_micro_locked = False
 
         # In real congestion, Vano Maps gives a controlled preference to block-scale
@@ -11578,6 +11605,28 @@ def api_route():
     else:
         smart = max(candidate_pool, key=lambda r: (float(r.get("rairo_score", 0)), int(r.get("safety_level", 0)), -float(r.get("duration", 0))))
 
+    # VANO AI Route Judge — a bounded reranker, not a geometry generator.
+    # Guardrails are computed by the deterministic engine first; the LLM can only
+    # choose among IDs already admitted by the current Safest/Smart policy.
+    ai_base_selected = safest if mode == "safest" else smart if mode == "smart" else None
+    ai_allowed_rows = (safety_pool or candidate_pool) if mode == "safest" else smart_guard_pool if mode == "smart" else []
+    ai_routing = rerank_routes_with_ai(
+        enriched,
+        mode=mode, profile=travel_profile,
+        safety_bias=safety_bias, traffic_bias=traffic_bias,
+        local_hour=local_hour, night_active=bool(user_nav.get("night_active")),
+        current_selected_id=(ai_base_selected or {}).get("id"),
+        allowed_ids=[r.get("id") for r in ai_allowed_rows],
+        prefetch=prefetch_requested, reroute=reroute_request,
+    )
+    if ai_routing.get("applied") and ai_routing.get("proposed_id") is not None:
+        ai_selected = next((r for r in ai_allowed_rows if str(r.get("id")) == str(ai_routing.get("proposed_id"))), None)
+        if ai_selected is not None:
+            if mode == "safest":
+                safest = ai_selected
+            elif mode == "smart":
+                smart = ai_selected
+
     fastest_cons = float(fastest.get("safety_conservative_score", fastest.get("safety_score", 0)) or 0)
     for r in enriched:
         r["eta_delta_vs_fastest_min"] = round(max(0.0, float(r.get("duration") or 0)-fastest_s)/60.0, 1)
@@ -11594,6 +11643,7 @@ def api_route():
         "routes": enriched, "selected_id": selected["id"], "mode": mode, "profile": travel_profile,
         "provider": selected.get("routing_provider") or "mapbox", "depart_at": depart_at,
         "engine": "vano-intelligence-v262-local-fallback", "safety_bias": round(safety_bias, 1), "traffic_bias": round(traffic_bias, 1),
+        "ai_routing": ai_routing,
         "distributed_routing": {"used": False, "fallback": bool(locals().get("remote_meta", {}).get("fallback")), "reason": locals().get("remote_meta", {}).get("reason", "local")},
         "candidate_source": primary_provider, "mapbox_base_candidates": int(mapbox_base_count or 0),
         "candidate_pool_cache_hit": bool(candidate_pool_cache_hit),
