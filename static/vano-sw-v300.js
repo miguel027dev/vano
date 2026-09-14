@@ -1,7 +1,7 @@
-/* VANO MAPS V317 — intent-aware search ranking. */
-const BUILD='317.0.0-search-ranking';
-const CACHE=`vano-maps-v317-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v317-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V318 — adaptive navigation camera for car and motorcycle. */
+const BUILD='318.0.0-camera-dynamics';
+const CACHE=`vano-maps-v318-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v318-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
