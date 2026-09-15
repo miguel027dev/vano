@@ -128,10 +128,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-app-v262.css') }}?v={{ vano_build_id }}">
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-v300.css') }}?v={{ vano_build_id }}-318">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner-v263.css') }}?v={{ vano_build_id }}-302">{% endif %}
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-318">{% endif %}
+  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-319">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-interface-v319.css') }}?v={{ vano_build_id }}-322">{% endif %}
-  {% block final_styles %}{% endblock %}
   {% if vano_map_surface %}
   <script>try{
     const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);
@@ -152,7 +150,7 @@
         <a class="{% if vano_endpoint in ['index','map_page'] %}active{% endif %}" href="{{ url_for('map_page') }}">Rotas</a><a class="{% if vano_endpoint == 'alerts_page' %}active{% endif %}" href="{{ url_for('alerts_page') }}">Alertas</a><a class="{% if vano_endpoint == 'report_page' %}active{% endif %}" href="{{ url_for('report_page') }}">Denunciar</a><a class="{% if vano_endpoint == 'profile' %}active{% endif %}" href="{{ url_for('profile') }}">Perfil</a>
         {% if current_user['role']=='admin' %}<a class="{% if vano_endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>{% endif %}
       {% else %}
-        <a href="{{ url_for('about') }}">Como funciona</a><a href="{{ url_for('access_page') }}">Acessar</a>
+        <a href="{{ url_for('about') }}">Como funciona</a><a href="#recursos">Recursos</a>
       {% endif %}
     </div>
     <div class="nav-actions">
@@ -179,7 +177,7 @@
 <script src="{{ url_for('static', filename='vano-runtime-v262.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
 <script>if(window.lucide){lucide.createIcons();} setTimeout(()=>document.querySelectorAll('.flash').forEach(x=>x.remove()),6000); if(window.parent!==window){window.parent.postMessage({type:'vano:ready',path:location.pathname},'*');}</script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}-322',{scope:'/'}).catch(()=>{}),{once:true});}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}-318',{scope:'/'}).catch(()=>{}),{once:true});}</script>
 <script src="{{ url_for('static', filename='vano-telemetry-v123.js') }}?v={{ vano_build_id }}"></script>
 {% block scripts %}{% endblock %}
 </body>

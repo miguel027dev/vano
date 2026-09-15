@@ -23,7 +23,7 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-322">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-319">
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
@@ -38,7 +38,7 @@
     <span class="vano-nearby-users-copy" id="nearbyUsersNoticeText">Usuários perto de você usando VANO MAPS agora</span>
   </aside>
   {% if current_user and current_user['role'] == 'admin' %}<div class="sim-badge" id="simBadge"><i></i>SIMULAÇÃO ADMIN</div>{% endif %}
-  <div id="map" role="region" aria-label="Mapa de rotas"></div><div class="map-mood-fade" id="mapMoodFade"></div><div class="road-mood-hint" id="roadMoodHint">MAPA VIVO</div><div class="map-vignette"></div><div class="ambient-halo" id="ambientHalo"></div><div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="map"></div><div class="map-mood-fade" id="mapMoodFade"></div><div class="road-mood-hint" id="roadMoodHint">MAPA VIVO</div><div class="map-vignette"></div><div class="ambient-halo" id="ambientHalo"></div><div class="toast" id="toast"></div>
   <div class="route-loading-overlay" id="routeLoadingOverlay" role="status" aria-live="polite" aria-hidden="true"><div class="route-loading-card"><div class="route-loading-spinner"></div><b id="routeLoadingTitle">Calculando rota…</b><span id="routeLoadingText">Analisando o melhor caminho.</span><div class="route-loading-dots"><i></i><i></i><i></i></div></div></div>
   <section class="resume-trip-card" id="resumeTripCard" aria-live="polite" aria-hidden="true">
     <div class="resume-trip-head"><div><small>TRAJETO EM ANDAMENTO</small><h3>Você ainda quer continuar?</h3></div><span class="resume-trip-age" id="resumeTripAge">agora</span></div>
@@ -66,16 +66,15 @@
   <div class="gps-quality" id="gpsQuality" aria-hidden="true"><span class="gps-bars" id="gpsBars"><i></i><i></i><i></i></span><span id="gpsAccuracy">GPS —</span></div>
   <div class="traffic-radar" id="trafficRadar" aria-live="polite"><span class="traffic-radar-dot"></span><span class="traffic-radar-copy"><b id="trafficRadarTitle">Trânsito à frente</b><span id="trafficRadarMeta">Analisando o corredor…</span></span></div>
   <div class="connectivity-pill" id="connectivityPill" aria-hidden="true"><i data-lucide="wifi-off" width="14"></i><span>Sem internet · rota mantida</span></div>
-  <div id="vanoSpeedometerV220" aria-label="Velocidade atual em quilômetros por hora"><strong id="vanoSpeedValueV220">0</strong></div>
+  <div id="vanoSpeedometerV220" aria-live="polite" aria-label="Velocidade atual em quilômetros por hora"><strong id="vanoSpeedValueV220">0</strong></div>
   <button type="button" class="floating-locate" id="recenterBtn" aria-label="Centralizar na minha localização"><i data-lucide="crosshair" width="19"></i></button>
   <button type="button" class="floating-preview-cancel" id="previewCancelBtn" aria-label="Cancelar prévia 3D" title="Cancelar prévia 3D"><i data-lucide="x" width="19"></i></button>
   <div class="nav-control-stack" id="navControlStack" aria-label="Controles da navegação">
     <div class="nav-control-drawer" id="navControlDrawer" aria-hidden="true">
-    <button type="button" class="nav-stack-btn nav-exit-main" id="navExitBtn" aria-label="Encerrar trajeto" title="Encerrar trajeto"><i data-lucide="x" width="20"></i></button>
       <button type="button" class="nav-drawer-btn" id="navDrawerOptions" aria-label="Abrir opções" title="Opções"><i data-lucide="ellipsis" width="18"></i></button>
       <button type="button" class="nav-drawer-btn nav-drawer-support" id="navDrawerSupport" aria-label="Abrir apoio durante o trajeto" title="Apoio durante o trajeto"><i data-lucide="shield-check" width="18"></i></button>
     </div>
-
+    <button type="button" class="nav-stack-btn nav-exit-main" id="navExitBtn" aria-label="Encerrar trajeto" title="Encerrar trajeto"><i data-lucide="x" width="20"></i></button>
     <button type="button" class="nav-stack-btn nav-report-main" id="quickAlertBtn" aria-label="Informar ocorrência" title="Informar ocorrência"><i data-lucide="triangle-alert" width="19"></i></button>
     <button type="button" class="nav-stack-btn nav-recenter-main" id="navDrawerRecenter" aria-label="Recalibrar câmera e seguir minha posição" title="Recalibrar câmera"><i data-lucide="crosshair" width="19"></i></button>
     <button type="button" class="nav-audio-toggle active nav-audio-main" id="soundBtn" aria-label="Desativar orientações por voz" title="Áudio ligado"><i data-lucide="volume-2" width="19"></i></button>
@@ -83,14 +82,13 @@
   </div>
   <div class="nav-voice-popover" id="navVoicePopover"><small>VOZ DAS INSTRUÇÕES</small><select id="navVoiceSelect" aria-label="Selecionar voz"><option value="">Automática</option><option value="vano">Vano Maps</option></select><button type="button" id="voicePreviewBtn">Ouvir exemplo</button></div>
   <div class="map-tools" aria-label="Controles rápidos do mapa">
-    <button id="focusModeBtn" class="map-btn" type="button" aria-label="Ampliar área do mapa" title="Foco no mapa"><i data-lucide="maximize-2" width="18"></i></button>
     <button id="mapThemeBtn" class="map-btn map-theme-btn" type="button" data-vano-theme-toggle aria-label="Ativar modo Black" aria-pressed="false" title="Usar mapa Black"><span class="map-theme-day" aria-hidden="true"><i data-lucide="moon-star" width="18"></i></span><span class="map-theme-night" aria-hidden="true"><i data-lucide="sun" width="18"></i></span></button>
   </div>
 
 
 
   <div class="account-backdrop" id="accountBackdrop" aria-hidden="true"></div>
-  <section class="account-drawer{% if not current_user %} guest-account-drawer{% endif %}" id="accountDrawer" role="dialog" aria-modal="true" tabindex="-1" aria-label="Conta e preferências" aria-hidden="true">
+  <section class="account-drawer{% if not current_user %} guest-account-drawer{% endif %}" id="accountDrawer" aria-label="Conta e preferências" aria-hidden="true">
     <div class="drawer-grab" aria-hidden="true"></div>
 
     {% if current_user %}
@@ -185,10 +183,9 @@
         <button type="button" class="guest-drawer-continue" onclick="document.getElementById('accountBackdrop')?.click()">Continuar no mapa sem conta</button>
       </div>
     {% endif %}
-    <a class="drawer-access-link" href="{{ url_for('access_page') }}"><i data-lucide="smartphone" width="18"></i><span>VANO no seu celular</span><i data-lucide="arrow-up-right" width="16"></i></a>
   </section>
 
-  <section class="safety-drawer" id="safetyDrawer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Apoio durante o trajeto" tabindex="-1">
+  <section class="safety-drawer" id="safetyDrawer" aria-label="Ferramentas de segurança">
     <div class="safety-head"><div><small>Segurança VANO MAPS</small><h3>Apoio durante o trajeto</h3></div><button type="button" class="safety-close" id="safetyCloseBtn" aria-label="Fechar"><i data-lucide="x" width="16"></i></button></div>
     <div class="safety-grid">
       <button type="button" class="safety-tool live" id="safetyLiveBtn"><i data-lucide="radio"></i><span><b>Compartilhar ao vivo</b><span>Link temporário com sua posição</span></span></button>
@@ -200,30 +197,29 @@
     <p class="safety-foot">Pontos de apoio e níveis de risco dependem dos dados disponíveis. O botão SOS compartilha sua posição; ele não aciona automaticamente polícia, bombeiros ou emergência.</p>
   </section>
 
-  <button type="button" class="map-panel-backdrop" id="mapPanelBackdrop" aria-label="Fechar painel" hidden tabindex="-1"></button>
-  <section class="prefs-drawer prefs-drawer-v251" id="prefsDrawer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="prefsTitle" tabindex="-1">
-    <div class="prefs-head"><div class="prefs-head-main"><span class="prefs-head-icon"><i data-lucide="sliders-horizontal" width="18"></i></span><div class="prefs-head-copy"><small>PERSONALIZAÇÃO</small><h3 id="prefsTitle">Do seu jeito.</h3><p>Escolha suas preferências de rota, mapa e voz.</p></div></div><button type="button" class="prefs-close" id="prefsCloseBtn" aria-label="Fechar"><i data-lucide="x" width="16"></i></button></div>
+  <section class="prefs-drawer prefs-drawer-v251" id="prefsDrawer" aria-label="Personalizar rota e mapa">
+    <div class="prefs-head"><div class="prefs-head-main"><span class="prefs-head-icon"><i data-lucide="sliders-horizontal" width="18"></i></span><div class="prefs-head-copy"><small>PERSONALIZAÇÃO</small><h3>Personalizar rota</h3><p>Ajuste como o VANO escolhe e apresenta seus trajetos.</p></div></div><button type="button" class="prefs-close" id="prefsCloseBtn" aria-label="Fechar"><i data-lucide="x" width="16"></i></button></div>
     <div class="prefs-list prefs-list-v252">
       <section class="prefs-section" aria-label="Preferências de rota">
         <div class="prefs-section-label"><span>ROTA</span><small>Como o VANO escolhe o caminho</small></div>
-        <label class="pref-row"><span><b>Rotas adaptativas</b><span>Procura outros caminhos quando há opções melhores.</span></span><input class="pref-switch" id="prefAdaptive" type="checkbox"></label>
-        <label class="pref-row"><span><b>Atalhos inteligentes</b><span>Considera ruas alternativas para reduzir o tempo da viagem.</span></span><input class="pref-switch" id="prefAggressive" type="checkbox"></label>
+        <label class="pref-row"><span><b>Rotas adaptativas</b><span>Busca corredores diferentes quando as alternativas começam a se repetir.</span></span><input class="pref-switch" id="prefAdaptive" type="checkbox"></label>
+        <label class="pref-row"><span><b>Atalhos inteligentes</b><span>Testa desvios de quarteirão quando eles realmente podem reduzir o tempo.</span></span><input class="pref-switch" id="prefAggressive" type="checkbox"></label>
         <label class="pref-row"><span><b>Comparar alternativas</b><span>Mostra opções diferentes antes de você iniciar o trajeto.</span></span><input class="pref-switch" id="prefAlternatives" type="checkbox"></label>
-        <label class="pref-row"><span><b>Melhorar durante a viagem</b><span>Avisa quando encontra um caminho que economiza tempo.</span></span><input class="pref-switch" id="prefAutoFaster" type="checkbox"></label>
+        <label class="pref-row"><span><b>Melhorar durante a viagem</b><span>Só sugere uma troca quando a economia compensa a mudança de rota.</span></span><input class="pref-switch" id="prefAutoFaster" type="checkbox"></label>
       </section>
       <section class="prefs-section" aria-label="Preferências do mapa">
-        <div class="prefs-section-label"><span>MAPA</span><small>O que você vê durante o trajeto</small></div>
-        <label class="pref-row"><span><b>Mapa vivo</b><span>Exibe trânsito e alertas disponíveis perto da sua rota.</span></span><input class="pref-switch" id="prefLiveSignals" type="checkbox"></label>
+        <div class="prefs-section-label"><span>MAPA</span><small>Informação que aparece enquanto você dirige</small></div>
+        <label class="pref-row"><span><b>Mapa vivo</b><span>Mostra trânsito, sinais e ocorrências disponíveis no seu corredor.</span></span><input class="pref-switch" id="prefLiveSignals" type="checkbox"></label>
       </section>
       <section class="prefs-section" aria-label="Preferências de voz">
         <div class="prefs-section-label"><span>ÁUDIO</span><small>Orientações de navegação</small></div>
-        <label class="pref-row voice-pref-row"><span><b>Voz das instruções</b><span>Escolha quem vai ler as orientações do trajeto.</span></span><select class="voice-select" id="voiceSelect" aria-label="Voz das instruções"><option value="">Automática</option><option value="vano">Vano Maps</option></select></label>
+        <label class="pref-row voice-pref-row"><span><b>Voz das instruções</b><span>Use a voz automática do aparelho ou a voz VANO MAPS.</span></span><select class="voice-select" id="voiceSelect" aria-label="Voz das instruções"><option value="">Automática</option><option value="vano">Vano Maps</option></select></label>
       </section>
     </div>
-<div class="prefs-footer"><p class="prefs-foot" id="prefsSaveStatus" role="status">Alterações salvas automaticamente neste aparelho.</p><button type="button" class="prefs-done" id="prefsDoneBtn">Concluir</button></div>
+<p class="prefs-foot">Preferências salvas neste dispositivo. Você pode mudar tudo quando quiser.</p>
   </section>
 
-  <section class="sheet sheet-collapsed" id="planSheet" aria-label="Planejar uma rota">
+  <section class="sheet sheet-collapsed" id="planSheet">
     <button type="button" class="vano-planner-toggle-v221" id="planGrab" aria-expanded="false" aria-controls="welcomeState routeState" aria-label="Expandir painel de destino"><span class="vano-planner-toggle-chevron" aria-hidden="true"></span></button>
     <div class="welcome planner-welcome" id="welcomeState">
       <div class="planner-heading">
@@ -233,11 +229,11 @@
 
       <div class="planner-search-row">
         <div class="search-card planner-search-card" aria-label="Buscar destino, endereço ou lugar">
-          <div class="origin-hidden"><input type="text" id="originInput" aria-label="Local de saída" class="location-input" autocomplete="off"><button type="button" id="locateBtn"></button><button type="button" id="swapBtn"></button></div>
-          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input type="text" id="destinationInput" aria-label="Para onde vamos? Busque um endereço ou lugar" class="location-input" placeholder="Busque endereço, lugar ou destino" autocomplete="off" enterkeyhint="search" inputmode="search" role="combobox" aria-haspopup="listbox" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false"><button type="button" id="voiceSearchBtn" class="row-btn voice-search-btn" aria-label="Pesquisar endereço por voz" title="Pesquisar por voz"><i data-lucide="mic" width="17"></i></button></div>
+          <div class="origin-hidden"><input type="text" id="originInput" class="location-input" autocomplete="off"><button type="button" id="locateBtn"></button><button type="button" id="swapBtn"></button></div>
+          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input type="text" id="destinationInput" class="location-input" placeholder="Busque endereço, lugar ou destino" autocomplete="off" enterkeyhint="search" inputmode="search" role="combobox" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false"><button type="button" id="voiceSearchBtn" class="row-btn voice-search-btn" aria-label="Pesquisar endereço por voz" title="Pesquisar por voz"><i data-lucide="mic" width="17"></i></button></div>
           <div class="search-results" id="searchResults" role="listbox" aria-label="Resultados da busca"></div>
         </div>
-        <button type="button" class="planner-adjust-btn" id="prefsBtn" aria-controls="prefsDrawer" aria-expanded="false" aria-label="Personalizar rota e mapa" title="Ajustes"><i data-lucide="sliders-horizontal" width="19"></i><span>Ajustes</span></button>
+        <button type="button" class="planner-adjust-btn" id="prefsBtn" aria-label="Ajustes de mapa e rota" title="Ajustes"><i data-lucide="sliders-horizontal" width="19"></i><span>Mapa</span></button>
       </div>
 
       <div class="planner-capabilities" aria-label="Recursos ativos">
@@ -282,20 +278,11 @@
         </div>
       </div>
 
-          <section class="vano-route-more-section vano-transport-block" aria-labelledby="routeTransportLabel">
-            <div class="vano-route-more-section-head" id="routeTransportLabel"><span>Transporte</span><small>como você vai</small></div>
-            <div class="travel" role="group" aria-label="Meio de transporte">
-              <button type="button" class="active" data-profile="driving"><span class="route-option-icon"><i data-lucide="car-front" width="14"></i></span><span class="route-option-copy"><b>Carro</b><small>Dirigindo</small></span></button>
-              <button type="button" data-profile="motorcycle"><span class="route-option-icon"><svg class="moto-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"></circle><circle cx="18" cy="17" r="3"></circle><path d="M9 17h5l2.3-5H12l-2 3-2.7-5H5.5M13 12l-1.8-3H14M16.3 12l2.2 1.5"></path></svg></span><span class="route-option-copy"><b>Moto</b><small>Motocicleta</small></span></button>
-              <button type="button" data-profile="walking"><span class="route-option-icon"><i data-lucide="person-standing" width="14"></i></span><span class="route-option-copy"><b>A pé</b><small>Caminhando</small></span></button>
-            </div>
-          </section>
-
       <div class="vano-route-mode-row">
         <div class="segment" id="routeModeSegment" aria-label="Prioridade da rota">
           <button type="button" class="active safe" data-route-mode="safest"><span class="route-option-icon"><i data-lucide="shield-check" width="15"></i></span><span class="route-option-copy"><b>Mais segura</b><small>Prioriza segurança</small></span></button>
           <button type="button" class="smart" data-route-mode="smart"><span class="route-option-icon"><i data-lucide="sparkles" width="15"></i></span><span class="route-option-copy"><b>Spark</b><small>Tempo + trânsito + segurança</small></span></button>
-          <button type="button" class="fast" data-route-mode="fastest"><span class="route-option-icon"><i data-lucide="zap" width="15"></i></span><span class="route-option-copy"><b>Mais rápida</b><small>Menor tempo</small></span></button>
+          <button type="button" class="fast" data-route-mode="fastest"><span class="route-option-icon"><i data-lucide="zap" width="15"></i></span><span class="route-option-copy"><b>Mais rápida</b><small>Menor ETA</small></span></button>
         </div>
       </div>
 
@@ -314,15 +301,22 @@
       <div class="vr-section-head vano-alternatives-head"><span>Outras opções</span><small id="routeChooserCount">comparando rotas</small></div>
       <div class="route-variants" id="routeVariants" aria-label="Rotas alternativas"></div>
 
-      <button class="primary start-trip-cta" id="startTripBtn" type="button" aria-label="Iniciar navegação"><span class="start-trip-icon"><i data-lucide="navigation" width="18"></i></span><span class="start-trip-copy"><b>Iniciar trajeto</b><small>Vamos acompanhar você pelo caminho</small></span><span class="start-trip-arrow">›</span></button>
+      <button class="primary start-trip-cta" id="startTripBtn" type="button" aria-label="Iniciar navegação"><span class="start-trip-icon"><i data-lucide="navigation" width="18"></i></span><span class="start-trip-copy"><b>Iniciar</b><small>Modo imersivo · câmera alinhada ao trajeto</small></span><span class="start-trip-arrow">›</span></button>
 
       <section class="vano-route-more" id="routeMoreDetails" data-open="false" aria-label="Mais informações da rota">
         <button type="button" class="vano-route-more-toggle" id="routeMoreToggle" aria-expanded="false" aria-controls="routeMoreContent">
-          <span class="vano-route-more-toggle-copy"><i data-lucide="info" width="16"></i><span><b>Mais informações</b><small>Detalhes, alertas e prévia do caminho</small></span></span>
+          <span class="vano-route-more-toggle-copy"><i data-lucide="info" width="16"></i><span><b>Mais informações</b><small>Transporte, detalhes, alertas e prévia</small></span></span>
           <i class="vano-route-more-chevron" data-lucide="chevron-down" width="17" aria-hidden="true"></i>
         </button>
         <div class="vano-route-more-content" id="routeMoreContent" hidden aria-hidden="true">
-
+          <section class="vano-route-more-section vano-transport-block" aria-labelledby="routeTransportLabel">
+            <div class="vano-route-more-section-head" id="routeTransportLabel"><span>Transporte</span><small>como você vai</small></div>
+            <div class="travel" role="group" aria-label="Meio de transporte">
+              <button type="button" class="active" data-profile="driving"><span class="route-option-icon"><i data-lucide="car-front" width="14"></i></span><span class="route-option-copy"><b>Carro</b><small>Dirigindo</small></span></button>
+              <button type="button" data-profile="motorcycle"><span class="route-option-icon"><svg class="moto-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"></circle><circle cx="18" cy="17" r="3"></circle><path d="M9 17h5l2.3-5H12l-2 3-2.7-5H5.5M13 12l-1.8-3H14M16.3 12l2.2 1.5"></path></svg></span><span class="route-option-copy"><b>Moto</b><small>Motocicleta</small></span></button>
+              <button type="button" data-profile="walking"><span class="route-option-icon"><i data-lucide="person-standing" width="14"></i></span><span class="route-option-copy"><b>A pé</b><small>Caminhando</small></span></button>
+            </div>
+          </section>
 
           <section class="vano-route-more-section vano-route-analysis-section" aria-labelledby="routeAnalysisLabel">
             <div class="vano-route-more-section-head" id="routeAnalysisLabel"><span>Sobre esta rota</span><small>por que ela foi escolhida</small></div>
@@ -349,18 +343,17 @@
     </div>
   </section>
 
-  <section class="nav-maneuver-top" id="navManeuverTop" aria-label="Próxima direção">
-    <div class="nav-maneuver-icon" aria-hidden="true"><span class="maneuver-glyph" id="maneuverGlyph">↑</span></div>
-    <div class="nav-maneuver-copy"><span class="maneuver-distance-label"><span id="nextDistancePrefix">Em </span><strong id="nextDistance">—</strong></span><b id="nextInstruction" aria-live="polite" aria-atomic="true">Siga em frente</b><div class="nav-street-chip" id="navStreetChip"><span id="nextStreet">Via indicada</span></div></div>
-    <div class="nav-following-step" id="navFollowingStep" aria-live="off"><span>Depois</span><b id="followingInstruction">Continue pela via</b><em id="followingDistance">—</em></div>
+  <section class="nav-maneuver-top" id="navManeuverTop" aria-live="polite">
+    <div class="nav-maneuver-icon"><span class="maneuver-glyph" id="maneuverGlyph">↑</span></div>
+    <div class="nav-maneuver-copy"><b id="nextInstruction">Siga em frente</b><span id="nextDistance">—</span></div>
   </section>
 
-  
+  <div class="nav-street-chip" id="navStreetChip" aria-live="polite"><span id="nextStreet">Via indicada</span></div>
   <div class="nav-connectivity-pill" id="navConnectivityPill" aria-live="polite" hidden><i data-lucide="wifi-off" width="12"></i><span>Sem internet · rota atual preservada</span></div>
   <div class="nav-context-alert" id="navContextAlert" aria-live="polite" hidden><span class="nav-context-icon"><i data-lucide="triangle-alert" width="13"></i></span><span class="nav-context-copy"><small id="navContextLabel">ATENÇÃO À FRENTE</small><b id="navContextText">Condição na rota</b></span><em id="navContextDistance">—</em></div>
   <div class="nav-alt-hint" id="navAltHint" aria-live="polite"><div class="nav-alt-copy"><small>ROTA MAIS RÁPIDA</small><b id="navAltHintText">Tem uma rota mais rápida, quer trocar pra ela?</b><em id="navAltHintMeta"></em></div><button type="button" class="nav-alt-accept" id="navAltAccept">Trocar</button><button type="button" class="nav-alt-dismiss" id="navAltDismiss" aria-label="Manter rota atual"><i data-lucide="x" width="13"></i></button></div>
 
-  <section class="nav-panel nav-minimal" id="activeNav" aria-label="Resumo da navegação">
+  <section class="nav-panel nav-minimal" id="activeNav" aria-live="polite">
     <div class="vano-nav-tripline">
       <span class="vano-nav-trip-icon" aria-hidden="true"><i data-lucide="navigation" width="15"></i></span>
       <span class="vano-nav-trip-copy"><small id="navTripStatus">EM ROTA · CÂMERA SEGUINDO</small><b id="navDestinationName">Destino</b></span>
@@ -378,14 +371,12 @@
       <div class="traffic-suggestion-main"><div class="traffic-suggestion-icon"><i data-lucide="route" width="18"></i></div><div><small>Rota mais rápida encontrada</small><b id="trafficSuggestionTitle">Alternativa disponível</b><span id="trafficSuggestionCopy">Existe uma opção com ETA melhor.</span></div></div>
       <div class="traffic-suggestion-actions"><button type="button" id="acceptTrafficRoute" class="traffic-accept">Trocar</button><button type="button" id="dismissTrafficRoute" class="traffic-dismiss">Manter</button></div>
     </div>
-
+    <div class="reroute" id="rerouteNotice"><span class="loading"></span><span>Recalculando rota…</span></div>
     <div class="nav-compat" aria-hidden="true"><span id="currentSpeed"></span><span id="avgSpeed"></span><span id="navSafety"></span><span id="liveTrafficText"></span><span id="roadAhead"></span><span id="roadAheadDistance"></span><span id="speedSign"></span><span id="riskAheadTitle"></span><span id="riskAheadCopy"></span><span id="riskAheadDistance"></span><span id="liveContextTitle"></span><span id="weatherChip"></span><span id="roadChip"></span><span id="flowChip"></span><span id="liveSourceNote"></span><div id="laneGuidance"><div id="laneItems"></div></div><div id="riskAhead"></div><div id="roadAwareness"></div><button id="navRecenter" type="button"></button><button id="liveShareBtn" type="button"></button></div>
   </section>
 
 
-    <div class="reroute" id="rerouteNotice"><span class="loading"></span><span>Recalculando rota…</span></div>
-
-  <section class="quick-alert-sheet vano-incident-sheet" id="quickAlertSheet" role="dialog" aria-modal="true" tabindex="-1" aria-hidden="true" aria-label="Informar ocorrência">
+  <section class="quick-alert-sheet vano-incident-sheet" id="quickAlertSheet" aria-hidden="true" aria-label="Informar ocorrência">
     <button type="button" class="quick-alert-backdrop" id="quickAlertBackdrop" aria-label="Fechar"></button>
     <div class="quick-alert-card">
       <div class="quick-alert-handle" aria-hidden="true"></div>
@@ -432,7 +423,7 @@
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-322')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-319')|tojson }};
   const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;
@@ -474,7 +465,7 @@
     try{await loadScript(FALLBACK,'vanoMapFallback',5200);setTimeout(()=>{if(!window.__VANO_MAP_INSTANCE_READY){report('fallback-failed');showMapBootError()}},350)}catch{report('fallback-load-error');showMapBootError()}
   }
   async function boot(){
-    if(!window.VANO_BOOT?.token){showMapBootError();return;}
+    if(!window.VANO_BOOT?.token)return;
     if(!await ensureMapbox()){showMapBootError();return}
     let runtimeError='';
     const onError=(e)=>{if(!window.__VANO_MAP_INSTANCE_READY)runtimeError=String(e?.message||'runtime-error').slice(0,70)};
