@@ -36,12 +36,12 @@ from db_backend import connect_db, table_columns, IntegrityError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
-    flash, jsonify, g, abort, has_request_context, has_app_context, make_response
+    flash, jsonify, g, abort, has_request_context, has_app_context
 )
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "322.0.0").strip() or "322.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "320.0.0").strip() or "320.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -76,11 +76,10 @@ SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "1").strip().lower() not in {"0","
 SEO_INDEXABLE_ENDPOINTS = {
     "index", "about", "sobre", "help_page", "privacy_policy", "terms_of_use",
     "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "route_benchmark_page",
-    "account_delete_page", "access_page",
+    "account_delete_page",
 }
 SEO_CANONICAL_PATHS = {
     "index": "/",
-    "access_page": "/acessar",
     "about": "/about",
     "sobre": "/sobre",
     "help_page": "/help",
@@ -3027,8 +3026,10 @@ def onboarding_needed(user):
         return False
     return not (
         user["onboarding_completed_at"]
+        and str(user["name"] or "").strip()
         and user["age"] is not None
-        and user["is_app_driver"] is not None
+        and str(user["sex"] or "").strip()
+        and _normalize_ui_locale(user["locale"]) in SUPPORTED_UI_LOCALES
     )
 
 
@@ -3040,7 +3041,7 @@ def enforce_profile_onboarding():
     endpoint = request.endpoint or ""
     allowed = {
         "onboarding", "logout", "google_login", "google_callback", "login", "register",
-        "healthz", "static", "frame_test", "embed", "access_page",
+        "healthz", "static", "frame_test", "embed",
         "mobile_bootstrap", "mobile_navigation_config", "mobile_navigation_batch", "mobile_health",
     }
     if endpoint in allowed or endpoint.startswith("static"):
@@ -4202,10 +4203,12 @@ def parse_brazil_location_query(value):
 # expose a country header, the first HTML response uses Accept-Language and the
 # client refines it before first paint using timezone/region, then persists a
 # same-site cookie used by API requests and later pages.
-SUPPORTED_UI_LOCALES = {"pt-BR", "fr-FR", "de-DE", "ru-RU", "en-US", "es-ES"}
+SUPPORTED_UI_LOCALES = {"pt-BR", "en-US", "ar-MA", "ru-RU", "es-ES"}
 COUNTRY_UI_LOCALE = {
-    "BR": "pt-BR", "FR": "fr-FR", "DE": "de-DE", "RU": "ru-RU",
-    "PT": "pt-BR", "US": "en-US", "GB": "en-US", "CA": "en-US",
+    "BR": "pt-BR", "PT": "pt-BR",
+    "US": "en-US", "GB": "en-US", "CA": "en-US", "AU": "en-US", "NZ": "en-US",
+    "MA": "ar-MA",
+    "RU": "ru-RU",
     "ES": "es-ES", "MX": "es-ES", "AR": "es-ES", "CL": "es-ES",
     "CO": "es-ES", "PE": "es-ES", "UY": "es-ES",
 }
@@ -4222,16 +4225,14 @@ def _normalize_ui_locale(value):
     low = raw.lower()
     if low.startswith("pt"):
         return "pt-BR"
-    if low.startswith("fr"):
-        return "fr-FR"
-    if low.startswith("de"):
-        return "de-DE"
+    if low.startswith("en"):
+        return "en-US"
+    if low.startswith("ar"):
+        return "ar-MA"
     if low.startswith("ru"):
         return "ru-RU"
     if low.startswith("es"):
         return "es-ES"
-    if low.startswith("en"):
-        return "en-US"
     return ""
 
 
@@ -4246,21 +4247,40 @@ def _country_locale_from_headers():
 
 
 def detect_ui_locale():
-    """Resolve UI language without storing precise location or coordinates."""
+    """Resolve UI language with an explicit account choice taking precedence."""
     if not has_request_context():
         return _normalize_ui_locale(os.environ.get("RAIRO_DEFAULT_LANGUAGE", "pt-BR")) or "pt-BR", "default", ""
+
+    # Logged-in users own their language choice. Region/browser detection must
+    # never overwrite an explicit preference saved on the account.
+    uid = session.get("user_id")
+    if uid:
+        try:
+            row = get_db().execute("SELECT locale FROM users WHERE id=?", (uid,)).fetchone()
+            account_locale = _normalize_ui_locale(row["locale"] if row else "")
+            if account_locale in SUPPORTED_UI_LOCALES:
+                return account_locale, "account", ""
+        except Exception:
+            pass
+
+    explicit_locale = _normalize_ui_locale(request.cookies.get("vano_locale", ""))
+    if explicit_locale in SUPPORTED_UI_LOCALES:
+        return explicit_locale, "explicit_cookie", ""
 
     header_locale, country = _country_locale_from_headers()
     if header_locale:
         return header_locale, "country_header", country
 
-    cookie_locale = _normalize_ui_locale(request.cookies.get("rairo_locale_auto", ""))
+    # Keep compatibility with both historical client cookie names.
+    cookie_locale = _normalize_ui_locale(
+        request.cookies.get("vano_locale_auto", "") or request.cookies.get("rairo_locale_auto", "")
+    )
     if cookie_locale in SUPPORTED_UI_LOCALES:
         return cookie_locale, "client_auto", ""
 
     # Parse q-values instead of trusting only the first token.
     best = request.accept_languages.best_match(
-        ["pt-BR", "fr-FR", "de-DE", "ru-RU", "en-US", "es-ES"],
+        ["pt-BR", "en-US", "ar-MA", "ru-RU", "es-ES"],
         default="pt-BR",
     )
     normalized = _normalize_ui_locale(best) or "pt-BR"
@@ -4293,6 +4313,16 @@ def preferred_language():
         return active_ui_locale()
     raw = os.environ.get("RAIRO_DEFAULT_LANGUAGE", "pt-BR")
     return _normalize_ui_locale(raw) or "pt-BR"
+
+
+def mapbox_language():
+    """Return a Mapbox-compatible instruction/search language code."""
+    locale = preferred_language()
+    # Mapbox supports Arabic turn instructions as `ar`/`ar-AE`; `ar-MA`
+    # is our account/UI locale, so normalize it before provider requests.
+    if locale == "ar-MA":
+        return "ar"
+    return locale
 
 
 def mapbox_ready():
@@ -4445,7 +4475,7 @@ def _cep_authoritative_result(cep_info, query_meta, candidates=None, proximity=N
         try:
             params = {
                 "q": canonical_query, "country": "br", "limit": 5,
-                "language": preferred_language(), "types": "address,street,postcode,place,locality",
+                "language": mapbox_language(), "types": "address,street,postcode,place,locality",
             }
             if proximity:
                 params["proximity"] = f"{float(proximity[0]):.6f},{float(proximity[1]):.6f}"
@@ -5333,7 +5363,7 @@ def mapbox_reverse_geocode(lon, lat):
     data = mapbox_get(f"{MAPBOX_GEOCODING_URL}/reverse", {
         "longitude": float(lon),
         "latitude": float(lat),
-        "language": preferred_language(),
+        "language": mapbox_language(),
     })
     features = data.get("features", [])
     if not features:
@@ -5594,7 +5624,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
         "voice_units": "metric",
         "geometries": "geojson",
         "overview": "full",
-        "language": preferred_language(),
+        "language": mapbox_language(),
         "annotations": "distance,duration,speed",
     }
     if profile == "driving-traffic":
@@ -5712,7 +5742,7 @@ def mapbox_routes_via(points, depart_at="now", start_bearing=None, start_speed=N
         "voice_units": "metric",
         "geometries": "geojson",
         "overview": "full",
-        "language": preferred_language(),
+        "language": mapbox_language(),
         "annotations": "distance,duration,speed,congestion,congestion_numeric,maxspeed,closure",
         "notifications": "all",
         "depart_at": sanitize_depart_at(depart_at),
@@ -7625,35 +7655,6 @@ def embed_entry():
 # Pages
 # -----------------------------
 
-@app.route("/acessar", strict_slashes=False)
-def access_page():
-    # One public deadline, never Date.now()+8 days per visitor or worker restart.
-    # Override with an ISO 8601 timestamp including its timezone when rescheduling.
-    default_release = "2026-09-23T00:00:00-03:00"
-    raw_release = os.environ.get("VANO_ANDROID_RELEASE_AT", default_release).strip()
-    try:
-        release_at = datetime.fromisoformat(raw_release.replace("Z", "+00:00"))
-        if release_at.tzinfo is None:
-            raise ValueError("A timezone is required")
-    except (ValueError, TypeError, OverflowError):
-        app.logger.warning("Invalid VANO_ANDROID_RELEASE_AT; using the scheduled release date")
-        release_at = datetime.fromisoformat(default_release)
-    now = datetime.now(timezone.utc)
-    seconds = max(0, math.ceil((release_at - now).total_seconds()))
-    days, rest = divmod(seconds, 86400)
-    hours, rest = divmod(rest, 3600)
-    minutes, seconds = divmod(rest, 60)
-    response = make_response(render_template(
-        "acessar.html", release_at=release_at.isoformat(),
-        release_label=release_at.astimezone(timezone(timedelta(hours=-3))).strftime("%d/%m/%Y"),
-        server_now_ms=int(now.timestamp() * 1000),
-        countdown=(days, hours, minutes, seconds),
-        release_pending=release_at > now,
-    ))
-    response.headers["Cache-Control"] = "no-store"
-    return response
-
-
 @app.route("/")
 def index():
     # V91 — keep the product entry path lean. The old page counted users and
@@ -8044,8 +8045,6 @@ def register():
         locale = _normalize_ui_locale(request.form.get("locale") or active_ui_locale()) or active_ui_locale()
 
         errors = []
-        if len(name) < 2 or len(name) > 80:
-            errors.append("Informe um nome válido.")
         if not EMAIL_RE.match(email) or len(email) > 180:
             errors.append("Informe um e-mail válido.")
         valid_password, password_error = validate_password_strength(password)
@@ -8076,7 +8075,7 @@ def register():
         issue_persistent_login(cur.lastrowid)
         record_user_access(cur.lastrowid, force=True)
         audit("register", {}, cur.lastrowid)
-        flash("Conta criada. Agora personalize sua navegação.", "success")
+        flash("Conta criada. Agora complete seu perfil.", "success")
         return redirect(url_for("onboarding", next=safe_next_url(request.args.get("next")) or url_for("map_page")))
 
     return render_template("register.html")
@@ -8292,50 +8291,53 @@ def onboarding():
     if request.method == "POST":
         if not validate_csrf():
             abort(400)
+
+        name = re.sub(r"\s+", " ", str(request.form.get("name", "")).strip())[:80]
         try:
             age = int(request.form.get("age", ""))
         except (TypeError, ValueError):
             age = 0
-        # V311: sex/gender is not required by routing or eligibility. New
-        # onboarding flows therefore do not collect it; preserve an existing
-        # value only for backwards compatibility with older accounts.
-        sex = str(user["sex"] or "prefer_not_say").strip().lower() or "prefer_not_say"
-        driver_raw = str(request.form.get("is_app_driver", "")).strip().lower()
-        route_preference = str(request.form.get("route_preference", "balanced")).strip().lower()
-        night_mode = 1 if request.form.get("night_safety_mode") == "1" else 0
-        distance_unit = str(request.form.get("distance_unit", user["distance_unit"] or "km")).strip().lower()
-        emergency_name = str(request.form.get("emergency_name", "")).strip()[:80]
-        emergency_phone = re.sub(r"[^0-9+() .-]", "", str(request.form.get("emergency_phone", "")).strip())[:40]
+        sex = str(request.form.get("sex", "")).strip().lower()
+        locale = _normalize_ui_locale(request.form.get("locale", ""))
+
         allowed_sex = {"female", "male", "intersex_other", "prefer_not_say"}
-        if sex not in allowed_sex:
-            sex = "prefer_not_say"
-        errors=[]
+        errors = []
+        if len(name) < 2 or len(name) > 80:
+            errors.append("Informe um nome válido.")
         if age < 13 or age > 100:
             errors.append("Informe uma idade válida entre 13 e 100 anos.")
-        if driver_raw not in {"yes", "no"}:
-            errors.append("Informe se você dirige por aplicativo.")
-        if route_preference not in {"balanced", "safety_first", "fast_first"}:
-            errors.append("Escolha uma preferência de rota válida.")
-        if distance_unit not in {"km", "mi"}:
-            errors.append("Escolha uma unidade de distância válida.")
+        if sex not in allowed_sex:
+            errors.append("Selecione uma opção de sexo válida.")
+        if locale not in SUPPORTED_UI_LOCALES:
+            errors.append("Selecione um idioma válido.")
+
         if errors:
             for message in errors:
                 flash(message, "danger")
-            return render_template("onboarding.html", user=user), 400
-        db=get_db()
-        # Cadastro enxuto: dados do veículo ficam opcionais no Perfil e a presença
-        # no mapa não é ativada durante a criação da conta.
+            form_user = dict(user)
+            form_user.update({"name": name, "age": age or "", "sex": sex, "locale": locale or active_ui_locale()})
+            return render_template("onboarding.html", user=form_user), 400
+
+        db = get_db()
         db.execute(
-            """UPDATE users SET age=?,sex=?,is_app_driver=?,night_safety_mode=?,route_preference=?,distance_unit=?,emergency_name=?,emergency_phone=?,onboarding_completed_at=?,presence_visible=? WHERE id=?""",
-            (age, sex, 1 if driver_raw == "yes" else 0, night_mode, route_preference, distance_unit, emergency_name, emergency_phone, utcnow_iso(), 0, user["id"]),
+            """UPDATE users
+               SET name=?, age=?, sex=?, locale=?,
+                   is_app_driver=COALESCE(is_app_driver, 0),
+                   onboarding_completed_at=?, presence_visible=?
+               WHERE id=?""",
+            (name, age, sex, locale, utcnow_iso(), 0, user["id"]),
         )
         db.execute("DELETE FROM nearby_presence WHERE user_id=?", (user["id"],))
         db.commit()
-        audit("profile_onboarding_complete", {
-            "app_driver": driver_raw == "yes", "night_safety": bool(night_mode), "route_preference": route_preference
-        }, user["id"])
-        flash("Perfil de navegação configurado.", "success")
-        return redirect(safe_next_url(request.args.get("next")) or url_for("map_page"))
+        audit("profile_onboarding_complete", {"locale": locale}, user["id"])
+
+        flash("Perfil configurado.", "success")
+        response = redirect(safe_next_url(request.args.get("next")) or url_for("map_page"))
+        cookie_kwargs = dict(max_age=365 * 24 * 60 * 60, secure=request.is_secure, httponly=False, samesite="Lax", path="/")
+        response.set_cookie("vano_locale", locale, **cookie_kwargs)
+        response.set_cookie("vano_locale_auto", locale, **cookie_kwargs)
+        return response
+
     return render_template("onboarding.html", user=user)
 
 
@@ -8516,7 +8518,11 @@ def profile():
             db.execute("DELETE FROM nearby_presence WHERE user_id=?", (session["user_id"],))
         db.commit()
         flash("Preferências salvas.", "success")
-        return redirect(url_for("profile") + "#settings")
+        response = redirect(url_for("profile") + "#settings")
+        cookie_kwargs = dict(max_age=365 * 24 * 60 * 60, secure=request.is_secure, httponly=False, samesite="Lax", path="/")
+        response.set_cookie("vano_locale", locale, **cookie_kwargs)
+        response.set_cookie("vano_locale_auto", locale, **cookie_kwargs)
+        return response
 
     recent = db.execute(
         "SELECT * FROM route_history WHERE user_id=? ORDER BY created_at DESC LIMIT 8",
