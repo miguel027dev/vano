@@ -1,7 +1,7 @@
-/* VANO MAPS V320 — navigation HUD and camera finish. */
-const BUILD='320.0.0-navigation-finish';
-const CACHE=`vano-maps-v320-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v320-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V321 — navigation HUD and camera finish. */
+const BUILD='321.0.1-direction-card-fix';
+const CACHE=`vano-maps-v321-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v321-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
