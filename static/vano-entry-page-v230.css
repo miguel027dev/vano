@@ -219,3 +219,18 @@ body:has(.vano-entry):before{display:none!important}
   .auth-sheet .sheet-card{max-width:100%!important}
 }
 
+
+
+/* V321 — entry rebuild polish, benchmark CTA and utility strip */
+.v63-entry-quickline{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;max-width:580px}
+.v63-entry-quickline span{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:999px;border:1px solid #E6E8EF;background:#fff;color:#576073;font-size:10px;font-weight:850;box-shadow:0 6px 18px rgba(39,35,31,.04)}
+.auth-choice.tertiary{height:50px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;border:1px solid #E8E0D7!important;background:linear-gradient(180deg,#FFF8F2,#FFF1E6)!important;color:#A85B2F!important;font-size:11px!important;font-weight:860!important;border-radius:15px!important;text-decoration:none!important}
+.auth-choice.tertiary:hover{transform:translateY(-1px)!important;box-shadow:0 12px 24px rgba(217,112,63,.12)!important}
+.v63-entry-utility-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;padding:14px 15px;border-radius:18px;border:1px solid #E7E8EE;background:#fff;box-shadow:0 12px 28px rgba(39,35,31,.05)}
+.v63-entry-utility-card small{display:block;color:#F59A62;font-size:9px;font-weight:950;letter-spacing:.12em}
+.v63-entry-utility-card b{display:block;margin-top:4px;color:#171821;font-size:14px;letter-spacing:-.2px}
+.v63-entry-utility-card span{display:block;margin-top:5px;color:#6F7483;font-size:11px;line-height:1.5}
+.v63-entry-utility-card a{display:inline-flex;align-items:center;justify-content:center;min-width:82px;height:40px;padding:0 14px;border-radius:12px;background:#171821;color:#fff;font-size:12px;font-weight:850;text-decoration:none;box-shadow:0 12px 24px rgba(23,25,33,.16)}
+.v63-stage-card.bench{right:32px;bottom:34px;width:220px;padding:15px 16px}.v63-stage-card.bench b{display:block;margin-top:4px;color:#232839;font-size:23px;letter-spacing:-1px}.v63-stage-card.bench span{display:block;margin-top:2px;color:#7A8394;font-size:8px;line-height:1.45}
+@media(max-width:900px){.v63-entry-utility-card{grid-template-columns:1fr}.v63-entry-utility-card a{width:100%}.v63-stage-card.bench{display:none!important}}
+@media(max-width:520px){.v63-entry-quickline{display:none}.auth-choice.tertiary{height:48px!important}.v63-entry-utility-card{padding:12px 13px;border-radius:16px}.v63-entry-utility-card b{font-size:13px}.v63-entry-utility-card span{font-size:10.5px}}

@@ -1,9 +1,197 @@
 {% extends 'base.html' %}
-{% block title %}Benchmark público de rotas VANO MAPS para agentes e IAs{% endblock %}
-{% block meta_description %}Endpoint público do VANO MAPS para testar rotas, ETA e dados de trânsito de forma programática em agentes e sistemas de benchmark.{% endblock %}
-{% block og_title %}VANO MAPS Route Benchmark API{% endblock %}
-{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-seo-v255.css') }}?v={{ vano_build_id }}">{% endblock %}
-{% block content %}<main class="vano-seo"><div class="seo-wrap"><section class="seo-hero"><span class="seo-kicker"><i data-lucide="braces" width="15"></i>Benchmark público · v255</span><h1>Teste o motor de rotas do VANO por HTTP.</h1><p class="seo-lead">O endpoint é somente leitura, aceita CORS e foi criado para agentes, automações e suítes de QA compararem ETA e sinais de trânsito sem login.</p></section>
-<section class="seo-section"><h2>Endpoint</h2><pre>GET {{ public_site_url }}/api/benchmark/route?start_lat=-23.5505&amp;start_lon=-46.6333&amp;end_lat=-23.5874&amp;end_lon=-46.6576&amp;profile=driving</pre><p>Parâmetros obrigatórios: <code>start_lat</code>, <code>start_lon</code>, <code>end_lat</code>, <code>end_lon</code>. O parâmetro <code>profile</code> aceita <code>driving</code>, <code>motorcycle</code>, <code>walking</code> e <code>cycling</code>. Use <code>include_geometry=1</code> apenas quando precisar da geometria completa.</p></section>
-<section class="seo-section"><h2>Resposta</h2><p>A resposta inclui até três alternativas, ETA, distância, perfil do provedor e um objeto de tráfego com congestionamento, velocidade e confiança das annotations quando disponíveis. Em regiões com amostras suficientes, também aparece o VANO Live Flow.</p><div class="seo-note">O endpoint tem rate limit por IP para evitar abuso e nunca deve ser usado como prova de que um trajeto será mais rápido no mundo real. Ele mede a resposta disponível no instante do teste.</div></section>
-<section class="seo-section"><h2>Descoberta por agentes</h2><p>O arquivo <code>{{ public_site_url }}/llms.txt</code> documenta esta rota em formato textual simples. O endpoint também responde a <code>OPTIONS</code> e envia <code>Access-Control-Allow-Origin: *</code>.</p></section></div></main>{% endblock %}
+{% block title %}Benchmark global de rotas · VANO MAPS{% endblock %}
+{% block meta_description %}Página pública de benchmark global do VANO MAPS para comparar rotas, ETA, tráfego e latência em testes manuais, automações e agentes de IA.{% endblock %}
+{% block og_title %}VANO MAPS Global Benchmark{% endblock %}
+{% block legacy_map_assets %}{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-benchmark-v262.css') }}?v={{ vano_build_id }}">
+<style>
+  .bench-public-hero{padding:18px 0 8px}
+  .bench-public-brand{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .bench-public-brand img.icon{width:54px;height:54px;border-radius:16px;box-shadow:0 14px 34px rgba(245,154,98,.24)}
+  .bench-public-brand .wordmark{height:34px;width:auto;max-width:min(320px,72vw);object-fit:contain}
+  .bench-public-copy{display:grid;gap:14px;max-width:860px}
+  .bench-public-copy h1{margin:0;font-size:clamp(34px,5vw,58px);line-height:.96;letter-spacing:-2.5px}
+  .bench-public-copy p{margin:0;color:var(--muted);line-height:1.65;font-size:15px}
+  .bench-public-pills{display:flex;flex-wrap:wrap;gap:10px}
+  .bench-public-pills span{display:inline-flex;align-items:center;gap:7px;padding:10px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);font-size:12px;font-weight:760;color:#e9edf3}
+  .bench-public-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+  .bench-public-actions .btn{min-height:44px}
+  .bench-public-note{margin-top:18px;padding:14px 16px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));color:#d4dae2;display:flex;align-items:flex-start;gap:12px}
+  .bench-public-note i{color:var(--orange)}
+  .bench-public-note b{display:block;font-size:13px;margin-bottom:4px}
+  .bench-public-docs{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:20px}
+  .bench-public-docs article{border:1px solid rgba(255,255,255,.07);border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.018));padding:20px}
+  .bench-public-docs h2{margin:0 0 8px;font-size:22px;letter-spacing:-.8px}
+  .bench-public-docs p,.bench-public-docs li{color:var(--muted);line-height:1.62}
+  .bench-public-docs pre{margin:12px 0 0;white-space:pre-wrap;word-break:break-word;padding:14px 16px;border-radius:16px;background:#0c0d10;border:1px solid rgba(255,255,255,.08);font-size:12px;color:#fff;overflow:auto}
+  .bench-public-docs ul{margin:8px 0 0 18px;padding:0}
+  @media(max-width:920px){.bench-public-docs{grid-template-columns:1fr}.bench-public-brand img.icon{width:48px;height:48px}.bench-public-brand .wordmark{height:30px}}
+  @media(max-width:560px){.bench-public-note{border-radius:16px}.bench-public-pills span{font-size:11px;padding:9px 11px}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="page">
+  <section class="container bench-public-hero">
+    <div class="bench-public-brand">
+      <img class="icon" src="{{ url_for('static', filename='vano-maps-icon-192.png') }}?v={{ vano_build_id }}" alt="VANO MAPS">
+      <span class="vano-adaptive-brand">
+        <img class="vano-brand-img vano-brand-img-light wordmark" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS">
+        <img class="vano-brand-img vano-brand-img-dark wordmark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true">
+      </span>
+    </div>
+    <div class="bench-public-copy">
+      <div class="eyebrow">GLOBAL BENCHMARK · PUBLIC ROUTE LAB</div>
+      <h1>Compare o motor de rotas do VANO de forma pública, global e pronta para IA.</h1>
+      <p>Esta página foi aberta para benchmark manual e automatizado. Você pode testar origem, destino, perfis, modos de rota, latência, ETA, tráfego e geometria sem precisar de login administrativo.</p>
+      <div class="bench-public-pills">
+        <span><i data-lucide="globe" width="15"></i>Acesso público</span>
+        <span><i data-lucide="bot" width="15"></i>Útil para agentes e IAs</span>
+        <span><i data-lucide="waypoints" width="15"></i>Comparação de modos</span>
+        <span><i data-lucide="activity" width="15"></i>Latência, ETA e cache</span>
+      </div>
+      <div class="bench-public-actions">
+        <a class="btn btn-primary" href="#benchmark-global"><i data-lucide="play" width="16"></i>Executar benchmark</a>
+        <a class="btn btn-ghost" href="{{ public_site_url }}/api/benchmark/route?start_lat=-23.5505&start_lon=-46.6333&end_lat=-23.5874&end_lon=-46.6576&profile=driving" target="_blank" rel="noopener"><i data-lucide="braces" width="16"></i>Testar endpoint</a>
+        <a class="btn btn-ghost" href="{{ url_for('register') }}"><i data-lucide="user-plus" width="16"></i>Criar conta</a>
+      </div>
+    </div>
+    <div class="bench-public-note"><i data-lucide="shield-check" width="18"></i><div><b>Uso liberado para benchmark global</b><span>O laboratório abaixo usa chamadas somente leitura para comparar resposta de rota e comportamento do motor. Ideal para QA, automações, avaliações internas e agentes executando testes repetidos.</span></div></div>
+  </section>
+
+  <section id="benchmark-global" class="bench261">
+    <div class="bench261-shell">
+      <header class="bench261-head">
+        <div>
+          <span class="bench261-kicker"><i data-lucide="flask-conical" width="14"></i> VANO ROUTE LAB · GLOBAL</span>
+          <h1>Benchmark global de rotas</h1>
+          <p>Compare os modos do motor com a mesma origem e destino, medindo ETA, distância, latência, tráfego, segurança e reaproveitamento de cache.</p>
+        </div>
+        <div class="bench261-head-actions">
+          <a class="bench261-btn ghost" href="{{ url_for('index') }}"><i data-lucide="arrow-left" width="15"></i>Mapa</a>
+          <button class="bench261-btn ghost" id="exportJsonBtn" type="button" disabled><i data-lucide="braces" width="15"></i>JSON</button>
+          <button class="bench261-btn ghost" id="exportCsvBtn" type="button" disabled><i data-lucide="download" width="15"></i>CSV</button>
+        </div>
+      </header>
+
+      <section class="bench261-grid">
+        <aside class="bench261-panel bench261-controls">
+          <header class="bench261-panel-head">
+            <div><span>CONFIGURAÇÃO</span><h2>Cenário de teste</h2></div>
+            <button class="bench261-icon-btn" id="resetBenchBtn" type="button" title="Limpar resultados" aria-label="Limpar resultados"><i data-lucide="rotate-ccw" width="16"></i></button>
+          </header>
+
+          <div class="bench261-presets" aria-label="Cenários rápidos">
+            <button type="button" data-preset="morumbi-paulista">Morumbi → Paulista</button>
+            <button type="button" data-preset="congonhas-paulista">Congonhas → Paulista</button>
+            <button type="button" data-preset="faria-ibirapuera">Faria Lima → Ibirapuera</button>
+          </div>
+
+          <div class="bench261-field-group">
+            <label class="bench261-field">
+              <span>Origem</span>
+              <div class="bench261-input-row">
+                <input id="originInput" type="text" autocomplete="off" inputmode="text" spellcheck="false" placeholder="Endereço ou lat,lon" value="Morumbi Shopping, São Paulo">
+                <button type="button" class="bench261-locate" id="useLocationBtn" title="Usar minha posição" aria-label="Usar minha posição como origem"><i data-lucide="crosshair" width="16"></i></button>
+              </div>
+              <small id="originResolved">Ainda não resolvida</small>
+            </label>
+            <label class="bench261-field">
+              <span>Destino</span>
+              <input id="destinationInput" type="text" autocomplete="off" inputmode="text" spellcheck="false" placeholder="Endereço ou lat,lon" value="Av. Paulista, 1578, São Paulo">
+              <small id="destinationResolved">Ainda não resolvido</small>
+            </label>
+          </div>
+
+          <div class="bench261-two-cols">
+            <label class="bench261-field"><span>Perfil</span><select id="profileSelect"><option value="driving">Carro</option><option value="motorcycle">Moto</option><option value="cycling">Bicicleta</option><option value="walking">A pé</option></select></label>
+            <label class="bench261-field"><span>Execuções / modo</span><select id="runsSelect"><option value="1">1 execução</option><option value="2" selected>2 execuções</option><option value="3">3 execuções</option><option value="4">4 execuções</option><option value="6">6 execuções</option><option value="10">10 execuções</option></select></label>
+          </div>
+
+          <div class="bench261-block">
+            <div class="bench261-block-title"><span>Modos</span><small>Selecione o que comparar</small></div>
+            <div class="bench261-mode-grid">
+              <label><input type="checkbox" name="benchMode" value="fastest" checked><span><i data-lucide="zap" width="15"></i><b>Rápida</b><small>ETA primeiro</small></span></label>
+              <label><input type="checkbox" name="benchMode" value="smart" checked><span><i data-lucide="sparkles" width="15"></i><b>VANO</b><small>equilíbrio</small></span></label>
+              <label><input type="checkbox" name="benchMode" value="safest" checked><span><i data-lucide="shield-check" width="15"></i><b>Segura</b><small>risco primeiro</small></span></label>
+              <label><input type="checkbox" name="benchMode" value="quietest"><span><i data-lucide="leaf" width="15"></i><b>Tranquila</b><small>menos fluxo</small></span></label>
+            </div>
+          </div>
+
+          <div class="bench261-two-cols">
+            <label class="bench261-field"><span>Variant budget</span><select id="variantBudget"><option>2</option><option selected>4</option><option>6</option><option>8</option></select></label>
+            <label class="bench261-switch"><input id="adaptiveToggle" type="checkbox" checked><span></span><div><b>Adaptive routing</b><small>gerar variantes</small></div></label>
+          </div>
+
+          <details class="bench261-details">
+            <summary>Preferências avançadas <i data-lucide="chevron-down" width="15"></i></summary>
+            <div class="bench261-checks">
+              <label><input id="avoidTolls" type="checkbox"><span>Evitar pedágios</span></label>
+              <label><input id="avoidUnpaved" type="checkbox"><span>Evitar não pavimentadas</span></label>
+              <label><input id="avoidFerries" type="checkbox"><span>Evitar balsas</span></label>
+            </div>
+          </details>
+
+          <div class="bench261-run-row"><button class="bench261-run" id="runBenchmarkBtn" type="button"><i data-lucide="play" width="17"></i><span>Executar benchmark</span></button><button class="bench261-btn ghost" id="cancelBenchmarkBtn" type="button" hidden><i data-lucide="square" width="15"></i>Cancelar</button></div>
+          <div class="bench261-progress" id="benchProgress" hidden><div><span id="benchProgressText">Preparando…</span><b id="benchProgressCount">0/0</b></div><progress id="benchProgressBar" value="0" max="1"></progress></div>
+          <div class="bench261-message" id="benchMessage" aria-live="polite"></div>
+        </aside>
+
+        <section class="bench261-main">
+          <div class="bench261-summary" id="summaryCards">
+            <article><span class="summary-icon"><i data-lucide="timer" width="17"></i></span><div><small>LATÊNCIA MEDIANA</small><b id="summaryLatency">—</b><em>round-trip do navegador</em></div></article>
+            <article><span class="summary-icon"><i data-lucide="clock-3" width="17"></i></span><div><small>MELHOR ETA</small><b id="summaryEta">—</b><em id="summaryEtaMode">aguardando teste</em></div></article>
+            <article><span class="summary-icon"><i data-lucide="circle-check-big" width="17"></i></span><div><small>SUCESSO</small><b id="summarySuccess">—</b><em id="summarySuccessDetail">sem execuções</em></div></article>
+            <article><span class="summary-icon"><i data-lucide="route" width="17"></i></span><div><small>CANDIDATOS</small><b id="summaryCandidates">—</b><em>média por resposta</em></div></article>
+          </div>
+
+          <article class="bench261-map-card">
+            <header><div><span>VISUALIZAÇÃO</span><h2>Rotas selecionadas</h2></div><div class="bench261-legend"><span class="fastest"><i></i>Rápida</span><span class="smart"><i></i>VANO</span><span class="safest"><i></i>Segura</span><span class="quietest"><i></i>Tranquila</span></div></header>
+            <div id="benchmarkMap" class="bench261-map"><div class="bench261-map-empty" id="mapEmpty"><i data-lucide="map" width="26"></i><b>Execute um benchmark</b><span>As rotas selecionadas aparecerão aqui.</span></div></div>
+          </article>
+
+          <article class="bench261-results-card">
+            <header class="bench261-results-head"><div><span>RESULTADOS</span><h2>Comparativo</h2></div><div id="resultMeta" class="bench261-result-meta">0 execuções</div></header>
+            <div class="bench261-mode-summary" id="modeSummary"></div>
+            <div class="bench261-table-wrap">
+              <table class="bench261-table">
+                <caption class="sr-only">Resultados do benchmark de rotas</caption>
+                <thead><tr><th>Modo</th><th>Run</th><th>Latência</th><th>ETA</th><th>Distância</th><th>Tráfego</th><th>Segurança</th><th>Score VANO</th><th>Candidatos</th><th>Provider</th><th>Cache</th><th>Status</th></tr></thead>
+                <tbody id="benchmarkTableBody"><tr class="bench261-empty-row"><td colspan="12">Nenhum benchmark executado.</td></tr></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </section>
+    </div>
+  </section>
+
+  <section class="container bench-public-docs">
+    <article>
+      <h2>Endpoint público</h2>
+      <p>Além da interface visual, o benchmark do VANO expõe um endpoint público pensado para automações e agentes executarem chamadas rápidas de comparação.</p>
+      <pre>GET {{ public_site_url }}/api/benchmark/route?start_lat=-23.5505&start_lon=-46.6333&end_lat=-23.5874&end_lon=-46.6576&profile=driving</pre>
+      <ul>
+        <li><code>profile</code>: <code>driving</code>, <code>motorcycle</code>, <code>walking</code> ou <code>cycling</code>.</li>
+        <li><code>include_geometry=1</code> quando você realmente precisar da geometria completa.</li>
+        <li>O endpoint é somente leitura e adequado para suites de QA e benchmark.</li>
+      </ul>
+    </article>
+    <article>
+      <h2>Como usar com IA</h2>
+      <p>Você pode apontar um agente para esta página para preencher cenários, coletar JSON/CSV e comparar múltiplas execuções. A página já oferece presets, exportação e métricas consolidadas.</p>
+      <ul>
+        <li>Use a mesma origem/destino para reduzir ruído entre modos.</li>
+        <li>Execute múltiplas rodadas para medir latência mediana e p95.</li>
+        <li>Compare cache, geometria válida, ETA e score VANO.</li>
+      </ul>
+    </article>
+  </section>
+</main>
+<script>window.VANO_BENCHMARK_BOOT={{ {'token': mapbox_token, 'style': mapbox_style, 'csrf': csrf_token(), 'build': vano_build_id}|tojson }};</script>
+{% endblock %}
+{% block scripts %}
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js"></script>
+<script src="{{ url_for('static', filename='vano-benchmark-v262.js') }}?v={{ vano_build_id }}"></script>
+{% endblock %}

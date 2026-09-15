@@ -8802,7 +8802,12 @@ def seo_waze_alternative():
 
 @app.route("/benchmark-de-rotas")
 def route_benchmark_page():
-    return render_template("benchmark_de_rotas.html")
+    """Public route lab for global benchmarking, QA and agent access."""
+    return render_template(
+        "benchmark_de_rotas.html",
+        mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
+        mapbox_style=MAPBOX_STYLE_NIGHT or MAPBOX_STYLE_DAY,
+    )
 
 
 @app.route("/excluir-conta")

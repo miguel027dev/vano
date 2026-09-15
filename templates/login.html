@@ -408,6 +408,20 @@
       .auth-page[data-auth-page="login"] .vano-auth-tagline{font-size:10px!important}
     }
 
+  
+    /* V321 — login entry rebuild additions */
+    .entry-utility-strip{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;max-width:580px}
+    .entry-utility-strip span{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:999px;border:1px solid var(--line-strong);background:#fff;color:#5f6777;font-size:10px;font-weight:840;box-shadow:0 8px 18px rgba(39,35,31,.04)}
+    .auth-extra-actions{display:grid;gap:9px;margin-top:10px}
+    .benchmark-link{min-height:48px;border-radius:14px;border:1px solid #eadfd6;background:linear-gradient(180deg,#fff8f2,#fff1e6);display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:850;color:#ab5b2d;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+    .benchmark-link:hover{transform:translateY(-1px);box-shadow:0 12px 24px rgba(217,112,63,.12)}
+    .benchmark-chip-card{position:absolute;right:22px;bottom:22px;z-index:12;width:min(220px,calc(100% - 28px));padding:13px 14px;border-radius:17px;background:rgba(255,255,255,.94);border:1px solid rgba(225,226,234,.96);box-shadow:0 16px 36px rgba(39,35,31,.10)}
+    .benchmark-chip-card small{display:block;color:var(--brand);font-size:9px;font-weight:900;letter-spacing:.12em}
+    .benchmark-chip-card b{display:block;margin-top:5px;font-size:14px;letter-spacing:-.2px}
+    .benchmark-chip-card span{display:block;margin-top:4px;color:var(--muted);font-size:11px;line-height:1.45}
+    @media (max-width:820px){.benchmark-chip-card{display:none}.entry-utility-strip{margin-top:14px}}
+    @media (max-width:560px){.entry-utility-strip{display:none}.benchmark-link{min-height:46px;font-size:11.5px}}
+
   </style>
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-login-page-v230.css') }}?v={{ vano_build_id }}">
   
@@ -432,7 +446,8 @@
         <div class="auth-copy">
           <div class="eyebrow">Uma rota que reage</div>
           <h1>O trânsito muda.<span>Sua rota também.</span></h1>
-          <p class="lead">Encontre caminhos alternativos, micro-rotas e desvios úteis quando a cidade trava — sem transformar o mapa em uma tela cheia de distrações.</p>
+          <p class="lead">Encontre caminhos alternativos, micro-rotas e desvios úteis quando a cidade trava — sem transformar o mapa em uma tela cheia de distrações. A entrada foi polida para funcionar direito em todos os modelos de aparelho.</p>
+          <div class="entry-utility-strip"><span><i data-lucide="smartphone" width="13"></i>Responsivo real</span><span><i data-lucide="languages" width="13"></i>Conta personalizada</span><span><i data-lucide="flask-conical" width="13"></i>Benchmark global</span><span><i data-lucide="bot" width="13"></i>Pronto para IA</span></div>
 
           {% if request.args.get('logged_out') %}
           <div class="status-note">
@@ -459,10 +474,10 @@
             </button>
 
             <div class="auth-links">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet">Criar conta</a></div>
-            <a class="guest-link" href="{{ url_for('index') }}">
+            <div class="auth-extra-actions"><a class="benchmark-link" href="{{ url_for('route_benchmark_page') }}"><i data-lucide="flask-conical" width="16"></i>Benchmark global do VANO</a><a class="guest-link" href="{{ url_for('index') }}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg>
               Explorar o mapa sem conta
-            </a>
+            </a></div>
           </div>
         </div>
 
@@ -504,6 +519,7 @@
           <b>Trânsito forte à frente</b><span>VANO MAPS encontrou uma alternativa por vias laterais.</span><div class="reroute-line"><i></i></div>
         </div>
 
+        <div class="benchmark-chip-card"><small>GLOBAL ROUTE LAB</small><b>Benchmark liberado</b><span>Teste ETA, latência, tráfego e geometria em uma página pública pronta para automação.</span></div>
         <div class="route-summary">
           <div class="summary-kicker"><span>Trajeto adaptado</span><span>−8 min</span></div>
           <h2>Morumbi → Av. Paulista</h2>

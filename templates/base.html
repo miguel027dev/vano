@@ -150,7 +150,7 @@
         <a class="{% if vano_endpoint in ['index','map_page'] %}active{% endif %}" href="{{ url_for('map_page') }}">Rotas</a><a class="{% if vano_endpoint == 'alerts_page' %}active{% endif %}" href="{{ url_for('alerts_page') }}">Alertas</a><a class="{% if vano_endpoint == 'report_page' %}active{% endif %}" href="{{ url_for('report_page') }}">Denunciar</a><a class="{% if vano_endpoint == 'profile' %}active{% endif %}" href="{{ url_for('profile') }}">Perfil</a>
         {% if current_user['role']=='admin' %}<a class="{% if vano_endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>{% endif %}
       {% else %}
-        <a href="{{ url_for('about') }}">Como funciona</a><a href="#recursos">Recursos</a>
+        <a href="{{ url_for('about') }}">Como funciona</a><a href="#recursos">Recursos</a><a href="{{ url_for('route_benchmark_page') }}">Benchmark</a>
       {% endif %}
     </div>
     <div class="nav-actions">
@@ -172,7 +172,7 @@
 {% block content %}{% endblock %}
 {% if current_user and not vano_admin_surface %}<nav class="mobile-dock {% if current_user['role']=='admin' %}admin-dock{% endif %}" aria-label="Navegação mobile"><a href="{{ url_for('map_page') }}"><i data-lucide="map"></i><span>Rotas</span></a><a href="{{ url_for('alerts_page') }}"><i data-lucide="siren"></i><span>Alertas</span></a><a href="{{ url_for('report_page') }}"><i data-lucide="plus-circle"></i><span>Denunciar</span></a><a href="{{ url_for('profile') }}"><i data-lucide="user"></i><span>Perfil</span></a>{% if current_user['role']=='admin' %}<a href="{{ url_for('admin_dashboard') }}"><i data-lucide="server-cog"></i><span>Admin</span></a>{% endif %}</nav>{% endif %}
 
-<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('about') }}">Como funciona</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a> · <a href="{{ url_for('account_delete_page') }}">Excluir conta</a></span></div></footer>
+<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('about') }}">Como funciona</a> · <a href="{{ url_for('route_benchmark_page') }}">Benchmark</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a> · <a href="{{ url_for('account_delete_page') }}">Excluir conta</a></span></div></footer>
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
 <script src="{{ url_for('static', filename='vano-runtime-v262.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
