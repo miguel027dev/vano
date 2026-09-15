@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Acessar VANO MAPS — escolha como navegar{% endblock %}
+{% block meta_description %}Abra o VANO MAPS no Android, iPhone ou navegador. Acompanhe a contagem regressiva para o aplicativo Android.{% endblock %}
+{% block final_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-access-v319.css') }}?v={{ vano_build_id }}-319">{% endblock %}
+{% block content %}
+<main class="access-page">
+  <header class="access-header">
+    <a class="access-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS — abrir mapa"><img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}" width="40" height="40" alt=""><span>VANO<span class="access-brand-light"> MAPS</span></span></a>
+    <a class="access-back" href="{{ url_for('index') }}">Abrir mapa <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>
+  </header>
+  <section class="access-intro" aria-labelledby="access-title">
+    <span class="access-eyebrow"><span aria-hidden="true"></span> Seu próximo caminho começa aqui</span>
+    <h1 id="access-title">Seu destino.<br><span>Do seu jeito.</span></h1>
+    <p>Escolha como usar o VANO MAPS.<br>O mapa já está disponível no seu navegador.</p>
+  </section>
+  <section class="access-options" aria-label="Escolha como acessar o VANO">
+    <article class="access-card access-android" aria-labelledby="android-title">
+      <div class="access-card-top"><span class="access-platform-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="m7 3 1.5 2.5M17 3l-1.5 2.5M5 12a7 7 0 0 1 14 0v6H5zM3 12v5M21 12v5M8 18v3M16 18v3"/><path d="M8.5 9h.01M15.5 9h.01" stroke-width="2.8"/></svg></span><span class="access-badge access-badge-soon">Em breve</span></div>
+      <h2 id="android-title">App Android</h2>
+      <p>O aplicativo está chegando.<br>Conte os dias com a gente.</p>
+      <div class="access-countdown" id="androidCountdown" role="timer" aria-live="off" aria-label="Contagem regressiva para a previsão do app Android" data-release-at="{{ release_at }}" data-server-now="{{ server_now_ms }}" {% if not release_pending %}hidden{% endif %}>
+        {% for label in ['dias', 'horas', 'min', 'seg'] %}<div><strong data-countdown-part="{{ loop.index0 }}">{{ '%02d'|format(countdown[loop.index0]) }}</strong><span>{{ label }}</span></div>{% endfor %}
+      </div>
+      <p class="access-release-date">Previsão: <time datetime="{{ release_at }}">{{ release_label }}</time></p>
+      <div class="access-card-bottom"><button class="access-action access-action-disabled" type="button" disabled aria-describedby="androidStatus"><i data-lucide="clock-3" aria-hidden="true"></i>Ainda não disponível</button><p id="androidStatus" class="access-note" role="status">{% if release_pending %}Enquanto isso, use o site normalmente.{% else %}A previsão chegou. Aguarde a confirmação de disponibilidade.{% endif %}</p></div>
+      <noscript><p class="access-note">Previsão de lançamento: {{ release_label }}. Ative o JavaScript para acompanhar a contagem ao vivo.</p></noscript>
+    </article>
+    <article class="access-card" aria-labelledby="iphone-title">
+      <div class="access-card-top"><span class="access-platform-icon" aria-hidden="true"><i data-lucide="smartphone"></i></span><span class="access-badge">Disponível na web</span></div>
+      <h2 id="iphone-title">iPhone</h2>
+      <p>Abra no navegador do seu iPhone e comece a explorar o mapa.</p>
+      <div class="access-feature"><i data-lucide="compass" aria-hidden="true"></i><span>Sem precisar instalar.<br><strong>Toque e comece.</strong></span></div>
+      <div class="access-card-bottom"><a class="access-action" href="{{ url_for('index') }}">Acessar no iPhone<i data-lucide="arrow-up-right" aria-hidden="true"></i></a><p class="access-note">Você será direcionado para o site.</p></div>
+    </article>
+    <article class="access-card" aria-labelledby="web-title">
+      <div class="access-card-top"><span class="access-platform-icon" aria-hidden="true"><i data-lucide="globe-2"></i></span><span class="access-badge">Disponível agora</span></div>
+      <h2 id="web-title">Site</h2>
+      <p>Seu mapa no celular, tablet ou computador. É só abrir e usar.</p>
+      <div class="access-feature"><i data-lucide="route" aria-hidden="true"></i><span>Uma nova forma de ir.<br><strong>Onde você estiver.</strong></span></div>
+      <div class="access-card-bottom"><a class="access-action access-action-primary" href="{{ url_for('index') }}">Acessar o site<i data-lucide="arrow-right" aria-hidden="true"></i></a><p class="access-note">Acesso direto ao mapa do VANO.</p></div>
+    </article>
+  </section>
+  <footer class="access-footer"><span>VANO MAPS · Seu caminho, mais simples.</span><nav aria-label="Informações"><a href="{{ url_for('help_page') }}">Ajuda</a><a href="{{ url_for('privacy_policy') }}">Privacidade</a></nav></footer>
+</main>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-access-v319.js') }}?v={{ vano_build_id }}-319" defer></script>{% endblock %}

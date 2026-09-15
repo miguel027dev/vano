@@ -36,12 +36,12 @@ from db_backend import connect_db, table_columns, IntegrityError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import (
     Flask, render_template, request, redirect, url_for, session,
-    flash, jsonify, g, abort, has_request_context, has_app_context
+    flash, jsonify, g, abort, has_request_context, has_app_context, make_response
 )
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "318.0.0").strip() or "318.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "319.0.0").strip() or "319.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -76,10 +76,11 @@ SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "1").strip().lower() not in {"0","
 SEO_INDEXABLE_ENDPOINTS = {
     "index", "about", "sobre", "help_page", "privacy_policy", "terms_of_use",
     "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "route_benchmark_page",
-    "account_delete_page",
+    "account_delete_page", "access_page",
 }
 SEO_CANONICAL_PATHS = {
     "index": "/",
+    "access_page": "/acessar",
     "about": "/about",
     "sobre": "/sobre",
     "help_page": "/help",
@@ -3039,7 +3040,7 @@ def enforce_profile_onboarding():
     endpoint = request.endpoint or ""
     allowed = {
         "onboarding", "logout", "google_login", "google_callback", "login", "register",
-        "healthz", "static", "frame_test", "embed",
+        "healthz", "static", "frame_test", "embed", "access_page",
         "mobile_bootstrap", "mobile_navigation_config", "mobile_navigation_batch", "mobile_health",
     }
     if endpoint in allowed or endpoint.startswith("static"):
@@ -7623,6 +7624,35 @@ def embed_entry():
 # -----------------------------
 # Pages
 # -----------------------------
+
+@app.route("/acessar", strict_slashes=False)
+def access_page():
+    # One public deadline, never Date.now()+8 days per visitor or worker restart.
+    # Override with an ISO 8601 timestamp including its timezone when rescheduling.
+    default_release = "2026-09-23T00:00:00-03:00"
+    raw_release = os.environ.get("VANO_ANDROID_RELEASE_AT", default_release).strip()
+    try:
+        release_at = datetime.fromisoformat(raw_release.replace("Z", "+00:00"))
+        if release_at.tzinfo is None:
+            raise ValueError("A timezone is required")
+    except (ValueError, TypeError, OverflowError):
+        app.logger.warning("Invalid VANO_ANDROID_RELEASE_AT; using the scheduled release date")
+        release_at = datetime.fromisoformat(default_release)
+    now = datetime.now(timezone.utc)
+    seconds = max(0, math.ceil((release_at - now).total_seconds()))
+    days, rest = divmod(seconds, 86400)
+    hours, rest = divmod(rest, 3600)
+    minutes, seconds = divmod(rest, 60)
+    response = make_response(render_template(
+        "acessar.html", release_at=release_at.isoformat(),
+        release_label=release_at.astimezone(timezone(timedelta(hours=-3))).strftime("%d/%m/%Y"),
+        server_now_ms=int(now.timestamp() * 1000),
+        countdown=(days, hours, minutes, seconds),
+        release_pending=release_at > now,
+    ))
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 @app.route("/")
 def index():
