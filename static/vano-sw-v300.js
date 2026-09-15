@@ -1,7 +1,7 @@
-/* VANO MAPS V319 — responsive map interface and access page. */
-const BUILD='319.0.0-responsive';
-const CACHE=`vano-maps-v319-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v319-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V320 — navigation HUD and camera finish. */
+const BUILD='320.0.0-navigation-finish';
+const CACHE=`vano-maps-v320-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v320-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
