@@ -1,8 +1,8 @@
 /* VANO MAPS V268 — route controls, personalization and admin polish.
    Animations are compositor-friendly (opacity/transform) and disabled for reduced motion. */
 :root{
-  --v268-accent:#F59A62;
-  --v268-accent-2:#D9703F;
+  --v268-accent:#FF7A00;
+  --v268-accent-2:#FF3D00;
   --v268-cream:#FFF7F0;
   --v268-ink:#27231F;
   --v268-muted:#756D67;
@@ -68,8 +68,8 @@ body.body-nav #activeNav .nav-summary-item{
 }
 body.body-nav #activeNav .nav-summary-primary{
   background:linear-gradient(145deg,#FFF1E7,#FFFBF8)!important;
-  border-color:rgba(245,154,98,.22)!important;
-  box-shadow:0 9px 22px rgba(217,112,63,.095),inset 0 1px 0 rgba(255,255,255,.95)!important;
+  border-color:rgba(255,122,0,.22)!important;
+  box-shadow:0 9px 22px rgba(255,61,0,.095),inset 0 1px 0 rgba(255,255,255,.95)!important;
 }
 body.body-nav #activeNav .nav-summary-item strong{font-size:16px!important;letter-spacing:-.035em!important}
 body.body-nav #activeNav .nav-summary-primary strong{font-size:21px!important;color:var(--v268-accent-2)!important}
@@ -92,7 +92,7 @@ body.body-nav #activeNav .reroute{
   border-radius:24px!important;
   border-color:rgba(67,54,46,.075)!important;
   background:
-    radial-gradient(circle at 94% 2%,rgba(245,154,98,.20),rgba(245,154,98,0) 34%),
+    radial-gradient(circle at 94% 2%,rgba(255,122,0,.20),rgba(255,122,0,0) 34%),
     linear-gradient(150deg,#FFFFFF 0%,#FFF8F3 58%,#FFFCFA 100%)!important;
   box-shadow:0 18px 40px rgba(71,46,29,.09),inset 0 1px 0 rgba(255,255,255,.94)!important;
   contain:paint;
@@ -102,16 +102,16 @@ body.body-nav #activeNav .reroute{
 #routeState.vano-route-studio .route-time{
   min-width:102px!important;
   padding:13px 12px!important;
-  border:1px solid rgba(245,154,98,.19)!important;
+  border:1px solid rgba(255,122,0,.19)!important;
   border-radius:20px!important;
   background:linear-gradient(180deg,#fff,#FFF1E7)!important;
-  box-shadow:0 10px 25px rgba(217,112,63,.09)!important;
+  box-shadow:0 10px 25px rgba(255,61,0,.09)!important;
 }
 #routeState.vano-route-studio .route-time span{font-size:31px!important;line-height:.98!important;letter-spacing:-.055em!important}
 #routeState.vano-route-studio .route-time small{font-size:10.5px!important;margin-top:5px!important}
 #routeState .vano-route-decision{
   padding:7px 10px!important;
-  border:1px solid rgba(245,154,98,.13)!important;
+  border:1px solid rgba(255,122,0,.13)!important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7)!important;
 }
 #routeState .vano-route-mode-row .segment{
@@ -143,9 +143,9 @@ body.body-nav #activeNav .reroute{
 #routeState .route-variant:active{transform:scale(.985)!important}
 #routeState .route-variant.active{
   transform:translate3d(0,-1px,0)!important;
-  border-color:rgba(245,154,98,.30)!important;
+  border-color:rgba(255,122,0,.30)!important;
   background:linear-gradient(180deg,#FFF9F5,#FFF0E5)!important;
-  box-shadow:0 15px 30px rgba(217,112,63,.12)!important;
+  box-shadow:0 15px 30px rgba(255,61,0,.12)!important;
 }
 #routeState .route-variant b{font-size:20px!important;letter-spacing:-.04em!important}
 #routeState .route-variant span{font-size:10.8px!important;font-weight:790!important}
@@ -154,7 +154,7 @@ body.body-nav #activeNav .reroute{
   min-height:68px!important;
   margin-top:4px!important;
   border-radius:22px!important;
-  box-shadow:0 18px 39px rgba(217,112,63,.27),inset 0 1px 0 rgba(255,255,255,.62),inset 0 -1px 0 rgba(132,59,26,.11)!important;
+  box-shadow:0 18px 39px rgba(255,61,0,.27),inset 0 1px 0 rgba(255,255,255,.62),inset 0 -1px 0 rgba(132,59,26,.11)!important;
   will-change:transform;
 }
 #routeState .start-trip-cta:hover{transform:translate3d(0,-2px,0)!important}
@@ -188,7 +188,7 @@ body.body-nav #activeNav .reroute{
 .ws-app .prefs-drawer.prefs-drawer-v251 .prefs-head-icon{
   background:linear-gradient(145deg,#FFF1E7,#FFE2D0)!important;
   color:var(--v268-accent-2)!important;
-  box-shadow:0 8px 20px rgba(217,112,63,.12),inset 0 1px 0 rgba(255,255,255,.8)!important;
+  box-shadow:0 8px 20px rgba(255,61,0,.12),inset 0 1px 0 rgba(255,255,255,.8)!important;
 }
 .ws-app .prefs-drawer.prefs-drawer-v251 .prefs-head h3{font-size:22px!important;letter-spacing:-.65px!important}
 .ws-app .prefs-drawer.prefs-drawer-v251 .prefs-head p{font-size:10.5px!important;line-height:1.4!important}
@@ -204,7 +204,7 @@ body.body-nav #activeNav .reroute{
   gap:6px;
   margin:0 0 14px;
   padding:8px;
-  border:1px solid rgba(245,154,98,.12);
+  border:1px solid rgba(255,122,0,.12);
   border-radius:16px;
   background:linear-gradient(135deg,rgba(255,240,230,.86),rgba(255,255,255,.74));
 }
@@ -233,50 +233,50 @@ body.body-nav #activeNav .reroute{
   box-shadow:0 5px 14px rgba(34,28,24,.035),inset 0 1px 0 rgba(255,255,255,.92)!important;
   transition:transform .16s ease,border-color .18s ease,box-shadow .18s ease,background .18s ease!important;
 }
-.ws-app .prefs-drawer.prefs-drawer-v251 .pref-row:hover{transform:translate3d(0,-1px,0);border-color:rgba(245,154,98,.16)!important}
+.ws-app .prefs-drawer.prefs-drawer-v251 .pref-row:hover{transform:translate3d(0,-1px,0);border-color:rgba(255,122,0,.16)!important}
 .ws-app .prefs-drawer.prefs-drawer-v251 .pref-row:has(.pref-switch:checked){
-  border-color:rgba(245,154,98,.18)!important;
+  border-color:rgba(255,122,0,.18)!important;
   background:linear-gradient(180deg,#FFFBF8,#FFF4EC)!important;
 }
 .ws-app .prefs-drawer.prefs-drawer-v251 .pref-switch{box-shadow:inset 0 0 0 1px rgba(50,44,40,.04)!important}
-.ws-app .prefs-drawer.prefs-drawer-v251 .pref-switch:checked{box-shadow:0 5px 13px rgba(217,112,63,.18)!important}
+.ws-app .prefs-drawer.prefs-drawer-v251 .pref-switch:checked{box-shadow:0 5px 13px rgba(255,61,0,.18)!important}
 .ws-app .prefs-drawer.prefs-drawer-v251 .voice-select{box-shadow:inset 0 1px 0 rgba(255,255,255,.75)!important}
-.ws-app .prefs-drawer.prefs-drawer-v251 .prefs-foot{padding:10px 11px!important;border-radius:13px!important;background:rgba(245,154,98,.075)!important;color:#88634D!important}
+.ws-app .prefs-drawer.prefs-drawer-v251 .prefs-foot{padding:10px 11px!important;border-radius:13px!important;background:rgba(255,122,0,.075)!important;color:#88634D!important}
 
 /* The planner's Personalizar card is now a distinct premium shortcut. */
 body:not(.body-nav) #planSheet .planner-preset-personalize{
   position:relative!important;
   overflow:hidden!important;
-  border-color:rgba(245,154,98,.18)!important;
+  border-color:rgba(255,122,0,.18)!important;
   background:
-    radial-gradient(circle at 96% -10%,rgba(245,154,98,.16),transparent 42%),
+    radial-gradient(circle at 96% -10%,rgba(255,122,0,.16),transparent 42%),
     linear-gradient(145deg,#FFF9F5,#FFF1E7)!important;
-  box-shadow:0 9px 22px rgba(217,112,63,.08)!important;
+  box-shadow:0 9px 22px rgba(255,61,0,.08)!important;
 }
 body:not(.body-nav) #planSheet .planner-preset-personalize .planner-preset-icon{
-  background:linear-gradient(145deg,#F59A62,#D9703F)!important;
+  background:linear-gradient(145deg,#FF7A00,#FF3D00)!important;
   color:#fff!important;
-  box-shadow:0 7px 17px rgba(217,112,63,.20)!important;
+  box-shadow:0 7px 17px rgba(255,61,0,.20)!important;
 }
 body:not(.body-nav) #planSheet .planner-preset-personalize b{color:#633923!important}
 body:not(.body-nav) #planSheet .planner-personalize-badge{
   position:absolute;right:7px;top:7px;
   min-width:28px;height:17px;padding:0 6px;border-radius:999px;
   display:flex;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.86);border:1px solid rgba(245,154,98,.16);
+  background:rgba(255,255,255,.86);border:1px solid rgba(255,122,0,.16);
   color:#B05B2F;font-size:6.5px;font-weight:950;font-style:normal;letter-spacing:.09em;
 }
 body:not(.body-nav) #planSheet .planner-adjust-btn{
-  border-color:rgba(245,154,98,.10)!important;
+  border-color:rgba(255,122,0,.10)!important;
   background:linear-gradient(180deg,#FFF9F5,#FFF0E5)!important;
   color:#C1683A!important;
-  box-shadow:0 7px 18px rgba(217,112,63,.08)!important;
+  box-shadow:0 7px 18px rgba(255,61,0,.08)!important;
 }
 
 /* ---------- Admin command center ---------- */
 body.vano-route-admin-dashboard .admin240{
   background:
-    radial-gradient(circle at 12% 0%,rgba(245,154,98,.08),transparent 28%),
+    radial-gradient(circle at 12% 0%,rgba(255,122,0,.08),transparent 28%),
     linear-gradient(180deg,#F8F7F5 0%,#F3F4F6 55%,#F6F7F8 100%)!important;
 }
 body.vano-route-admin-dashboard .admin240-shell{max-width:1460px!important}
@@ -289,12 +289,12 @@ body.vano-route-admin-dashboard .admin240-topbar{
 }
 body.vano-route-admin-dashboard .admin240-topbar::after{
   content:"";position:absolute;right:-80px;top:-100px;width:240px;height:240px;border-radius:50%;
-  background:radial-gradient(circle,rgba(245,154,98,.14),transparent 68%);pointer-events:none;
+  background:radial-gradient(circle,rgba(255,122,0,.14),transparent 68%);pointer-events:none;
 }
 body.vano-route-admin-dashboard .admin240-logo{
-  background:linear-gradient(145deg,#FFC39B,#F59A62 60%,#D9703F)!important;
+  background:linear-gradient(145deg,#FFA552,#FF7A00 60%,#FF3D00)!important;
   color:#fff!important;
-  box-shadow:0 9px 22px rgba(217,112,63,.20)!important;
+  box-shadow:0 9px 22px rgba(255,61,0,.20)!important;
 }
 body.vano-route-admin-dashboard .admin240-brand h1{font-size:32px!important;letter-spacing:-1.25px!important}
 body.vano-route-admin-dashboard .admin240-brand p{max-width:620px!important;color:#78818F!important}
@@ -315,9 +315,9 @@ body.vano-route-admin-dashboard .admin240-nav a{
 }
 body.vano-route-admin-dashboard .admin240-nav a:hover{
   transform:translate3d(0,-2px,0)!important;
-  border-color:rgba(245,154,98,.22)!important;
+  border-color:rgba(255,122,0,.22)!important;
   background:#FFF8F3!important;
-  box-shadow:0 12px 26px rgba(217,112,63,.075)!important;
+  box-shadow:0 12px 26px rgba(255,61,0,.075)!important;
 }
 .admin268-command-strip{
   display:grid;grid-template-columns:1.35fr repeat(3,minmax(0,.72fr)) auto;
@@ -334,7 +334,7 @@ body.vano-route-admin-dashboard .admin240-nav a:hover{
 .admin268-command-strip b{font-size:11px;color:#303846}
 .admin268-command-live i{width:7px;height:7px;border-radius:50%;background:#38B979;box-shadow:0 0 0 4px rgba(56,185,121,.10)}
 .admin268-command-live span{font-size:10px;font-weight:850;color:#3E6654}
-.admin268-command-strip>a{justify-content:center;font-size:10px;font-weight:850;color:#B45D31;background:#FFF3EB;border-color:rgba(245,154,98,.14)}
+.admin268-command-strip>a{justify-content:center;font-size:10px;font-weight:850;color:#B45D31;background:#FFF3EB;border-color:rgba(255,122,0,.14)}
 body.vano-route-admin-dashboard .admin240-overview{gap:10px!important}
 body.vano-route-admin-dashboard .admin240-kpi{
   border-radius:19px!important;
@@ -344,10 +344,10 @@ body.vano-route-admin-dashboard .admin240-kpi{
   transition:transform .18s var(--v268-ease),box-shadow .18s ease,border-color .18s ease!important;
   contain:paint;
 }
-body.vano-route-admin-dashboard .admin240-kpi:hover{transform:translate3d(0,-2px,0);box-shadow:0 14px 32px rgba(38,45,73,.065)!important;border-color:rgba(245,154,98,.12)!important}
+body.vano-route-admin-dashboard .admin240-kpi:hover{transform:translate3d(0,-2px,0);box-shadow:0 14px 32px rgba(38,45,73,.065)!important;border-color:rgba(255,122,0,.12)!important}
 body.vano-route-admin-dashboard .admin240-kpi.primary{
   background:linear-gradient(145deg,#FFF5ED,#fff)!important;
-  border-color:rgba(245,154,98,.19)!important;
+  border-color:rgba(255,122,0,.19)!important;
 }
 body.vano-route-admin-dashboard .admin240-card{
   border-radius:22px!important;
@@ -359,7 +359,7 @@ body.vano-route-admin-dashboard .admin240-health,
 body.vano-route-admin-dashboard .admin240-product{min-height:100%;contain:layout paint}
 body.vano-route-admin-dashboard .admin240-progress{height:7px!important;background:#EFF1F4!important;border-radius:999px!important;overflow:hidden!important}
 body.vano-route-admin-dashboard .admin240-progress>span{
-  position:relative;background:linear-gradient(90deg,#FFC39B,#F59A62,#D9703F)!important;border-radius:999px!important;
+  position:relative;background:linear-gradient(90deg,#FFA552,#FF7A00,#FF3D00)!important;border-radius:999px!important;
 }
 body.vano-route-admin-dashboard .admin240-server{
   border-radius:18px!important;
@@ -368,7 +368,7 @@ body.vano-route-admin-dashboard .admin240-server{
   content-visibility:auto;
   contain-intrinsic-size:310px;
 }
-body.vano-route-admin-dashboard .admin240-server:hover{border-color:rgba(245,154,98,.15)!important;box-shadow:0 12px 28px rgba(38,45,73,.055)!important}
+body.vano-route-admin-dashboard .admin240-server:hover{border-color:rgba(255,122,0,.15)!important;box-shadow:0 12px 28px rgba(38,45,73,.055)!important}
 body.vano-route-admin-dashboard :is(.admin240-primary,.admin240-ghost,.node-action,.node-filter){transition:transform .15s ease,background-color .17s ease,border-color .17s ease,box-shadow .17s ease!important}
 body.vano-route-admin-dashboard :is(.admin240-primary,.admin240-ghost,.node-action,.node-filter):active{transform:scale(.975)!important}
 body.vano-route-admin-dashboard .admin240-feed-row{border-radius:12px!important;padding-inline:8px!important;transition:background-color .16s ease!important}
@@ -408,19 +408,19 @@ html[data-vano-theme="dark"] body.body-nav #activeNav .nav-summary-row{backgroun
 html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-item,
 html[data-vano-theme="dark"] body.body-nav #activeNav .nav-summary-item{background:linear-gradient(180deg,#24201D,#1A1715)!important;border-color:rgba(255,255,255,.045)!important;box-shadow:0 7px 18px rgba(0,0,0,.20)!important}
 html[data-vano-theme="black"] body.body-nav #activeNav .nav-summary-primary,
-html[data-vano-theme="dark"] body.body-nav #activeNav .nav-summary-primary{background:linear-gradient(145deg,#3A281F,#211B18)!important;border-color:rgba(245,154,98,.18)!important}
+html[data-vano-theme="dark"] body.body-nav #activeNav .nav-summary-primary{background:linear-gradient(145deg,#3A281F,#211B18)!important;border-color:rgba(255,122,0,.18)!important}
 html[data-vano-theme="black"] #routeState.vano-route-studio .vr-hero,
-html[data-vano-theme="dark"] #routeState.vano-route-studio .vr-hero{background:radial-gradient(circle at 94% 2%,rgba(245,154,98,.16),transparent 34%),linear-gradient(150deg,#211D1A,#171513)!important;border-color:rgba(255,255,255,.05)!important;box-shadow:0 18px 38px rgba(0,0,0,.26)!important}
+html[data-vano-theme="dark"] #routeState.vano-route-studio .vr-hero{background:radial-gradient(circle at 94% 2%,rgba(255,122,0,.16),transparent 34%),linear-gradient(150deg,#211D1A,#171513)!important;border-color:rgba(255,255,255,.05)!important;box-shadow:0 18px 38px rgba(0,0,0,.26)!important}
 html[data-vano-theme="black"] #routeState.vano-route-studio .route-time,
-html[data-vano-theme="dark"] #routeState.vano-route-studio .route-time{background:linear-gradient(180deg,#2A231F,#201A17)!important;border-color:rgba(245,154,98,.15)!important}
+html[data-vano-theme="dark"] #routeState.vano-route-studio .route-time{background:linear-gradient(180deg,#2A231F,#201A17)!important;border-color:rgba(255,122,0,.15)!important}
 html[data-vano-theme="black"] #routeState .route-variant,
 html[data-vano-theme="dark"] #routeState .route-variant{background:linear-gradient(180deg,#24201D,#1A1715)!important;border-color:rgba(255,255,255,.045)!important;box-shadow:0 9px 23px rgba(0,0,0,.20)!important}
 html[data-vano-theme="black"] #routeState .route-variant.active,
-html[data-vano-theme="dark"] #routeState .route-variant.active{background:linear-gradient(180deg,#3A281F,#211B18)!important;border-color:rgba(245,154,98,.19)!important}
+html[data-vano-theme="dark"] #routeState .route-variant.active{background:linear-gradient(180deg,#3A281F,#211B18)!important;border-color:rgba(255,122,0,.19)!important}
 html[data-vano-theme="black"] .ws-app .prefs-drawer.prefs-drawer-v251,
 html[data-vano-theme="dark"] .ws-app .prefs-drawer.prefs-drawer-v251{background:linear-gradient(165deg,#201C19,#151311)!important;border-color:rgba(255,255,255,.055)!important;box-shadow:0 30px 76px rgba(0,0,0,.42)!important}
 html[data-vano-theme="black"] .prefs-v268-hero,
-html[data-vano-theme="dark"] .prefs-v268-hero{background:linear-gradient(135deg,rgba(72,47,34,.70),rgba(32,28,25,.85));border-color:rgba(245,154,98,.12)}
+html[data-vano-theme="dark"] .prefs-v268-hero{background:linear-gradient(135deg,rgba(72,47,34,.70),rgba(32,28,25,.85));border-color:rgba(255,122,0,.12)}
 html[data-vano-theme="black"] .prefs-v268-hero span,
 html[data-vano-theme="dark"] .prefs-v268-hero span{background:rgba(255,255,255,.05);color:#E9DDD6}
 html[data-vano-theme="black"] .ws-app .prefs-drawer.prefs-drawer-v251 .prefs-section,
@@ -428,7 +428,7 @@ html[data-vano-theme="dark"] .ws-app .prefs-drawer.prefs-drawer-v251 .prefs-sect
 html[data-vano-theme="black"] .ws-app .prefs-drawer.prefs-drawer-v251 .pref-row,
 html[data-vano-theme="dark"] .ws-app .prefs-drawer.prefs-drawer-v251 .pref-row{background:linear-gradient(180deg,#24201D,#1A1715)!important;border-color:rgba(255,255,255,.045)!important;box-shadow:0 6px 15px rgba(0,0,0,.16)!important}
 html[data-vano-theme="black"] body.vano-route-admin-dashboard .admin240,
-html[data-vano-theme="dark"] body.vano-route-admin-dashboard .admin240{background:radial-gradient(circle at 12% 0%,rgba(245,154,98,.07),transparent 28%),linear-gradient(180deg,#101113,#0B0C0E)!important}
+html[data-vano-theme="dark"] body.vano-route-admin-dashboard .admin240{background:radial-gradient(circle at 12% 0%,rgba(255,122,0,.07),transparent 28%),linear-gradient(180deg,#101113,#0B0C0E)!important}
 html[data-vano-theme="black"] body.vano-route-admin-dashboard :is(.admin240-topbar,.admin240-card,.admin240-kpi,.admin240-server),
 html[data-vano-theme="dark"] body.vano-route-admin-dashboard :is(.admin240-topbar,.admin240-card,.admin240-kpi,.admin240-server){background:#181A1D!important;border-color:#2C2F34!important;box-shadow:none!important}
 html[data-vano-theme="black"] .admin268-command-strip,

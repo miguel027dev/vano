@@ -1,0 +1,362 @@
+/* VANO MAPS V330 — unified brand system, responsive desktop/tablet polish */
+:root{
+  --vano-brand-red:#FF3D00;
+  --vano-brand-orange:#FF7A00;
+  --vano-brand-soft:#FFA552;
+  --vano-brand-amber:#FFD280;
+  --vano-brand-cream:#FFF7ED;
+  --vano-brand-ink:#181411;
+  --vano-brand-dark:#100E0D;
+  --vano:#FF7A00;
+  --vano-2:#FF3D00;
+  --vano-deep:#FF3D00;
+  --vano-soft:#FFF7ED;
+  --vano-focus:rgba(255,122,0,.15);
+  --orange:#FF7A00;
+  --orange-2:#FF3D00;
+  --orange-3:#FFA552;
+  --brand:#FF7A00;
+  --brand-2:#FF3D00;
+  --brand-soft:#FFF7ED;
+  --max:1360px;
+}
+
+html{accent-color:var(--vano-brand-orange)}
+::selection{background:rgba(255,122,0,.22);color:inherit}
+[data-lucide]{stroke-linecap:round;stroke-linejoin:round;stroke-width:2.05}
+
+/* ---- shared public surfaces ---- */
+html[data-vano-theme="light"] body.vano-page-surface,
+html[data-vano-theme="light"] body.vano-admin-surface{
+  background:
+    radial-gradient(circle at 8% -5%,rgba(255,210,128,.24),transparent 24%),
+    radial-gradient(circle at 94% 0%,rgba(255,165,82,.12),transparent 21%),
+    #FFF9F4!important;
+  color:#211B17!important;
+}
+html[data-vano-theme="black"] body.vano-page-surface,
+html[data-vano-theme="black"] body.vano-admin-surface{
+  background:
+    radial-gradient(circle at 10% -8%,rgba(255,122,0,.10),transparent 24%),
+    #0F0E0D!important;
+  color:#FFF9F4!important;
+}
+body.vano-page-surface:before,body.vano-admin-surface:before{display:none!important}
+
+body.vano-page-surface .topbar,body.vano-admin-surface .topbar{
+  height:68px!important;
+  background:rgba(255,250,246,.86)!important;
+  border-bottom:1px solid rgba(80,45,25,.08)!important;
+  box-shadow:0 8px 28px rgba(71,42,22,.055)!important;
+  backdrop-filter:blur(24px) saturate(150%)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(150%)!important;
+}
+html[data-vano-theme="black"] body.vano-page-surface .topbar,
+html[data-vano-theme="black"] body.vano-admin-surface .topbar{
+  background:rgba(15,14,13,.88)!important;
+  border-bottom-color:rgba(255,255,255,.07)!important;
+  box-shadow:0 8px 30px rgba(0,0,0,.16)!important;
+}
+body.vano-page-surface .nav,body.vano-admin-surface .nav{width:min(1360px,calc(100% - 40px));gap:18px}
+body.vano-page-surface .vano-nav-brand,body.vano-admin-surface .vano-nav-brand{min-width:150px}
+body.vano-page-surface .vano-nav-brand-images>.vano-brand-img,
+body.vano-admin-surface .vano-nav-brand-images>.vano-brand-img{
+  height:42px!important;max-width:152px!important;width:auto!important;object-fit:contain!important;object-position:left center!important;
+}
+body.vano-page-surface .brand:before,body.vano-admin-surface .brand:before{display:none!important}
+body.vano-page-surface .navlinks a,body.vano-admin-surface .navlinks a,
+body.vano-page-surface .navlinks button.navbtn,body.vano-admin-surface .navlinks button.navbtn{
+  color:#74685F!important;border-radius:12px!important;font-size:13px!important;font-weight:720!important;padding:9px 12px!important;
+}
+body.vano-page-surface .navlinks a:hover,body.vano-page-surface .navlinks a.active,
+body.vano-admin-surface .navlinks a:hover,body.vano-admin-surface .navlinks a.active{
+  color:#E74300!important;background:#FFF0E7!important;
+}
+html[data-vano-theme="black"] body.vano-page-surface .navlinks a,
+html[data-vano-theme="black"] body.vano-admin-surface .navlinks a{color:#B7ACA5!important}
+html[data-vano-theme="black"] body.vano-page-surface .navlinks a:hover,
+html[data-vano-theme="black"] body.vano-page-surface .navlinks a.active,
+html[data-vano-theme="black"] body.vano-admin-surface .navlinks a:hover,
+html[data-vano-theme="black"] body.vano-admin-surface .navlinks a.active{
+  color:#FFB17B!important;background:#251A14!important;
+}
+
+body.vano-page-surface .btn,body.vano-admin-surface .btn{
+  min-height:42px!important;border-radius:13px!important;border-color:#E9DED6!important;background:#FFFDFB!important;color:#433A34!important;
+  box-shadow:0 5px 16px rgba(67,46,33,.04)!important;font-weight:760!important;
+}
+body.vano-page-surface .btn:hover,body.vano-admin-surface .btn:hover{border-color:#FFD0B4!important;background:#FFF8F3!important}
+body.vano-page-surface .btn-primary,body.vano-admin-surface .btn-primary,
+body.vano-login-v258 .auth-button.email{
+  border-color:transparent!important;color:#fff!important;
+  background:linear-gradient(135deg,#FF7A00 0%,#FF5B00 52%,#FF3D00 100%)!important;
+  box-shadow:0 12px 28px rgba(255,82,0,.22),inset 0 1px 0 rgba(255,255,255,.24)!important;
+}
+body.vano-page-surface .btn-primary:hover,body.vano-admin-surface .btn-primary:hover{box-shadow:0 15px 34px rgba(255,82,0,.28)!important}
+html[data-vano-theme="black"] body.vano-page-surface .btn,
+html[data-vano-theme="black"] body.vano-admin-surface .btn{background:#1A1715!important;border-color:#302B27!important;color:#F9F2EC!important;box-shadow:none!important}
+html[data-vano-theme="black"] body.vano-page-surface .btn-primary,
+html[data-vano-theme="black"] body.vano-admin-surface .btn-primary{background:linear-gradient(135deg,#FF7A00,#FF3D00)!important;border-color:transparent!important}
+
+body.vano-page-surface :is(.panel,.card,.kpi,.alert-card,.auth-card),
+body.vano-admin-surface :is(.panel,.card,.kpi,.alert-card){
+  border-color:#EEE4DC!important;background:rgba(255,255,255,.90)!important;color:#2B231E!important;
+  box-shadow:0 16px 45px rgba(82,54,35,.07),inset 0 1px 0 rgba(255,255,255,.9)!important;
+}
+html[data-vano-theme="black"] body.vano-page-surface :is(.panel,.card,.kpi,.alert-card,.auth-card),
+html[data-vano-theme="black"] body.vano-admin-surface :is(.panel,.card,.kpi,.alert-card){
+  background:#171411!important;border-color:#2B2723!important;color:#F8F1EB!important;box-shadow:0 16px 45px rgba(0,0,0,.16)!important;
+}
+body.vano-page-surface :is(.page-title,.title,.section-title),body.vano-admin-surface :is(.page-title,.title,.section-title){color:#211A16!important}
+html[data-vano-theme="black"] body.vano-page-surface :is(.page-title,.title,.section-title),
+html[data-vano-theme="black"] body.vano-admin-surface :is(.page-title,.title,.section-title){color:#FFF9F4!important}
+body.vano-page-surface :is(.page-subtitle,.subtitle,.muted),body.vano-admin-surface :is(.page-subtitle,.subtitle,.muted){color:#756A62!important}
+html[data-vano-theme="black"] body.vano-page-surface :is(.page-subtitle,.subtitle,.muted),
+html[data-vano-theme="black"] body.vano-admin-surface :is(.page-subtitle,.subtitle,.muted){color:#A99E96!important}
+body.vano-page-surface .eyebrow,body.vano-admin-surface .eyebrow{color:#EF4B00!important}
+
+body.vano-page-surface :is(.iconbox,.alert-dot,.profile-detail summary .detail-icon),
+body.vano-admin-surface :is(.iconbox,.alert-dot){
+  color:#F04B00!important;background:linear-gradient(145deg,#FFF7ED,#FFE6D4)!important;border-color:#FFD7BC!important;
+  box-shadow:inset 0 1px 0 #fff,0 8px 20px rgba(255,90,0,.08)!important;
+}
+html[data-vano-theme="black"] body.vano-page-surface :is(.iconbox,.alert-dot,.profile-detail summary .detail-icon),
+html[data-vano-theme="black"] body.vano-admin-surface :is(.iconbox,.alert-dot){background:#261B15!important;border-color:#3B2A20!important;color:#FF9A55!important}
+
+body.vano-page-surface :is(.input,.select,.textarea,.settings-field input,.settings-field select,.place-card input,.invite-box input,.faq-search),
+body.vano-admin-surface :is(.input,.select,.textarea){
+  min-height:46px!important;border-radius:13px!important;border-color:#E7DED7!important;background:#FFFEFD!important;color:#2B241F!important;
+}
+body.vano-page-surface :is(.input,.select,.textarea,.settings-field input,.settings-field select,.place-card input,.invite-box input,.faq-search):focus,
+body.vano-admin-surface :is(.input,.select,.textarea):focus{border-color:#FF8B42!important;box-shadow:0 0 0 4px rgba(255,122,0,.12)!important}
+html[data-vano-theme="black"] body.vano-page-surface :is(.input,.select,.textarea,.settings-field input,.settings-field select,.place-card input,.invite-box input,.faq-search),
+html[data-vano-theme="black"] body.vano-admin-surface :is(.input,.select,.textarea){background:#100F0E!important;border-color:#302C28!important;color:#F8F1EC!important}
+
+.vano-theme-toggle{border-radius:13px!important}
+body.vano-page-surface .vano-theme-toggle,body.vano-admin-surface .vano-theme-toggle{border-color:#E8DED7!important;background:#FFFDFB!important;color:#62564E!important}
+body.vano-page-surface .vano-theme-toggle:hover,body.vano-admin-surface .vano-theme-toggle:hover{border-color:#FFC9A7!important;background:#FFF3EA!important;color:#E54A00!important}
+html[data-vano-theme="black"] body.vano-page-surface .vano-theme-toggle,
+html[data-vano-theme="black"] body.vano-admin-surface .vano-theme-toggle{background:#1B1816!important;border-color:#312C28!important;color:#E6DCD4!important}
+
+/* ---- map surfaces: one consistent visual language ---- */
+body.vano-map-surface{
+  --ui-ink:#261F1A;
+  --ui-muted:#746B65;
+  --ui-surface:rgba(255,253,250,.975);
+  --ui-soft:#FFF5ED;
+  --ui-line:#EADFD7;
+  --ui-accent:#FF3D00;
+  --ui-accent-soft:#FFF7ED;
+  --ui-shadow:0 20px 58px rgba(55,39,28,.16),0 3px 10px rgba(55,39,28,.06);
+  --vg-orange:#FF7A00;
+  --vg-orange2:#FF7A00;
+}
+html[data-vano-theme="black"] body.vano-map-surface{
+  --ui-ink:#FFF7ED;
+  --ui-muted:#B7AAA1;
+  --ui-surface:rgba(24,21,19,.975);
+  --ui-soft:#211C18;
+  --ui-line:#3A312B;
+  --ui-accent:#FF8B42;
+  --ui-accent-soft:#302016;
+  --ui-shadow:0 20px 60px rgba(0,0,0,.38),0 2px 10px rgba(0,0,0,.18);
+}
+body.vano-map-surface #wsApp{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important}
+body.vano-map-surface #wsApp :is(.options-btn,.map-btn,.floating-locate,.floating-preview-cancel,.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn,.planner-adjust-btn,.row-btn){
+  border-radius:15px!important;border-color:var(--ui-line)!important;background:var(--ui-surface)!important;color:var(--ui-ink)!important;
+  box-shadow:0 10px 30px rgba(58,43,33,.10)!important;backdrop-filter:blur(18px) saturate(140%)!important;
+}
+body.vano-map-surface #wsApp :is(.options-btn,.map-btn,.floating-locate,.nav-stack-btn,.nav-audio-toggle,.planner-adjust-btn,.row-btn):hover{border-color:#FFC59E!important;color:#E94A00!important;background:#FFF8F3!important}
+html[data-vano-theme="black"] body.vano-map-surface #wsApp :is(.options-btn,.map-btn,.floating-locate,.floating-preview-cancel,.nav-stack-btn,.nav-audio-toggle,.nav-drawer-toggle,.nav-drawer-btn,.planner-adjust-btn,.row-btn):hover{background:#2A211C!important;border-color:#5A3A28!important;color:#FFA56C!important}
+
+body.vano-map-surface #wsApp #planSheet,
+body.vano-map-surface #wsApp :is(#prefsDrawer,#safetyDrawer,#accountDrawer,#quickAlertSheet,#destinationConfirm,#resumeTripCard),
+body.vano-map-surface.body-nav #wsApp :is(#navManeuverTop,#activeNav.nav-panel.nav-minimal){
+  background:var(--ui-surface)!important;border-color:var(--ui-line)!important;color:var(--ui-ink)!important;box-shadow:var(--ui-shadow)!important;
+  backdrop-filter:blur(24px) saturate(150%)!important;-webkit-backdrop-filter:blur(24px) saturate(150%)!important;
+}
+body.vano-map-surface #wsApp #planSheet{border-radius:28px!important}
+body.vano-map-surface #wsApp .planner-heading-copy small,
+body.vano-map-surface #wsApp .prefs-head-copy small,
+body.vano-map-surface #wsApp .prefs-section-label>span,
+body.vano-map-surface #wsApp .route-kicker,
+body.vano-map-surface #wsApp .route-head small{color:#F04E00!important}
+body.vano-map-surface #wsApp .planner-heading-copy b{color:var(--ui-ink)!important;letter-spacing:-.55px!important}
+body.vano-map-surface #wsApp .planner-search-card{
+  background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;border-radius:18px!important;box-shadow:0 7px 24px rgba(63,45,31,.06)!important;
+}
+body.vano-map-surface #wsApp .planner-location-row{background:transparent!important;border:0!important}
+body.vano-map-surface #wsApp #destinationInput{font-size:16px!important;color:var(--ui-ink)!important}
+body.vano-map-surface #wsApp #destinationInput::placeholder{color:#968B84!important}
+body.vano-map-surface #wsApp .planner-search-icon{color:#F04B00!important}
+body.vano-map-surface #wsApp .planner-capabilities span{border-color:#EBDDD3!important;background:#FFF9F4!important;color:#75675E!important}
+html[data-vano-theme="black"] body.vano-map-surface #wsApp .planner-capabilities span{background:#201B18!important;border-color:#342D28!important;color:#B9ADA5!important}
+body.vano-map-surface #wsApp :is(.planner-preset,.nearby-service){
+  border:1px solid var(--ui-line)!important;border-radius:17px!important;background:linear-gradient(180deg,#FFFDFB,#FFF7ED)!important;color:var(--ui-ink)!important;box-shadow:0 5px 16px rgba(63,44,30,.04)!important;
+}
+body.vano-map-surface #wsApp :is(.planner-preset,.nearby-service):hover{border-color:#FFA552!important;transform:translateY(-1px)!important;box-shadow:0 10px 24px rgba(255,90,0,.08)!important}
+html[data-vano-theme="black"] body.vano-map-surface #wsApp :is(.planner-preset,.nearby-service){background:linear-gradient(180deg,#211C19,#1B1715)!important;border-color:#382F29!important}
+body.vano-map-surface #wsApp :is(.planner-preset-icon,.nearby-service-icon,.route-option-icon){background:#FFF0E7!important;color:#F24E00!important;border-color:#FFD3B7!important}
+html[data-vano-theme="black"] body.vano-map-surface #wsApp :is(.planner-preset-icon,.nearby-service-icon,.route-option-icon){background:#302016!important;color:#FF9A5B!important;border-color:#4B3121!important}
+
+body.vano-map-surface #wsApp #startTripBtn,
+body.vano-map-surface #wsApp .destination-accept,
+body.vano-map-surface #wsApp .nav-alt-accept,
+body.vano-map-surface #wsApp .prefs-done,
+body.vano-map-surface #wsApp .vano-routine-save,
+body.vano-map-surface #wsApp .guest-drawer-primary{
+  border-color:transparent!important;color:#fff!important;background:linear-gradient(135deg,#FF7A00 0%,#FF5A00 55%,#FF3D00 100%)!important;
+  box-shadow:0 12px 28px rgba(255,78,0,.24),inset 0 1px 0 rgba(255,255,255,.22)!important;
+}
+body.vano-map-surface #wsApp #startTripBtn:hover{box-shadow:0 16px 34px rgba(255,78,0,.30)!important}
+body.vano-map-surface #wsApp .pref-switch:checked::before{background:#FF5A00!important;border-color:#FF5A00!important}
+body.vano-map-surface #wsApp #smartBalance{accent-color:#FF5A00!important}
+
+body.vano-map-surface #wsApp :is(.route-variant,#routeMoreDetails,.sub-action,.parking-item,.pref-row,.safety-tool,.drawer-link,.guest-drawer-benefits span,.guest-drawer-secondary){border-color:var(--ui-line)!important}
+body.vano-map-surface #wsApp :is(.route-variant,.sub-action,.parking-item,.safety-tool,.drawer-link,.guest-drawer-benefits span,.guest-drawer-secondary){background:var(--ui-soft)!important;color:var(--ui-ink)!important}
+body.vano-map-surface #wsApp .route-variant.active{border-color:#FF9F66!important;background:#FFF1E7!important;box-shadow:inset 0 0 0 1px rgba(255,90,0,.08)!important}
+html[data-vano-theme="black"] body.vano-map-surface #wsApp .route-variant.active{background:#2D1E16!important;border-color:#74452A!important}
+body.vano-map-surface #wsApp #routeMoreContent{background:#FFF9F4!important}
+html[data-vano-theme="black"] body.vano-map-surface #wsApp #routeMoreContent{background:#171411!important}
+
+body.vano-map-surface.body-nav #wsApp #navManeuverTop .nav-maneuver-icon{background:#FFF0E6!important;color:#EE4A00!important;border-color:#FFD1B3!important}
+html[data-vano-theme="black"] body.vano-map-surface.body-nav #wsApp #navManeuverTop .nav-maneuver-icon{background:#302017!important;color:#FF9D60!important;border-color:#4B3223!important}
+body.vano-map-surface.body-nav #wsApp #activeNav .vano-nav-progress>i,
+body.vano-map-surface #wsApp .resume-trip-path{stroke:#FF5A00!important;background:#FF5A00!important}
+body.vano-map-surface.body-nav #wsApp #activeNav .vano-nav-trip-icon{color:#F04B00!important;background:#FFF0E7!important}
+html[data-vano-theme="black"] body.vano-map-surface.body-nav #wsApp #activeNav .vano-nav-trip-icon{background:#302016!important;color:#FF9D60!important}
+
+/* brand in account drawer and splash */
+body.vano-map-surface #wsApp .guest-drawer-brand img,
+body.vano-map-surface #wsApp .v258-drawer-brand img{border-radius:14px!important;box-shadow:0 8px 20px rgba(255,78,0,.18)!important}
+.vano-entry-splash-inner img{filter:drop-shadow(0 14px 30px rgba(255,78,0,.24))}
+
+/* ---- tablet + desktop map layout ---- */
+@media (min-width:768px){
+  body.vano-map-surface #wsApp{--ui-left:18px;--ui-right:18px;--ui-top:18px;--ui-bottom:18px}
+  body.vano-map-surface #wsApp #planSheet{
+    left:18px!important;right:auto!important;top:18px!important;bottom:18px!important;width:min(400px,calc(100vw - 110px))!important;
+    max-height:calc(100dvh - 36px)!important;overflow:auto!important;padding:18px!important;
+  }
+  body.vano-map-surface #wsApp .planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+  body.vano-map-surface #wsApp .nearby-services{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+  body.vano-map-surface #wsApp .planner-preset,body.vano-map-surface #wsApp .nearby-service{min-height:74px!important}
+  body.vano-map-surface #wsApp .map-tools{right:18px!important;top:18px!important}
+  body.vano-map-surface #wsApp .floating-locate{right:18px!important}
+  body.vano-map-surface #wsApp :is(#prefsDrawer,#safetyDrawer,#accountDrawer,#quickAlertSheet){left:auto!important;right:18px!important;bottom:18px!important;width:min(430px,calc(100vw - 36px))!important;max-height:calc(100dvh - 36px)!important;border-radius:26px!important}
+  body.vano-map-surface #wsApp :is(#destinationConfirm,#resumeTripCard){left:auto!important;right:18px!important;width:min(430px,calc(100vw - 36px))!important;bottom:18px!important}
+  body.vano-map-surface.body-nav #wsApp #navManeuverTop{left:18px!important;right:auto!important;top:18px!important;width:min(430px,calc(100vw - 110px))!important}
+  body.vano-map-surface.body-nav #wsApp #activeNav.nav-panel.nav-minimal{left:18px!important;right:auto!important;bottom:18px!important;width:min(430px,calc(100vw - 110px))!important}
+  body.vano-map-surface.body-nav #wsApp #navControlStack{right:18px!important;bottom:18px!important;left:auto!important}
+  body.vano-map-surface.body-nav #wsApp #vanoSpeedometerV220{left:466px!important;right:auto!important;bottom:18px!important}
+}
+@media (min-width:1180px){
+  body.vano-map-surface #wsApp{--ui-left:24px;--ui-right:24px;--ui-top:24px;--ui-bottom:24px}
+  body.vano-map-surface #wsApp #planSheet{left:24px!important;top:24px!important;bottom:24px!important;width:448px!important;max-height:calc(100dvh - 48px)!important;padding:20px!important}
+  body.vano-map-surface #wsApp .planner-heading-copy b{font-size:25px!important}
+  body.vano-map-surface #wsApp .planner-search-row{gap:10px!important}
+  body.vano-map-surface #wsApp .planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-map-surface #wsApp .nearby-services{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  body.vano-map-surface #wsApp .nearby-service{min-height:92px!important;padding:12px 9px!important}
+  body.vano-map-surface #wsApp .map-tools{right:24px!important;top:24px!important}
+  body.vano-map-surface #wsApp .floating-locate{right:24px!important}
+  body.vano-map-surface #wsApp :is(#prefsDrawer,#safetyDrawer,#accountDrawer,#quickAlertSheet){right:24px!important;bottom:24px!important;width:454px!important;max-height:calc(100dvh - 48px)!important}
+  body.vano-map-surface #wsApp :is(#destinationConfirm,#resumeTripCard){right:24px!important;bottom:24px!important;width:454px!important}
+  body.vano-map-surface.body-nav #wsApp #navManeuverTop{left:24px!important;top:24px!important;width:448px!important}
+  body.vano-map-surface.body-nav #wsApp #activeNav.nav-panel.nav-minimal{left:24px!important;bottom:24px!important;width:448px!important}
+  body.vano-map-surface.body-nav #wsApp #navControlStack{right:24px!important;bottom:24px!important}
+  body.vano-map-surface.body-nav #wsApp #vanoSpeedometerV220{left:492px!important;bottom:24px!important}
+  body.vano-map-surface #wsApp .mapboxgl-ctrl-bottom-left{left:500px!important;transform:none!important}
+}
+@media (min-width:1500px){
+  body.vano-map-surface #wsApp #planSheet{width:470px!important}
+  body.vano-map-surface.body-nav #wsApp :is(#navManeuverTop,#activeNav.nav-panel.nav-minimal){width:470px!important}
+  body.vano-map-surface.body-nav #wsApp #vanoSpeedometerV220{left:516px!important}
+}
+
+/* ---- phone: preserve layout, upgrade touch/visual quality ---- */
+@media (max-width:767px){
+  body.vano-map-surface #wsApp #planSheet{border-radius:24px 24px 0 0!important}
+  body.vano-map-surface #wsApp .planner-search-card{border-radius:17px!important}
+  body.vano-map-surface #wsApp .planner-preset,body.vano-map-surface #wsApp .nearby-service{border-radius:16px!important}
+  body.vano-map-surface #wsApp #startTripBtn{min-height:58px!important;border-radius:17px!important}
+  body.vano-page-surface .nav,body.vano-admin-surface .nav{width:calc(100% - 20px)!important}
+  body.vano-page-surface .vano-nav-brand-images>.vano-brand-img,body.vano-admin-surface .vano-nav-brand-images>.vano-brand-img{height:36px!important;max-width:126px!important}
+}
+
+/* ---- standalone auth ---- */
+body.vano-login-v258{--brand:#FF7A00!important;--brand-2:#FF3D00!important;--brand-soft:#FFF7ED!important;--surface-tint:#FFF7ED!important}
+html[data-vano-theme="light"] body.vano-login-v258{background:#FFF9F4!important;color:#211B17!important}
+html[data-vano-theme="light"] body.vano-login-v258 .auth-shell{border-color:#EDE2DA!important;background:#FFFDFB!important;box-shadow:0 28px 80px rgba(79,48,29,.10)!important}
+html[data-vano-theme="light"] body.vano-login-v258 .route-pane{background:linear-gradient(145deg,#FFF4EA,#F5EEE8)!important;border-color:#E9DED6!important}
+body.vano-login-v258 .vano-auth-banner{width:174px!important;height:58px!important;object-fit:contain!important;object-position:left center!important}
+body.vano-login-v258 .auth-button.email{background:linear-gradient(135deg,#FF7A00,#FF3D00)!important}
+body.vano-login-v258 .eyebrow{color:#EF4B00!important}
+body.vano-login-v258 .route-glow{background:rgba(255,122,0,.13)!important}
+body.vano-login-v258 .mini-chip svg{color:#F04B00!important}
+html[data-vano-theme="black"] body.vano-login-v258{background:#0F0E0D!important}
+html[data-vano-theme="black"] body.vano-login-v258 .auth-shell,
+html[data-vano-theme="black"] body.vano-login-v258 .auth-pane{background:#171411!important;border-color:#302A26!important}
+html[data-vano-theme="black"] body.vano-login-v258 .route-pane{background:linear-gradient(145deg,#211B17,#120F0D)!important;border-color:#302A26!important}
+@media (min-width:1100px){body.vano-login-v258 .auth-shell{grid-template-columns:minmax(440px,.86fr) minmax(620px,1.14fr)!important}}
+@media (min-width:760px) and (max-width:1099px){body.vano-login-v258 .auth-shell{grid-template-columns:minmax(370px,.96fr) minmax(390px,1.04fr)!important}.auth-pane{padding:38px!important}}
+
+/* ---- standalone shared/live ---- */
+body.vano-shared-v258{--accent:#FF7A00!important}
+body.vano-shared-v258 .share-top,body.vano-shared-v258 .route-panel{border-color:#EADFD7!important;background:rgba(255,253,250,.97)!important;box-shadow:0 16px 45px rgba(70,45,28,.12)!important}
+body.vano-shared-v258 .route-kicker{color:#F04B00!important}
+body.vano-shared-v258 .route-note{background:#FFF0E6!important;color:#D94700!important}
+body.vano-shared-v258 .route-actions .primary{background:linear-gradient(135deg,#FF7A00,#FF3D00)!important;box-shadow:0 10px 24px rgba(255,79,0,.23)!important}
+body.vano-live-v258{--o:#FF7A00!important}
+body.vano-live-v258 .brand{gap:9px!important;padding:0 13px 0 7px!important}
+body.vano-live-v258 .brand img{width:36px;height:36px;border-radius:11px;object-fit:contain;box-shadow:0 7px 18px rgba(255,79,0,.20)}
+body.vano-live-v258 .progress i{background:linear-gradient(90deg,#FFD280,#FF7A00,#FF3D00)!important}
+body.vano-live-v258 .puck{background:linear-gradient(145deg,#FF7A00,#FF3D00)!important}
+
+/* ---- generic responsive page/tablet polish ---- */
+@media (min-width:760px) and (max-width:1099px){
+  body.vano-page-surface .container,body.vano-admin-surface .container{width:min(100% - 34px,1100px)!important}
+  body.vano-page-surface .grid-3{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-page-surface .kpi-grid,body.vano-admin-surface .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-page-surface .navlinks,body.vano-admin-surface .navlinks{display:flex!important;gap:2px!important}
+  body.vano-page-surface .navlinks a,body.vano-admin-surface .navlinks a{padding-inline:9px!important;font-size:12px!important}
+}
+@media (max-width:859px){body.vano-page-surface .navlinks,body.vano-admin-surface .navlinks{display:none!important}}
+@media (min-width:1100px){
+  body.vano-page-surface .page,body.vano-admin-surface .page{padding-top:40px!important}
+  body.vano-page-surface .panel,body.vano-admin-surface .panel{border-radius:22px!important}
+}
+
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+/* Brand mark inside the planner: visible on larger screens, discreet on phones. */
+body.vano-map-surface #wsApp .planner-brand-icon{display:none;width:42px;height:42px;flex:0 0 42px;border-radius:13px;object-fit:contain;box-shadow:0 8px 20px rgba(255,61,0,.16)}
+@media(min-width:768px){
+  body.vano-map-surface #wsApp .planner-heading{display:grid!important;grid-template-columns:42px minmax(0,1fr) auto!important;align-items:center!important;column-gap:10px!important}
+  body.vano-map-surface #wsApp .planner-brand-icon{display:block}
+}
+
+
+/* V330 — standalone live-trip desktop/tablet composition. */
+@media (min-width: 900px){
+  body.vano-live-v258 .app{max-width:none;width:100%;margin:0;}
+  body.vano-live-v258 .top{left:24px;right:24px;top:24px;}
+  body.vano-live-v258 .card{
+    left:24px;right:auto;bottom:24px;width:min(430px,calc(100vw - 48px));
+    padding:16px 18px 18px;border-radius:26px;
+  }
+  body.vano-live-v258 .card h1{font-size:24px;}
+  body.vano-live-v258 .card p{font-size:11px;}
+  body.vano-live-v258 .stat{padding:12px 8px;}
+  body.vano-live-v258 .stat b{font-size:14px;}
+  body.vano-live-v258 .mapboxgl-ctrl-bottom-right{bottom:24px;}
+}
+
+/* Brand-board canonical swatches available to every page/component. */
+:root{
+  --vano-brand-deep-orange-red:#FF3D00;
+  --vano-brand-bright-orange:#FF7A00;
+  --vano-brand-soft-orange:#FFA552;
+  --vano-brand-warm-amber:#FFD280;
+  --vano-brand-ivory:#FFF7ED;
+}

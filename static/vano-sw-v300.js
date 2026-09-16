@@ -1,9 +1,11 @@
-/* VANO MAPS V322 — mobile UI polish with original layout geometry. */
-const BUILD='322.0.0-mobile-polish';
-const CACHE=`vano-maps-v322-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v322-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V330 — unified branding, responsive tablet/desktop UI and polished assets. */
+const BUILD='330.0.0-brand-system';
+const CACHE=`vano-maps-v330-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v330-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
+  '/static/vano-ui-v258.css',
+  '/static/vano-brand-v330.css',
   '/static/vano-runtime-v262.js',
   '/static/vano-theme-v230.js',
   '/static/vano-map-v300.js',
@@ -13,6 +15,8 @@ const PRECACHE=[
   '/static/vano-interface-v319.css',
   '/static/vano-access-v319.css',
   '/static/vano-access-v319.js',
+  '/static/vano-maps-banner.png',
+  '/static/vano-maps-banner-dark.png',
   '/static/vano-maps-icon-64.png',
   '/static/vano-maps-icon-192.png',
   '/static/vano-maps-icon-512.png',
@@ -33,7 +37,7 @@ const PRECACHE=[
   '/static/voices/vano/leve_curva_a_direita.mp3',
   '/static/voices/vano/leve_curva_a_esquerda.mp3'
 ];
-const CORE_RE=/\/static\/(vano-app-v262\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v300\.js|vano-map-v300\.css|vano-planner-v263\.css|vano-navigation-v300\.css|vano-interface-v319\.css|vano-access-v319\.css|vano-access-v319\.js)$/;
+const CORE_RE=/\/static\/(vano-app-v262\.css|vano-ui-v258\.css|vano-brand-v330\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v300\.js|vano-map-v300\.css|vano-planner-v263\.css|vano-navigation-v300\.css|vano-interface-v319\.css|vano-access-v319\.css|vano-access-v319\.js)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;
