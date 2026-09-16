@@ -27,9 +27,7 @@
 
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
-
-
-
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-polish-v340.css') }}?v={{ vano_build_id }}">
 {% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -51,6 +49,7 @@
   </section>
 
   <header class="header"><div class="header-actions"><button class="options-btn" id="optionsBtn" type="button" aria-label="Abrir opções" aria-controls="accountDrawer" aria-expanded="false"><i data-lucide="ellipsis" width="19"></i></button></div></header>
+  <a class="vano-map-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS — início"><span class="vano-adaptive-brand"><img class="vano-map-brand-img vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-map-brand-img vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span></a>
 
   <aside class="permission" id="locationPermission" role="alert" aria-live="assertive">
     <div class="permission-icon"><i data-lucide="locate-fixed" width="19"></i></div>
@@ -151,6 +150,11 @@
             <i data-lucide="chevron-right" width="14"></i>
           </a>
           {% endif %}
+          <button class="drawer-link drawer-theme-toggle" type="button" data-vano-theme-toggle aria-label="Alternar tema do mapa">
+            <i data-lucide="moon-star" width="17"></i>
+            <span class="v258-link-copy"><b>Tema do mapa</b><small>Alternar entre claro e Black</small></span>
+            <i data-lucide="sun" width="14"></i>
+          </button>
           <form action="{{ url_for('logout') }}" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="drawer-link drawer-logout" type="submit">
@@ -176,6 +180,7 @@
           <span><i data-lucide="bookmark" width="15"></i>Destinos salvos</span>
           <span><i data-lucide="cloud-check" width="15"></i>Preferências sincronizadas</span>
         </div>
+        <button class="guest-theme-toggle" type="button" data-vano-theme-toggle><i data-lucide="moon-star" width="15"></i><span>Alternar tema do mapa</span></button>
         <div class="guest-drawer-actions">
           <a class="guest-drawer-primary" href="{{ url_for('register') }}">Criar conta</a>
           <a class="guest-drawer-secondary" href="{{ url_for('login', next=url_for('index')) }}">Já tenho conta</a>
@@ -278,18 +283,12 @@
         </div>
       </div>
 
-      <div class="vano-route-mode-row">
-        <div class="segment" id="routeModeSegment" aria-label="Prioridade da rota">
-          <button type="button" class="active safe" data-route-mode="safest"><span class="route-option-icon"><i data-lucide="shield-check" width="15"></i></span><span class="route-option-copy"><b>Mais segura</b><small>Prioriza segurança</small></span></button>
-          <button type="button" class="smart" data-route-mode="smart"><span class="route-option-icon"><i data-lucide="sparkles" width="15"></i></span><span class="route-option-copy"><b>Spark</b><small>Tempo + trânsito + segurança</small></span></button>
-          <button type="button" class="fast" data-route-mode="fastest"><span class="route-option-icon"><i data-lucide="zap" width="15"></i></span><span class="route-option-copy"><b>Mais rápida</b><small>Menor ETA</small></span></button>
+      <div class="vano-route-mode-row vano-primary-transport-row">
+        <div class="travel vano-primary-travel" role="group" aria-label="Meio de transporte">
+          <button type="button" class="active" data-profile="driving"><span class="route-option-icon"><i data-lucide="car-front" width="15"></i></span><span class="route-option-copy"><b>Carro</b><small>Dirigindo</small></span></button>
+          <button type="button" data-profile="motorcycle"><span class="route-option-icon"><svg class="moto-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"></circle><circle cx="18" cy="17" r="3"></circle><path d="M9 17h5l2.3-5H12l-2 3-2.7-5H5.5M13 12l-1.8-3H14M16.3 12l2.2 1.5"></path></svg></span><span class="route-option-copy"><b>Moto</b><small>Motocicleta</small></span></button>
+          <button type="button" data-profile="walking"><span class="route-option-icon"><i data-lucide="person-standing" width="15"></i></span><span class="route-option-copy"><b>A pé</b><small>Caminhando</small></span></button>
         </div>
-      </div>
-
-      <div class="vano-smart-balance" id="smartBalanceBox" aria-label="Equilíbrio da rota inteligente">
-        <div class="vano-smart-balance-head"><span><i data-lucide="sliders-horizontal" width="14"></i><b>Equilíbrio Spark</b></span><small id="smartBalanceLabel">Equilibrado</small></div>
-        <div class="vano-smart-balance-scale"><span>Mais rápida</span><input id="smartBalance" type="range" min="0" max="100" step="5" value="55" aria-label="Equilibrar rapidez e segurança"><span>Mais segura</span></div>
-        <p id="smartBalanceHint">Ajusta quanto o VANO aceita alguns minutos extras para reduzir exposição e instabilidade.</p>
       </div>
 
       {% if current_user and current_user['role'] == 'admin' %}
@@ -305,16 +304,21 @@
 
       <section class="vano-route-more" id="routeMoreDetails" data-open="false" aria-label="Mais informações da rota">
         <button type="button" class="vano-route-more-toggle" id="routeMoreToggle" aria-expanded="false" aria-controls="routeMoreContent">
-          <span class="vano-route-more-toggle-copy"><i data-lucide="info" width="16"></i><span><b>Mais informações</b><small>Transporte, detalhes, alertas e prévia</small></span></span>
+          <span class="vano-route-more-toggle-copy"><i data-lucide="info" width="16"></i><span><b>Mais informações</b><small>Tipo de rota, detalhes, alertas e prévia</small></span></span>
           <i class="vano-route-more-chevron" data-lucide="chevron-down" width="17" aria-hidden="true"></i>
         </button>
         <div class="vano-route-more-content" id="routeMoreContent" hidden aria-hidden="true">
-          <section class="vano-route-more-section vano-transport-block" aria-labelledby="routeTransportLabel">
-            <div class="vano-route-more-section-head" id="routeTransportLabel"><span>Transporte</span><small>como você vai</small></div>
-            <div class="travel" role="group" aria-label="Meio de transporte">
-              <button type="button" class="active" data-profile="driving"><span class="route-option-icon"><i data-lucide="car-front" width="14"></i></span><span class="route-option-copy"><b>Carro</b><small>Dirigindo</small></span></button>
-              <button type="button" data-profile="motorcycle"><span class="route-option-icon"><svg class="moto-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="17" r="3"></circle><circle cx="18" cy="17" r="3"></circle><path d="M9 17h5l2.3-5H12l-2 3-2.7-5H5.5M13 12l-1.8-3H14M16.3 12l2.2 1.5"></path></svg></span><span class="route-option-copy"><b>Moto</b><small>Motocicleta</small></span></button>
-              <button type="button" data-profile="walking"><span class="route-option-icon"><i data-lucide="person-standing" width="14"></i></span><span class="route-option-copy"><b>A pé</b><small>Caminhando</small></span></button>
+          <section class="vano-route-more-section vano-route-priority-block" aria-labelledby="routePriorityLabel">
+            <div class="vano-route-more-section-head" id="routePriorityLabel"><span>Tipo de rota</span><small>escolha como o VANO decide</small></div>
+            <div class="segment" id="routeModeSegment" aria-label="Prioridade da rota">
+              <button type="button" class="active safe" data-route-mode="safest"><span class="route-option-icon"><i data-lucide="shield-check" width="15"></i></span><span class="route-option-copy"><b>Segura</b><small>Menos exposição</small></span></button>
+              <button type="button" class="smart" data-route-mode="smart"><span class="route-option-icon"><i data-lucide="sparkles" width="15"></i></span><span class="route-option-copy"><b>Spark</b><small>Equilibra tudo</small></span></button>
+              <button type="button" class="fast" data-route-mode="fastest"><span class="route-option-icon"><i data-lucide="zap" width="15"></i></span><span class="route-option-copy"><b>Rápida</b><small>Menor ETA</small></span></button>
+            </div>
+            <div class="vano-smart-balance" id="smartBalanceBox" aria-label="Equilíbrio da rota inteligente">
+              <div class="vano-smart-balance-head"><span><i data-lucide="sliders-horizontal" width="14"></i><b>Equilíbrio Spark</b></span><small id="smartBalanceLabel">Equilibrado</small></div>
+              <div class="vano-smart-balance-scale"><span>Mais rápida</span><input id="smartBalance" type="range" min="0" max="100" step="5" value="55" aria-label="Equilibrar rapidez e segurança"><span>Mais segura</span></div>
+              <p id="smartBalanceHint">Ajusta quanto o VANO aceita alguns minutos extras para reduzir exposição e instabilidade.</p>
             </div>
           </section>
 

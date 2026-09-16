@@ -1,0 +1,195 @@
+/* VANO MAPS V340 — responsive map polish / route chooser hierarchy */
+:root{
+  --vano-route-orange:#F59A62;
+  --vano-route-orange-strong:#E77842;
+  --vano-route-orange-soft:#FFF1E8;
+  --vano-panel-radius:24px;
+}
+
+/* Brand replaces the old GPS diagnostics in the upper-left corner. */
+body.vano-map-surface .status-chip,
+body.vano-map-surface .gps-quality{display:none!important;visibility:hidden!important;pointer-events:none!important}
+body.vano-map-surface .vano-map-brand{
+  position:absolute;z-index:54;
+  top:max(14px,calc(env(safe-area-inset-top) + 10px));
+  left:max(14px,calc(env(safe-area-inset-left) + 10px));
+  height:46px;min-width:124px;max-width:min(190px,42vw);
+  display:flex;align-items:center;justify-content:flex-start;
+  padding:8px 12px;border-radius:16px;
+  border:1px solid rgba(28,31,38,.09);
+  background:rgba(255,255,255,.94);
+  box-shadow:0 10px 30px rgba(23,27,34,.12);
+  backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,background .22s ease;
+  text-decoration:none;overflow:hidden
+}
+body.vano-map-surface .vano-map-brand:active{transform:scale(.97)}
+body.vano-map-surface .vano-map-brand .vano-adaptive-brand{display:flex;align-items:center;min-width:0}
+body.vano-map-surface .vano-map-brand-img{display:block;width:auto;max-width:100%;height:27px;object-fit:contain;object-position:left center}
+html[data-vano-theme="black"] body.vano-map-surface .vano-map-brand{background:rgba(31,29,27,.94);border-color:rgba(255,255,255,.09);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+body.body-nav .vano-map-brand{opacity:0;transform:translateY(-10px);pointer-events:none}
+
+/* The theme shortcut lived directly under the three-dot menu and visually competed with it.
+   Theme remains available inside the account drawer. */
+body.vano-map-surface .map-tools{display:none!important}
+body.vano-map-surface .drawer-theme-toggle,
+body.vano-map-surface .guest-theme-toggle{font:inherit;cursor:pointer}
+body.vano-map-surface .guest-theme-toggle{
+  width:100%;min-height:44px;margin:4px 0 10px;padding:0 12px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid rgba(29,33,40,.08);border-radius:13px;
+  background:#f6f7f8;color:#59606a;font-size:11px;font-weight:800
+}
+html[data-vano-theme="black"] body.vano-map-surface .guest-theme-toggle{background:#24211f;border-color:rgba(255,255,255,.08);color:#f5eee8}
+
+/* Three-dot control gets a fixed clean visual anchor. */
+body.vano-map-surface .header{
+  z-index:55!important;top:max(14px,calc(env(safe-area-inset-top) + 10px))!important;
+  right:max(14px,calc(env(safe-area-inset-right) + 10px))!important;left:auto!important;
+  width:46px!important;height:46px!important;min-height:46px!important;padding:0!important;
+  background:transparent!important;border:0!important;box-shadow:none!important
+}
+body.vano-map-surface .header-actions{width:46px!important;height:46px!important;display:block!important}
+body.vano-map-surface .options-btn{
+  width:46px!important;height:46px!important;border-radius:16px!important;
+  border:1px solid rgba(28,31,38,.09)!important;background:rgba(255,255,255,.94)!important;color:#252a31!important;
+  box-shadow:0 10px 30px rgba(23,27,34,.12)!important;
+  backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),background .18s ease,box-shadow .18s ease!important
+}
+body.vano-map-surface .options-btn:active{transform:scale(.93)!important}
+html[data-vano-theme="black"] body.vano-map-surface .options-btn{background:rgba(31,29,27,.95)!important;color:#fff8f2!important;border-color:rgba(255,255,255,.09)!important;box-shadow:0 12px 30px rgba(0,0,0,.28)!important}
+
+/* Main route choice is now transport: this is the decision users need first. */
+body.vano-map-surface .vano-primary-transport-row{margin-top:10px!important}
+body.vano-map-surface .vano-primary-travel{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;
+  padding:4px!important;border-radius:17px!important;background:#f1f2f4!important;
+  border:1px solid rgba(24,29,37,.05)!important
+}
+body.vano-map-surface .vano-primary-travel button{
+  min-width:0!important;min-height:55px!important;padding:7px 7px!important;border:0!important;border-radius:13px!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;
+  background:transparent!important;color:#69707a!important;box-shadow:none!important;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),background .2s ease,color .2s ease,box-shadow .2s ease!important
+}
+body.vano-map-surface .vano-primary-travel button.active{
+  background:#fff!important;color:#272b31!important;box-shadow:0 3px 10px rgba(23,27,34,.08)!important
+}
+body.vano-map-surface .vano-primary-travel button.active .route-option-icon{color:var(--vano-route-orange-strong)!important;transform:translateY(-1px) scale(1.05)}
+body.vano-map-surface .vano-primary-travel button:active{transform:scale(.965)!important}
+body.vano-map-surface .vano-primary-travel .route-option-icon{width:25px;height:25px;display:grid;place-items:center;transition:transform .2s ease,color .2s ease}
+body.vano-map-surface .vano-primary-travel .route-option-copy{min-width:0;display:grid;gap:2px;text-align:left;line-height:1.05}
+body.vano-map-surface .vano-primary-travel .route-option-copy b{font-size:11.5px;white-space:nowrap}
+body.vano-map-surface .vano-primary-travel .route-option-copy small{font-size:8.5px;color:#979da5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.vano-map-surface .vano-primary-travel .moto-ico{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+html[data-vano-theme="black"] body.vano-map-surface .vano-primary-travel{background:#1f1d1b!important;border-color:rgba(255,255,255,.06)!important}
+html[data-vano-theme="black"] body.vano-map-surface .vano-primary-travel button{color:#aaa39d!important}
+html[data-vano-theme="black"] body.vano-map-surface .vano-primary-travel button.active{background:#2b2825!important;color:#fff8f2!important;box-shadow:0 4px 12px rgba(0,0,0,.22)!important}
+
+/* Safe / Spark / Fast now lives in More information. */
+body.vano-map-surface #routeMoreContent #routeModeSegment{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;
+  padding:0!important;background:transparent!important;border:0!important
+}
+body.vano-map-surface #routeMoreContent #routeModeSegment button{
+  min-width:0!important;min-height:58px!important;height:auto!important;padding:8px 6px!important;border-radius:14px!important;
+  border:1px solid rgba(25,29,36,.07)!important;background:#f6f7f8!important;color:#666d76!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;box-shadow:none!important;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),background .2s ease,border-color .2s ease,box-shadow .2s ease!important
+}
+body.vano-map-surface #routeMoreContent #routeModeSegment button.active{
+  background:var(--vano-route-orange-soft)!important;border-color:rgba(245,154,98,.36)!important;color:#a94f26!important;
+  box-shadow:inset 0 0 0 1px rgba(245,154,98,.08)!important
+}
+body.vano-map-surface #routeMoreContent #routeModeSegment button:active{transform:scale(.965)!important}
+body.vano-map-surface #routeMoreContent #routeModeSegment .route-option-copy{min-width:0;display:grid!important;gap:2px!important;text-align:left!important}
+body.vano-map-surface #routeMoreContent #routeModeSegment .route-option-copy b{font-size:10.5px!important;white-space:nowrap!important}
+body.vano-map-surface #routeMoreContent #routeModeSegment .route-option-copy small{font-size:8px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;color:#969ca4!important}
+body.vano-map-surface #routeMoreContent .vano-smart-balance{margin:9px 0 0!important}
+html[data-vano-theme="black"] body.vano-map-surface #routeMoreContent #routeModeSegment button{background:#22201e!important;border-color:rgba(255,255,255,.07)!important;color:#d0cbc7!important}
+html[data-vano-theme="black"] body.vano-map-surface #routeMoreContent #routeModeSegment button.active{background:rgba(245,154,98,.12)!important;border-color:rgba(245,154,98,.28)!important;color:#ffbc95!important}
+
+/* More information opens like a nested panel instead of a raw content dump. */
+body.vano-map-surface .vano-route-more-content{
+  transform-origin:top center;animation:vanoDetailsIn .24s cubic-bezier(.2,.8,.2,1)
+}
+@keyframes vanoDetailsIn{from{opacity:0;transform:translateY(-5px) scale(.992)}to{opacity:1;transform:none}}
+
+/* Shared motion polish for planner controls. */
+body.vano-map-surface :is(.planner-adjust-btn,.planner-preset,.nearby-service,.route-variant,.sub-action,.start-trip-cta,.vano-route-more-toggle){
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,background .22s ease,border-color .22s ease,opacity .18s ease!important
+}
+body.vano-map-surface :is(.planner-adjust-btn,.planner-preset,.nearby-service,.route-variant,.sub-action,.vano-route-more-toggle):active{transform:scale(.975)!important}
+body.vano-map-surface .start-trip-cta:active{transform:scale(.985)!important}
+body.vano-map-surface .planner-location-row{transition:border-color .2s ease,background .2s ease,box-shadow .22s ease,transform .2s ease!important}
+body.vano-map-surface .planner-location-row:focus-within{transform:translateY(-1px)!important}
+
+/* Keep the location button useful without stacking it under the options button. */
+body.vano-map-surface:not(.body-nav) .floating-locate{
+  z-index:43!important;right:max(14px,calc(env(safe-area-inset-right) + 10px))!important;left:auto!important;
+  bottom:calc(max(14px,env(safe-area-inset-bottom)) + 148px)!important;
+  width:48px!important;height:48px!important;border-radius:16px!important;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),bottom .28s cubic-bezier(.2,.8,.2,1),background .18s ease!important
+}
+
+/* Tablet: persistent side planner and more map visible. */
+@media (min-width:760px) and (max-width:1179px){
+  body.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(18px,calc(env(safe-area-inset-left) + 14px))!important;right:auto!important;
+    bottom:max(18px,calc(env(safe-area-inset-bottom) + 14px))!important;
+    width:min(430px,calc(100vw - 130px))!important;max-width:430px!important;
+    max-height:calc(100dvh - 112px)!important;border-radius:28px!important;padding:10px 12px 14px!important
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{height:145px!important;min-height:145px!important;max-height:145px!important}
+  body.vano-map-surface .planner-expanded{padding-bottom:2px}
+  body.vano-map-surface .planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-map-surface:not(.body-nav) .floating-locate{right:20px!important;bottom:20px!important}
+  body.vano-map-surface .vano-map-brand{left:20px;top:18px;max-width:175px}
+  body.vano-map-surface .header{right:20px!important;top:18px!important}
+}
+
+/* Desktop: the planner becomes a real navigation sidebar; map route padding is matched in JS. */
+@media (min-width:1180px){
+  body.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(24px,calc(env(safe-area-inset-left) + 20px))!important;right:auto!important;
+    top:max(88px,calc(env(safe-area-inset-top) + 82px))!important;bottom:24px!important;
+    width:456px!important;max-width:456px!important;max-height:none!important;height:auto!important;
+    border-radius:30px!important;padding:10px 13px 15px!important;overflow:hidden auto!important;
+    box-shadow:0 20px 54px rgba(23,27,34,.16),0 2px 12px rgba(23,27,34,.08)!important
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{height:146px!important;min-height:146px!important;max-height:146px!important;top:auto!important}
+  body.vano-map-surface .planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  body.vano-map-surface .nearby-services{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  body.vano-map-surface .planner-section-head{margin-top:15px!important}
+  body.vano-map-surface .vano-map-brand{left:24px;top:20px;max-width:190px;height:48px;padding-inline:13px}
+  body.vano-map-surface .header{right:24px!important;top:20px!important}
+  body.vano-map-surface:not(.body-nav) .floating-locate{right:24px!important;bottom:24px!important;width:50px!important;height:50px!important}
+  body.vano-map-surface .account-drawer{width:min(410px,calc(100vw - 32px))!important;right:18px!important;left:auto!important}
+  body.vano-map-surface .route-loading-card{min-width:330px!important}
+}
+
+/* Wide desktop: slightly more generous sheet, without covering the route. */
+@media (min-width:1500px){
+  body.vano-map-surface:not(.body-nav) #planSheet{width:478px!important;max-width:478px!important}
+}
+
+/* Black theme details. */
+html[data-vano-theme="black"] body.vano-map-surface :is(.planner-location-row,.planner-adjust-btn,.planner-preset,.nearby-service){border-color:rgba(255,255,255,.07)!important}
+
+@media (max-width:430px){
+  body.vano-map-surface .vano-map-brand{height:43px;min-width:112px;max-width:40vw;padding:7px 10px;border-radius:14px}
+  body.vano-map-surface .vano-map-brand-img{height:24px}
+  body.vano-map-surface .header{width:43px!important;height:43px!important}
+  body.vano-map-surface .header-actions,body.vano-map-surface .options-btn{width:43px!important;height:43px!important}
+  body.vano-map-surface .vano-primary-travel button{min-height:51px!important;padding-inline:5px!important;gap:5px!important}
+  body.vano-map-surface .vano-primary-travel .route-option-copy b{font-size:10.5px}
+  body.vano-map-surface .vano-primary-travel .route-option-copy small{font-size:7.5px}
+  body.vano-map-surface #routeMoreContent #routeModeSegment .route-option-copy small{display:none!important}
+}
+
+@media (prefers-reduced-motion:reduce){
+  body.vano-map-surface *{scroll-behavior:auto!important}
+  body.vano-map-surface .vano-route-more-content{animation:none!important}
+  body.vano-map-surface :is(.vano-map-brand,.options-btn,.vano-primary-travel button,.planner-adjust-btn,.planner-preset,.nearby-service,.route-variant,.sub-action,.start-trip-cta,.vano-route-more-toggle,.planner-location-row){transition:none!important}
+}

@@ -2,45 +2,73 @@
 {% block title %}Criar conta · VANO MAPS{% endblock %}
 {% block legacy_map_assets %}{% endblock %}
 {% block head %}{% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-entry-page-v230.css') }}?v={{ vano_build_id }}">{% endblock %}
+{% block tail_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-register-v340.css') }}?v={{ vano_build_id }}">
+{% endblock %}
 {% block content %}
-<div class="vano-entry" data-auth-page="register">
-<div class="vano-splash" aria-hidden="true"><div class="splash-center"><img class="splash-mark" src="{{ url_for('static', filename='vano-maps-icon-192.png') }}" alt=""><div class="splash-word">VANO MAPS</div></div></div>
+<div class="vano-register-v340" data-auth-page="register">
+  <main class="register-shell">
+    <section class="register-panel">
+      <a class="register-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS">
+        <span class="vano-adaptive-brand">
+          <img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS">
+          <img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true">
+        </span>
+      </a>
 
-  <main class="v63-entry-shell">
-    <section class="v63-entry-panel">
-      <div class="v63-entry-brand"><a class="vano-auth-banner-link" href="{{ url_for('index') }}" aria-label="VANO MAPS"><span class="vano-auth-banner-clean vano-adaptive-brand"><img class="vano-auth-banner vano-auth-banner-light vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-auth-banner vano-auth-banner-dark vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span></a></div>
-      <div class="v63-entry-kicker">Entrada refeita · pronta para qualquer aparelho</div>
-      <h1>Entre no VANO.<span>Configure uma vez. Rode melhor sempre.</span></h1>
-      <p class="v63-entry-lead">Crie seu acesso para salvar preferências, destinos, idioma e contexto da sua navegação. A experiência foi reformulada para ficar limpa, rápida e estável em celular, tablet e desktop.</p>
-      <div class="v63-entry-proof"><span><i data-lucide="route" width="12"></i>Rotas salvas</span><span><i data-lucide="languages" width="12"></i>Idiomas</span><span><i data-lucide="shield-check" width="12"></i>Contexto de segurança</span><span><i data-lucide="smartphone" width="12"></i>Responsivo real</span></div>
-      <div class="v63-entry-quickline"><span><i data-lucide="navigation" width="13"></i>Navegação adaptativa</span><span><i data-lucide="bot" width="13"></i>Pronto para IA</span><span><i data-lucide="sparkles" width="13"></i>Entrada mais limpa</span></div>
-
-      <div class="v63-auth-block">
-        <div class="v63-auth-label"><span>Criar acesso</span><span>rápido e simples</span></div>
-        {% if google_ready %}<a class="auth-google auth-google-primary" id="googleOAuthLink" href="{{ url_for('google_login', next=request.args.get('next')) }}" data-google-auth><svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.38Z"/><path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.39l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.05v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.48H3.05A10 10 0 0 0 2 12c0 1.61.39 3.14 1.05 4.52l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.94c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.96 2.95 14.7 2 12 2a10 10 0 0 0-8.95 5.48l3.34 2.59C7.18 7.7 9.39 5.94 12 5.94Z"/></svg><span>Criar conta com Google</span><small>recomendado</small></a>{% else %}<div class="auth-google auth-google-primary is-disabled" aria-disabled="true"><span>Google indisponível</span><small>use e-mail</small></div>{% endif %}
-        <div class="v63-auth-row"><a class="auth-choice primary" href="#registerSheet" data-sheet-open="registerSheet"><i data-lucide="mail" width="17"></i><span>Criar com e-mail</span></a><a class="auth-choice secondary" href="{{ url_for('login', next=request.args.get('next')) }}#loginSheet"><i data-lucide="log-in" width="17"></i><span>Já tenho conta</span></a></div>
-                <a class="auth-guest" href="{{ url_for('index') }}"><i data-lucide="map" width="14"></i>Explorar o mapa antes</a>
-        <div class="v63-entry-utility-card"><div><small>COMECE CERTO</small><b>Salve destinos, idioma e preferências</b><span>Deixe sua conta pronta para abrir o mapa já com seu contexto e sua forma de dirigir.</span></div><a href="{{ url_for('index') }}">Ver mapa</a></div>
-        <div class="auth-legal">Ao continuar, você concorda com nossos <a href="{{ url_for('terms_of_use') }}">Termos de Uso</a> e <a href="{{ url_for('privacy_policy') }}">Política de Privacidade</a>.</div>
+      <div class="register-copy">
+        <span class="register-kicker"><i data-lucide="sparkles" width="14"></i> Sua conta VANO</span>
+        <h1>Comece em segundos.<span>O mapa aprende suas preferências depois.</span></h1>
+        <p>Entre com Google ou crie sua conta com e-mail aqui mesmo. Sem telas extras antes de você chegar ao mapa.</p>
       </div>
+
+      <div class="register-actions">
+        {% if google_ready %}
+        <a class="register-google" id="googleOAuthLink" href="{{ url_for('google_login', next=request.args.get('next')) }}" data-google-auth>
+          <svg class="google-logo" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.4-.18-2.07H12v3.92h5.38a4.6 4.6 0 0 1-2 3.02v2.51h3.24c1.9-1.75 2.98-4.33 2.98-7.38Z"/><path fill="#34A853" d="M12 22c2.7 0 4.97-.9 6.62-2.39l-3.24-2.51c-.9.6-2.04.96-3.38.96-2.61 0-4.82-1.76-5.61-4.13H3.05v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.39 13.93A6.02 6.02 0 0 1 6.08 12c0-.67.12-1.32.31-1.93V7.48H3.05A10 10 0 0 0 2 12c0 1.61.39 3.14 1.05 4.52l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.94c1.47 0 2.79.51 3.83 1.5l2.87-2.87C16.96 2.95 14.7 2 12 2a10 10 0 0 0-8.95 5.48l3.34 2.59C7.18 7.7 9.39 5.94 12 5.94Z"/></svg>
+          <span>Continuar com Google</span>
+          <i data-lucide="arrow-right" width="17"></i>
+        </a>
+        {% else %}
+        <div class="register-google is-disabled" aria-disabled="true"><i data-lucide="circle-off" width="18"></i><span>Google indisponível neste servidor</span></div>
+        {% endif %}
+
+        <div class="register-divider"><span>ou use seu e-mail</span></div>
+
+        <form method="post" action="{{ url_for('register', next=request.args.get('next')) }}" class="register-form sheet-form" id="registerEmailForm">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="register-field">
+            <label for="regEmail">E-mail</label>
+            <div class="register-input-shell"><i data-lucide="mail" width="17"></i><input id="regEmail" type="email" name="email" maxlength="180" autocomplete="email" inputmode="email" required placeholder="voce@exemplo.com"></div>
+          </div>
+          <div class="register-field">
+            <label for="newPassword">Senha</label>
+            <div class="register-input-shell"><i data-lucide="lock-keyhole" width="17"></i><input id="newPassword" type="password" name="password" minlength="10" autocomplete="new-password" required placeholder="10+ caracteres, com letra e número"><button class="register-password-toggle" type="button" data-password-toggle="newPassword" aria-label="Mostrar senha"><i data-lucide="eye" width="18"></i></button></div>
+            <small>Use pelo menos 10 caracteres com letra e número.</small>
+          </div>
+          <button class="register-email-submit sheet-submit" type="submit"><span>Criar conta com e-mail</span><i data-lucide="arrow-right" width="17"></i></button>
+        </form>
+
+        <div class="register-existing">Já tem uma conta? <a href="{{ url_for('login', next=request.args.get('next')) }}#loginSheet">Entrar</a></div>
+        <a class="register-guest" href="{{ url_for('index') }}"><i data-lucide="map" width="14"></i> Continuar no mapa sem conta</a>
+      </div>
+
+      <p class="register-legal">Ao continuar, você concorda com os <a href="{{ url_for('terms_of_use') }}">Termos de Uso</a> e a <a href="{{ url_for('privacy_policy') }}">Política de Privacidade</a>.</p>
     </section>
 
-    <section class="v63-route-stage" aria-label="Prévia da experiência VANO MAPS">
-      <div class="v63-stage-brand"><i></i> MAPA AO VIVO · SUA ROTA</div>
-      <picture class="v76-entry-picture"><source media="(max-width: 760px)" srcset="{{ url_for('static', filename='vano-entry-day-mobile-v76.svg') }}"><img class="v64-entry-city" src="{{ url_for('static', filename='vano-entry-day-v76.svg') }}" alt="Ilustração clara de uma cidade com uma rota de navegação VANO MAPS"></picture>
-      <div class="v63-stage-card route"><small>PRONTO PARA COMEÇAR</small><b>Perfil, idioma e preferências em um só lugar</b><span>Entrada refeita para reduzir atrito e deixar o começo da navegação mais direto.</span><div class="v63-stage-meta"><em>Carro</em><em>Moto</em><em>A pé</em></div></div>
-      <div class="v63-stage-card metric"><small>SETUP</small><b>~1 min</b><span>cadastro rápido</span><div class="meter"><i></i></div></div>
-      <div class="v63-stage-card bench"><small>CONTA</small><b>Pronta</b><span>Seu mapa, idioma e preferências ficam salvos para continuar depois.</span></div>
-    </section>
+    <aside class="register-preview" aria-label="Prévia VANO MAPS">
+      <img class="register-city" src="{{ url_for('static', filename='vano-entry-day-v76.svg') }}" alt="Mapa estilizado com uma rota VANO MAPS">
+      <div class="preview-shade"></div>
+      <div class="preview-top"><span><i></i> VANO AO VIVO</span><b>Seu mapa.<br>Sua escolha.</b></div>
+      <div class="preview-route-card">
+        <span class="preview-route-icon"><i data-lucide="navigation" width="18"></i></span>
+        <div><small>PRÓXIMO PASSO</small><b>Personalize sua conta</b><span>Nome, idioma e preferências essenciais em uma experiência rápida.</span></div>
+      </div>
+      <div class="preview-pills"><span><i data-lucide="car-front" width="13"></i> Carro</span><span><i data-lucide="sparkles" width="13"></i> Spark</span><span><i data-lucide="shield-check" width="13"></i> Segurança</span></div>
+    </aside>
   </main>
-
-  <section class="auth-sheet" id="registerSheet" aria-label="Criar conta" aria-hidden="true"><button type="button" class="sheet-backdrop" data-sheet-close aria-label="Fechar"></button><div class="sheet-card"><div class="sheet-grab"></div><header class="sheet-head"><div><h2>Criar conta</h2><p>Crie seu acesso. Depois você completa seu perfil.</p></div><button type="button" class="sheet-close" data-sheet-close aria-label="Fechar">×</button></header>
-    <form method="post" action="{{ url_for('register', next=request.args.get('next')) }}#registerSheet" class="sheet-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div class="sheet-field"><label for="regEmail">E-mail</label><input id="regEmail" class="sheet-input" type="email" name="email" maxlength="180" autocomplete="email" inputmode="email" required placeholder="voce@exemplo.com"></div>
-      <div class="sheet-field"><label for="newPassword">Senha</label><div class="password-shell"><input id="newPassword" class="sheet-input" type="password" name="password" minlength="10" autocomplete="new-password" required placeholder="10+ caracteres, letra e número"><button class="password-toggle" type="button" data-password-toggle="newPassword" aria-label="Mostrar senha"><i data-lucide="eye" width="18"></i></button></div></div>
-      <button class="sheet-submit" type="submit">Continuar</button>
-    </form><div class="sheet-switch">Já tem uma conta? <a href="{{ url_for('login', next=request.args.get('next')) }}#loginSheet">Entrar</a></div></div></section>
 </div>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='auth-entry.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='auth-entry.js') }}?v={{ vano_build_id }}"></script>
+{% endblock %}

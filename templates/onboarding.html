@@ -1,44 +1,98 @@
 {% extends 'base.html' %}
 {% block title %}Personalizar conta · VANO MAPS{% endblock %}
 {% block head %}
-<style>
-.topbar,.mobile-dock,footer{display:none!important}*{box-sizing:border-box}html,body{max-width:100%;overflow-x:hidden}body{padding-bottom:0!important;background:#07090c}.onboard{min-height:100svh;width:100%;padding:max(18px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));background:radial-gradient(circle at 82% -6%,rgba(255,103,20,.17),transparent 28%),radial-gradient(circle at 5% 35%,rgba(255,105,24,.05),transparent 26%),#07090c}.ob-shell{width:min(100%,560px);margin:0 auto;min-width:0}.ob-top{min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:12px}.vano-mini{display:inline-flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-size:18px;font-weight:900;letter-spacing:-.7px}.vano-mini img{width:31px;height:31px;object-fit:contain;filter:drop-shadow(0 0 13px rgba(255,94,8,.28))}.step-pill{white-space:nowrap;font-size:9px;letter-spacing:.08em;color:#ff9d65;font-weight:900;padding:7px 10px;border-radius:999px;border:1px solid rgba(255,118,42,.19);background:rgba(255,103,20,.065)}.ob-progress{height:3px;border-radius:99px;background:rgba(255,255,255,.055);overflow:hidden;margin:9px 0 0}.ob-progress i{display:block;width:100%;height:100%;background:linear-gradient(90deg,#ff8840,#ff5f0a);box-shadow:0 0 15px rgba(255,95,10,.4)}.ob-head{padding:26px 2px 20px}.ob-head .eyebrow{display:flex;align-items:center;gap:7px;color:#ff9252;font-size:9px;font-weight:900;letter-spacing:.14em;margin-bottom:11px}.ob-head .eyebrow i{width:7px;height:7px;border-radius:50%;background:#F59A62;box-shadow:0 0 0 5px rgba(255,104,23,.08)}.ob-head h1{font-size:clamp(34px,9.6vw,50px);line-height:.98;letter-spacing:-2.5px;margin:0;color:#f6f7f8}.ob-head h1 span{display:block;color:#818a96}.ob-head p{max-width:500px;margin:13px 0 0;color:#8c95a1;font-size:12px;line-height:1.62}.ob-form{display:flex;flex-direction:column;gap:12px;min-width:0}.ob-section{min-width:0;border:1px solid rgba(255,255,255,.075);background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.018));border-radius:21px;padding:15px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}.ob-section-title{display:flex;align-items:center;gap:10px;margin-bottom:13px;min-width:0}.ob-section-title .ico{width:36px;height:36px;flex:0 0 36px;border-radius:12px;display:grid;place-items:center;background:rgba(255,107,26,.09);border:1px solid rgba(255,112,34,.1);color:#ff8b47}.ob-section-title div:last-child{min-width:0}.ob-section-title b{display:block;font-size:13px;color:#eef1f4}.ob-section-title span{display:block;color:#747e8a;font-size:9.5px;margin-top:2px;line-height:1.35}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;min-width:0}.field{min-width:0}.field.full{grid-column:1/-1}.field label{display:block;margin:0 0 6px 2px;font-size:9.5px;color:#aeb6c0;font-weight:760}.input,.select{display:block;width:100%!important;min-width:0;height:49px;border:1px solid rgba(255,255,255,.08)!important;border-radius:13px!important;background:#0b0e12!important;color:#eef1f4!important;padding:0 12px!important;font-size:12px!important;outline:none}.input:focus,.select:focus{border-color:rgba(255,106,22,.58)!important;box-shadow:0 0 0 3px rgba(255,96,9,.06)!important}.input::placeholder{color:#555e69}.language-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.language-choice{position:relative;min-width:0}.language-choice input{position:absolute;opacity:0;pointer-events:none}.language-choice label{min-height:58px;border:1px solid rgba(255,255,255,.07);background:#0b0e12;border-radius:14px;padding:10px 11px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .18s ease,background .18s ease,transform .18s ease}.language-choice label:active{transform:scale(.985)}.language-choice .flag{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;background:rgba(255,255,255,.045);font-size:18px;flex:0 0 32px}.language-choice b{display:block;color:#edf0f4;font-size:11px}.language-choice small{display:block;margin-top:2px;color:#6f7884;font-size:8.5px}.language-choice input:checked+label{border-color:rgba(255,108,25,.52);background:rgba(255,103,20,.07);box-shadow:inset 0 0 0 1px rgba(255,109,27,.07)}.language-choice input:checked+label .flag{background:rgba(255,107,26,.12)}.ob-submit{width:100%;height:56px!important;border-radius:16px!important;font-size:13px!important;margin-top:2px;box-shadow:0 13px 32px rgba(255,91,0,.16)}.fine{font-size:8.5px;color:#5f6874;text-align:center;line-height:1.45;padding:1px 14px 8px}.language-note{margin-top:10px;padding:10px 11px;border-radius:12px;background:rgba(255,255,255,.025);color:#6f7884;font-size:8.5px;line-height:1.45}.language-note b{color:#aeb7c2}.ob-error{margin-bottom:12px;padding:10px 12px;border:1px solid rgba(255,93,93,.18);background:rgba(255,93,93,.06);border-radius:13px;color:#ffb1b1;font-size:10px;line-height:1.4}@media(max-width:430px){.onboard{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}.ob-head{padding-top:21px}.ob-section{padding:12px}.field-grid,.language-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.ob-head h1{letter-spacing:-2px}}@media(min-width:760px){.ob-shell{padding-top:2vh}.ob-section{padding:17px}}
-html[dir="rtl"] .ob-head,html[dir="rtl"] .ob-section-title,html[dir="rtl"] .field label,html[dir="rtl"] .language-choice label{text-align:right}.onboard,.ob-shell,.ob-form,.ob-section{min-width:0;max-width:100%}
-</style>
+<script>document.documentElement.classList.add('vano-onboarding-js')</script>
+{% endblock %}
+{% block tail_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding-v340.css') }}?v={{ vano_build_id }}">
 {% endblock %}
 {% block content %}
-<div class="onboard"><main class="ob-shell">
-  <div class="ob-top"><a class="vano-mini" href="{{ url_for('index') }}" aria-label="VANO MAPS"><span class="vano-adaptive-brand vano-mini-brand"><img class="vano-mini-wordmark vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-mini-wordmark vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span></a><span class="step-pill">CONFIGURAÇÃO FINAL</span></div>
-  <div class="ob-progress"><i></i></div>
-  <header class="ob-head"><div class="eyebrow"><i></i>SUA CONTA</div><h1>Antes de começar,<span>conte o básico.</span></h1><p>São só os dados essenciais para finalizar sua conta. As outras preferências continuam disponíveis depois no perfil.</p></header>
+{% set selected_locale = user['locale'] or active_locale %}
+<div class="vano-onboarding-v340">
+  <main class="ob-shell-v340">
+    <section class="ob-main-v340">
+      <header class="ob-top-v340">
+        <a class="ob-brand-v340" href="{{ url_for('index') }}" aria-label="VANO MAPS">
+          <span class="vano-adaptive-brand"><img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span>
+        </a>
+        <span class="ob-step-label-v340" id="obStepLabel">1 de 3</span>
+      </header>
 
-  <form class="ob-form" method="post" id="onboardingForm">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="ob-progress-v340" aria-hidden="true"><i id="obProgressBar"></i></div>
 
-    <section class="ob-section">
-      <div class="ob-section-title"><div class="ico"><i data-lucide="user-round" width="17"></i></div><div><b>Informações básicas</b><span>Nome, idade e sexo.</span></div></div>
-      <div class="field-grid">
-        <div class="field full"><label for="onboardingName">Nome</label><input id="onboardingName" class="input" type="text" name="name" maxlength="80" autocomplete="name" required value="{{ user['name'] or '' }}" placeholder="Como podemos te chamar?"></div>
-        <div class="field"><label for="onboardingAge">Idade</label><input id="onboardingAge" class="input" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 18"></div>
-        <div class="field"><label for="onboardingSex">Sexo</label><select id="onboardingSex" class="select" name="sex" required><option value="" {% if not user['sex'] %}selected{% endif %} disabled>Selecione</option><option value="female" {% if user['sex']=='female' %}selected{% endif %}>Feminino</option><option value="male" {% if user['sex']=='male' %}selected{% endif %}>Masculino</option><option value="intersex_other" {% if user['sex']=='intersex_other' %}selected{% endif %}>Outro / intersexo</option><option value="prefer_not_say" {% if user['sex']=='prefer_not_say' %}selected{% endif %}>Prefiro não informar</option></select></div>
-      </div>
+      <form method="post" id="onboardingForm" class="ob-form-v340" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <section class="ob-step-v340 is-active" data-ob-step="1" aria-labelledby="obTitle1">
+          <div class="ob-step-heading-v340">
+            <span class="ob-eyebrow-v340"><i data-lucide="user-round" width="14"></i> Primeiro, você</span>
+            <h1 id="obTitle1">Como o VANO<br><span>deve te conhecer?</span></h1>
+            <p>São só os dados essenciais para finalizar a conta. Nada de formulário gigante antes de abrir o mapa.</p>
+          </div>
+
+          <div class="ob-card-v340">
+            <label class="ob-field-v340 ob-field-full-v340" for="onboardingName"><span>Como podemos te chamar?</span><div class="ob-input-v340"><i data-lucide="user" width="17"></i><input id="onboardingName" type="text" name="name" maxlength="80" autocomplete="name" required value="{{ user['name'] or '' }}" placeholder="Seu nome"></div></label>
+            <div class="ob-field-grid-v340">
+              <label class="ob-field-v340" for="onboardingAge"><span>Idade</span><div class="ob-input-v340"><i data-lucide="calendar" width="17"></i><input id="onboardingAge" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 18"></div></label>
+              <label class="ob-field-v340" for="onboardingSex"><span>Sexo</span><div class="ob-input-v340 ob-select-v340"><i data-lucide="contact" width="17"></i><select id="onboardingSex" name="sex" required><option value="" {% if not user['sex'] %}selected{% endif %} disabled>Selecione</option><option value="female" {% if user['sex']=='female' %}selected{% endif %}>Feminino</option><option value="male" {% if user['sex']=='male' %}selected{% endif %}>Masculino</option><option value="intersex_other" {% if user['sex']=='intersex_other' %}selected{% endif %}>Outro / intersexo</option><option value="prefer_not_say" {% if user['sex']=='prefer_not_say' %}selected{% endif %}>Prefiro não informar</option></select><i class="ob-select-chevron" data-lucide="chevron-down" width="15"></i></div></label>
+            </div>
+          </div>
+
+          <div class="ob-step-actions-v340"><span class="ob-step-hint-v340"><i data-lucide="shield-check" width="14"></i> Você poderá editar isso no perfil.</span><button class="ob-next-v340" type="button" data-ob-next>Continuar <i data-lucide="arrow-right" width="17"></i></button></div>
+        </section>
+
+        <section class="ob-step-v340" data-ob-step="2" aria-labelledby="obTitle2">
+          <div class="ob-step-heading-v340">
+            <span class="ob-eyebrow-v340"><i data-lucide="languages" width="14"></i> Sua experiência</span>
+            <h1 id="obTitle2">Escolha o idioma.<br><span>O resto se adapta.</span></h1>
+            <p>Interface, buscas e instruções compatíveis passam a priorizar essa escolha.</p>
+          </div>
+
+          <div class="ob-card-v340">
+            <div class="ob-language-grid-v340" role="radiogroup" aria-label="Idioma">
+              <label class="ob-language-v340"><input id="langPt" type="radio" name="locale" value="pt-BR" {% if selected_locale=='pt-BR' %}checked{% endif %} required><span class="ob-language-card-v340"><em>🇧🇷</em><span><b>Português</b><small>Brasil</small></span><i data-lucide="check" width="16"></i></span></label>
+              <label class="ob-language-v340"><input id="langEn" type="radio" name="locale" value="en-US" {% if selected_locale=='en-US' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇺🇸</em><span><b>English</b><small>English</small></span><i data-lucide="check" width="16"></i></span></label>
+              <label class="ob-language-v340"><input id="langAr" type="radio" name="locale" value="ar-MA" {% if selected_locale=='ar-MA' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇲🇦</em><span><b>العربية</b><small>المغرب</small></span><i data-lucide="check" width="16"></i></span></label>
+              <label class="ob-language-v340"><input id="langRu" type="radio" name="locale" value="ru-RU" {% if selected_locale=='ru-RU' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇷🇺</em><span><b>Русский</b><small>Россия</small></span><i data-lucide="check" width="16"></i></span></label>
+              <label class="ob-language-v340"><input id="langEs" type="radio" name="locale" value="es-ES" {% if selected_locale=='es-ES' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇪🇸</em><span><b>Español</b><small>Español</small></span><i data-lucide="check" width="16"></i></span></label>
+            </div>
+          </div>
+
+          <div class="ob-step-actions-v340"><button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button><button class="ob-next-v340" type="button" data-ob-next>Ver resumo <i data-lucide="arrow-right" width="17"></i></button></div>
+        </section>
+
+        <section class="ob-step-v340" data-ob-step="3" aria-labelledby="obTitle3">
+          <div class="ob-step-heading-v340">
+            <span class="ob-eyebrow-v340"><i data-lucide="sparkles" width="14"></i> Tudo pronto</span>
+            <h1 id="obTitle3">Seu VANO está<br><span>pronto para abrir.</span></h1>
+            <p>Confira o essencial. Depois disso você cai direto no mapa e pode ajustar o resto quando quiser.</p>
+          </div>
+
+          <div class="ob-summary-v340">
+            <div class="ob-summary-avatar-v340"><span id="obSummaryInitial">V</span></div>
+            <div class="ob-summary-copy-v340"><small>PERFIL VANO</small><b id="obSummaryName">Seu nome</b><span id="obSummaryMeta">Conta pronta para navegar</span></div>
+            <div class="ob-summary-badge-v340"><i data-lucide="check" width="15"></i> Pronto</div>
+          </div>
+          <div class="ob-summary-grid-v340">
+            <div><span class="ob-summary-icon-v340"><i data-lucide="languages" width="17"></i></span><small>IDIOMA</small><b id="obSummaryLocale">Português</b></div>
+            <div><span class="ob-summary-icon-v340"><i data-lucide="navigation" width="17"></i></span><small>PRÓXIMA TELA</small><b>Mapa VANO</b></div>
+          </div>
+          <div class="ob-ready-note-v340"><i data-lucide="wand-sparkles" width="17"></i><span><b>Primeira experiência mais limpa.</b> Você entra no mapa com o essencial salvo e personaliza rotas, veículo, casa e trabalho depois, no seu ritmo.</span></div>
+
+          <div class="ob-step-actions-v340"><button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button><button class="ob-finish-v340" type="submit"><span>Concluir e abrir o VANO MAPS</span><i data-lucide="arrow-up-right" width="18"></i></button></div>
+        </section>
+      </form>
     </section>
 
-    {% set selected_locale = user['locale'] or active_locale %}
-    <section class="ob-section">
-      <div class="ob-section-title"><div class="ico"><i data-lucide="languages" width="17"></i></div><div><b>Idioma</b><span>O VANO MAPS vai usar esta língua na interface, buscas e instruções compatíveis.</span></div></div>
-      <div class="language-grid" role="radiogroup" aria-label="Idioma">
-        <div class="language-choice"><input id="langPt" type="radio" name="locale" value="pt-BR" {% if selected_locale=='pt-BR' %}checked{% endif %} required><label for="langPt"><span class="flag">🇧🇷</span><span><b>Português</b><small>Brasil</small></span></label></div>
-        <div class="language-choice"><input id="langEn" type="radio" name="locale" value="en-US" {% if selected_locale=='en-US' %}checked{% endif %}><label for="langEn"><span class="flag">🇺🇸</span><span><b>English</b><small>English</small></span></label></div>
-        <div class="language-choice"><input id="langAr" type="radio" name="locale" value="ar-MA" {% if selected_locale=='ar-MA' %}checked{% endif %}><label for="langAr"><span class="flag">🇲🇦</span><span><b>العربية</b><small>المغرب</small></span></label></div>
-        <div class="language-choice"><input id="langRu" type="radio" name="locale" value="ru-RU" {% if selected_locale=='ru-RU' %}checked{% endif %}><label for="langRu"><span class="flag">🇷🇺</span><span><b>Русский</b><small>Россия</small></span></label></div>
-        <div class="language-choice"><input id="langEs" type="radio" name="locale" value="es-ES" {% if selected_locale=='es-ES' %}checked{% endif %}><label for="langEs"><span class="flag">🇪🇸</span><span><b>Español</b><small>Español</small></span></label></div>
-      </div>
-      <div class="language-note"><b>A escolha fica salva na conta.</b> Ao concluir, o idioma selecionado passa a ter prioridade sobre o idioma do navegador e a região do aparelho.</div>
-    </section>
-
-    <button class="btn btn-primary ob-submit" type="submit"><i data-lucide="arrow-right" width="17"></i>Concluir e abrir o VANO MAPS</button>
-    <div class="fine">Você pode trocar o idioma novamente depois em Perfil.</div>
-  </form>
-</main></div>
+    <aside class="ob-preview-v340" aria-hidden="true">
+      <img src="{{ url_for('static', filename='vano-entry-day-v76.svg') }}" alt="">
+      <div class="ob-preview-overlay-v340"></div>
+      <div class="ob-preview-brand-v340"><img src="{{ url_for('static', filename='vano-maps-icon-192.png') }}" alt=""><span><small>SEU MAPA</small><b>Começa com você.</b></span></div>
+      <div class="ob-preview-card-v340"><small>CONFIGURAÇÃO INTELIGENTE</small><b id="obPreviewTitle">Só o essencial primeiro.</b><span id="obPreviewText">Nome, idade e idioma. O resto você decide depois, dentro do mapa.</span><div class="ob-preview-meter-v340"><i id="obPreviewMeter"></i></div></div>
+    </aside>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vano-onboarding-v340.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}

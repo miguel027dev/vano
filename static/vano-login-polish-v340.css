@@ -1,0 +1,32 @@
+/* VANO v340 — login simplificado: uma ação principal, e-mail secundário, resto discreto. */
+body.vano-login-v258 .entry-utility-strip,
+body.vano-login-v258 .benchmark-chip-card{display:none!important}
+body.vano-login-v258 .auth-copy{max-width:620px}
+body.vano-login-v258 .auth-actions{gap:10px!important;max-width:500px!important}
+body.vano-login-v258 .auth-button.google{
+  min-height:54px!important;border-radius:17px!important;
+  box-shadow:0 12px 30px rgba(25,29,36,.09)!important;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease,border-color .2s ease!important
+}
+body.vano-login-v258 .auth-button.email{
+  min-height:51px!important;border-radius:16px!important;background:transparent!important;
+  box-shadow:none!important
+}
+body.vano-login-v258 .auth-button:is(.google,.email):active{transform:scale(.985)!important}
+body.vano-login-v258 .auth-links{margin-top:4px!important;text-align:center!important}
+body.vano-login-v258 .auth-extra-actions{display:flex;justify-content:center;margin-top:-2px!important}
+body.vano-login-v258 .guest-link{
+  width:auto!important;min-height:34px!important;height:auto!important;padding:7px 10px!important;
+  font-size:11px!important;font-weight:730!important;opacity:.72;border-radius:10px!important
+}
+body.vano-login-v258 .guest-link:hover{opacity:1}
+body.vano-login-v258 .lead{max-width:590px}
+html[data-vano-theme="black"] body.vano-login-v258 .auth-button.email{border-color:rgba(255,255,255,.10)!important}
+@media(max-width:820px){
+  body.vano-login-v258 .auth-actions{max-width:none!important}
+  body.vano-login-v258 .auth-button.google{min-height:52px!important}
+  body.vano-login-v258 .guest-link{font-size:10.5px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  body.vano-login-v258 .auth-button.google,body.vano-login-v258 .auth-button.email{transition:none!important}
+}

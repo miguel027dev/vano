@@ -428,6 +428,7 @@
   
   
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-ui-v258.css') }}?v={{ vano_build_id }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-login-polish-v340.css') }}?v={{ vano_build_id }}">
   <script defer src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
   
 </head>
@@ -473,7 +474,7 @@
               <svg class="button-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
             </button>
 
-            <div class="auth-links">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet">Criar conta</a></div>
+            <div class="auth-links">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}">Criar conta com e-mail</a></div>
             <div class="auth-extra-actions"><a class="guest-link" href="{{ url_for('index') }}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg>
               Explorar o mapa sem conta
@@ -543,7 +544,7 @@
         <div class="field"><label for="password">Senha</label><div class="input-shell"><input id="password" type="password" name="password" autocomplete="current-password" required placeholder="Sua senha"><button class="password-toggle" type="button" data-password-toggle="password" aria-label="Mostrar senha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
         <button class="sheet-submit" type="submit">Entrar na minha conta</button>
       </form>
-      <div class="sheet-switch">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet">Criar conta</a> · <a href="{{ url_for('forgot_password') }}">Esqueci minha senha</a></div>
+      <div class="sheet-switch">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}">Criar conta</a> · <a href="{{ url_for('forgot_password') }}">Esqueci minha senha</a></div>
     </div>
   </section>
 
