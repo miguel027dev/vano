@@ -2,12 +2,13 @@
 {% block title %}Perfil · VANO MAPS{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-page-v230.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-polish-v343.css') }}?v={{ vano_build_id }}">
 
 
 {% endblock %}
 {% block content %}
 <main class="page v72-profile-page">
-  <div class="container profile-v72-shell">
+  <div class="container profile-v72-shell profile-v343-shell">
     <section class="profile-v72-hero" aria-label="Resumo do perfil">
       <div class="profile-v72-identity">
         {% if current_user['avatar_url'] %}
@@ -38,14 +39,24 @@
       <div class="profile-v255-status"><i data-lucide="check-circle-2" width="16"></i><span>Salve as alterações ao terminar</span></div>
     </section>
 
-    <nav class="profile-v108-quicknav profile-v255-quicknav" aria-label="Atalhos do perfil">
+    <div class="profile-v343-workspace">
+      <aside class="profile-v343-sidebar" aria-label="Navegação das configurações">
+        <div class="profile-v343-sidebar-head">
+          <span>CONFIGURAÇÕES</span>
+          <b>Personalize por etapa</b>
+          <small>Escolha uma área e ajuste só o que importa agora.</small>
+        </div>
+        <nav class="profile-v108-quicknav profile-v255-quicknav" aria-label="Atalhos do perfil">
       <a href="#places"><span class="profile-v108-quick-icon"><i data-lucide="house" width="17"></i></span><span><b>Destinos</b><small>{% if current_user['home_label'] or current_user['work_label'] %}Atalhos configurados{% else %}Configure casa e trabalho{% endif %}</small></span><i data-lucide="chevron-right" width="15"></i></a>
       <a href="#appSettings"><span class="profile-v108-quick-icon"><i data-lucide="route" width="17"></i></span><span><b>Rotas e mapa</b><small>Preferências de navegação</small></span><i data-lucide="chevron-right" width="15"></i></a>
       <a href="#vehicle"><span class="profile-v108-quick-icon"><i data-lucide="car-front" width="17"></i></span><span><b>Veículo</b><small>{% if current_user['vehicle_make'] or current_user['vehicle_model'] %}{{ current_user['vehicle_make'] or '' }} {{ current_user['vehicle_model'] or '' }}{% else %}Adicionar veículo{% endif %}</small></span><i data-lucide="chevron-right" width="15"></i></a>
       <a href="#family"><span class="profile-v108-quick-icon"><i data-lucide="shield-check" width="17"></i></span><span><b>Segurança</b><small>Emergência e vínculos</small></span><i data-lucide="chevron-right" width="15"></i></a>
-    </nav>
+        </nav>
+        <div class="profile-v343-sidebar-note"><i data-lucide="sparkles" width="15"></i><span>As alterações ficam marcadas até você salvar.</span></div>
+      </aside>
 
-    <form method="post" id="settings" class="profile-v72-form">
+      <div class="profile-v343-content">
+    <form method="post" id="settings" class="profile-v72-form" aria-busy="false">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <details class="profile-v72-detail" id="places" open>
@@ -155,6 +166,8 @@
         <div class="danger-actions"><button class="btn btn-danger" type="submit"><i data-lucide="trash-2" width="16"></i>Excluir minha conta</button><a class="btn btn-ghost" href="{{ url_for('account_delete_page') }}">Saiba como funciona</a></div>
       </form>
     </section>
+      </div>
+    </div>
   </div>
 </main>
 <script>
@@ -170,7 +183,7 @@ const profileForm=document.getElementById('settings'),profileSaveBtn=document.ge
 let profileDirty=false;
 const markProfileDirty=()=>{if(profileDirty)return;profileDirty=true;profileSaveBtn?.classList.add('is-dirty');if(profileSaveHint)profileSaveHint.textContent='Alterações pendentes'};
 profileForm?.querySelectorAll('input,select').forEach(el=>{if(el.type==='hidden'||el.readOnly)return;el.addEventListener('input',markProfileDirty,{passive:true});el.addEventListener('change',markProfileDirty,{passive:true})});
-profileForm?.addEventListener('submit',()=>{profileSaveBtn?.classList.add('is-saving');if(profileSaveHint)profileSaveHint.textContent='Salvando…'});
+profileForm?.addEventListener('submit',()=>{profileSaveBtn?.classList.add('is-saving');profileForm?.setAttribute('aria-busy','true');if(profileSaveHint)profileSaveHint.textContent='Salvando…'});
 document.querySelectorAll('.profile-v108-quicknav a').forEach(link=>link.addEventListener('click',()=>{const target=document.querySelector(link.getAttribute('href'));if(target?.tagName==='DETAILS')target.open=true}));
 
 let profileSubmitting=false;
@@ -179,4 +192,5 @@ window.addEventListener('beforeunload',event=>{if(profileDirty&&!profileSubmitti
 const accountDeleteForm=document.getElementById('accountDeleteForm');
 accountDeleteForm?.addEventListener('submit',async event=>{if(accountDeleteForm.dataset.confirmed==='1')return;event.preventDefault();const ok=await (vanoRuntime.confirm?.({title:'Excluir sua conta permanentemente?',message:'Essa ação não pode ser desfeita. Confirme somente se deseja remover sua conta VANO MAPS.',confirmText:'Excluir conta',danger:true})??Promise.resolve(false));if(ok){accountDeleteForm.dataset.confirmed='1';accountDeleteForm.requestSubmit()}});
 </script>
+<script src="{{ url_for('static', filename='vano-profile-polish-v343.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}

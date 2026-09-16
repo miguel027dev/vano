@@ -4,7 +4,7 @@
 <script>document.documentElement.classList.add('vano-onboarding-js')</script>
 {% endblock %}
 {% block tail_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding-v340.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding-v343.css') }}?v={{ vano_build_id }}">
 {% endblock %}
 {% block content %}
 {% set selected_locale = user['locale'] or active_locale %}
@@ -150,5 +150,5 @@
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="{{ url_for('static', filename='vano-onboarding-v340.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-onboarding-v343.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}
