@@ -10,14 +10,20 @@
 
   const syncBrand=()=>{
     if(!brand)return;
-    const dark=document.documentElement.dataset.vanoTheme==='black'||document.documentElement.dataset.vanoThemeMode==='black';
-    const next=dark?brand.dataset.darkSrc:brand.dataset.lightSrc;
+    // light = dark lettering; black = white lettering. Keep this mapping explicit:
+    // the filenames describe the surface they belong to, not the text color.
+    const mode=String(document.documentElement.dataset.vanoTheme||document.documentElement.dataset.vanoThemeMode||'light').toLowerCase();
+    const next=mode==='black'?brand.dataset.darkSrc:brand.dataset.lightSrc;
     if(next&&brand.getAttribute('src')!==next)brand.setAttribute('src',next);
+    const reveal=()=>brand.classList.add('is-ready');
+    if(brand.complete)reveal();else brand.addEventListener('load',reveal,{once:true});
   };
   syncBrand();
   const themeObserver=new MutationObserver(syncBrand);
   themeObserver.observe(document.documentElement,{attributes:true,attributeFilter:['data-vano-theme','data-vano-theme-mode']});
-  document.querySelector('[data-vano-theme-toggle]')?.addEventListener('click',()=>requestAnimationFrame(syncBrand));
+  window.addEventListener('vano:themechange',()=>requestAnimationFrame(syncBrand));
+  document.addEventListener('DOMContentLoaded',syncBrand,{once:true});
+  document.querySelector('[data-vano-theme-toggle]')?.addEventListener('click',()=>requestAnimationFrame(()=>requestAnimationFrame(syncBrand)));
 
   const setEmailOpen=(open)=>{
     if(!trigger||!panel)return;

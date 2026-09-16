@@ -1,0 +1,57 @@
+{
+  "version": 8,
+  "name": "VANO Light 3D",
+  "metadata": {
+    "vano:purpose": "day-navigation",
+    "vano:route-color": "#F59A62",
+    "vano:route-shadow": "#B9572D",
+    "vano:ui-surface": "#FFFBF7"
+  },
+  "imports": [
+    {
+      "id": "basemap",
+      "url": "mapbox://styles/mapbox/standard",
+      "config": {
+        "lightPreset": "day",
+        "theme": "faded",
+        "showPlaceLabels": true,
+        "showRoadLabels": true,
+        "showPointOfInterestLabels": false,
+        "showTransitLabels": false,
+        "showLandmarkIcons": false,
+        "showAdminBoundaries": false,
+        "show3dObjects": true,
+        "show3dBuildings": true,
+        "show3dLandmarks": true,
+        "show3dTrees": false
+      }
+    }
+  ],
+  "sources": {
+    "vano-terrain": {
+      "type": "raster-dem",
+      "url": "mapbox://mapbox.mapbox-terrain-dem-v1",
+      "tileSize": 512,
+      "maxzoom": 14
+    }
+  },
+  "terrain": {
+    "source": "vano-terrain",
+    "exaggeration": 0.72
+  },
+  "projection": {
+    "name": "mercator"
+  },
+  "fog": {
+    "range": [
+      0.8,
+      10
+    ],
+    "color": "#EAF2F8",
+    "high-color": "#FFFFFF",
+    "space-color": "#F4F7F9",
+    "horizon-blend": 0.07,
+    "star-intensity": 0
+  },
+  "layers": []
+}

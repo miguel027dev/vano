@@ -1,0 +1,8 @@
+VANO V345 — MOBILE / THEME
+
+- Corrige encolhimento do app ao abrir teclado em Android/Samsung.
+- Mantém altura visual estável e eleva apenas o painel acima do teclado.
+- Remove scroll aninhado da seção "Perto de você".
+- Cards próximos passam a grid responsivo de 2 colunas no celular.
+- Corrige/fortalece troca da logo: tema claro = texto escuro; Black = texto claro.
+- Adiciona presets Mapbox Standard 3D claro/escuro em static/mapbox/.

@@ -4,11 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#F6F3F0">
+  <script>
+  // Apply the saved VANO theme before the brand image is painted. This prevents
+  // a white-wordmark flash on the light login screen (and the inverse in Black).
+  (()=>{try{const keys=['vano.theme.mode.v200','vano.theme.mode.v60','vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55','vano.theme.mode'];let mode='light';for(const key of keys){const value=localStorage.getItem(key);if(value){mode=String(value).toLowerCase()==='black'?'black':'light';break}}document.documentElement.dataset.vanoTheme=mode;document.documentElement.dataset.vanoThemeMode=mode;document.documentElement.style.colorScheme=mode==='black'?'dark':'light'}catch(_){}})();
+  </script>
   <meta name="robots" content="noindex,follow">
   <title>Entrar · VANO MAPS</title>
   <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-64.png') }}?v={{ vano_build_id }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-brand-v330.css') }}?v={{ vano_build_id }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-login-startup-v343.css') }}?v={{ vano_build_id }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-login-startup-v343.css') }}?v={{ vano_build_id }}-345">
   <script defer src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
 </head>
 <body class="vano-auth-startup">
@@ -112,6 +117,6 @@
     </aside>
   </main>
 
-  <script src="{{ url_for('static', filename='vano-login-startup-v343.js') }}?v={{ vano_build_id }}"></script>
+  <script src="{{ url_for('static', filename='vano-login-startup-v343.js') }}?v={{ vano_build_id }}-345"></script>
 </body>
 </html>

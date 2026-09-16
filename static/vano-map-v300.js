@@ -1832,8 +1832,12 @@ function refreshResponsiveViewport(){
   const keyboardLikely=!!(searchFocused&&window.innerWidth<900&&vv&&(viewportLoss>110||layoutH-rawH>90||(+vv.offsetTop||0)>40));
   if(!keyboardLikely&&layoutH>260)vanoStableViewportH=layoutH;
   vanoKeyboardOpen=keyboardLikely;document.documentElement.classList.toggle('vano-keyboard-open',keyboardLikely);document.body.classList.toggle('vano-keyboard-open',keyboardLikely);
-  const safeH=keyboardLikely&&!VANO_IOS_WEBKIT?rawH:(keyboardLikely&&vanoStableViewportH?vanoStableViewportH:rawH),keyboardBottom=keyboardLikely&&VANO_IOS_WEBKIT?viewportLoss:0;
-  document.documentElement.style.setProperty('--vano-vh',`${Math.max(260,safeH)}px`);document.documentElement.style.setProperty('--vano-vw',`${Math.max(280,rawW)}px`);document.documentElement.style.setProperty('--vano-keyboard-bottom',`${Math.max(0,keyboardBottom)}px`);
+  // V345: keep the map/app composition at its pre-keyboard height on every mobile browser.
+  // Some Android devices (notably Samsung/Chrome combinations) resize BOTH the layout and
+  // visual viewports when the keyboard opens; using rawH there made the whole UI look 70–80%
+  // smaller. The keyboard now only contributes an inset that lifts interactive UI above it.
+  const stableH=Math.max(260,vanoStableViewportH||baselineH||layoutH||rawH),safeH=keyboardLikely?stableH:rawH,keyboardBottom=keyboardLikely?Math.max(0,viewportLoss):0;
+  document.documentElement.style.setProperty('--vano-vh',`${Math.max(260,safeH)}px`);document.documentElement.style.setProperty('--vano-visible-vh',`${Math.max(220,rawH)}px`);document.documentElement.style.setProperty('--vano-vw',`${Math.max(280,rawW)}px`);document.documentElement.style.setProperty('--vano-keyboard-bottom',`${Math.max(0,keyboardBottom)}px`);
   if(keyboardLikely)lockIOSInputViewport();
   vanoViewportTimer=setTimeout(()=>requestAnimationFrame(()=>{
     try{map?.resize?.()}catch{}

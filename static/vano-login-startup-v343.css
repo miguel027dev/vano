@@ -27,3 +27,8 @@ html[data-vano-theme="black"] .startup-card{background:transparent}html[data-van
 @media(max-width:390px){.startup-card{padding-left:15px;padding-right:15px}.startup-copy h1{font-size:40px}.startup-copy{margin-top:48px}.startup-action-copy small{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.startup-shell,.startup-card>*,.startup-email-panel.is-open .startup-email-form,.startup-flash,.startup-status,.startup-route-card,.startup-live i{animation:none!important}.startup-google,.startup-email-trigger,.startup-email-submit,.startup-theme{transition:none!important}}
 @keyframes startupShellIn{from{opacity:0;transform:translateY(12px) scale(.995)}to{opacity:1;transform:none}}@keyframes startupItemIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}@keyframes startupPanelIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}@keyframes startupSpin{to{transform:rotate(360deg)}}@keyframes startupFlashIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}@keyframes startupFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}@keyframes startupLive{0%{box-shadow:0 0 0 0 rgba(245,154,98,.25)}70%,100%{box-shadow:0 0 0 9px rgba(245,154,98,0)}}
+
+/* V345 — never paint the opposite-theme wordmark during theme boot. */
+.startup-brand-image{opacity:0;transition:opacity .14s ease}
+.startup-brand-image.is-ready{opacity:1}
+@media(prefers-reduced-motion:reduce){.startup-brand-image{transition:none!important}}

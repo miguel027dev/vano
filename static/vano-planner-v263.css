@@ -663,3 +663,107 @@ html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .p
   background:linear-gradient(180deg,rgba(39,35,32,.98),rgba(33,30,28,.97))!important;
 }
 @media(prefers-reduced-motion:reduce){body.vano-map-surface .search-results.show{animation:none!important}body.vano-map-surface:not(.body-nav) #planSheet .planner-search-card.search-card{transition:none!important}}
+
+
+/* ========================================================================== 
+   VANO MAPS V345 — Samsung/Android keyboard + responsive nearby section
+   - The app no longer visually collapses when the IME resizes visualViewport.
+   - Expanded planner owns vertical scrolling; "Perto de você" never becomes a
+     second nested scroll area where cards disappear behind its own clipping box.
+   ========================================================================== */
+@media(max-width:899px){
+  body.vano-map-surface:not(.body-nav) #planSheet.sheet-expanded{
+    height:auto!important;
+    min-height:0!important;
+    max-height:min(780px,calc(var(--vano-vh,100dvh) - max(16px,env(safe-area-inset-top)) - max(16px,env(safe-area-inset-bottom)) - 82px))!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior-y:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+    scroll-padding:14px 0 max(22px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet.sheet-expanded::-webkit-scrollbar{display:none!important}
+  body.vano-map-surface:not(.body-nav) #planSheet.sheet-expanded .planner-expanded{
+    display:block!important;
+    max-height:none!important;
+    height:auto!important;
+    overflow:visible!important;
+    overscroll-behavior:auto!important;
+    padding:12px 1px max(14px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet .planner-section-head{
+    min-width:0!important;
+    padding-inline:2px!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-services{
+    width:100%!important;
+    min-width:0!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service{
+    width:100%!important;
+    min-width:0!important;
+    min-height:72px!important;
+    padding:9px 8px!important;
+    display:grid!important;
+    grid-template-columns:36px minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
+    column-gap:9px!important;
+    row-gap:1px!important;
+    align-items:center!important;
+    text-align:left!important;
+    overflow:hidden!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service .nearby-service-icon{
+    grid-row:1 / span 2!important;
+    width:36px!important;
+    height:36px!important;
+    margin:0!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service b{
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:10.5px!important;
+  }
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service small{
+    display:block!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:8px!important;
+  }
+  /* A focused field must not change the planner's state or scale. Only a card that
+     was already collapsed is lifted above the IME; an expanded card keeps its
+     geometry and lets the keyboard overlay its lower, non-search content. */
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet.planner-search-active.sheet-collapsed{
+    height:150px!important;
+    min-height:150px!important;
+    max-height:150px!important;
+    bottom:max(8px,calc(var(--vano-keyboard-bottom,0px) + 8px))!important;
+    overflow:visible!important;
+    transform:translate3d(0,0,0)!important;
+  }
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet.planner-search-active.sheet-expanded{
+    bottom:max(8px,calc(env(safe-area-inset-bottom) + 4px))!important;
+    transform:translate3d(0,0,0)!important;
+  }
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet .planner-search-card.search-card,
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet .planner-location-row.location-row{
+    flex:none!important;
+    scale:1!important;
+  }
+}
+@media(max-width:380px){
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-services{gap:6px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service{min-height:68px!important;padding:8px 6px!important;grid-template-columns:32px minmax(0,1fr)!important;column-gap:7px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service .nearby-service-icon{width:32px!important;height:32px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service b{font-size:9.5px!important}
+  body.vano-map-surface:not(.body-nav) #planSheet .nearby-service small{font-size:7.5px!important}
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet.planner-search-active,
+  body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet.planner-search-active.sheet-collapsed{height:144px!important;min-height:144px!important;max-height:144px!important}
+}
