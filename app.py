@@ -201,19 +201,11 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 # normal setup is one hop; deployments behind an additional CDN/proxy can set 2.
 RAIRO_PROXY_HOPS = max(0, min(5, int(os.environ.get("RAIRO_PROXY_HOPS", "1") or 1)))
 
-# V46 — designated owner account + explicit motorized profiles.
-# Administrative identity must come from deployment configuration, never from
-# a source-code allowlist. Existing users whose DB role is already "admin" keep
-# that role; configured addresses only permit VERIFIED Google identities to be
-# promoted/provisioned as administrators.
-RAIRO_OWNER_EMAIL = os.environ.get("RAIRO_OWNER_EMAIL", "").strip().lower()
-ADMIN_EMAILS = {
-    email.strip().lower()
-    for email in os.environ.get("RAIRO_ADMIN_EMAILS", "").split(",")
-    if email.strip()
-}
-if RAIRO_OWNER_EMAIL:
-    ADMIN_EMAILS.add(RAIRO_OWNER_EMAIL)
+# V342 — single-owner administration.
+# Only this verified account is allowed to hold administrator privileges.
+PRIMARY_ADMIN_EMAIL = "miguelpinxs@gmail.com"
+RAIRO_OWNER_EMAIL = PRIMARY_ADMIN_EMAIL
+ADMIN_EMAILS = {PRIMARY_ADMIN_EMAIL}
 MOTORIZED_PROFILES = {"driving", "motorcycle"}
 
 
@@ -2437,26 +2429,13 @@ def init_db():
         if legacy_admin and verify_password(legacy_admin["password_hash"], "Vano Maps@2026!"):
             db.execute("UPDATE users SET password_hash=?,is_active=0 WHERE id=?", (hash_password(secrets.token_urlsafe(48)), legacy_admin["id"]))
 
-        # A password administrator is now provisioned only when BOTH values are
-        # explicitly supplied by the deployment. No known default credentials.
-        admin_email = os.environ.get("RAIRO_ADMIN_EMAIL", "").strip().lower()
-        admin_password_env = os.environ.get("RAIRO_ADMIN_PASSWORD", "").strip()
-        if admin_email and admin_password_env and re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", admin_email):
-            existing = db.execute("SELECT id FROM users WHERE email = ?", (admin_email,)).fetchone()
-            if not existing:
-                db.execute(
-                    "INSERT INTO users(name,email,password_hash,role,locale,created_at) VALUES(?,?,?,?,?,?)",
-                    ("Administrador VANO MAPS", admin_email, hash_password(admin_password_env), "admin", "pt-BR", utcnow_iso()),
-                )
-            else:
-                db.execute("UPDATE users SET password_hash=?, role='admin', is_active=1 WHERE id=?", (hash_password(admin_password_env), existing["id"]))
-
-        # Optional owner bootstrap is explicit. Leaving RAIRO_OWNER_EMAIL unset
-        # never creates or promotes a hidden/source-code identity.
-        if RAIRO_OWNER_EMAIL and re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", RAIRO_OWNER_EMAIL):
-            owner = db.execute("SELECT id FROM users WHERE email=?", (RAIRO_OWNER_EMAIL,)).fetchone()
-            if owner:
-                db.execute("UPDATE users SET role='admin', is_active=1 WHERE id=?", (owner["id"],))
+        # Single-owner security migration: any historical administrator other than
+        # the designated VANO owner is demoted. Environment variables can no longer
+        # promote a second admin account.
+        db.execute("UPDATE users SET role='user' WHERE role='admin' AND LOWER(email) <> ?", (PRIMARY_ADMIN_EMAIL,))
+        owner = db.execute("SELECT id FROM users WHERE LOWER(email)=?", (PRIMARY_ADMIN_EMAIL,)).fetchone()
+        if owner:
+            db.execute("UPDATE users SET role='admin', is_active=1 WHERE id=?", (owner["id"],))
         db.commit()
     except Exception:
         db.rollback()
@@ -3078,7 +3057,7 @@ def admin_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
         user = current_user()
-        if not user or user["role"] != "admin":
+        if not user or user["role"] != "admin" or not is_admin_email(user["email"]):
             abort(403)
         return view(*args, **kwargs)
     return wrapped
@@ -8251,7 +8230,7 @@ def google_callback():
             if existing_sub and existing_sub != sub:
                 raise RuntimeError("Conta Google divergente")
             provider = "google" if user["auth_provider"] == "google" else "hybrid"
-            role = "admin" if is_admin_email(email) else user["role"]
+            role = role_for_email(email)
             db.execute(
                 "UPDATE users SET google_sub=?, avatar_url=?, auth_provider=?, last_login_at=?, role=? WHERE id=?",
                 (sub, avatar, provider, utcnow_iso(), role, user["id"]),
@@ -8340,52 +8319,6 @@ def onboarding():
         return response
 
     return render_template("onboarding.html", user=user)
-
-
-@app.route("/dev/reset-accounts", methods=["POST"])
-@login_required
-def dev_reset_accounts():
-    if not validate_csrf():
-        abort(400)
-    user = current_user()
-    if not user:
-        abort(403)
-    db = get_db()
-    current_id = int(user["id"])
-    try:
-        table_rows = db.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-        ).fetchall()
-        table_names = [row[0] if not isinstance(row, str) else row for row in table_rows]
-        candidate_columns = (
-            "user_id", "owner_id", "created_by", "requester_id", "author_id",            "from_user_id", "to_user_id", "granted_by_user_id", "target_user_id",            "contact_user_id", "driver_user_id", "viewer_user_id"
-        )
-        for table in table_names:
-            if table == "users":
-                continue
-            try:
-                cols = [row[1] for row in db.execute(f'PRAGMA table_info("{table}")').fetchall()]
-            except Exception:
-                continue
-            for col in candidate_columns:
-                if col in cols:
-                    try:
-                        db.execute(f'DELETE FROM "{table}" WHERE "{col}" != ?', (current_id,))
-                    except Exception:
-                        pass
-        db.execute("DELETE FROM nearby_presence")
-        db.execute("DELETE FROM users WHERE id != ?", (current_id,))
-        try:
-            db.execute("UPDATE users SET onboarding_completed_at=NULL WHERE id=?", (current_id,))
-        except Exception:
-            pass
-        db.commit()
-        audit("dev_reset_accounts", {"preserved_user_id": current_id}, current_id)
-        flash("Contas de teste resetadas. Somente a conta atual foi mantida.", "success")
-    except Exception:
-        db.rollback()
-        flash("Não foi possível resetar as contas agora.", "danger")
-    return redirect(url_for("onboarding"))
 
 
 @app.route("/logout", methods=["POST"])
@@ -9409,6 +9342,36 @@ def admin_benchmark():
         mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
         mapbox_style=MAPBOX_STYLE_NIGHT or MAPBOX_STYLE_DAY,
     )
+
+
+@app.route("/admin/reset-accounts", methods=["POST"])
+@admin_required
+def admin_reset_accounts():
+    if not validate_csrf():
+        abort(400)
+    if str(request.form.get("confirmation", "")).strip().upper() != "RESETAR":
+        flash("Confirmação inválida. Digite RESETAR para executar a limpeza.", "danger")
+        return redirect(url_for("admin_dashboard") + "#database-tools")
+
+    db = get_db()
+    try:
+        owner = db.execute("SELECT id FROM users WHERE LOWER(email)=?", (PRIMARY_ADMIN_EMAIL,)).fetchone()
+        if not owner:
+            flash("A conta administradora principal não existe no banco. Reset cancelado.", "danger")
+            return redirect(url_for("admin_dashboard") + "#database-tools")
+        owner_id = int(owner["id"])
+        count_row = db.execute("SELECT COUNT(*) AS total FROM users WHERE id <> ?", (owner_id,)).fetchone()
+        removed = int(count_row["total"] or 0) if count_row else 0
+        db.execute("DELETE FROM users WHERE id <> ?", (owner_id,))
+        db.execute("UPDATE users SET role='admin', is_active=1 WHERE id=?", (owner_id,))
+        db.commit()
+        audit("admin_reset_accounts", {"removed_accounts": removed, "preserved_email": PRIMARY_ADMIN_EMAIL}, owner_id)
+        flash(f"Banco de contas resetado. {removed} conta(s) removida(s); o admin principal foi preservado.", "success")
+    except Exception:
+        db.rollback()
+        app.logger.exception("Falha ao resetar contas pelo painel admin")
+        flash("Não foi possível resetar as contas do banco agora.", "danger")
+    return redirect(url_for("admin_dashboard") + "#database-tools")
 
 
 @app.route("/admin")

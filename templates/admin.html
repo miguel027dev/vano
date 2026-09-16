@@ -111,6 +111,18 @@
       <summary><span><i data-lucide="chart-no-axes-combined" width="16"></i><b>Métricas avançadas</b><small>Abra só quando precisar diagnosticar.</small></span><i data-lucide="chevron-down" width="17"></i></summary>
       <div class="admin240-advanced-grid"><div><small>Dispatch attempts</small><b>{{ dispatch_ops['attempts'] }}</b></div><div><small>Sucesso nodes</small><b>{{ dispatch_ops['success_pct'] }}%</b></div><div><small>Fallback local</small><b>{{ dispatch_ops['local_fallbacks'] }}</b></div><div><small>Falhas</small><b>{{ dispatch_ops['failures'] }}</b></div><div><small>P95 request</small><b>{{ product_metrics['request_p95_ms'] }} ms</b></div><div><small>P99 request</small><b>{{ product_metrics['request_p99_ms'] }} ms</b></div><div><small>GPS fraco</small><b>{{ product_metrics['gps_weak_24h'] + product_metrics['gps_poor_24h'] }}</b></div><div><small>Offline</small><b>{{ product_metrics['offline_events_24h'] }}</b></div></div>
     </details>
+
+    <section class="admin240-card admin342-danger" id="database-tools">
+      <div class="admin342-danger-copy">
+        <span class="admin342-danger-icon"><i data-lucide="database-zap" width="18"></i></span>
+        <div><small>BANCO DE DADOS · TEMPORÁRIO</small><h2>Resetar contas de teste</h2><p>Remove todas as outras contas e mantém somente <b>miguelpinxs@gmail.com</b> como administrador. Use apenas enquanto o produto ainda está em fase de testes.</p></div>
+      </div>
+      <form method="post" action="{{ url_for('admin_reset_accounts') }}" class="admin342-reset-form" data-admin-reset-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="confirmation" value="" data-admin-reset-confirmation>
+        <button type="submit" class="admin342-danger-button"><i data-lucide="trash-2" width="15"></i><span>Resetar contas</span></button>
+      </form>
+    </section>
   </div>
 
   <div class="node-config-modal" id="nodeConfigModal" hidden>
@@ -135,4 +147,4 @@
 </main>
 <script id="infraInitial" type="application/json">{{ infra|tojson }}</script>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-v123.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-v123.js') }}?v={{ vano_build_id }}"></script><script src="{{ url_for('static', filename='vano-admin-v342.js') }}?v={{ vano_build_id }}"></script>{% endblock %}

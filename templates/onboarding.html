@@ -132,21 +132,6 @@
           </div>
           <div class="ob-ready-note-v340"><i data-lucide="wand-sparkles" width="17"></i><span><b>Primeira experiência mais limpa.</b> Você entra no mapa com o essencial salvo e personaliza rotas, veículo, casa e trabalho depois, no seu ritmo.</span></div>
 
-          <section class="ob-dev-tools-v340" aria-label="Ferramentas temporárias">
-            <div class="ob-dev-head-v340">
-              <div>
-                <small>MODO TEMPORÁRIO</small>
-                <b>Resetar contas de teste</b>
-              </div>
-              <span class="ob-dev-badge-v340">DEV</span>
-            </div>
-            <p>Botão temporário para limpar as outras contas e sessões de teste. A sua conta atual continua ativa para você seguir usando o app.</p>
-            <form method="post" action="{{ url_for('dev_reset_accounts') }}" class="ob-dev-form-v340" data-ob-reset-form>
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button class="ob-reset-dev-v340" type="submit" data-reset-accounts><i data-lucide="trash-2" width="16"></i><span>Resetar contas</span></button>
-            </form>
-          </section>
-
           <div class="ob-step-actions-v340">
             <button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button>
             <button class="ob-finish-v340" type="submit"><span>Concluir e abrir o VANO MAPS</span><i data-lucide="arrow-up-right" width="18"></i></button>

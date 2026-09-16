@@ -15,7 +15,6 @@
   const summaryMeta=document.getElementById('obSummaryMeta');
   const summaryLocale=document.getElementById('obSummaryLocale');
   const summaryInitial=document.getElementById('obSummaryInitial');
-  const resetForm=form.querySelector('[data-ob-reset-form]');
   let current=1;
 
   const localeNames={'pt-BR':'Português','en-US':'English','ar-MA':'العربية','ru-RU':'Русский','es-ES':'Español'};
@@ -122,20 +121,7 @@
     }
   });
 
-  resetForm?.addEventListener('submit',e=>{
-    const typed=window.prompt('Digite RESETAR para apagar as outras contas de teste e manter apenas a conta atual.');
-    if((typed||'').trim().toUpperCase()!=='RESETAR'){
-      e.preventDefault();
-      return;
-    }
-    const button=resetForm.querySelector('[data-reset-accounts]');
-    if(button){
-      button.disabled=true;
-      button.style.opacity='.78';
-      const span=button.querySelector('span');
-      if(span)span.textContent='Resetando contas…';
-    }
-  });
+
 
   setStep(1);
   updateSummary();
