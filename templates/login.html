@@ -7,9 +7,7 @@
   
   <script src="{{ url_for('static', filename='vano-i18n-v230.js') }}?v={{ vano_build_id }}"></script>
   
-  <meta name="theme-color" content="#FFF7ED">
-  <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}?v={{ vano_build_id }}" type="image/png">
-  <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}?v={{ vano_build_id }}">
+  <meta name="theme-color" content="#FFFBF2">
   <script>(function(){
     var MODE_KEY='vano.theme.mode.v60';
     var LEGACY_KEYS=['vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55'];
@@ -25,7 +23,7 @@
     document.documentElement.dataset.vanoTheme=mode;
     document.documentElement.style.colorScheme=mode==='black'?'dark':'light';
     var meta=document.querySelector('meta[name="theme-color"]');
-    if(meta)meta.setAttribute('content',mode==='black'?'#100E0D':'#FFF7ED');
+    if(meta)meta.setAttribute('content',mode==='black'?'#171512':'#FFFBF2');
   })();</script>
   <meta name="description" content="VANO MAPS — navegação adaptativa para uma cidade que muda o tempo todo.">
   <title>Entrar · VANO MAPS</title>
@@ -34,15 +32,15 @@
       --bg:#f7f7fb;
       --surface:#ffffff;
       --surface-soft:#f1f2f7;
-      --surface-tint:#FFF7ED;
+      --surface-tint:#FFFBF2;
       --text:#171821;
       --muted:#707486;
       --muted-2:#979baa;
       --line:#e5e6ed;
       --line-strong:#d9dbe5;
-      --brand:#FF3D00;
-      --brand-2:#FF7A00;
-      --brand-soft:#FFF7ED;
+      --brand:#D9703F;
+      --brand-2:#F59A62;
+      --brand-soft:#FFF2E8;
       --mint:#bdf4e4;
       --success:#16835f;
       --danger:#d54747;
@@ -78,7 +76,7 @@
     .brand-mark{width:40px;height:40px;flex:0 0 auto}
     .auth-brand-wordmark{display:block;width:154px;height:48px;object-fit:contain;object-position:left center}
     .vano-auth-lockup{display:flex;align-items:center;gap:12px;min-width:0}
-    .vano-auth-icon{width:48px;height:48px;flex:0 0 48px;border-radius:15px;box-shadow:0 10px 22px rgba(255,61,0,.16);object-fit:contain}
+    .vano-auth-icon{width:48px;height:48px;flex:0 0 48px;border-radius:15px;box-shadow:0 10px 22px rgba(217,112,63,.16);object-fit:contain}
     .vano-auth-brand-copy{display:flex;flex-direction:column;min-width:0}
     .vano-auth-tagline{display:block;margin-top:6px;color:var(--muted);font-size:12px;font-weight:700;line-height:1.28;letter-spacing:-.1px}
     .product-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:#fbfbfd;border-radius:999px;padding:8px 10px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.04em;white-space:nowrap}
@@ -102,10 +100,10 @@
     .auth-button.google:hover{border-color:#cfd1dc;box-shadow:0 9px 22px rgba(39,35,31,.08)}
     .auth-button.google.is-disabled{opacity:.55;pointer-events:none}
     .google-logo{width:20px;height:20px}
-    .auth-button.email{background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;border-color:transparent;box-shadow:0 12px 26px rgba(255,61,0,.24)}
-    .auth-button.email:hover{box-shadow:0 16px 32px rgba(255,61,0,.30)}
+    .auth-button.email{background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;border-color:transparent;box-shadow:0 12px 26px rgba(217,112,63,.24)}
+    .auth-button.email:hover{box-shadow:0 16px 32px rgba(217,112,63,.30)}
     .button-arrow{position:absolute;right:17px;width:18px;height:18px;opacity:.9}
-    .button-spinner{display:none;width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,61,0,.18);border-top-color:var(--brand);animation:spin .7s linear infinite}
+    .button-spinner{display:none;width:18px;height:18px;border-radius:50%;border:2px solid rgba(217,112,63,.18);border-top-color:var(--brand);animation:spin .7s linear infinite}
     .oauth-loading .google-logo{display:none}.oauth-loading .button-spinner{display:block}
     @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -123,7 +121,7 @@
     .route-pane{position:relative;overflow:hidden;background:#f0f1f5;border-left:1px solid var(--line);min-height:620px;isolation:isolate}
     .route-pane:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(247,247,251,.10),transparent 18%,transparent 80%,rgba(255,255,255,.18));z-index:8}
     .route-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
-    .route-glow{position:absolute;width:520px;height:520px;border-radius:50%;background:rgba(255,61,0,.11);filter:blur(20px);right:-150px;top:-170px;z-index:0}
+    .route-glow{position:absolute;width:520px;height:520px;border-radius:50%;background:rgba(217,112,63,.11);filter:blur(20px);right:-150px;top:-170px;z-index:0}
 
     .stage-top{position:absolute;left:28px;right:28px;top:28px;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:14px}
     .live-badge,.mini-chip{display:flex;align-items:center;gap:8px;border:1px solid rgba(218,219,228,.94);background:rgba(255,255,255,.88);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:999px;padding:10px 13px;box-shadow:0 8px 22px rgba(39,35,31,.06);color:#555a6d;font-size:11px;font-weight:850}
@@ -145,7 +143,7 @@
     .reroute-card b{display:block;font-size:13px;letter-spacing:-.2px}.reroute-card span{display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:4px}
     .reroute-line{height:3px;border-radius:3px;background:#e8e8ef;overflow:hidden;margin-top:11px}.reroute-line i{display:block;width:76%;height:100%;border-radius:inherit;background:var(--brand)}
 
-    .location-dot{position:absolute;z-index:7;width:22px;height:22px;border:5px solid #fff;background:var(--brand);border-radius:50%;box-shadow:0 4px 16px rgba(255,61,0,.36)}
+    .location-dot{position:absolute;z-index:7;width:22px;height:22px;border:5px solid #fff;background:var(--brand);border-radius:50%;box-shadow:0 4px 16px rgba(217,112,63,.36)}
     .location-dot.start{left:25.5%;top:72%}.location-dot.end{right:24%;top:23%;background:#171821}
     .location-dot.end:after{content:"";position:absolute;width:4px;height:4px;border-radius:50%;background:var(--mint);left:4px;top:4px}
 
@@ -169,11 +167,11 @@
     .field{display:grid;gap:7px}.field label{font-size:11px;font-weight:850;color:#4e5160}
     .input-shell{position:relative}
     .field input{width:100%;height:51px;border:1px solid var(--line-strong);border-radius:13px;background:#fbfbfd;color:var(--text);padding:0 14px;outline:0;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}
-    .field input:focus{background:#fff;border-color:rgba(255,61,0,.75);box-shadow:0 0 0 4px rgba(255,61,0,.09)}
+    .field input:focus{background:#fff;border-color:rgba(217,112,63,.75);box-shadow:0 0 0 4px rgba(217,112,63,.09)}
     .password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:#777b8c;display:grid;place-items:center}
     .password-toggle:hover{background:#f0f0f5;color:var(--text)}
     .password-toggle svg{width:18px;height:18px}
-    .sheet-submit{height:52px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;font-weight:900;box-shadow:0 11px 24px rgba(255,61,0,.22)}
+    .sheet-submit{height:52px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--brand-2),var(--brand));color:#fff;font-weight:900;box-shadow:0 11px 24px rgba(217,112,63,.22)}
     .sheet-submit:disabled{opacity:.65;cursor:wait}
     .sheet-switch{text-align:center;color:var(--muted);font-size:12px;margin-top:17px}.sheet-switch a{font-weight:850;color:var(--brand)}
 
@@ -415,8 +413,8 @@
     .entry-utility-strip{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;max-width:580px}
     .entry-utility-strip span{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border-radius:999px;border:1px solid var(--line-strong);background:#fff;color:#5f6777;font-size:10px;font-weight:840;box-shadow:0 8px 18px rgba(39,35,31,.04)}
     .auth-extra-actions{display:grid;gap:9px;margin-top:10px}
-    .benchmark-link{min-height:48px;border-radius:14px;border:1px solid #eadfd6;background:linear-gradient(180deg,#FFF7ED,#fff1e6);display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:850;color:#ab5b2d;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-    .benchmark-link:hover{transform:translateY(-1px);box-shadow:0 12px 24px rgba(255,61,0,.12)}
+    .benchmark-link{min-height:48px;border-radius:14px;border:1px solid #eadfd6;background:linear-gradient(180deg,#fff8f2,#fff1e6);display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:850;color:#ab5b2d;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+    .benchmark-link:hover{transform:translateY(-1px);box-shadow:0 12px 24px rgba(217,112,63,.12)}
     .benchmark-chip-card{position:absolute;right:22px;bottom:22px;z-index:12;width:min(220px,calc(100% - 28px));padding:13px 14px;border-radius:17px;background:rgba(255,255,255,.94);border:1px solid rgba(225,226,234,.96);box-shadow:0 16px 36px rgba(39,35,31,.10)}
     .benchmark-chip-card small{display:block;color:var(--brand);font-size:9px;font-weight:900;letter-spacing:.12em}
     .benchmark-chip-card b{display:block;margin-top:5px;font-size:14px;letter-spacing:-.2px}
@@ -430,7 +428,6 @@
   
   
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-ui-v258.css') }}?v={{ vano_build_id }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-brand-v330.css') }}?v={{ vano_build_id }}-330">
   <script defer src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
   
 </head>
@@ -508,7 +505,7 @@
             <path d="M-20 188C180 210 282 160 443 192s307 148 488 80"/><path d="M321-28c-30 167-8 287 75 392s115 241 70 564"/><path d="M742-20c-98 171-104 292-58 410s48 277-16 533"/><path d="M-44 512c196-56 347-27 491 30s299 64 498 5"/>
           </g>
           <path d="M205 702c59-47 84-105 87-169 3-67 72-85 115-112 59-38 56-104 105-143 39-31 103-26 145-81" fill="none" stroke="#ffffff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M205 702c59-47 84-105 87-169 3-67 72-85 115-112 59-38 56-104 105-143 39-31 103-26 145-81" fill="none" stroke="#FF7A00" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M205 702c59-47 84-105 87-169 3-67 72-85 115-112 59-38 56-104 105-143 39-31 103-26 145-81" fill="none" stroke="#F59A62" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
           <path d="M404 423c-38 2-70-19-107-20-43-1-77 30-111 59" fill="none" stroke="#CBCDD7" stroke-width="6" stroke-linecap="round" stroke-dasharray="8 9"/>
           <g fill="#D4D6DE"><circle cx="818" cy="397" r="5"/><circle cx="132" cy="340" r="5"/><circle cx="575" cy="618" r="5"/><circle cx="631" cy="113" r="5"/></g>
         </svg>

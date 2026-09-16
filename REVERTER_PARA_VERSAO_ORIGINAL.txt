@@ -1,0 +1,13 @@
+PATCH DE REVERSAO DO VANO MAPS
+
+Este patch restaura exatamente os arquivos que foram alterados pela V330 para a versao original enviada no arquivo vano-main.zip.
+
+COMO USAR
+1. Extraia este ZIP na raiz do projeto atual (onde fica app.py), aceitando substituir os arquivos existentes.
+2. Apague os arquivos listados em DELETE_V330_FILES.txt.
+   Ou rode: python3 APPLY_REVERT.py
+
+O script APPLY_REVERT.py remove apenas os arquivos que foram adicionados pela V330 e depois remove os arquivos auxiliares deste patch.
+
+Arquivos restaurados: 50
+Arquivos V330 removidos: 4

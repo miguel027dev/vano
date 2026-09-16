@@ -2,7 +2,7 @@
 'use strict';
 const $=id=>document.getElementById(id),boot=window.VANO_BENCHMARK_BOOT||{},rt=window.VANO_RUNTIME||{};
 const modeLabels={fastest:'Rápida',smart:'VANO',safest:'Segura',quietest:'Tranquila'};
-const modeColors={fastest:'#5ba8ff',smart:'#FF7A00',safest:'#62d39c',quietest:'#b58cff'};
+const modeColors={fastest:'#5ba8ff',smart:'#f59a62',safest:'#62d39c',quietest:'#b58cff'};
 const presets={
  'morumbi-paulista':{origin:{label:'Morumbi Shopping, São Paulo',lat:-23.62326,lon:-46.69844},destination:{label:'Av. Paulista, 1578, São Paulo',lat:-23.56147,lon:-46.65594}},
  'congonhas-paulista':{origin:{label:'Aeroporto de Congonhas, São Paulo',lat:-23.62611,lon:-46.65639},destination:{label:'Av. Paulista, 1578, São Paulo',lat:-23.56147,lon:-46.65594}},

@@ -116,7 +116,7 @@
             <div class="profile-v72-subhead"><span>CORES</span><b>Cor da rota e dos destaques</b></div>
             <div class="profile-v72-accent-options">
               {% set accent_pref = current_user['map_accent'] or 'violet' %}
-              {% for accent,label,color in [('violet','Vano Maps','#FF7A00'),('orange','Pêssego','#FFA552'),('blue','Terracota','#FF3D00'),('green','Areia','#FFF7ED'),('rose','Carvão','#27231F')] %}
+              {% for accent,label,color in [('violet','Vano Maps','#F59A62'),('orange','Pêssego','#FFC39B'),('blue','Terracota','#D9703F'),('green','Areia','#FFFBF2'),('rose','Carvão','#27231F')] %}
               <label class="profile-v72-accent"><input type="radio" name="map_accent" value="{{ accent }}" {% if accent_pref == accent %}checked{% endif %}><span class="profile-v72-accent-dot" style="--accent-preview:{{ color }}"></span><span>{{ label }}</span></label>
               {% endfor %}
             </div>

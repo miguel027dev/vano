@@ -41,7 +41,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "330.0.0").strip() or "330.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "320.0.0").strip() or "320.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -133,29 +133,29 @@ def _map_color_env(name, fallback):
 
 MAPBOX_ACCENT_PRESETS = {
     "violet": {
-        "primary": _map_color_env("MAPBOX_ACCENT_VIOLET", "#FF7A00"),
-        "light": _map_color_env("MAPBOX_ACCENT_VIOLET_LIGHT", "#FFA552"),
-        "alt": _map_color_env("MAPBOX_ACCENT_VIOLET_ALT", "#FF3D00"),
+        "primary": _map_color_env("MAPBOX_ACCENT_VIOLET", "#F59A62"),
+        "light": _map_color_env("MAPBOX_ACCENT_VIOLET_LIGHT", "#FFC39B"),
+        "alt": _map_color_env("MAPBOX_ACCENT_VIOLET_ALT", "#D9703F"),
     },
     "orange": {
-        "primary": _map_color_env("MAPBOX_ACCENT_ORANGE", "#FFA552"),
+        "primary": _map_color_env("MAPBOX_ACCENT_ORANGE", "#FFC39B"),
         "light": _map_color_env("MAPBOX_ACCENT_ORANGE_LIGHT", "#FFE0CA"),
-        "alt": _map_color_env("MAPBOX_ACCENT_ORANGE_ALT", "#FF7A00"),
+        "alt": _map_color_env("MAPBOX_ACCENT_ORANGE_ALT", "#F59A62"),
     },
     "blue": {
-        "primary": _map_color_env("MAPBOX_ACCENT_BLUE", "#FF3D00"),
-        "light": _map_color_env("MAPBOX_ACCENT_BLUE_LIGHT", "#FF7A00"),
-        "alt": _map_color_env("MAPBOX_ACCENT_BLUE_ALT", "#FFA552"),
+        "primary": _map_color_env("MAPBOX_ACCENT_BLUE", "#D9703F"),
+        "light": _map_color_env("MAPBOX_ACCENT_BLUE_LIGHT", "#F59A62"),
+        "alt": _map_color_env("MAPBOX_ACCENT_BLUE_ALT", "#FFC39B"),
     },
     "green": {
         "primary": _map_color_env("MAPBOX_ACCENT_GREEN", "#E8D8C9"),
-        "light": _map_color_env("MAPBOX_ACCENT_GREEN_LIGHT", "#FFF7ED"),
+        "light": _map_color_env("MAPBOX_ACCENT_GREEN_LIGHT", "#FFFBF2"),
         "alt": _map_color_env("MAPBOX_ACCENT_GREEN_ALT", "#C9B7A8"),
     },
     "rose": {
         "primary": _map_color_env("MAPBOX_ACCENT_ROSE", "#27231F"),
         "light": _map_color_env("MAPBOX_ACCENT_ROSE_LIGHT", "#706861"),
-        "alt": _map_color_env("MAPBOX_ACCENT_ROSE_ALT", "#FF7A00"),
+        "alt": _map_color_env("MAPBOX_ACCENT_ROSE_ALT", "#F59A62"),
     },
 }
 MAPBOX_GEOCODING_URL = "https://api.mapbox.com/search/geocode/v6"

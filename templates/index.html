@@ -43,7 +43,7 @@
   <section class="resume-trip-card" id="resumeTripCard" aria-live="polite" aria-hidden="true">
     <div class="resume-trip-head"><div><small>TRAJETO EM ANDAMENTO</small><h3>Você ainda quer continuar?</h3></div><span class="resume-trip-age" id="resumeTripAge">agora</span></div>
     <div class="resume-trip-preview">
-      <div class="resume-trip-map"><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><defs><linearGradient id="resumeRouteGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a4f"/><stop offset=".55" stop-color="#FF7A00"/><stop offset="1" stop-color="#ff4f00"/></linearGradient></defs><path class="resume-trip-path-shadow" id="resumeTripPathShadow" d="M12 56 C22 43 31 49 40 36 S59 28 68 19 S83 17 90 8"/><path class="resume-trip-path" id="resumeTripPath" d="M12 56 C22 43 31 49 40 36 S59 28 68 19 S83 17 90 8"/></svg></div>
+      <div class="resume-trip-map"><svg viewBox="0 0 100 72" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><defs><linearGradient id="resumeRouteGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a4f"/><stop offset=".55" stop-color="#F59A62"/><stop offset="1" stop-color="#ff4f00"/></linearGradient></defs><path class="resume-trip-path-shadow" id="resumeTripPathShadow" d="M12 56 C22 43 31 49 40 36 S59 28 68 19 S83 17 90 8"/><path class="resume-trip-path" id="resumeTripPath" d="M12 56 C22 43 31 49 40 36 S59 28 68 19 S83 17 90 8"/></svg></div>
       <div class="resume-trip-destination"><small>DESTINO</small><b id="resumeTripDestination">Destino salvo</b><span id="resumeTripSummary">Sua navegação ficou pausada.</span></div>
     </div>
     <div class="resume-trip-metrics"><div class="resume-trip-metric"><small>RESTANTE</small><b id="resumeTripEta">—</b></div><div class="resume-trip-metric"><small>DISTÂNCIA</small><b id="resumeTripDistance">—</b></div><div class="resume-trip-metric"><small>ROTA</small><b id="resumeTripMode">—</b></div></div>
@@ -223,7 +223,6 @@
     <button type="button" class="vano-planner-toggle-v221" id="planGrab" aria-expanded="false" aria-controls="welcomeState routeState" aria-label="Expandir painel de destino"><span class="vano-planner-toggle-chevron" aria-hidden="true"></span></button>
     <div class="welcome planner-welcome" id="welcomeState">
       <div class="planner-heading">
-        <img class="planner-brand-icon" src="{{ url_for('static', filename='vano-maps-icon-64.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true">
         <div class="planner-heading-copy"><small>PLANEJAR ROTA</small><b>Para onde vamos?</b></div>
         <div class="chip-weather planner-weather" id="weatherPill" aria-live="polite"><i data-lucide="cloud-sun" width="15"></i><span id="weatherPillValue">--°</span></div>
       </div>
