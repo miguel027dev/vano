@@ -23,6 +23,11 @@
       </header>
 
       <div class="ob-progress-v340" aria-hidden="true"><i id="obProgressBar"></i></div>
+      <div class="ob-progress-steps-v344" aria-hidden="true">
+        <span class="is-active" data-ob-progress-step="1"><i></i>Perfil</span>
+        <span data-ob-progress-step="2"><i></i>Idioma</span>
+        <span data-ob-progress-step="3"><i></i>Revisão</span>
+      </div>
 
       <form method="post" id="onboardingForm" class="ob-form-v340" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -30,18 +35,25 @@
         <section class="ob-step-v340 is-active" data-ob-step="1" aria-labelledby="obTitle1">
           <div class="ob-step-heading-v340">
             <span class="ob-eyebrow-v340"><i data-lucide="user-round" width="14"></i> Primeiro, você</span>
-            <h1 id="obTitle1">Personalize seu perfil.<br><span>Do jeito certo, sem complicação.</span></h1>
-            <p>Deixamos a primeira experiência mais premium: menos campos soltos, mais clareza e escolhas rápidas para você cair no mapa já com cara de conta pronta.</p>
+            <h1 id="obTitle1">Seu VANO começa aqui.<br><span>Rápido, pessoal e sem enrolação.</span></h1>
+            <p>Preencha só o essencial. Enquanto você escolhe, a tela responde na hora e deixa claro o que falta para sua conta ficar pronta.</p>
           </div>
 
-          <div class="ob-card-v340">
+          <div class="ob-card-v340 ob-profile-card-v344">
+            <div class="ob-card-head-v340 ob-card-head-profile-v344">
+              <div>
+                <b>Informações essenciais</b>
+                <small>Nada de formulário infinito — são só três escolhas.</small>
+              </div>
+              <span class="ob-completion-chip-v344" id="obProfileStatus"><i data-lucide="circle-dashed" width="14"></i><b>0/3</b><small>preenchidos</small></span>
+            </div>
             <label class="ob-field-v340 ob-field-full-v340" for="onboardingName">
               <span>Como podemos te chamar?</span>
               <div class="ob-input-v340">
                 <i data-lucide="user" width="17"></i>
                 <input id="onboardingName" type="text" name="name" maxlength="80" autocomplete="name" required value="{{ user['name'] or '' }}" placeholder="Seu nome">
               </div>
-              <small class="ob-field-note-v340">Esse nome aparece na sua conta e deixa a experiência mais pessoal.</small>
+              <small class="ob-field-note-v340">Ele aparece na sua conta, nos resumos e nas experiências personalizadas.</small>
             </label>
 
             <div class="ob-field-grid-v340 ob-field-grid-tight-v340">
@@ -51,7 +63,7 @@
                   <i data-lucide="calendar" width="17"></i>
                   <input id="onboardingAge" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 18">
                 </div>
-                <small class="ob-field-note-v340">Usamos isso para liberar recursos compatíveis e preferências adequadas.</small>
+                <small class="ob-field-note-v340">Ajuda o VANO a mostrar apenas recursos compatíveis com a sua conta.</small>
               </label>
 
               <div class="ob-field-v340 ob-field-choice-v340" id="onboardingSexField">
@@ -74,13 +86,14 @@
                     <span class="ob-choice-card-v340"><i data-lucide="shield" width="17"></i><b>Prefiro não informar</b><small>Privacidade</small></span>
                   </label>
                 </div>
-                <small class="ob-field-note-v340">A seleção ficou mais direta para não parecer um formulário travado.</small>
+                <small class="ob-field-note-v340">Escolha a opção que preferir. Você pode alterar essa informação depois.</small>
               </div>
             </div>
+            <div class="ob-profile-footer-v344"><span><i data-lucide="shield-check" width="15"></i> Seus dados ficam vinculados à sua conta.</span><span><i data-lucide="pencil-line" width="15"></i> Dá para editar depois.</span></div>
           </div>
 
           <div class="ob-step-actions-v340">
-            <span class="ob-step-hint-v340"><i data-lucide="shield-check" width="14"></i> Você poderá editar tudo isso mais tarde no perfil.</span>
+            <span class="ob-step-hint-v340"><i data-lucide="sparkles" width="14"></i> Três escolhas e você já segue para o idioma.</span>
             <button class="ob-next-v340" type="button" data-ob-next>Continuar <i data-lucide="arrow-right" width="17"></i></button>
           </div>
         </section>
@@ -88,24 +101,28 @@
         <section class="ob-step-v340" data-ob-step="2" aria-labelledby="obTitle2">
           <div class="ob-step-heading-v340">
             <span class="ob-eyebrow-v340"><i data-lucide="languages" width="14"></i> Sua experiência</span>
-            <h1 id="obTitle2">Escolha o idioma.<br><span>O app inteiro se adapta.</span></h1>
-            <p>As opções abaixo agora funcionam como seleção visual de verdade — mais clara, mais bonita e melhor para a primeira impressão.</p>
+            <h1 id="obTitle2">Fale com o VANO<br><span>do seu jeito.</span></h1>
+            <p>Escolha o idioma principal da conta. A interface, as buscas e as instruções compatíveis passam a priorizar essa preferência.</p>
           </div>
 
-          <div class="ob-card-v340">
-            <div class="ob-card-head-v340">
+          <div class="ob-card-v340 ob-language-panel-v344">
+            <div class="ob-card-head-v340 ob-language-head-v344">
               <div>
                 <b>Idioma principal</b>
-                <small>Interface, buscas e instruções compatíveis passam a priorizar essa escolha.</small>
+                <small>Você pode trocar quando quiser no perfil.</small>
               </div>
+              <div class="ob-language-current-v344" id="obLanguageCurrent" aria-live="polite"><em id="obLanguageCurrentFlag">🇧🇷</em><span><small>SELECIONADO</small><b id="obLanguageCurrentName">Português (Brasil)</b></span></div>
             </div>
-            <div class="ob-language-grid-v340" role="radiogroup" aria-label="Idioma">
-              <label class="ob-language-v340"><input id="langPt" type="radio" name="locale" value="pt-BR" {% if selected_locale=='pt-BR' %}checked{% endif %} required><span class="ob-language-card-v340"><em>🇧🇷</em><span><b>Português</b><small>Brasil</small></span><i data-lucide="check" width="16"></i></span></label>
-              <label class="ob-language-v340"><input id="langEn" type="radio" name="locale" value="en-US" {% if selected_locale=='en-US' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇺🇸</em><span><b>English</b><small>English</small></span><i data-lucide="check" width="16"></i></span></label>
-              <label class="ob-language-v340"><input id="langAr" type="radio" name="locale" value="ar-MA" {% if selected_locale=='ar-MA' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇲🇦</em><span><b>العربية</b><small>المغرب</small></span><i data-lucide="check" width="16"></i></span></label>
-              <label class="ob-language-v340"><input id="langRu" type="radio" name="locale" value="ru-RU" {% if selected_locale=='ru-RU' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇷🇺</em><span><b>Русский</b><small>Россия</small></span><i data-lucide="check" width="16"></i></span></label>
-              <label class="ob-language-v340"><input id="langEs" type="radio" name="locale" value="es-ES" {% if selected_locale=='es-ES' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇪🇸</em><span><b>Español</b><small>Español</small></span><i data-lucide="check" width="16"></i></span></label>
+            <div class="ob-language-grid-v340 ob-language-grid-v344" role="radiogroup" aria-label="Idioma">
+              <label class="ob-language-v340" data-language-label="Português (Brasil)" data-language-flag="🇧🇷"><input id="langPt" type="radio" name="locale" value="pt-BR" {% if selected_locale=='pt-BR' %}checked{% endif %} required><span class="ob-language-card-v340"><em>🇧🇷</em><span><b>Português</b><small>Brasil</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340" data-language-label="English" data-language-flag="🇺🇸"><input id="langEn" type="radio" name="locale" value="en-US" {% if selected_locale=='en-US' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇺🇸</em><span><b>English</b><small>United States</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340" data-language-label="العربية" data-language-flag="🇲🇦"><input id="langAr" type="radio" name="locale" value="ar-MA" {% if selected_locale=='ar-MA' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇲🇦</em><span><b>العربية</b><small>المغرب</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340" data-language-label="Русский" data-language-flag="🇷🇺"><input id="langRu" type="radio" name="locale" value="ru-RU" {% if selected_locale=='ru-RU' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇷🇺</em><span><b>Русский</b><small>Россия</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340" data-language-label="Español" data-language-flag="🇪🇸"><input id="langEs" type="radio" name="locale" value="es-ES" {% if selected_locale=='es-ES' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇪🇸</em><span><b>Español</b><small>España</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob-language-new-v344" data-language-label="Português (Portugal)" data-language-flag="🇵🇹"><input id="langPtPt" type="radio" name="locale" value="pt-PT" {% if selected_locale=='pt-PT' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇵🇹</em><span><b>Português</b><small>Portugal</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob-language-new-v344" data-language-label="Français" data-language-flag="🇫🇷"><input id="langFr" type="radio" name="locale" value="fr-FR" {% if selected_locale=='fr-FR' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇫🇷</em><span><b>Français</b><small>France</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
             </div>
+            <div class="ob-language-foot-v344"><i data-lucide="globe-2" width="15"></i><span>7 idiomas disponíveis. A sua escolha fica salva na conta.</span></div>
           </div>
 
           <div class="ob-step-actions-v340">
@@ -117,20 +134,20 @@
         <section class="ob-step-v340" data-ob-step="3" aria-labelledby="obTitle3">
           <div class="ob-step-heading-v340">
             <span class="ob-eyebrow-v340"><i data-lucide="sparkles" width="14"></i> Tudo pronto</span>
-            <h1 id="obTitle3">Conta pronta.<br><span>Primeira experiência com mais impacto.</span></h1>
-            <p>Antes de abrir o mapa, você consegue revisar o essencial e, se precisar, usar uma ação temporária de desenvolvimento para resetar contas de teste.</p>
+            <h1 id="obTitle3">Tudo certo.<br><span>Seu mapa já pode começar.</span></h1>
+            <p>Revise o essencial abaixo. Se quiser mudar algo, volte uma etapa; se estiver tudo certo, é só abrir o VANO MAPS.</p>
           </div>
 
           <div class="ob-summary-v340">
             <div class="ob-summary-avatar-v340"><span id="obSummaryInitial">V</span></div>
-            <div class="ob-summary-copy-v340"><small>PERFIL VANO</small><b id="obSummaryName">Seu nome</b><span id="obSummaryMeta">Conta pronta para navegar</span></div>
+            <div class="ob-summary-copy-v340"><small>SEU PERFIL</small><b id="obSummaryName">Seu nome</b><span id="obSummaryMeta">Conta pronta para navegar</span></div>
             <div class="ob-summary-badge-v340"><i data-lucide="check" width="15"></i> Pronto</div>
           </div>
           <div class="ob-summary-grid-v340">
             <div><span class="ob-summary-icon-v340"><i data-lucide="languages" width="17"></i></span><small>IDIOMA</small><b id="obSummaryLocale">Português</b></div>
             <div><span class="ob-summary-icon-v340"><i data-lucide="navigation" width="17"></i></span><small>PRÓXIMA TELA</small><b>Mapa VANO</b></div>
           </div>
-          <div class="ob-ready-note-v340"><i data-lucide="wand-sparkles" width="17"></i><span><b>Primeira experiência mais limpa.</b> Você entra no mapa com o essencial salvo e personaliza rotas, veículo, casa e trabalho depois, no seu ritmo.</span></div>
+          <div class="ob-ready-note-v340"><i data-lucide="wand-sparkles" width="17"></i><span><b>Pronto para começar.</b> O essencial fica salvo agora; rotas, veículo, casa, trabalho e outros detalhes continuam disponíveis no perfil.</span></div>
 
           <div class="ob-step-actions-v340">
             <button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button>
@@ -144,7 +161,7 @@
       <img src="{{ url_for('static', filename='vano-entry-day-v76.svg') }}" alt="">
       <div class="ob-preview-overlay-v340"></div>
       <div class="ob-preview-brand-v340"><img src="{{ url_for('static', filename='vano-maps-icon-192.png') }}" alt=""><span><small>SEU MAPA</small><b>Começa com você.</b></span></div>
-      <div class="ob-preview-card-v340"><small>CONFIGURAÇÃO INTELIGENTE</small><b id="obPreviewTitle">Só o essencial primeiro.</b><span id="obPreviewText">Nome, idade e idioma. O resto você decide depois, dentro do mapa.</span><div class="ob-preview-meter-v340"><i id="obPreviewMeter"></i></div></div>
+      <div class="ob-preview-card-v340"><small>CONFIGURAÇÃO DA CONTA</small><b id="obPreviewTitle">Seu perfil, em poucos toques.</b><span id="obPreviewText">Preencha o essencial e acompanhe cada etapa sem perder o contexto.</span><div class="ob-preview-meter-v340"><i id="obPreviewMeter"></i></div></div>
     </aside>
   </main>
 </div>

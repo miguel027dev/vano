@@ -4181,9 +4181,10 @@ def parse_brazil_location_query(value):
 # expose a country header, the first HTML response uses Accept-Language and the
 # client refines it before first paint using timezone/region, then persists a
 # same-site cookie used by API requests and later pages.
-SUPPORTED_UI_LOCALES = {"pt-BR", "en-US", "ar-MA", "ru-RU", "es-ES"}
+SUPPORTED_UI_LOCALES = {"pt-BR", "pt-PT", "en-US", "fr-FR", "ar-MA", "ru-RU", "es-ES"}
 COUNTRY_UI_LOCALE = {
-    "BR": "pt-BR", "PT": "pt-BR",
+    "BR": "pt-BR", "PT": "pt-PT",
+    "FR": "fr-FR", "MC": "fr-FR",
     "US": "en-US", "GB": "en-US", "CA": "en-US", "AU": "en-US", "NZ": "en-US",
     "MA": "ar-MA",
     "RU": "ru-RU",
@@ -4201,8 +4202,12 @@ def _normalize_ui_locale(value):
     if not raw:
         return ""
     low = raw.lower()
+    if low.startswith("pt-pt"):
+        return "pt-PT"
     if low.startswith("pt"):
         return "pt-BR"
+    if low.startswith("fr"):
+        return "fr-FR"
     if low.startswith("en"):
         return "en-US"
     if low.startswith("ar"):
@@ -4258,7 +4263,7 @@ def detect_ui_locale():
 
     # Parse q-values instead of trusting only the first token.
     best = request.accept_languages.best_match(
-        ["pt-BR", "en-US", "ar-MA", "ru-RU", "es-ES"],
+        ["pt-BR", "pt-PT", "en-US", "fr-FR", "ar-MA", "ru-RU", "es-ES"],
         default="pt-BR",
     )
     normalized = _normalize_ui_locale(best) or "pt-BR"
