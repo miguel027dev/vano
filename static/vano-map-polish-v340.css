@@ -13,20 +13,19 @@ body.vano-map-surface .vano-map-brand{
   position:absolute;z-index:54;
   top:max(14px,calc(env(safe-area-inset-top) + 10px));
   left:max(14px,calc(env(safe-area-inset-left) + 10px));
-  height:46px;min-width:124px;max-width:min(190px,42vw);
+  height:auto;min-width:0;max-width:min(228px,50vw);
   display:flex;align-items:center;justify-content:flex-start;
-  padding:8px 12px;border-radius:16px;
-  border:1px solid rgba(28,31,38,.09);
-  background:rgba(255,255,255,.94);
-  box-shadow:0 10px 30px rgba(23,27,34,.12);
-  backdrop-filter:blur(18px) saturate(135%);-webkit-backdrop-filter:blur(18px) saturate(135%);
-  transition:transform .22s cubic-bezier(.2,.8,.2,1),box-shadow .22s ease,background .22s ease;
-  text-decoration:none;overflow:hidden
+  padding:0;border:0;border-radius:0;
+  background:transparent;box-shadow:none;
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  transition:transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s ease;
+  text-decoration:none;overflow:visible
 }
 body.vano-map-surface .vano-map-brand:active{transform:scale(.97)}
 body.vano-map-surface .vano-map-brand .vano-adaptive-brand{display:flex;align-items:center;min-width:0}
-body.vano-map-surface .vano-map-brand-img{display:block;width:auto;max-width:100%;height:27px;object-fit:contain;object-position:left center}
-html[data-vano-theme="black"] body.vano-map-surface .vano-map-brand{background:rgba(31,29,27,.94);border-color:rgba(255,255,255,.09);box-shadow:0 12px 30px rgba(0,0,0,.28)}
+body.vano-map-surface .vano-map-brand-img{display:block;width:auto;max-width:100%;height:34px;object-fit:contain;object-position:left center;filter:drop-shadow(0 10px 18px rgba(24,22,20,.10))}
+html[data-vano-theme="black"] body.vano-map-surface .vano-map-brand{background:transparent;border-color:transparent;box-shadow:none}
+html[data-vano-theme="black"] body.vano-map-surface .vano-map-brand-img{filter:drop-shadow(0 12px 24px rgba(0,0,0,.28))}
 body.body-nav .vano-map-brand{opacity:0;transform:translateY(-10px);pointer-events:none}
 
 /* The theme shortcut lived directly under the three-dot menu and visually competed with it.
@@ -145,7 +144,7 @@ body.vano-map-surface:not(.body-nav) .floating-locate{
   body.vano-map-surface .planner-expanded{padding-bottom:2px}
   body.vano-map-surface .planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   body.vano-map-surface:not(.body-nav) .floating-locate{right:20px!important;bottom:20px!important}
-  body.vano-map-surface .vano-map-brand{left:20px;top:18px;max-width:175px}
+  body.vano-map-surface .vano-map-brand{left:20px;top:18px;max-width:214px}
   body.vano-map-surface .header{right:20px!important;top:18px!important}
 }
 
@@ -162,7 +161,7 @@ body.vano-map-surface:not(.body-nav) .floating-locate{
   body.vano-map-surface .planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
   body.vano-map-surface .nearby-services{grid-template-columns:repeat(4,minmax(0,1fr))!important}
   body.vano-map-surface .planner-section-head{margin-top:15px!important}
-  body.vano-map-surface .vano-map-brand{left:24px;top:20px;max-width:190px;height:48px;padding-inline:13px}
+  body.vano-map-surface .vano-map-brand{left:24px;top:20px;max-width:238px}
   body.vano-map-surface .header{right:24px!important;top:20px!important}
   body.vano-map-surface:not(.body-nav) .floating-locate{right:24px!important;bottom:24px!important;width:50px!important;height:50px!important}
   body.vano-map-surface .account-drawer{width:min(410px,calc(100vw - 32px))!important;right:18px!important;left:auto!important}
@@ -178,8 +177,8 @@ body.vano-map-surface:not(.body-nav) .floating-locate{
 html[data-vano-theme="black"] body.vano-map-surface :is(.planner-location-row,.planner-adjust-btn,.planner-preset,.nearby-service){border-color:rgba(255,255,255,.07)!important}
 
 @media (max-width:430px){
-  body.vano-map-surface .vano-map-brand{height:43px;min-width:112px;max-width:40vw;padding:7px 10px;border-radius:14px}
-  body.vano-map-surface .vano-map-brand-img{height:24px}
+  body.vano-map-surface .vano-map-brand{max-width:48vw}
+  body.vano-map-surface .vano-map-brand-img{height:30px}
   body.vano-map-surface .header{width:43px!important;height:43px!important}
   body.vano-map-surface .header-actions,body.vano-map-surface .options-btn{width:43px!important;height:43px!important}
   body.vano-map-surface .vano-primary-travel button{min-height:51px!important;padding-inline:5px!important;gap:5px!important}

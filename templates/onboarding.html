@@ -8,12 +8,16 @@
 {% endblock %}
 {% block content %}
 {% set selected_locale = user['locale'] or active_locale %}
+{% set selected_sex = user['sex'] or '' %}
 <div class="vano-onboarding-v340">
   <main class="ob-shell-v340">
     <section class="ob-main-v340">
       <header class="ob-top-v340">
         <a class="ob-brand-v340" href="{{ url_for('index') }}" aria-label="VANO MAPS">
-          <span class="vano-adaptive-brand"><img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span>
+          <span class="vano-adaptive-brand">
+            <img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS">
+            <img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true">
+          </span>
         </a>
         <span class="ob-step-label-v340" id="obStepLabel">1 de 3</span>
       </header>
@@ -26,29 +30,75 @@
         <section class="ob-step-v340 is-active" data-ob-step="1" aria-labelledby="obTitle1">
           <div class="ob-step-heading-v340">
             <span class="ob-eyebrow-v340"><i data-lucide="user-round" width="14"></i> Primeiro, você</span>
-            <h1 id="obTitle1">Como o VANO<br><span>deve te conhecer?</span></h1>
-            <p>São só os dados essenciais para finalizar a conta. Nada de formulário gigante antes de abrir o mapa.</p>
+            <h1 id="obTitle1">Personalize seu perfil.<br><span>Do jeito certo, sem complicação.</span></h1>
+            <p>Deixamos a primeira experiência mais premium: menos campos soltos, mais clareza e escolhas rápidas para você cair no mapa já com cara de conta pronta.</p>
           </div>
 
           <div class="ob-card-v340">
-            <label class="ob-field-v340 ob-field-full-v340" for="onboardingName"><span>Como podemos te chamar?</span><div class="ob-input-v340"><i data-lucide="user" width="17"></i><input id="onboardingName" type="text" name="name" maxlength="80" autocomplete="name" required value="{{ user['name'] or '' }}" placeholder="Seu nome"></div></label>
-            <div class="ob-field-grid-v340">
-              <label class="ob-field-v340" for="onboardingAge"><span>Idade</span><div class="ob-input-v340"><i data-lucide="calendar" width="17"></i><input id="onboardingAge" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 18"></div></label>
-              <label class="ob-field-v340" for="onboardingSex"><span>Sexo</span><div class="ob-input-v340 ob-select-v340"><i data-lucide="contact" width="17"></i><select id="onboardingSex" name="sex" required><option value="" {% if not user['sex'] %}selected{% endif %} disabled>Selecione</option><option value="female" {% if user['sex']=='female' %}selected{% endif %}>Feminino</option><option value="male" {% if user['sex']=='male' %}selected{% endif %}>Masculino</option><option value="intersex_other" {% if user['sex']=='intersex_other' %}selected{% endif %}>Outro / intersexo</option><option value="prefer_not_say" {% if user['sex']=='prefer_not_say' %}selected{% endif %}>Prefiro não informar</option></select><i class="ob-select-chevron" data-lucide="chevron-down" width="15"></i></div></label>
+            <label class="ob-field-v340 ob-field-full-v340" for="onboardingName">
+              <span>Como podemos te chamar?</span>
+              <div class="ob-input-v340">
+                <i data-lucide="user" width="17"></i>
+                <input id="onboardingName" type="text" name="name" maxlength="80" autocomplete="name" required value="{{ user['name'] or '' }}" placeholder="Seu nome">
+              </div>
+              <small class="ob-field-note-v340">Esse nome aparece na sua conta e deixa a experiência mais pessoal.</small>
+            </label>
+
+            <div class="ob-field-grid-v340 ob-field-grid-tight-v340">
+              <label class="ob-field-v340" for="onboardingAge">
+                <span>Idade</span>
+                <div class="ob-input-v340">
+                  <i data-lucide="calendar" width="17"></i>
+                  <input id="onboardingAge" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 18">
+                </div>
+                <small class="ob-field-note-v340">Usamos isso para liberar recursos compatíveis e preferências adequadas.</small>
+              </label>
+
+              <div class="ob-field-v340 ob-field-choice-v340" id="onboardingSexField">
+                <span>Sexo</span>
+                <div class="ob-choice-grid-v340" role="radiogroup" aria-label="Sexo">
+                  <label class="ob-choice-v340">
+                    <input type="radio" name="sex" value="female" {% if selected_sex=='female' %}checked{% endif %}>
+                    <span class="ob-choice-card-v340"><i data-lucide="venus" width="17"></i><b>Feminino</b><small>Perfil</small></span>
+                  </label>
+                  <label class="ob-choice-v340">
+                    <input type="radio" name="sex" value="male" {% if selected_sex=='male' %}checked{% endif %}>
+                    <span class="ob-choice-card-v340"><i data-lucide="mars" width="17"></i><b>Masculino</b><small>Perfil</small></span>
+                  </label>
+                  <label class="ob-choice-v340">
+                    <input type="radio" name="sex" value="intersex_other" {% if selected_sex=='intersex_other' %}checked{% endif %}>
+                    <span class="ob-choice-card-v340"><i data-lucide="asterisk" width="17"></i><b>Outro</b><small>Intersexo / outro</small></span>
+                  </label>
+                  <label class="ob-choice-v340">
+                    <input type="radio" name="sex" value="prefer_not_say" {% if selected_sex=='prefer_not_say' %}checked{% endif %}>
+                    <span class="ob-choice-card-v340"><i data-lucide="shield" width="17"></i><b>Prefiro não informar</b><small>Privacidade</small></span>
+                  </label>
+                </div>
+                <small class="ob-field-note-v340">A seleção ficou mais direta para não parecer um formulário travado.</small>
+              </div>
             </div>
           </div>
 
-          <div class="ob-step-actions-v340"><span class="ob-step-hint-v340"><i data-lucide="shield-check" width="14"></i> Você poderá editar isso no perfil.</span><button class="ob-next-v340" type="button" data-ob-next>Continuar <i data-lucide="arrow-right" width="17"></i></button></div>
+          <div class="ob-step-actions-v340">
+            <span class="ob-step-hint-v340"><i data-lucide="shield-check" width="14"></i> Você poderá editar tudo isso mais tarde no perfil.</span>
+            <button class="ob-next-v340" type="button" data-ob-next>Continuar <i data-lucide="arrow-right" width="17"></i></button>
+          </div>
         </section>
 
         <section class="ob-step-v340" data-ob-step="2" aria-labelledby="obTitle2">
           <div class="ob-step-heading-v340">
             <span class="ob-eyebrow-v340"><i data-lucide="languages" width="14"></i> Sua experiência</span>
-            <h1 id="obTitle2">Escolha o idioma.<br><span>O resto se adapta.</span></h1>
-            <p>Interface, buscas e instruções compatíveis passam a priorizar essa escolha.</p>
+            <h1 id="obTitle2">Escolha o idioma.<br><span>O app inteiro se adapta.</span></h1>
+            <p>As opções abaixo agora funcionam como seleção visual de verdade — mais clara, mais bonita e melhor para a primeira impressão.</p>
           </div>
 
           <div class="ob-card-v340">
+            <div class="ob-card-head-v340">
+              <div>
+                <b>Idioma principal</b>
+                <small>Interface, buscas e instruções compatíveis passam a priorizar essa escolha.</small>
+              </div>
+            </div>
             <div class="ob-language-grid-v340" role="radiogroup" aria-label="Idioma">
               <label class="ob-language-v340"><input id="langPt" type="radio" name="locale" value="pt-BR" {% if selected_locale=='pt-BR' %}checked{% endif %} required><span class="ob-language-card-v340"><em>🇧🇷</em><span><b>Português</b><small>Brasil</small></span><i data-lucide="check" width="16"></i></span></label>
               <label class="ob-language-v340"><input id="langEn" type="radio" name="locale" value="en-US" {% if selected_locale=='en-US' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇺🇸</em><span><b>English</b><small>English</small></span><i data-lucide="check" width="16"></i></span></label>
@@ -58,14 +108,17 @@
             </div>
           </div>
 
-          <div class="ob-step-actions-v340"><button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button><button class="ob-next-v340" type="button" data-ob-next>Ver resumo <i data-lucide="arrow-right" width="17"></i></button></div>
+          <div class="ob-step-actions-v340">
+            <button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button>
+            <button class="ob-next-v340" type="button" data-ob-next>Ver resumo <i data-lucide="arrow-right" width="17"></i></button>
+          </div>
         </section>
 
         <section class="ob-step-v340" data-ob-step="3" aria-labelledby="obTitle3">
           <div class="ob-step-heading-v340">
             <span class="ob-eyebrow-v340"><i data-lucide="sparkles" width="14"></i> Tudo pronto</span>
-            <h1 id="obTitle3">Seu VANO está<br><span>pronto para abrir.</span></h1>
-            <p>Confira o essencial. Depois disso você cai direto no mapa e pode ajustar o resto quando quiser.</p>
+            <h1 id="obTitle3">Conta pronta.<br><span>Primeira experiência com mais impacto.</span></h1>
+            <p>Antes de abrir o mapa, você consegue revisar o essencial e, se precisar, usar uma ação temporária de desenvolvimento para resetar contas de teste.</p>
           </div>
 
           <div class="ob-summary-v340">
@@ -79,7 +132,25 @@
           </div>
           <div class="ob-ready-note-v340"><i data-lucide="wand-sparkles" width="17"></i><span><b>Primeira experiência mais limpa.</b> Você entra no mapa com o essencial salvo e personaliza rotas, veículo, casa e trabalho depois, no seu ritmo.</span></div>
 
-          <div class="ob-step-actions-v340"><button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button><button class="ob-finish-v340" type="submit"><span>Concluir e abrir o VANO MAPS</span><i data-lucide="arrow-up-right" width="18"></i></button></div>
+          <section class="ob-dev-tools-v340" aria-label="Ferramentas temporárias">
+            <div class="ob-dev-head-v340">
+              <div>
+                <small>MODO TEMPORÁRIO</small>
+                <b>Resetar contas de teste</b>
+              </div>
+              <span class="ob-dev-badge-v340">DEV</span>
+            </div>
+            <p>Botão temporário para limpar as outras contas e sessões de teste. A sua conta atual continua ativa para você seguir usando o app.</p>
+            <form method="post" action="{{ url_for('dev_reset_accounts') }}" class="ob-dev-form-v340" data-ob-reset-form>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="ob-reset-dev-v340" type="submit" data-reset-accounts><i data-lucide="trash-2" width="16"></i><span>Resetar contas</span></button>
+            </form>
+          </section>
+
+          <div class="ob-step-actions-v340">
+            <button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i> Voltar</button>
+            <button class="ob-finish-v340" type="submit"><span>Concluir e abrir o VANO MAPS</span><i data-lucide="arrow-up-right" width="18"></i></button>
+          </div>
         </section>
       </form>
     </section>

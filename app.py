@@ -8342,6 +8342,52 @@ def onboarding():
     return render_template("onboarding.html", user=user)
 
 
+@app.route("/dev/reset-accounts", methods=["POST"])
+@login_required
+def dev_reset_accounts():
+    if not validate_csrf():
+        abort(400)
+    user = current_user()
+    if not user:
+        abort(403)
+    db = get_db()
+    current_id = int(user["id"])
+    try:
+        table_rows = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        ).fetchall()
+        table_names = [row[0] if not isinstance(row, str) else row for row in table_rows]
+        candidate_columns = (
+            "user_id", "owner_id", "created_by", "requester_id", "author_id",            "from_user_id", "to_user_id", "granted_by_user_id", "target_user_id",            "contact_user_id", "driver_user_id", "viewer_user_id"
+        )
+        for table in table_names:
+            if table == "users":
+                continue
+            try:
+                cols = [row[1] for row in db.execute(f'PRAGMA table_info("{table}")').fetchall()]
+            except Exception:
+                continue
+            for col in candidate_columns:
+                if col in cols:
+                    try:
+                        db.execute(f'DELETE FROM "{table}" WHERE "{col}" != ?', (current_id,))
+                    except Exception:
+                        pass
+        db.execute("DELETE FROM nearby_presence")
+        db.execute("DELETE FROM users WHERE id != ?", (current_id,))
+        try:
+            db.execute("UPDATE users SET onboarding_completed_at=NULL WHERE id=?", (current_id,))
+        except Exception:
+            pass
+        db.commit()
+        audit("dev_reset_accounts", {"preserved_user_id": current_id}, current_id)
+        flash("Contas de teste resetadas. Somente a conta atual foi mantida.", "success")
+    except Exception:
+        db.rollback()
+        flash("Não foi possível resetar as contas agora.", "danger")
+    return redirect(url_for("onboarding"))
+
+
 @app.route("/logout", methods=["POST"])
 def logout():
     if not validate_csrf():
