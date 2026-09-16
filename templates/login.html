@@ -474,7 +474,7 @@
             </button>
 
             <div class="auth-links">Ainda não tem conta? <a href="{{ url_for('register', next=request.args.get('next')) }}#registerSheet">Criar conta</a></div>
-            <div class="auth-extra-actions"><a class="benchmark-link" href="{{ url_for('route_benchmark_page') }}"><i data-lucide="flask-conical" width="16"></i>Benchmark global do VANO</a><a class="guest-link" href="{{ url_for('index') }}">
+            <div class="auth-extra-actions"><a class="guest-link" href="{{ url_for('index') }}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18 3 21V6l6-3 6 3 6-3v15l-6 3-6-3Z"/><path d="M9 3v15M15 6v15"/></svg>
               Explorar o mapa sem conta
             </a></div>

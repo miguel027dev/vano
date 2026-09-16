@@ -814,3 +814,25 @@ html[data-vano-theme="black"] body.vano-map-surface .search-item.match-primary{
 }
 html[data-vano-theme="black"] body.vano-map-surface .result-match-note.primary{color:#FFB34E!important}
 html[data-vano-theme="black"] body.vano-map-surface .search-item.match-related{background:rgba(27,29,32,.92)!important}
+
+
+/* V322 — planner input/search polish and safer touch scrolling */
+body.vano-map-surface:not(.body-nav) #planSheet{
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;
+  touch-action:pan-y!important;
+}
+body.vano-map-surface:not(.body-nav) #planSheet:not(.sheet-collapsed){max-height:min(82dvh,760px)!important}
+body.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{height:146px!important;min-height:146px!important;max-height:146px!important}
+body.vano-map-surface .planner-expanded{max-height:min(35dvh,300px)!important;overflow:auto!important;padding-right:2px!important;-webkit-overflow-scrolling:touch!important}
+body.vano-map-surface .planner-smart-scroll,
+body.vano-map-surface .search-results{
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior:contain!important;
+  touch-action:pan-y!important;
+}
+body.vano-map-surface .planner-search-row,
+body.vano-map-surface .planner-search-card,
+body.vano-map-surface .planner-location-row{overflow:visible!important}
+body.vano-map-surface .search-results{max-height:min(44dvh,350px)!important}
+body.vano-map-surface .planner-adjust-btn span{font-size:8px!important}

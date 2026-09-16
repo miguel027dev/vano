@@ -75,7 +75,7 @@ SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "noreply@localhost").strip(
 SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "1").strip().lower() not in {"0","false","no","off"}
 SEO_INDEXABLE_ENDPOINTS = {
     "index", "about", "sobre", "help_page", "privacy_policy", "terms_of_use",
-    "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "route_benchmark_page",
+    "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative",
     "account_delete_page",
 }
 SEO_CANONICAL_PATHS = {
@@ -88,7 +88,6 @@ SEO_CANONICAL_PATHS = {
     "what_is_vano": "/o-que-e-vano-maps",
     "seo_avoid_traffic": "/rotas-para-evitar-transito",
     "seo_waze_alternative": "/alternativa-ao-waze",
-    "route_benchmark_page": "/benchmark-de-rotas",
     "account_delete_page": "/excluir-conta",
 }
 
@@ -8802,12 +8801,7 @@ def seo_waze_alternative():
 
 @app.route("/benchmark-de-rotas")
 def route_benchmark_page():
-    """Public route lab for global benchmarking, QA and agent access."""
-    return render_template(
-        "benchmark_de_rotas.html",
-        mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
-        mapbox_style=MAPBOX_STYLE_NIGHT or MAPBOX_STYLE_DAY,
-    )
+    return redirect(url_for("index"), code=302)
 
 
 @app.route("/excluir-conta")
