@@ -4,6 +4,7 @@
 {% block head %}{% endblock %}
 {% block tail_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-register-v340.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-startup-v351.css') }}?v={{ vano_build_id }}-351">
 {% endblock %}
 {% block content %}
 <div class="vano-register-v340" data-auth-page="register">
@@ -71,4 +72,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='auth-entry.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-auth-startup-v351.js') }}?v={{ vano_build_id }}-351"></script>
 {% endblock %}

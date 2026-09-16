@@ -5,6 +5,7 @@
 {% endblock %}
 {% block tail_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding-v343.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-startup-v351.css') }}?v={{ vano_build_id }}-351">
 {% endblock %}
 {% block content %}
 {% set selected_locale = user['locale'] or active_locale %}

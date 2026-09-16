@@ -1,0 +1,95 @@
+/* VANO V351 — startup-grade auth + onboarding polish */
+:root{--v351-orange:#F59A62;--v351-orange-2:#E97742;--v351-ink:#211d1a;--v351-muted:#817873;--v351-line:rgba(42,35,31,.085);--v351-ease:cubic-bezier(.2,.78,.2,1)}
+
+/* LOGIN */
+.vano-auth-startup{padding:max(72px,calc(env(safe-area-inset-top) + 58px)) max(18px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))!important}
+.vano-auth-startup .startup-shell{min-height:min(720px,calc(100svh - 96px));border-radius:36px!important;background:rgba(255,255,255,.92)!important;box-shadow:0 35px 100px rgba(44,35,29,.13),0 4px 20px rgba(44,35,29,.05)!important}
+.vano-auth-startup .startup-auth{position:relative;overflow:hidden}
+.vano-auth-startup .startup-auth:before{content:"";position:absolute;width:180px;height:180px;border-radius:50%;left:-86px;bottom:-82px;background:radial-gradient(circle,rgba(245,154,98,.14),rgba(245,154,98,0) 70%);pointer-events:none}
+.vano-auth-startup .startup-copy h1,.vano-auth-startup .startup-copy h2{letter-spacing:-3.7px!important}
+.vano-auth-startup .startup-primary,.vano-auth-startup .startup-secondary,.vano-auth-startup .startup-submit{min-height:60px!important;border-radius:19px!important}
+.vano-auth-startup .startup-primary,.vano-auth-startup .startup-secondary{border-color:rgba(39,32,28,.08)!important}
+.vano-auth-startup .startup-primary{box-shadow:0 11px 30px rgba(36,29,25,.075)!important}
+.vano-auth-startup .startup-secondary{background:rgba(249,247,245,.92)!important}
+.vano-auth-startup .startup-input-wrap{min-height:56px!important;border-radius:17px!important;transition:border-color .2s ease,box-shadow .2s ease,background .2s ease,transform .2s var(--v351-ease)!important}
+.vano-auth-startup .startup-input-wrap:focus-within{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(245,154,98,.11)!important}
+.vano-auth-startup .startup-stage{transform-origin:50% 35%}
+.vano-auth-startup .startup-stage.v351-enter-forward{animation:v351AuthForward .38s var(--v351-ease) both}
+.vano-auth-startup .startup-stage.v351-enter-back{animation:v351AuthBack .34s var(--v351-ease) both}
+@keyframes v351AuthForward{from{opacity:0;transform:translateX(18px) scale(.99)}to{opacity:1;transform:none}}
+@keyframes v351AuthBack{from{opacity:0;transform:translateX(-18px) scale(.99)}to{opacity:1;transform:none}}
+
+html[data-vano-theme="black"] .vano-auth-startup .startup-shell{background:rgba(29,26,23,.94)!important;border-color:rgba(255,255,255,.07)!important;box-shadow:0 35px 100px rgba(0,0,0,.35)!important}
+html[data-vano-theme="black"] .vano-auth-startup .startup-secondary{background:rgba(39,35,31,.9)!important}
+
+/* REGISTER */
+.vano-register-v340{padding:18px!important;background:radial-gradient(circle at 8% 0%,rgba(245,154,98,.17),transparent 28%),radial-gradient(circle at 100% 100%,rgba(245,154,98,.09),transparent 31%),#f4f2ef!important}
+.vano-register-v340 .register-shell{min-height:calc(100svh - 36px)!important;border-radius:38px!important;box-shadow:0 36px 100px rgba(49,40,34,.12),0 4px 20px rgba(49,40,34,.05)!important}
+.vano-register-v340 .register-panel{position:relative;overflow:hidden}
+.vano-register-v340 .register-panel:after{content:"";position:absolute;right:-110px;top:-90px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,rgba(245,154,98,.10),transparent 70%);pointer-events:none}
+.vano-register-v340 .register-copy h1{letter-spacing:-3.8px!important}.vano-register-v340 .register-copy h1 span{margin-top:7px;font-size:.72em;line-height:1.03;letter-spacing:-2.3px}
+.vano-register-v340 .register-google,.vano-register-v340 .register-email-submit{min-height:60px!important;border-radius:19px!important}
+.vano-register-v340 .register-input-shell{height:57px!important;border-radius:17px!important;transition:transform .2s var(--v351-ease),border-color .2s ease,box-shadow .2s ease,background .2s ease!important}
+.vano-register-v340 .register-input-shell:focus-within{transform:translateY(-1px)}
+.vano-register-v340 .register-field.is-valid .register-input-shell{border-color:rgba(56,158,99,.32)!important;box-shadow:0 0 0 4px rgba(56,158,99,.065)!important}
+.vano-register-v340 .register-field.is-invalid .register-input-shell{border-color:rgba(214,82,73,.48)!important;box-shadow:0 0 0 4px rgba(214,82,73,.07)!important}
+.vano-register-v340 .register-email-submit.is-loading{pointer-events:none;opacity:.78}
+.vano-register-v340 .register-email-submit.is-loading i{animation:v351Spin .8s linear infinite}
+@keyframes v351Spin{to{transform:rotate(360deg)}}
+
+/* ONBOARDING */
+.vano-onboarding-v340{padding:18px!important;background:radial-gradient(circle at 7% 0%,rgba(245,154,98,.16),transparent 28%),#f4f2ef!important}
+.vano-onboarding-v340 .ob-shell-v340{min-height:calc(100svh - 36px)!important;border-radius:38px!important;box-shadow:0 36px 100px rgba(49,40,34,.12),0 4px 20px rgba(49,40,34,.05)!important;overflow:hidden!important}
+.vano-onboarding-v340 .ob-main-v340{position:relative}
+.vano-onboarding-v340 .ob-progress-v340{height:5px!important;background:rgba(52,44,39,.07)!important;border-radius:999px!important;overflow:hidden!important}
+.vano-onboarding-v340 .ob-progress-v340 i{background:linear-gradient(90deg,#F59A62,#E97742)!important;box-shadow:0 0 16px rgba(245,154,98,.26)}
+.vano-onboarding-v340 .ob-progress-steps-v344{margin-top:10px!important}
+.vano-onboarding-v340 .ob-progress-steps-v344 span{transition:color .2s ease,transform .24s var(--v351-ease),opacity .2s ease!important}
+.vano-onboarding-v340 .ob-progress-steps-v344 span.is-active{transform:translateY(-1px)}
+.vano-onboarding-v340 .ob-step-v340{will-change:transform,opacity}
+.vano-onboarding-v340 .ob-step-v340.v351-step-forward{animation:v351StepForward .42s var(--v351-ease) both}
+.vano-onboarding-v340 .ob-step-v340.v351-step-back{animation:v351StepBack .38s var(--v351-ease) both}
+@keyframes v351StepForward{from{opacity:0;transform:translateX(24px) scale(.992)}to{opacity:1;transform:none}}
+@keyframes v351StepBack{from{opacity:0;transform:translateX(-24px) scale(.992)}to{opacity:1;transform:none}}
+.vano-onboarding-v340 .ob-step-heading-v340 h1{letter-spacing:-3.1px!important}
+.vano-onboarding-v340 .ob-card-v340{border-radius:25px!important;box-shadow:0 13px 38px rgba(43,35,30,.055)!important}
+.vano-onboarding-v340 .ob-input-v340{height:60px!important;border-radius:18px!important}
+.vano-onboarding-v340 .ob-choice-card-v340,.vano-onboarding-v340 .ob-language-card-v340{border-radius:19px!important;overflow:hidden;position:relative}
+.vano-onboarding-v340 .ob-choice-card-v340:after,.vano-onboarding-v340 .ob-language-card-v340:after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,.32),transparent 68%);transform:translateX(-120%);pointer-events:none}
+.vano-onboarding-v340 .ob-choice-v340 input:checked + .ob-choice-card-v340:after,.vano-onboarding-v340 .ob-language-v340 input:checked + .ob-language-card-v340:after{animation:v351Sweep .48s var(--v351-ease)}
+@keyframes v351Sweep{to{transform:translateX(120%)}}
+.vano-onboarding-v340 .ob-next-v340,.vano-onboarding-v340 .ob-finish-v340{min-height:58px!important;border-radius:18px!important;position:relative;overflow:hidden}
+.vano-onboarding-v340 .ob-next-v340:after,.vano-onboarding-v340 .ob-finish-v340:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 10%,rgba(255,255,255,.3),transparent 65%);transform:translateX(-120%);transition:transform .55s var(--v351-ease)}
+.vano-onboarding-v340 .ob-next-v340:hover:after,.vano-onboarding-v340 .ob-finish-v340:hover:after{transform:translateX(120%)}
+
+html[data-vano-theme="black"] .vano-register-v340,html[data-vano-theme="black"] .vano-onboarding-v340{background:radial-gradient(circle at 7% 0%,rgba(245,154,98,.12),transparent 28%),#171512!important}
+
+@media(max-width:900px){
+  .vano-register-v340,.vano-onboarding-v340{padding:0!important}
+  .vano-register-v340 .register-shell,.vano-onboarding-v340 .ob-shell-v340{min-height:100svh!important;border-radius:0!important;border:0!important}
+}
+@media(max-width:560px){
+  .vano-auth-startup{display:block!important;padding:max(70px,calc(env(safe-area-inset-top) + 58px)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))!important}
+  .vano-auth-startup .startup-shell{width:100%!important;min-height:calc(100svh - 84px)!important;border-radius:26px!important}
+  .vano-auth-startup .startup-auth-inner{padding:30px 20px 22px!important}
+  .vano-auth-startup .startup-copy h1{font-size:43px!important;letter-spacing:-2.8px!important}
+  .vano-auth-startup .startup-copy h2{font-size:40px!important;letter-spacing:-2.6px!important}
+  .vano-auth-startup .startup-actions{margin-top:24px!important}
+  .vano-register-v340 .register-panel{padding:max(23px,env(safe-area-inset-top)) max(15px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(15px,env(safe-area-inset-left))!important}
+  .vano-register-v340 .register-copy{margin-top:30px!important}.vano-register-v340 .register-copy h1{font-size:40px!important;letter-spacing:-2.7px!important}
+  .vano-onboarding-v340 .ob-main-v340{padding-left:max(15px,env(safe-area-inset-left))!important;padding-right:max(15px,env(safe-area-inset-right))!important}
+  .vano-onboarding-v340 .ob-step-heading-v340 h1{font-size:36px!important;letter-spacing:-2.3px!important}
+  .vano-onboarding-v340 .ob-card-v340{border-radius:21px!important}
+  .vano-onboarding-v340 .ob-choice-grid-v340{grid-template-columns:1fr 1fr!important;gap:8px!important}
+  .vano-onboarding-v340 .ob-language-grid-v344{grid-template-columns:1fr!important}
+  .vano-onboarding-v340 .ob-step-actions-v340{position:sticky;bottom:0;z-index:4;margin:14px -4px -4px;padding:12px 4px max(8px,env(safe-area-inset-bottom))!important;background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.94) 28%,rgba(255,255,255,.98));backdrop-filter:blur(10px)}
+  html[data-vano-theme="black"] .vano-onboarding-v340 .ob-step-actions-v340{background:linear-gradient(180deg,rgba(31,28,26,0),rgba(31,28,26,.94) 28%,rgba(31,28,26,.98))}
+  .vano-onboarding-v340 .ob-step-hint-v340{display:none!important}
+  .vano-onboarding-v340 .ob-next-v340,.vano-onboarding-v340 .ob-finish-v340{flex:1;min-width:0!important}
+}
+@media(max-width:360px){
+  .vano-auth-startup{padding-left:8px!important;padding-right:8px!important}.vano-auth-startup .startup-auth-inner{padding-left:16px!important;padding-right:16px!important}
+  .vano-register-v340 .register-panel,.vano-onboarding-v340 .ob-main-v340{padding-left:12px!important;padding-right:12px!important}
+  .vano-onboarding-v340 .ob-choice-grid-v340{grid-template-columns:1fr!important}
+}
+@media(prefers-reduced-motion:reduce){.v351-enter-forward,.v351-enter-back,.v351-step-forward,.v351-step-back{animation:none!important}}

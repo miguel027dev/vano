@@ -1,0 +1,22 @@
+VANO MAPS V351 — PATCH AUTH / ONBOARDING / MENU
+
+Arquivos alterados:
+- templates/login.html
+- templates/register.html
+- templates/onboarding.html
+- templates/index.html
+- static/vano-onboarding-v343.js
+- static/vano-auth-startup-v351.css
+- static/vano-auth-startup-v351.js
+- static/vano-map-account-v351.css
+
+Principais mudanças:
+- Login com acabamento de app/startup, campos e transições mais fluidas.
+- Registro mais refinado, estados válidos/inválidos e feedback de envio.
+- Onboarding de 3 etapas com transições direcionais, seleção mais viva e responsividade reforçada.
+- Correções de margens para telas pequenas e safe areas.
+- Melhor estabilidade visual com teclado mobile/viewport.
+- Botão de 3 pontos com estados visualmente mais claros.
+- Tema do mapa e Sair lado a lado no rodapé do card da conta.
+- Sair em vermelho, com versão específica para modo Black.
+- Estilos revisados para tema claro e Black.

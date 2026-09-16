@@ -133,6 +133,7 @@
   }
 
   function setStep(next){
+    const previous=current;
     current=Math.max(1,Math.min(3,next));
     steps.forEach(s=>{
       const active=Number(s.dataset.obStep)===current;
@@ -157,6 +158,11 @@
     }
     if(current===3)updateSummary();
     const active=steps.find(s=>Number(s.dataset.obStep)===current);
+    if(active&&current!==previous&&motion()){
+      const cls=current>previous?'v351-step-forward':'v351-step-back';
+      active.classList.remove('v351-step-forward','v351-step-back');
+      requestAnimationFrame(()=>{active.classList.add(cls);setTimeout(()=>active.classList.remove(cls),460)});
+    }
     try{active?.scrollIntoView({behavior:motion()?'smooth':'auto',block:'start'})}catch{}
     window.scrollTo?.({top:0,behavior:'auto'});
   }

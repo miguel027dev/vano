@@ -1,0 +1,26 @@
+/* VANO V351 — account menu / theme + logout action dock */
+body.vano-map-surface .options-btn{position:relative;overflow:hidden}
+body.vano-map-surface .options-btn:before{content:"";position:absolute;inset:5px;border-radius:12px;background:linear-gradient(145deg,rgba(245,154,98,.09),transparent 58%);opacity:0;transition:opacity .2s ease}
+body.vano-map-surface .options-btn:hover:before,body.vano-map-surface .options-btn[aria-expanded="true"]:before{opacity:1}
+body.vano-map-surface .options-btn[aria-expanded="true"]{border-color:rgba(245,154,98,.28)!important;box-shadow:0 12px 34px rgba(36,29,25,.16),0 0 0 4px rgba(245,154,98,.07)!important}
+
+body.vano-map-surface .account-drawer{border-radius:28px!important;overflow:hidden!important}
+body.vano-map-surface .drawer-list{gap:7px!important}
+body.vano-map-surface .drawer-link{min-height:54px!important;border-radius:16px!important;transition:transform .17s cubic-bezier(.2,.8,.2,1),background .18s ease,border-color .18s ease!important}
+body.vano-map-surface .drawer-link:active{transform:scale(.985)}
+body.vano-map-surface .v351-account-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.82fr);gap:8px;margin-top:4px;padding-top:10px;border-top:1px solid rgba(35,39,47,.07)}
+body.vano-map-surface .v351-account-actions>form{min-width:0;margin:0}
+body.vano-map-surface .v351-account-actions .drawer-link{width:100%!important;height:56px!important;min-height:56px!important;margin:0!important;padding:0 12px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;border:1px solid rgba(34,39,47,.08)!important;background:#f7f7f8!important}
+body.vano-map-surface .v351-account-actions .v258-link-copy{display:block!important;min-width:0!important}
+body.vano-map-surface .v351-account-actions .v258-link-copy b{font-size:10.5px!important;white-space:nowrap}
+body.vano-map-surface .v351-account-actions .v258-link-copy small{display:none!important}
+body.vano-map-surface .v351-account-actions .drawer-theme-toggle{color:#343941!important}
+body.vano-map-surface .v351-account-actions .drawer-theme-toggle>i:last-child{display:none!important}
+body.vano-map-surface .v351-account-actions .drawer-logout{color:#c84d4d!important;background:#fff3f3!important;border-color:rgba(203,76,76,.13)!important}
+body.vano-map-surface .v351-account-actions .drawer-logout i{color:#d05252!important}
+body.vano-map-surface .v351-account-actions .drawer-logout:hover{background:#ffeaea!important;border-color:rgba(203,76,76,.22)!important}
+html[data-vano-theme="black"] body.vano-map-surface .v351-account-actions{border-top-color:rgba(255,255,255,.075)}
+html[data-vano-theme="black"] body.vano-map-surface .v351-account-actions .drawer-link{background:#272f39!important;border-color:#39434f!important;color:#eef2f6!important}
+html[data-vano-theme="black"] body.vano-map-surface .v351-account-actions .drawer-logout{background:#352426!important;border-color:rgba(238,104,104,.16)!important;color:#ff9a9a!important}
+html[data-vano-theme="black"] body.vano-map-surface .v351-account-actions .drawer-logout i{color:#ff8f8f!important}
+@media(max-width:380px){body.vano-map-surface .v351-account-actions{grid-template-columns:1fr 1fr;gap:7px}body.vano-map-surface .v351-account-actions .drawer-link{padding-inline:8px!important}}

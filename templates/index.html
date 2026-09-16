@@ -28,6 +28,7 @@
 {% endblock %}
 {% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-map-polish-v340.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account-v351.css') }}?v={{ vano_build_id }}-351">
 {% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -149,18 +150,20 @@
             <i data-lucide="chevron-right" width="14"></i>
           </a>
           {% endif %}
-          <button class="drawer-link drawer-theme-toggle" type="button" data-vano-theme-toggle aria-label="Alternar tema do mapa">
-            <i data-lucide="moon-star" width="17"></i>
-            <span class="v258-link-copy"><b>Tema do mapa</b><small>Alternar entre claro e Black</small></span>
-            <i data-lucide="sun" width="14"></i>
-          </button>
-          <form action="{{ url_for('logout') }}" method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="drawer-link drawer-logout" type="submit">
-              <i data-lucide="log-out" width="17"></i>
-              <span class="v258-link-copy"><b>Sair da conta</b><small>Encerra a sessão neste aparelho</small></span>
+          <div class="v351-account-actions" aria-label="Tema e sessão">
+            <button class="drawer-link drawer-theme-toggle" type="button" data-vano-theme-toggle aria-label="Alternar tema do mapa">
+              <i data-lucide="moon-star" width="17"></i>
+              <span class="v258-link-copy"><b>Tema do mapa</b><small>Alternar entre claro e Black</small></span>
+              <i data-lucide="sun" width="14"></i>
             </button>
-          </form>
+            <form action="{{ url_for('logout') }}" method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="drawer-link drawer-logout" type="submit">
+                <i data-lucide="log-out" width="17"></i>
+                <span class="v258-link-copy"><b>Sair</b><small>Encerra a sessão neste aparelho</small></span>
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     {% else %}

@@ -12,6 +12,7 @@
   <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-64.png') }}?v={{ vano_build_id }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-brand-v330.css') }}?v={{ vano_build_id }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-login-startup-v343.css') }}?v={{ vano_build_id }}-346">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-startup-v351.css') }}?v={{ vano_build_id }}-351">
   <script defer src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
 </head>
 <body class="vano-auth-startup">
@@ -197,5 +198,6 @@
   </main>
 
   <script src="{{ url_for('static', filename='vano-login-startup-v343.js') }}?v={{ vano_build_id }}-346"></script>
+  <script defer src="{{ url_for('static', filename='vano-auth-startup-v351.js') }}?v={{ vano_build_id }}-351"></script>
 </body>
 </html>
