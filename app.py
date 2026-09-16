@@ -7669,8 +7669,10 @@ def index():
     if map_style_pref not in {"auto", "day", "afternoon", "night", "rain"}:
         map_style_pref = "auto"
     style_lookup = {
-        "day": MAPBOX_STYLE_DAY, "afternoon": MAPBOX_STYLE_AFTERNOON,
-        "night": MAPBOX_STYLE_NIGHT, "rain": MAPBOX_STYLE_RAIN,
+        "day": MAPBOX_STYLE_DAY,
+        "afternoon": MAPBOX_STYLE_DAY,
+        "night": MAPBOX_STYLE_NIGHT,
+        "rain": MAPBOX_STYLE_DAY,
     }
     selected_map_style = style_lookup.get(map_style_pref, MAPBOX_STYLE_DAY)
     map_accent_pref = (user["map_accent"] if user and "map_accent" in user.keys() else "violet") or "violet"
@@ -7682,10 +7684,10 @@ def index():
         mapbox_style=selected_map_style,
         mapbox_styles={
             "day": MAPBOX_STYLE_DAY,
-            "afternoon": MAPBOX_STYLE_AFTERNOON,
+            "afternoon": MAPBOX_STYLE_DAY,
             "night": MAPBOX_STYLE_NIGHT,
-            "black": MAPBOX_STYLE_BLACK,
-            "rain": MAPBOX_STYLE_RAIN,
+            "black": MAPBOX_STYLE_NIGHT,
+            "rain": MAPBOX_STYLE_DAY,
         },
         map_style_mode=map_style_pref,
         map_accent=map_accent_pref,
