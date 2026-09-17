@@ -11,7 +11,7 @@
   'es-ES': ('🇪🇸','Español','España')
 } %}
 {% set current_locale_meta = locale_meta.get(active_locale, locale_meta['pt-BR']) %}
-<main class="vano-profile350" data-profile-root>
+<main class="vano-profile350 vano-profile353" data-profile-root>
   <div class="profile350-shell">
     <header class="profile350-hero" id="profileOverview">
       <div class="profile350-hero-orb profile350-orb-one" aria-hidden="true"></div>
@@ -26,7 +26,7 @@
           <span class="profile350-avatar-status" title="Conta ativa"></span>
         </div>
         <div class="profile350-identity-copy">
-          <span class="profile350-kicker">MEU VANO</span>
+          <span class="profile350-kicker"><i data-lucide="sparkles" width="13"></i> MEU VANO</span>
           <h1>{{ current_user['name'] }}</h1>
           <p>{{ current_user['email'] }}</p>
           <div class="profile350-chips">
@@ -36,7 +36,7 @@
           </div>
         </div>
       </div>
-      <div class="profile350-hero-actions">
+      <div class="profile350-hero-actions"><span class="profile353-sync"><i data-lucide="cloud-check" width="15"></i><span><b>Sincronizado</b><small>Preferências protegidas</small></span></span>
         <a class="profile350-button is-quiet" href="{{ url_for('notifications_page') }}"><i data-lucide="bell" width="17"></i><span>Notificações</span></a>
         <a class="profile350-button is-primary" href="{{ url_for('map_page') }}"><i data-lucide="navigation" width="17"></i><span>Voltar ao mapa</span></a>
       </div>
@@ -45,7 +45,7 @@
     <div class="profile350-layout">
       <aside class="profile350-sidebar" aria-label="Navegação do perfil">
         <div class="profile350-sidebar-card">
-          <div class="profile350-sidebar-title"><span>PERFIL</span><b>Personalização</b><small>Seu VANO, do seu jeito.</small></div>
+          <div class="profile350-sidebar-title"><span>CONFIGURAÇÕES</span><b>Seu espaço VANO</b><small>Ajuste só o que importa para sua navegação.</small></div>
           <nav class="profile350-nav">
             <a href="#destinations" class="is-active"><span><i data-lucide="map-pin-house" width="17"></i></span><div><b>Destinos</b><small>Casa e trabalho</small></div><i data-lucide="chevron-right" width="15"></i></a>
             <a href="#preferences"><span><i data-lucide="sliders-horizontal" width="17"></i></span><div><b>Preferências</b><small>Idioma, rota e mapa</small></div><i data-lucide="chevron-right" width="15"></i></a>
@@ -53,7 +53,7 @@
             <a href="#vehicle"><span><i data-lucide="car-front" width="17"></i></span><div><b>Veículo</b><small>Dados e postos</small></div><i data-lucide="chevron-right" width="15"></i></a>
             <a href="#account"><span><i data-lucide="circle-user-round" width="17"></i></span><div><b>Conta</b><small>Acesso e suporte</small></div><i data-lucide="chevron-right" width="15"></i></a>
           </nav>
-          <div class="profile350-sidebar-foot"><span class="profile350-live-dot"></span><span>Conta protegida</span><i data-lucide="shield" width="14"></i></div>
+          <div class="profile350-sidebar-foot"><span class="profile350-live-dot"></span><span>Alterações sincronizadas</span><i data-lucide="cloud-check" width="14"></i></div>
         </div>
       </aside>
 
@@ -203,6 +203,8 @@
           <div class="profile350-action-links">
             <a href="{{ url_for('notifications_page') }}"><span><i data-lucide="bell" width="17"></i></span><div><b>Notificações</b><small>Alertas e avisos da conta</small></div><i data-lucide="chevron-right" width="17"></i></a>
             <a href="{{ url_for('help_page') }}"><span><i data-lucide="circle-help" width="17"></i></span><div><b>Ajuda e FAQ</b><small>Suporte e dúvidas frequentes</small></div><i data-lucide="chevron-right" width="17"></i></a>
+            <a href="{{ url_for('privacy_policy') }}"><span><i data-lucide="lock-keyhole" width="17"></i></span><div><b>Privacidade</b><small>Dados, permissões e política</small></div><i data-lucide="chevron-right" width="17"></i></a>
+            <form class="profile353-logout-form" action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"><span><i data-lucide="log-out" width="17"></i></span><div><b>Sair desta conta</b><small>Encerra a sessão neste aparelho</small></div><i data-lucide="chevron-right" width="17"></i></button></form>
           </div>
         </section>
 
@@ -220,4 +222,4 @@
   </div>
 </main>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='vano-profile-v350.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-profile-v353.js') }}?v={{ vano_build_id }}-353"></script>{% endblock %}

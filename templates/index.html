@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-map-polish-v340.css') }}?v={{ vano_build_id }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account-v351.css') }}?v={{ vano_build_id }}-351">
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-map-menu-fix-v326.css') }}?v={{ vano_build_id }}-326">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account-v353.css') }}?v={{ vano_build_id }}-353">
 {% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -95,7 +96,7 @@
       <div class="v258-drawer-head">
         <div class="v258-drawer-brand">
           <img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}" alt="">
-          <div><span>VANO MAPS</span><b>Sua central de navegação</b></div>
+          <div><span>VANO MAPS</span><b>Conta & atalhos</b></div>
         </div>
         <button class="v258-drawer-close" type="button" onclick="document.getElementById('accountBackdrop')?.click()" aria-label="Fechar painel"><i data-lucide="x" width="17"></i></button>
       </div>
@@ -106,14 +107,14 @@
         {% else %}
           <div class="drawer-avatar fallback"><i data-lucide="user-round" width="21"></i></div>
         {% endif %}
-        <div><b>{{ current_user['name'] }}</b><span>{{ current_user['email'] }}</span></div>
-        <a class="drawer-profile" href="{{ url_for('profile') }}">Ver perfil</a>
+        <div class="drawer-user-copy"><b>{{ current_user['name'] }}</b><span>{{ current_user['email'] }}</span><small><i data-lucide="shield-check" width="12"></i> Preferências sincronizadas</small></div>
+        <a class="drawer-profile" href="{{ url_for('profile') }}"><span>Abrir perfil</span><i data-lucide="arrow-up-right" width="13"></i></a>
       </div>
 
       <div class="v258-drawer-section">
-        <div class="v258-drawer-label"><span>Atalhos</span><span>Conta sincronizada</span></div>
+        <div class="v258-drawer-label"><span>ATALHOS RÁPIDOS</span><span>Seu VANO</span></div>
         <div class="drawer-list">
-          <a class="drawer-link" href="{{ url_for('profile') }}#appSettings">
+          <a class="drawer-link" href="{{ url_for('profile') }}#preferences">
             <i data-lucide="sliders-horizontal" width="17"></i>
             <span class="v258-link-copy"><b>Personalizar</b><small>Rota, mapa, idioma e voz</small></span>
             <i data-lucide="chevron-right" width="14"></i>
@@ -123,7 +124,7 @@
             <span class="v258-link-copy"><b>Notificações</b><small>Avisos e atividade da conta</small></span>
             <em class="notif-count" id="notifCount" hidden>0</em>
           </a>
-          <a class="drawer-link" href="{{ url_for('profile') }}#places">
+          <a class="drawer-link" href="{{ url_for('profile') }}#destinations">
             <i data-lucide="map-pin-house" width="17"></i>
             <span class="v258-link-copy"><b>Casa e trabalho</b><small>Destinos frequentes</small></span>
             <i data-lucide="chevron-right" width="14"></i>
@@ -145,7 +146,7 @@
             <i data-lucide="chevron-right" width="14"></i>
           </a>
           {% else %}
-          <a class="drawer-link" href="{{ url_for('profile') }}#family">
+          <a class="drawer-link" href="{{ url_for('profile') }}#security">
             <i data-lucide="heart-handshake" width="17"></i>
             <span class="v258-link-copy"><b>Segurança</b><small>Contato e vínculos</small></span>
             <i data-lucide="chevron-right" width="14"></i>

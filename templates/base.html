@@ -132,6 +132,8 @@
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-v350.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-v350.css') }}?v={{ vano_build_id }}">{% endif %}
+  {% if current_user and not vano_admin_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-shell-v353.css') }}?v={{ vano_build_id }}-353">{% endif %}
+  {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-v353.css') }}?v={{ vano_build_id }}-353">{% endif %}
   {% if vano_map_surface %}
   <script>try{
     const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);
@@ -149,8 +151,11 @@
     <a class="brand vano-nav-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS"><span class="vano-adaptive-brand vano-nav-brand-images"><img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span></a>
     <div class="navlinks">
       {% if current_user %}
-        <a class="{% if vano_endpoint in ['index','map_page'] %}active{% endif %}" href="{{ url_for('map_page') }}">Rotas</a><a class="{% if vano_endpoint == 'alerts_page' %}active{% endif %}" href="{{ url_for('alerts_page') }}">Alertas</a><a class="{% if vano_endpoint == 'report_page' %}active{% endif %}" href="{{ url_for('report_page') }}">Denunciar</a><a class="{% if vano_endpoint == 'profile' %}active{% endif %}" href="{{ url_for('profile') }}">Perfil</a>
-        {% if current_user['role']=='admin' %}<a class="{% if vano_endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}">Admin</a>{% endif %}
+        <a class="vano-nav-item {% if vano_endpoint in ['index','map_page'] %}active{% endif %}" {% if vano_endpoint in ['index','map_page'] %}aria-current="page"{% endif %} href="{{ url_for('map_page') }}"><i data-lucide="navigation" width="16"></i><span>Rotas</span></a>
+        <a class="vano-nav-item {% if vano_endpoint == 'alerts_page' %}active{% endif %}" {% if vano_endpoint == 'alerts_page' %}aria-current="page"{% endif %} href="{{ url_for('alerts_page') }}"><i data-lucide="triangle-alert" width="16"></i><span>Alertas</span></a>
+        <a class="vano-nav-item {% if vano_endpoint == 'report_page' %}active{% endif %}" {% if vano_endpoint == 'report_page' %}aria-current="page"{% endif %} href="{{ url_for('report_page') }}"><i data-lucide="circle-plus" width="16"></i><span>Reportar</span></a>
+        <a class="vano-nav-item {% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round" width="16"></i><span>Perfil</span></a>
+        {% if current_user['role']=='admin' %}<a class="vano-nav-item {% if vano_endpoint.startswith('admin_') %}active{% endif %}" {% if vano_endpoint.startswith('admin_') %}aria-current="page"{% endif %} href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check" width="16"></i><span>Admin</span></a>{% endif %}
       {% else %}
         <a href="{{ url_for('about') }}">Como funciona</a><a href="#recursos">Recursos</a><a href="{{ url_for('help_page') }}">Ajuda</a>
       {% endif %}
@@ -158,8 +163,11 @@
     <div class="nav-actions">
       <button id="globalThemeToggle" class="vano-theme-toggle" type="button" data-vano-theme-toggle aria-label="Ativar modo Black" title="Alternar tema"><span class="vano-theme-sun"><i data-lucide="sun" width="17"></i></span><span class="vano-theme-moon"><i data-lucide="moon-star" width="17"></i></span></button>
       {% if current_user %}
-        {% if current_user['avatar_url'] %}<img class="vano-nav-avatar" src="{{ current_user['avatar_url'] }}" alt="">{% endif %}<span class="hide-mobile tiny">{{ current_user['name'].split()[0] }}</span>
-        <form action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm" type="submit"><i data-lucide="log-out" width="15"></i><span class="hide-mobile">Sair</span></button></form>
+        <a class="vano-nav-account" href="{{ url_for('profile') }}" aria-label="Abrir meu perfil">
+          {% if current_user['avatar_url'] %}<img class="vano-nav-avatar" src="{{ current_user['avatar_url'] }}" alt="">{% else %}<span class="vano-nav-avatar vano-nav-avatar-fallback">{{ current_user['name'][:1]|upper }}</span>{% endif %}
+          <span class="vano-nav-account-copy hide-mobile"><b>{{ current_user['name'].split()[0] }}</b><small>Minha conta</small></span>
+          <i class="hide-mobile" data-lucide="chevron-right" width="14"></i>
+        </a>
       {% else %}
         <a class="btn btn-ghost btn-sm hide-mobile" href="{{ url_for('login') }}">Entrar</a><a class="btn btn-primary btn-sm" href="{{ url_for('register') }}">Criar conta</a>
       {% endif %}
@@ -172,7 +180,7 @@
 {% endif %}{% endwith %}
 
 {% block content %}{% endblock %}
-{% if current_user and not vano_admin_surface %}<nav class="mobile-dock {% if current_user['role']=='admin' %}admin-dock{% endif %}" aria-label="Navegação mobile"><a href="{{ url_for('map_page') }}"><i data-lucide="map"></i><span>Rotas</span></a><a href="{{ url_for('alerts_page') }}"><i data-lucide="siren"></i><span>Alertas</span></a><a href="{{ url_for('report_page') }}"><i data-lucide="plus-circle"></i><span>Denunciar</span></a><a href="{{ url_for('profile') }}"><i data-lucide="user"></i><span>Perfil</span></a>{% if current_user['role']=='admin' %}<a href="{{ url_for('admin_dashboard') }}"><i data-lucide="server-cog"></i><span>Admin</span></a>{% endif %}</nav>{% endif %}
+{% if current_user and not vano_admin_surface %}<nav class="mobile-dock vano-mobile-nav {% if current_user['role']=='admin' %}admin-dock{% endif %}" aria-label="Navegação mobile"><a class="{% if vano_endpoint in ['index','map_page'] %}active{% endif %}" {% if vano_endpoint in ['index','map_page'] %}aria-current="page"{% endif %} href="{{ url_for('map_page') }}"><i data-lucide="navigation"></i><span>Rotas</span></a><a class="{% if vano_endpoint == 'alerts_page' %}active{% endif %}" {% if vano_endpoint == 'alerts_page' %}aria-current="page"{% endif %} href="{{ url_for('alerts_page') }}"><i data-lucide="triangle-alert"></i><span>Alertas</span></a><a class="vano-mobile-report {% if vano_endpoint == 'report_page' %}active{% endif %}" {% if vano_endpoint == 'report_page' %}aria-current="page"{% endif %} href="{{ url_for('report_page') }}"><span class="vano-mobile-report-icon"><i data-lucide="plus"></i></span><span>Reportar</span></a><a class="{% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round"></i><span>Perfil</span></a>{% if current_user['role']=='admin' %}<a class="{% if vano_endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check"></i><span>Admin</span></a>{% endif %}</nav>{% endif %}
 
 <footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('about') }}">Como funciona</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a> · <a href="{{ url_for('account_delete_page') }}">Excluir conta</a></span></div></footer>
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
