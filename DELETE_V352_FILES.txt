@@ -1,0 +1,7 @@
+Apague estes arquivos se existirem:
+
+static/vano-map-account-v352.css
+static/vano-profile-v352.css
+
+Depois substitua templates/base.html pelo arquivo deste rollback.
+Isso restaura exatamente o estado anterior ao PATCH V352 CARD + PERFIL.

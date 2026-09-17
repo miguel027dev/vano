@@ -129,11 +129,9 @@
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-v300.css') }}?v={{ vano_build_id }}-318">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner-v263.css') }}?v={{ vano_build_id }}-345">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-319">{% endif %}
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account-v352.css') }}?v={{ vano_build_id }}-352">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-v350.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-v350.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-v352.css') }}?v={{ vano_build_id }}-352">{% endif %}
   {% if vano_map_surface %}
   <script>try{
     const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);
