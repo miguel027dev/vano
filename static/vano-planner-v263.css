@@ -767,3 +767,53 @@ html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .p
   body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet.planner-search-active,
   body.vano-map-surface.vano-keyboard-open:not(.body-nav) #planSheet.planner-search-active.sheet-collapsed{height:144px!important;min-height:144px!important;max-height:144px!important}
 }
+
+
+/* ========================================================================== 
+   VANO MAPS V346 — deterministic mobile address search
+   Fixes the IME/focus race that could leave the destination sheet visually
+   half-open, move it on every keystroke, and grow suggestions upward.
+   The planner state itself is preserved; keyboard search gets a temporary,
+   explicit top-anchored surface inside the *visible* viewport.
+   ========================================================================== */
+@media(max-width:899px){
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active,
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active.sheet-collapsed,
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active.sheet-expanded{
+    top:calc(var(--vano-visible-top,0px) + max(8px,env(safe-area-inset-top)))!important;
+    bottom:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    padding:8px 10px 10px!important;
+    overflow:visible!important;
+    transform:translate3d(0,0,0)!important;
+    -webkit-transform:translate3d(0,0,0)!important;
+    transition:none!important;
+    contain:none!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active :is(#planGrab,.planner-grab,.grab,.planner-heading,.planner-presets,.planner-expanded,#plannerSmartDestinations,.planner-expand-hint){
+    display:none!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-row{
+    margin:0!important;
+    padding:0!important;
+    width:100%!important;
+    align-items:center!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-card.search-card{
+    transform:none!important;
+    margin:0!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-card .location-input#destinationInput,
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-card .location-input#originInput{
+    direction:ltr!important;
+    unicode-bidi:plaintext!important;
+    text-align:left!important;
+    font-size:16px!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #recenterBtn{display:none!important}
+  body.vano-map-surface .ws-app>.search-results.search-results-portal[data-placement="below"]{
+    transform-origin:50% 0!important;
+  }
+}

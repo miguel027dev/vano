@@ -1,7 +1,7 @@
-/* VANO MAPS V323 — GPS freshness, faster reroute and user-anchored camera. */
-const BUILD='323.0.0-gps-camera';
-const CACHE=`vano-maps-v323-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v323-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V324 — mobile keyboard/address search stability. */
+const BUILD='324.0.0-mobile-search';
+const CACHE=`vano-maps-v324-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v324-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',

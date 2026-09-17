@@ -674,7 +674,12 @@ function syncSearchResultsPlacement(open=results?.classList.contains('show')){
   const viewportTop=Math.max(0,+vv?.offsetTop||0),viewportHeight=Math.max(260,+vv?.height||window.innerHeight||ar.height),viewportBottom=viewportTop+viewportHeight,gap=8;
   const above=Math.max(0,hr.top-viewportTop-gap),below=Math.max(0,viewportBottom-hr.bottom-gap);
   const collapsed=!!planSheet?.classList.contains('sheet-collapsed'),minUseful=96;
-  let preferAbove=collapsed||above>=below;
+  const keyboardSearch=!!(vanoKeyboardOpen&&searchInteractionActive&&(document.activeElement===destinationInput||document.activeElement===originInput));
+  // Normal collapsed planner opens results upward because it lives at the bottom.
+  // While the keyboard is open we move the search surface to the visible top, so
+  // results must flow DOWN like a normal mobile search screen instead of appearing
+  // to type/grow in the opposite direction.
+  let preferAbove=keyboardSearch?false:(collapsed||above>=below);
   if((preferAbove?above:below)<minUseful&&(preferAbove?below:above)>(preferAbove?above:below)+18)preferAbove=!preferAbove;
   const sideSpace=preferAbove?above:below,available=Math.max(54,Math.min(360,sideSpace-6));
   if(results.parentElement!==app)app.appendChild(results);
@@ -1706,7 +1711,20 @@ function lockIOSInputViewport(input=null){
   keepTop();clearTimeout(vanoScrollLockTimer);let count=0;const tick=()=>{keepTop();if(++count<8&&(document.activeElement===originInput||document.activeElement===destinationInput))vanoScrollLockTimer=setTimeout(tick,70)};vanoScrollLockTimer=setTimeout(tick,35);
 }
 function releaseIOSInputViewport(){clearTimeout(vanoScrollLockTimer);setTimeout(()=>{if(document.activeElement!==originInput&&document.activeElement!==destinationInput){if(VANO_IOS_WEBKIT){document.documentElement.classList.remove('vano-ios-keyboard-lock');document.body.classList.remove('vano-ios-keyboard-lock');try{window.scrollTo(0,0)}catch{}}document.documentElement.classList.remove('vano-keyboard-open');document.body.classList.remove('vano-keyboard-open');document.documentElement.style.setProperty('--vano-keyboard-bottom','0px');refreshResponsiveViewport()}},120)}
-function setSearchInteraction(active){clearTimeout(searchInteractionTimer);searchInteractionActive=!!active;document.body.classList.toggle('vano-search-interacting',searchInteractionActive);if(searchInteractionActive){mapFollowMode=false;lastPassiveCameraAt=performance.now();try{map?.stop?.()}catch{}stopCameraMotion();stopPuckAnimation();lockIOSInputViewport();refreshResponsiveViewport();return}searchInteractionTimer=setTimeout(()=>{releaseIOSInputViewport();if(puckTargetPos){puckDisplayPos=puckDisplayPos||{...puckTargetPos};updateUserMarker(puckTargetPos)}try{map?.resize?.()}catch{}},140)}
+function setSearchInteraction(active){
+  clearTimeout(searchInteractionTimer);
+  const next=!!active,changed=searchInteractionActive!==next;
+  searchInteractionActive=next;document.body.classList.toggle('vano-search-interacting',searchInteractionActive);
+  // Do not rebuild the mobile viewport on every typed character. Android/iOS can
+  // emit visualViewport resize/scroll events while the IME composes text; doing
+  // the full focus routine again for each `input` made the planner jump between
+  // keyboard geometries and looked like the card was opening in reverse.
+  if(searchInteractionActive){
+    if(!changed)return;
+    mapFollowMode=false;lastPassiveCameraAt=performance.now();try{map?.stop?.()}catch{}stopCameraMotion();stopPuckAnimation();lockIOSInputViewport();refreshResponsiveViewport();return
+  }
+  searchInteractionTimer=setTimeout(()=>{releaseIOSInputViewport();if(puckTargetPos){puckDisplayPos=puckDisplayPos||{...puckTargetPos};updateUserMarker(puckTargetPos)}try{map?.resize?.()}catch{}},140)
+}
 function initVoiceAddressSearch(){const btn=$('voiceSearchBtn');if(!btn)return;const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){btn.hidden=true;return}let rec=null,listening=false;const stopUi=()=>{listening=false;btn.classList.remove('listening');btn.setAttribute('aria-pressed','false')};btn.addEventListener('click',()=>{if(listening){try{rec?.stop()}catch{}return}try{rec=new SR();rec.lang=BOOT.locale||'pt-BR';rec.interimResults=false;rec.continuous=false;rec.maxAlternatives=1;rec.onstart=()=>{listening=true;btn.classList.add('listening');btn.setAttribute('aria-pressed','true');showToast('Pode falar o destino.');};rec.onresult=e=>{const text=String(e.results?.[0]?.[0]?.transcript||'').trim();if(!text)return;destinationInput.value=text;destinationInput.dispatchEvent(new Event('input',{bubbles:true}));clearTimeout(searchTimer);if(text.length>=3)searchPlaces(text,'destination');};rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed')showToast('Permita o uso do microfone para pesquisar por voz.');else if(e.error!=='aborted'&&e.error!=='no-speech')showToast('Não consegui entender. Tente novamente.');};rec.onend=stopUi;rec.start()}catch(e){stopUi();showToast('Pesquisa por voz indisponível neste navegador.')}})}
 initVoiceAddressSearch();
 window.addEventListener('online',syncConnectivityUI);window.addEventListener('offline',syncConnectivityUI);syncConnectivityUI();
@@ -1840,7 +1858,8 @@ function refreshResponsiveViewport(){
   // visual viewports when the keyboard opens; using rawH there made the whole UI look 70–80%
   // smaller. The keyboard now only contributes an inset that lifts interactive UI above it.
   const stableH=Math.max(260,vanoStableViewportH||baselineH||layoutH||rawH),safeH=keyboardLikely?stableH:rawH,keyboardBottom=keyboardLikely?Math.max(0,viewportLoss):0;
-  document.documentElement.style.setProperty('--vano-vh',`${Math.max(260,safeH)}px`);document.documentElement.style.setProperty('--vano-visible-vh',`${Math.max(220,rawH)}px`);document.documentElement.style.setProperty('--vano-vw',`${Math.max(280,rawW)}px`);document.documentElement.style.setProperty('--vano-keyboard-bottom',`${Math.max(0,keyboardBottom)}px`);
+  const visibleTop=Math.max(0,Math.round(+vv?.offsetTop||0)),visibleBottom=Math.max(0,Math.round(stableH-(visibleTop+rawH)));
+  document.documentElement.style.setProperty('--vano-vh',`${Math.max(260,safeH)}px`);document.documentElement.style.setProperty('--vano-visible-vh',`${Math.max(220,rawH)}px`);document.documentElement.style.setProperty('--vano-visible-top',`${visibleTop}px`);document.documentElement.style.setProperty('--vano-visible-bottom',`${visibleBottom}px`);document.documentElement.style.setProperty('--vano-vw',`${Math.max(280,rawW)}px`);document.documentElement.style.setProperty('--vano-keyboard-bottom',`${Math.max(0,keyboardBottom)}px`);
   if(keyboardLikely)lockIOSInputViewport();
   vanoViewportTimer=setTimeout(()=>requestAnimationFrame(()=>{
     try{map?.resize?.()}catch{}
