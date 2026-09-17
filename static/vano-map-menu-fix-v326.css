@@ -1,0 +1,315 @@
+/* VANO MAPS V326 — three-dots / account drawer stabilization
+   Final override loaded after map account V351.
+   Goals:
+   - one deterministic top-right control stack;
+   - no hidden/overlapping secondary map button;
+   - account drawer owns its geometry, scrolling and hit testing;
+   - action dock spans the full drawer grid;
+   - safe-area and small-screen behavior stay predictable.
+*/
+
+/* --------------------------------------------------------------------------
+   Top-right map controls
+   -------------------------------------------------------------------------- */
+body.vano-map-surface:not(.body-nav) .header{
+  position:absolute!important;
+  z-index:305!important;
+  top:max(12px,calc(env(safe-area-inset-top) + 9px))!important;
+  right:max(12px,calc(env(safe-area-inset-right) + 9px))!important;
+  left:auto!important;
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  padding:0!important;
+  margin:0!important;
+  overflow:visible!important;
+  pointer-events:auto!important;
+}
+body.vano-map-surface:not(.body-nav) .header-actions{
+  width:46px!important;
+  height:46px!important;
+  display:grid!important;
+  place-items:center!important;
+  gap:0!important;
+}
+body.vano-map-surface:not(.body-nav) #optionsBtn.options-btn{
+  position:relative!important;
+  z-index:2!important;
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:16px!important;
+  overflow:hidden!important;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+body.vano-map-surface:not(.body-nav) #optionsBtn.options-btn::before{pointer-events:none!important}
+body.vano-map-surface:not(.body-nav) #optionsBtn.options-btn:focus-visible{
+  outline:3px solid rgba(245,154,98,.28)!important;
+  outline-offset:3px!important;
+}
+
+/* V340 intentionally hid map-tools. There is currently one useful child here:
+   mapThemeBtn. Surface it below the ellipsis instead of letting legacy rules
+   place it under/behind the first button. */
+body.vano-map-surface:not(.body-nav) .map-tools{
+  position:absolute!important;
+  z-index:304!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:8px!important;
+  top:calc(max(12px,calc(env(safe-area-inset-top) + 9px)) + 54px)!important;
+  right:max(12px,calc(env(safe-area-inset-right) + 9px))!important;
+  left:auto!important;
+  width:46px!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  pointer-events:none!important;
+}
+body.vano-map-surface:not(.body-nav) .map-tools > *{display:none!important}
+body.vano-map-surface:not(.body-nav) .map-tools #mapThemeBtn{
+  display:grid!important;
+  place-items:center!important;
+  position:relative!important;
+  inset:auto!important;
+  width:46px!important;
+  height:46px!important;
+  min-width:46px!important;
+  min-height:46px!important;
+  margin:0!important;
+  padding:0!important;
+  border-radius:16px!important;
+  border:1px solid rgba(28,31,38,.09)!important;
+  background:rgba(255,255,255,.94)!important;
+  color:#4f5662!important;
+  box-shadow:0 10px 30px rgba(23,27,34,.11)!important;
+  pointer-events:auto!important;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  backdrop-filter:blur(16px) saturate(125%)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(125%)!important;
+  transition:transform .16s cubic-bezier(.2,.8,.2,1),background .16s ease,border-color .16s ease!important;
+}
+body.vano-map-surface:not(.body-nav) .map-tools #mapThemeBtn:active{transform:scale(.93)!important}
+body.vano-map-surface:not(.body-nav) .map-tools #mapThemeBtn:focus-visible{
+  outline:3px solid rgba(245,154,98,.25)!important;
+  outline-offset:3px!important;
+}
+html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) .map-tools #mapThemeBtn,
+html[data-vano-theme-mode="black"] body.vano-map-surface:not(.body-nav) .map-tools #mapThemeBtn{
+  background:rgba(31,29,27,.95)!important;
+  border-color:rgba(255,255,255,.09)!important;
+  color:#fff8f2!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.28)!important;
+}
+
+/* --------------------------------------------------------------------------
+   Backdrop + drawer — deterministic open/closed state and scrolling
+   -------------------------------------------------------------------------- */
+body.vano-map-surface #accountBackdrop.account-backdrop{
+  position:absolute!important;
+  inset:0!important;
+  z-index:1000!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+  background:rgba(20,22,27,.26)!important;
+  backdrop-filter:blur(5px)!important;
+  -webkit-backdrop-filter:blur(5px)!important;
+  transition:opacity .18s ease,visibility 0s linear .18s!important;
+}
+body.vano-map-surface #accountBackdrop.account-backdrop.show{
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  transition:opacity .18s ease,visibility 0s linear 0s!important;
+}
+
+body.vano-map-surface #accountDrawer.account-drawer{
+  position:absolute!important;
+  z-index:1010!important;
+  box-sizing:border-box!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none!important;
+  touch-action:pan-y!important;
+  pointer-events:none!important;
+  opacity:0!important;
+  contain:layout paint;
+}
+body.vano-map-surface #accountDrawer.account-drawer::-webkit-scrollbar{display:none!important}
+body.vano-map-surface #accountDrawer.account-drawer.show{
+  pointer-events:auto!important;
+  opacity:1!important;
+}
+
+/* The drawer grid itself had a subtle bug: v351 action dock could occupy one
+   cell of a two-column drawer-list. Make every structural block explicit. */
+body.vano-map-surface #accountDrawer .drawer-list{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  align-items:stretch!important;
+  gap:7px!important;
+  min-width:0!important;
+}
+body.vano-map-surface #accountDrawer .drawer-list > *{min-width:0!important}
+body.vano-map-surface #accountDrawer .v351-account-actions{
+  grid-column:1 / -1!important;
+  width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,.82fr)!important;
+  gap:8px!important;
+  align-items:stretch!important;
+  margin:4px 0 0!important;
+  padding:10px 0 0!important;
+}
+body.vano-map-surface #accountDrawer .v351-account-actions > form{
+  min-width:0!important;
+  width:100%!important;
+  margin:0!important;
+}
+body.vano-map-surface #accountDrawer .v351-account-actions .drawer-link{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:52px!important;
+  min-height:52px!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+}
+body.vano-map-surface #accountDrawer .v351-account-actions .v258-link-copy{
+  min-width:0!important;
+  overflow:hidden!important;
+}
+body.vano-map-surface #accountDrawer .v351-account-actions .v258-link-copy b{
+  display:block!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+
+/* Links should never have icons/text escape their card or steal width from the
+   notification badge / chevron. */
+body.vano-map-surface #accountDrawer .drawer-link{
+  box-sizing:border-box!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  isolation:isolate;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+body.vano-map-surface #accountDrawer .drawer-link .v258-link-copy{min-width:0!important;overflow:hidden!important}
+body.vano-map-surface #accountDrawer .drawer-link .v258-link-copy b,
+body.vano-map-surface #accountDrawer .drawer-link .v258-link-copy small{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+body.vano-map-surface #accountDrawer .drawer-link .v258-link-copy b{white-space:nowrap!important}
+body.vano-map-surface #accountDrawer .notif-count{
+  position:static!important;
+  justify-self:end!important;
+  flex:0 0 auto!important;
+  margin:0!important;
+}
+body.vano-map-surface #accountDrawer :is(.v258-drawer-close,.guest-drawer-close,.drawer-profile,.drawer-link){
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+
+/* Desktop/tablet: popover below the three-dots button. */
+@media(min-width:760px){
+  body.vano-map-surface #accountDrawer.account-drawer{
+    left:auto!important;
+    right:max(12px,calc(env(safe-area-inset-right) + 9px))!important;
+    top:calc(max(12px,calc(env(safe-area-inset-top) + 9px)) + 54px)!important;
+    bottom:auto!important;
+    width:min(418px,calc(100vw - 28px))!important;
+    max-width:418px!important;
+    max-height:calc(100dvh - max(12px,calc(env(safe-area-inset-top) + 9px)) - 70px)!important;
+    border-radius:25px!important;
+    padding:12px 13px 14px!important;
+    transform:translate3d(0,-8px,0) scale(.985)!important;
+    transform-origin:top right!important;
+    transition:transform .2s cubic-bezier(.2,.8,.2,1),opacity .16s ease!important;
+  }
+  body.vano-map-surface #accountDrawer.account-drawer.show{transform:translate3d(0,0,0) scale(1)!important}
+  body.vano-map-surface #accountDrawer .drawer-grab{display:none!important}
+}
+
+/* Phones: stable bottom sheet. It scrolls internally instead of clipping. */
+@media(max-width:759px){
+  body.vano-map-surface #accountDrawer.account-drawer{
+    left:max(7px,env(safe-area-inset-left))!important;
+    right:max(7px,env(safe-area-inset-right))!important;
+    top:auto!important;
+    bottom:max(7px,env(safe-area-inset-bottom))!important;
+    width:auto!important;
+    max-width:none!important;
+    max-height:min(84dvh,calc(100dvh - max(18px,env(safe-area-inset-top))))!important;
+    padding:10px 11px max(13px,env(safe-area-inset-bottom))!important;
+    border-radius:25px!important;
+    transform:translate3d(0,calc(100% + 28px),0)!important;
+    transform-origin:bottom center!important;
+    transition:transform .24s cubic-bezier(.2,.8,.2,1),opacity .17s ease!important;
+  }
+  body.vano-map-surface #accountDrawer.account-drawer.show{transform:translate3d(0,0,0)!important}
+  body.vano-map-surface #accountDrawer .drawer-grab{
+    position:sticky!important;
+    top:0!important;
+    z-index:3!important;
+  }
+}
+
+/* Narrow phones are where the old two-column menu became brittle. Use one
+   column for the content cards, while keeping Theme / Sair as a compact dock. */
+@media(max-width:420px){
+  body.vano-map-surface #accountDrawer .drawer-user{
+    grid-template-columns:48px minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  body.vano-map-surface #accountDrawer .drawer-user .drawer-profile{
+    grid-column:1 / -1!important;
+    width:100%!important;
+    justify-content:center!important;
+  }
+  body.vano-map-surface #accountDrawer .drawer-list{
+    grid-template-columns:1fr!important;
+    gap:6px!important;
+  }
+  body.vano-map-surface #accountDrawer .v351-account-actions{
+    grid-column:1!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,.78fr)!important;
+    gap:7px!important;
+  }
+  body.vano-map-surface #accountDrawer .drawer-link{
+    min-height:58px!important;
+  }
+}
+
+@media(max-width:350px){
+  body.vano-map-surface #accountDrawer .v351-account-actions{grid-template-columns:1fr!important}
+  body.vano-map-surface #accountDrawer .v351-account-actions .drawer-link{height:48px!important;min-height:48px!important}
+}
+
+/* While the account sheet is open, leave the map visually stable and prevent
+   stray taps from reaching controls below the backdrop. */
+body.vano-account-open.vano-map-surface :is(.header,.map-tools,.floating-locate){pointer-events:none!important}
+
+@media(prefers-reduced-motion:reduce){
+  body.vano-map-surface #accountDrawer.account-drawer,
+  body.vano-map-surface #accountBackdrop.account-backdrop,
+  body.vano-map-surface #optionsBtn.options-btn,
+  body.vano-map-surface .map-tools #mapThemeBtn{transition:none!important}
+}
