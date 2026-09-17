@@ -41,7 +41,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "320.0.0").strip() or "320.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "325.0.0").strip() or "325.0.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -75,7 +75,7 @@ SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "noreply@localhost").strip(
 SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "1").strip().lower() not in {"0","false","no","off"}
 SEO_INDEXABLE_ENDPOINTS = {
     "index", "about", "sobre", "help_page", "privacy_policy", "terms_of_use",
-    "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative",
+    "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "route_benchmark_page",
     "account_delete_page",
 }
 SEO_CANONICAL_PATHS = {
@@ -88,6 +88,7 @@ SEO_CANONICAL_PATHS = {
     "what_is_vano": "/o-que-e-vano-maps",
     "seo_avoid_traffic": "/rotas-para-evitar-transito",
     "seo_waze_alternative": "/alternativa-ao-waze",
+    "route_benchmark_page": "/benchmark-de-rotas",
     "account_delete_page": "/excluir-conta",
 }
 
@@ -1548,7 +1549,7 @@ def _route_result_cache_key(user_id=None):
     # Labels, the trial token and the speculative flag do not affect geometry or
     # scoring. Everything else is kept in the key so preferences, heading and
     # navigation exclusions cannot accidentally share an incompatible result.
-    ignored = {"trial_id", "prefetch", "origin_label", "destination_label"}
+    ignored = {"trial_id", "prefetch", "origin_label", "destination_label", "include_geometry"}
     args = tuple(sorted((str(k), str(v)) for k, v in request.args.items() if k not in ignored))
     return (str(user_id or "guest"),) + args
 
@@ -1627,6 +1628,98 @@ def _mobile_compact_route_payload(payload):
     }
     return result
 
+def _public_benchmark_payload(payload, cache_hit=False):
+    """Stable, compact and intentionally whitelisted response for public QA/AI agents."""
+    include_geometry = str(request.args.get("include_geometry", "0")).strip().lower() in {"1", "true", "yes", "on"}
+    raw_rows = list(payload.get("routes") or [])
+    selected_id = payload.get("selected_id")
+    raw_selected = next((r for r in raw_rows if str(r.get("id")) == str(selected_id)), raw_rows[0] if raw_rows else None)
+
+    # Do not expose internal node/configuration/debug metadata through the public
+    # benchmark. Agents get only metrics needed to reproduce and compare tests.
+    safe_route_fields = {
+        "id", "distance", "duration", "duration_min", "profile", "badges",
+        "routing_provider", "routing_profile_used", "route_signature",
+        "micro_route", "micro_strategy", "adaptive_variant", "safety_variant",
+        "eta_gain_s", "eta_gain_min", "safety_score", "safety_conservative_score",
+        "safety_level", "safety_level_label", "data_confidence", "decision_confidence",
+        "risk_exposure_pct", "hotspot_risk", "traffic_score", "traffic_level",
+        "congested_distance_km", "severe_segments", "live_flow_score",
+        "live_flow_confidence", "incidents_count", "closures_count",
+        "eta_delta_vs_fastest_min", "safety_gain_vs_fastest", "rairo_score", "vano_score",
+    }
+    routes = []
+    for raw in raw_rows:
+        route = {k: copy.deepcopy(v) for k, v in raw.items() if k in safe_route_fields}
+        if include_geometry and raw.get("geometry") is not None:
+            route["geometry"] = copy.deepcopy(raw.get("geometry"))
+        routes.append(route)
+
+    selected = next((r for r in routes if str(r.get("id")) == str(selected_id)), routes[0] if routes else None)
+    request_id = re.sub(r"[^A-Za-z0-9_.:-]", "", str(request.args.get("benchmark_nonce") or ""))[:96] or secrets.token_urlsafe(9)
+    distributed_raw = payload.get("distributed_routing") or {}
+    result = {
+        "ok": True,
+        "selected_id": selected_id if selected_id is not None else (selected.get("id") if selected else None),
+        "mode": payload.get("mode") or str(request.args.get("mode") or "smart"),
+        "profile": payload.get("profile") or str(request.args.get("profile") or "driving"),
+        "provider": (selected or {}).get("routing_provider") or payload.get("provider") or payload.get("candidate_source"),
+        "routes": routes,
+        "candidate_pool_cache_hit": bool(payload.get("candidate_pool_cache_hit")),
+        "candidate_pool_reuse": str(payload.get("candidate_pool_reuse") or "")[:80],
+        "adaptive_routing": {
+            "enabled": bool((payload.get("adaptive_routing") or {}).get("enabled")),
+            "diverse_candidates": (payload.get("adaptive_routing") or {}).get("diverse_candidates"),
+            "variant_budget": (payload.get("adaptive_routing") or {}).get("variant_budget"),
+        },
+        "distributed_routing": {
+            "used": bool(distributed_raw.get("used")),
+            "fallback": bool(distributed_raw.get("fallback")),
+        },
+        "benchmark": {
+            "protocol": "vano-route-benchmark",
+            "version": "1.0",
+            "request_id": request_id,
+            "build": VANO_BUILD_ID,
+            "generated_at": utcnow_iso(),
+            "read_only": True,
+            "history_written": False,
+            "guest_credit_consumed": False,
+            "geometry_included": include_geometry,
+            "full_result_cache_hit": bool(cache_hit),
+            "limits": {
+                "requests_per_minute_per_ip": VANO_PUBLIC_BENCHMARK_RATE_PER_MIN,
+                "max_direct_distance_km": VANO_PUBLIC_BENCHMARK_MAX_KM,
+                "max_variant_budget": 4,
+            },
+        },
+    }
+    if selected:
+        safety = selected.get("safety_conservative_score")
+        if safety is None:
+            safety = selected.get("safety_score")
+        vano_score = selected.get("rairo_score")
+        if vano_score is None:
+            vano_score = selected.get("vano_score")
+        result["benchmark_result"] = {
+            "selected_route_id": selected.get("id"),
+            "eta_s": round(float(selected.get("duration") or 0), 3),
+            "eta_min": round(float(selected.get("duration") or 0) / 60.0, 3),
+            "distance_m": round(float(selected.get("distance") or 0), 3),
+            "distance_km": round(float(selected.get("distance") or 0) / 1000.0, 4),
+            "traffic_score": selected.get("traffic_score"),
+            "safety_score": safety,
+            "vano_score": vano_score,
+            "candidate_count": len(routes),
+            "provider": selected.get("routing_provider") or result.get("provider"),
+            "distributed": bool(result["distributed_routing"]["used"]),
+            "route_signature": selected.get("route_signature"),
+        }
+    else:
+        result["benchmark_result"] = None
+    return result
+
+
 def _finish_route_payload(payload, cache_key, prefetch_requested, trial_id, slat, slon, elat, elon, mode, cache_hit=False):
     _route_result_cache_put(cache_key, payload)
     result = copy.deepcopy(payload)
@@ -1636,6 +1729,9 @@ def _finish_route_payload(payload, cache_key, prefetch_requested, trial_id, slat
     )
     if mobile_compact:
         result = _mobile_compact_route_payload(result)
+    if getattr(g, "vano_public_benchmark", False):
+        # Public benchmark never writes history or consumes guest credits.
+        return jsonify(_public_benchmark_payload(result, cache_hit=cache_hit))
     if prefetch_requested:
         # Explicit marker lets the browser know this response is safe to display
         # only after confirmation. No guest credit/history is touched here.
@@ -1788,6 +1884,13 @@ def security_headers(response):
     if request.path == "/healthz":
         response.headers["Access-Control-Allow-Origin"] = "*"
         response.headers["Cache-Control"] = "no-store, max-age=0"
+    elif request.path.startswith("/api/benchmark/v1/") or request.path == "/.well-known/vano-benchmark.json":
+        # Public, read-only machine contract. CORS is intentional so browser-based
+        # QA agents can consume it without sharing application/session credentials.
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        response.headers["X-VANO-Benchmark-Protocol"] = "1.0"
     elif request.path.startswith("/static/"):
         # Critical map/runtime bundles must be revalidated. Keeping them
         # immutable for 30 days caused some regions/devices to retain a broken
@@ -8785,9 +8888,141 @@ def seo_waze_alternative():
     return render_template("seo_alternativa_waze.html")
 
 
+# V325 — public benchmark contract for humans and automated agents.
+# Keep this isolated from the normal navigation API: public benchmark traffic is
+# read-only, does not consume guest credits, does not write route history and is
+# deliberately constrained by distance/rate limits.
+VANO_PUBLIC_BENCHMARK_ENABLED = os.environ.get("VANO_PUBLIC_BENCHMARK_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
+VANO_PUBLIC_BENCHMARK_MAX_KM = max(5.0, min(80.0, float(os.environ.get("VANO_PUBLIC_BENCHMARK_MAX_KM", "35") or 35)))
+VANO_PUBLIC_BENCHMARK_RATE_PER_MIN = max(2, min(30, int(os.environ.get("VANO_PUBLIC_BENCHMARK_RATE_PER_MIN", "12") or 12)))
+
+VANO_BENCHMARK_POINTS = {
+    "morumbi": {"label": "Morumbi Shopping, São Paulo", "lat": -23.62326, "lon": -46.69844},
+    "paulista": {"label": "Av. Paulista, 1578, São Paulo", "lat": -23.56147, "lon": -46.65594},
+    "congonhas": {"label": "Aeroporto de Congonhas, São Paulo", "lat": -23.62611, "lon": -46.65639},
+    "faria": {"label": "Av. Faria Lima, São Paulo", "lat": -23.57055, "lon": -46.69217},
+    "ibirapuera": {"label": "Parque Ibirapuera, São Paulo", "lat": -23.58742, "lon": -46.65764},
+}
+VANO_BENCHMARK_SCENARIO_PAIRS = [
+    ("morumbi-paulista", "morumbi", "paulista"),
+    ("paulista-morumbi", "paulista", "morumbi"),
+    ("congonhas-paulista", "congonhas", "paulista"),
+    ("paulista-congonhas", "paulista", "congonhas"),
+    ("faria-ibirapuera", "faria", "ibirapuera"),
+    ("ibirapuera-faria", "ibirapuera", "faria"),
+    ("morumbi-ibirapuera", "morumbi", "ibirapuera"),
+    ("congonhas-faria", "congonhas", "faria"),
+    ("morumbi-faria", "morumbi", "faria"),
+    ("congonhas-morumbi", "congonhas", "morumbi"),
+]
+
+def _public_benchmark_scenarios(limit=10):
+    rows = []
+    for sid, a, b in VANO_BENCHMARK_SCENARIO_PAIRS[:max(1, min(10, int(limit or 10)))]:
+        rows.append({
+            "id": sid,
+            "origin": dict(VANO_BENCHMARK_POINTS[a]),
+            "destination": dict(VANO_BENCHMARK_POINTS[b]),
+            "profile": "driving",
+            "recommended_modes": ["fastest", "smart", "safest"],
+        })
+    return rows
+
+def _benchmark_capabilities_payload():
+    origin = PUBLIC_SITE_URL or request.host_url.rstrip("/")
+    route_url = f"{origin}/api/benchmark/v1/route"
+    return {
+        "ok": True,
+        "service": "VANO MAPS Route Benchmark",
+        "protocol": "vano-route-benchmark",
+        "version": "1.0",
+        "build": VANO_BUILD_ID,
+        "read_only": True,
+        "agent_ready": True,
+        "generated_at": utcnow_iso(),
+        "endpoints": {
+            "capabilities": f"{origin}/api/benchmark/v1/capabilities",
+            "scenarios": f"{origin}/api/benchmark/v1/scenarios?limit=10",
+            "route": route_url,
+            "human_ui": f"{origin}/benchmark-de-rotas",
+        },
+        "limits": {
+            "requests_per_minute_per_ip": VANO_PUBLIC_BENCHMARK_RATE_PER_MIN,
+            "max_direct_distance_km": VANO_PUBLIC_BENCHMARK_MAX_KM,
+            "max_variant_budget": 4,
+            "recommended_parallelism": 1,
+            "recommended_delay_ms_between_calls": 250,
+        },
+        "profiles": ["driving", "motorcycle", "cycling", "walking"],
+        "modes": ["fastest", "smart", "safest", "quietest"],
+        "query": {
+            "required": ["start_lat", "start_lon", "end_lat", "end_lon"],
+            "optional": {
+                "profile": "driving|motorcycle|cycling|walking (default driving)",
+                "mode": "fastest|smart|safest|quietest (default smart)",
+                "adaptive": "0|1 (default 1)",
+                "variant_budget": "2..4 for public benchmark (default 4)",
+                "avoid_tolls": "0|1",
+                "avoid_unpaved": "0|1",
+                "avoid_ferries": "0|1",
+                "include_geometry": "0|1 (default 0; use 1 only to inspect/draw the path)",
+                "benchmark_nonce": "optional opaque id; unique values avoid full-result cache reuse",
+            },
+        },
+        "response_contract": {
+            "benchmark": ["protocol", "request_id", "generated_at", "geometry_included", "limits"],
+            "benchmark_result": ["selected_route_id", "eta_min", "distance_km", "traffic_score", "safety_score", "vano_score", "candidate_count", "provider", "distributed"],
+            "routes": "VANO route candidates; geometry/steps omitted unless include_geometry=1",
+        },
+        "example": {
+            "method": "GET",
+            "url": route_url + "?start_lat=-23.62326&start_lon=-46.69844&end_lat=-23.56147&end_lon=-46.65594&profile=driving&mode=smart&adaptive=1&variant_budget=4&include_geometry=0",
+        },
+        "methodology": [
+            "Use identical coordinates/options when comparing modes.",
+            "Run multiple rounds and report median/p95 latency instead of one request.",
+            "Use a unique benchmark_nonce for cold/full calculations; omit/reuse it when observing cache behavior.",
+            "Do not interpret ETA alone as safety quality; compare traffic, safety and VANO scores separately.",
+        ],
+    }
+
 @app.route("/benchmark-de-rotas")
 def route_benchmark_page():
-    return redirect(url_for("index"), code=302)
+    return render_template(
+        "benchmark_de_rotas.html",
+        mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
+        mapbox_style=MAPBOX_STYLE_NIGHT or MAPBOX_STYLE_DAY,
+        benchmark_enabled=VANO_PUBLIC_BENCHMARK_ENABLED,
+        benchmark_rate=VANO_PUBLIC_BENCHMARK_RATE_PER_MIN,
+        benchmark_max_km=VANO_PUBLIC_BENCHMARK_MAX_KM,
+    )
+
+@app.route("/.well-known/vano-benchmark.json")
+@app.route("/api/benchmark/v1/capabilities")
+def api_benchmark_capabilities():
+    if not VANO_PUBLIC_BENCHMARK_ENABLED:
+        return jsonify({"ok": False, "error": "benchmark_disabled"}), 503
+    return jsonify(_benchmark_capabilities_payload())
+
+@app.route("/api/benchmark/v1/scenarios")
+def api_benchmark_scenarios():
+    if not VANO_PUBLIC_BENCHMARK_ENABLED:
+        return jsonify({"ok": False, "error": "benchmark_disabled"}), 503
+    if not rate_limit("public-benchmark-scenarios", 30, 60):
+        return jsonify({"ok": False, "error": "rate_limited", "retry_after_s": 60}), 429
+    try:
+        limit = int(request.args.get("limit", "10") or 10)
+    except ValueError:
+        limit = 10
+    rows = _public_benchmark_scenarios(limit)
+    return jsonify({
+        "ok": True,
+        "protocol": "vano-route-benchmark",
+        "version": "1.0",
+        "build": VANO_BUILD_ID,
+        "count": len(rows),
+        "scenarios": rows,
+    })
 
 
 @app.route("/excluir-conta")
@@ -11333,24 +11568,33 @@ def _heavy_route_central_fallback(slat, slon, elat, elon, travel_profile, mode, 
     }
 
 
+@app.route("/api/benchmark/v1/route")
 @app.route("/api/route")
 def api_route():
     truthy = {"1", "true", "on", "yes"}
-    prefetch_requested = str(request.args.get("prefetch", "0")).strip().lower() in truthy
-    benchmark_requested = str(request.headers.get("X-VANO-Benchmark", "0")).strip().lower() in truthy
-    if benchmark_requested:
+    public_benchmark = request.path == "/api/benchmark/v1/route"
+    if public_benchmark and not VANO_PUBLIC_BENCHMARK_ENABLED:
+        return jsonify({"ok": False, "error": "benchmark_disabled"}), 503
+    g.vano_public_benchmark = public_benchmark
+    prefetch_requested = public_benchmark or str(request.args.get("prefetch", "0")).strip().lower() in truthy
+    benchmark_requested = public_benchmark or str(request.headers.get("X-VANO-Benchmark", "0")).strip().lower() in truthy
+    if benchmark_requested and not public_benchmark:
         user = current_user()
         if not user or str(user["role"] or "") != "admin":
-            return jsonify({"ok": False, "error": "benchmark_admin_required", "message": "Benchmark disponível somente para administradores."}), 403
+            return jsonify({"ok": False, "error": "benchmark_admin_required", "message": "Benchmark interno disponível somente para administradores."}), 403
         prefetch_requested = True
-    rate_bucket = "route-benchmark" if benchmark_requested else ("route-prefetch" if prefetch_requested else "route")
-    rate_limit_max = 120 if benchmark_requested else (36 if prefetch_requested else 30)
+    if public_benchmark:
+        rate_bucket = "public-benchmark-route"
+        rate_limit_max = VANO_PUBLIC_BENCHMARK_RATE_PER_MIN
+    else:
+        rate_bucket = "route-benchmark" if benchmark_requested else ("route-prefetch" if prefetch_requested else "route")
+        rate_limit_max = 120 if benchmark_requested else (36 if prefetch_requested else 30)
     if not rate_limit(rate_bucket, rate_limit_max, 60):
-        return jsonify({"error": "Muitos cálculos de rota. Aguarde um instante."}), 429
+        return jsonify({"ok": False, "error": "rate_limited", "message": "Muitos cálculos de rota. Aguarde um instante.", "retry_after_s": 60}), 429
 
     trial_id = re.sub(r"[^A-Za-z0-9_-]", "", str(request.args.get("trial_id", "") or ""))[:64]
-    existing_guest_trials = guest_trial_ids() if not session.get("user_id") else []
-    if not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
+    existing_guest_trials = guest_trial_ids() if (not public_benchmark and not session.get("user_id")) else []
+    if not public_benchmark and not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
         return jsonify({
             "error": "Crie uma conta ou entre para continuar.",
             "code": "guest_route_limit_reached",
@@ -11371,6 +11615,14 @@ def api_route():
     if travel_profile not in {"walking", "cycling", "driving", "motorcycle"}:
         travel_profile = "driving"
     direct_distance_km = haversine_m(slat, slon, elat, elon) / 1000.0
+    if public_benchmark and direct_distance_km > VANO_PUBLIC_BENCHMARK_MAX_KM:
+        return jsonify({
+            "ok": False,
+            "error": "benchmark_distance_limit",
+            "distance_km": round(direct_distance_km, 2),
+            "max_distance_km": VANO_PUBLIC_BENCHMARK_MAX_KM,
+            "message": "O endpoint público de benchmark limita a distância para proteger a infraestrutura. Use cenários menores ou o laboratório administrativo."
+        }), 422
     if is_motorized_profile(travel_profile) and direct_distance_km > RAIRO_HEAVY_ROUTE_MAX_KM:
         return jsonify({
             "error": f"A VANO MAPS aceita rotas motorizadas de até {int(RAIRO_HEAVY_ROUTE_MAX_KM)} km por cálculo.",
@@ -11383,9 +11635,10 @@ def api_route():
         local_hour = int(request.args.get("local_hour", "")); local_hour = local_hour if 0 <= local_hour <= 23 else None
     except ValueError:
         local_hour = None
-    mode = str(request.args.get("mode", "safest") or "safest").strip().lower()
+    default_mode = "smart" if public_benchmark else "safest"
+    mode = str(request.args.get("mode", default_mode) or default_mode).strip().lower()
     if mode not in {"fastest", "safest", "quietest", "smart"}:
-        mode = "safest"
+        mode = default_mode
     fastest_mode = mode == "fastest"
     adaptive_requested = str(request.args.get("adaptive", "1")).lower() not in {"0","false","off","no"}
     start_bearing = sanitize_start_bearing(request.args.get("start_bearing"))
@@ -11398,6 +11651,8 @@ def api_route():
         variant_budget = max(2, min(8, int(request.args.get("variant_budget", "4"))))
     except ValueError:
         variant_budget = 4
+    if public_benchmark:
+        variant_budget = min(4, variant_budget)
 
     result_cache_key = _route_result_cache_key(session.get("user_id"))
     cached_result = _route_result_cache_get(result_cache_key)
