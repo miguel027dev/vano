@@ -26,6 +26,7 @@ from urllib.parse import urlparse, urlencode
 import requests
 from requests.adapters import HTTPAdapter
 from vano_ai_routing import rerank_routes_with_ai
+from vano_radars import discover_radars, persist_osm_awareness, query_radars, source_catalog
 try:
     from flask_compress import Compress
 except Exception:
@@ -2212,6 +2213,41 @@ def init_db():
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS radar_points (
+                id BIGSERIAL PRIMARY KEY,
+                geo_key TEXT NOT NULL UNIQUE,
+                radar_type TEXT NOT NULL DEFAULT 'fixed_speed',
+                latitude REAL NOT NULL,
+                longitude REAL NOT NULL,
+                speed_limit INTEGER,
+                direction TEXT NOT NULL DEFAULT '',
+                road_name TEXT NOT NULL DEFAULT '',
+                city TEXT NOT NULL DEFAULT '',
+                state TEXT NOT NULL DEFAULT '',
+                country TEXT NOT NULL DEFAULT '',
+                source TEXT NOT NULL DEFAULT 'openstreetmap',
+                source_id TEXT NOT NULL DEFAULT '',
+                source_url TEXT NOT NULL DEFAULT '',
+                official INTEGER NOT NULL DEFAULT 0,
+                confidence REAL NOT NULL DEFAULT 0.75 CHECK(confidence BETWEEN 0 AND 1),
+                active INTEGER NOT NULL DEFAULT 1,
+                metadata_json TEXT NOT NULL DEFAULT '{}',
+                first_seen_at TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                last_verified_at TEXT NOT NULL DEFAULT '',
+                seen_count INTEGER NOT NULL DEFAULT 1
+            );
+
+            CREATE TABLE IF NOT EXISTS radar_scan_cells (
+                cell_key TEXT NOT NULL,
+                source TEXT NOT NULL,
+                last_attempt_at TEXT NOT NULL DEFAULT '',
+                last_success_at TEXT NOT NULL DEFAULT '',
+                last_error TEXT NOT NULL DEFAULT '',
+                item_count INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(cell_key, source)
+            );
+
             CREATE TABLE IF NOT EXISTS shared_routes (
                 id SERIAL PRIMARY KEY,
                 token TEXT NOT NULL UNIQUE,
@@ -2421,6 +2457,10 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_route_feedback_created ON route_feedback(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_route_feedback_user ON route_feedback(user_id, created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_risk_zones_geo ON risk_zones(active, latitude, longitude);
+            CREATE INDEX IF NOT EXISTS idx_radar_points_geo ON radar_points(active, latitude, longitude);
+            CREATE INDEX IF NOT EXISTS idx_radar_points_source ON radar_points(source, last_seen_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_radar_points_country ON radar_points(country, active);
+            CREATE INDEX IF NOT EXISTS idx_radar_scan_cells_success ON radar_scan_cells(source, last_success_at);
             CREATE INDEX IF NOT EXISTS idx_shared_routes_token ON shared_routes(token);
             CREATE INDEX IF NOT EXISTS idx_shared_routes_expiry ON shared_routes(expires_at);
             CREATE INDEX IF NOT EXISTS idx_live_trips_token ON live_trips(token);
@@ -6729,7 +6769,7 @@ def open_meteo_current(lat, lon):
     now = time.time()
     with WEATHER_LOCK:
         cached = WEATHER_CACHE.get(key)
-        if cached and now - cached[0] < 180:
+        if cached and now - cached[0] < 900:
             return cached[1]
     params = {
         "latitude": lat,
@@ -6972,7 +7012,7 @@ def community_context(lat, lon, radius=1800):
 
 def overpass_road_awareness(lat, lon, radius=320):
     radius = int(clamp(radius, 250, 5000))
-    cache_key = (round(float(lat), 3), round(float(lon), 3), int(radius / 100) * 100)
+    cache_key = (round(float(lat), 2), round(float(lon), 2), int(radius / 250) * 250)
     now = time.time()
     with ROAD_AWARENESS_LOCK:
         cached = ROAD_AWARENESS_CACHE.get(cache_key)
@@ -10837,12 +10877,59 @@ def api_road_awareness():
         return jsonify({"error": "Localização inválida."}), 400
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
         return jsonify({"error": "Localização inválida."}), 400
-    items = overpass_road_awareness(lat, lon, radius)
+    radius = int(clamp(radius, 250, 6500))
+
+    # Radar Intelligence: banco VANO primeiro; fontes remotas somente quando a
+    # célula está vencida. A descoberta é persistida para as próximas passagens.
+    radar_meta = {"items": [], "stored": 0, "queried_sources": [], "cache_only": True}
+    try:
+        radar_meta = discover_radars(get_db(), lat, lon, radius, skip_source_names={"openstreetmap"})
+    except Exception as exc:
+        # Falha de uma fonte pública nunca derruba a navegação. Ainda devolvemos
+        # o cache persistido, se existir, e os demais controles viários.
+        app.logger.warning("Radar discovery degraded: %s", type(exc).__name__)
+        try:
+            radar_meta["items"] = query_radars(get_db(), lat, lon, radius)
+        except Exception:
+            radar_meta["items"] = []
+
+    controls = overpass_road_awareness(lat, lon, radius)
+    osm_radars = [x for x in (controls or []) if str(x.get("type") or "") == "speed_camera"]
+    non_radar_controls = [x for x in (controls or []) if str(x.get("type") or "") != "speed_camera"]
+    try:
+        persisted_osm = persist_osm_awareness(get_db(), osm_radars)
+        radar_meta["stored"] = int(radar_meta.get("stored") or 0) + int(persisted_osm or 0)
+        radar_meta["items"] = query_radars(get_db(), lat, lon, radius)
+    except Exception as exc:
+        app.logger.debug("OSM radar persistence degraded: %s", type(exc).__name__)
+        if not radar_meta.get("items"):
+            radar_meta["items"] = osm_radars
+    items = list(radar_meta.get("items") or []) + non_radar_controls
     return jsonify({
-        "items": items,
-        "coverage": "mapped-data",
-        "disclaimer": "A sinalização depende da cobertura cartográfica disponível e pode estar incompleta ou desatualizada.",
+        "items": items[:220],
+        "coverage": "vano-radar-db+official-open-data+openstreetmap",
+        "radars": {
+            "count": len(radar_meta.get("items") or []),
+            "new_or_refreshed": int(radar_meta.get("stored") or 0),
+            "queried_sources": radar_meta.get("queried_sources") or [],
+            "cache_only": bool(radar_meta.get("cache_only")),
+        },
+        "disclaimer": "Radares e sinalização dependem das bases públicas disponíveis e podem estar incompletos ou desatualizados. Respeite sempre a sinalização real da via.",
     })
+
+
+@app.route("/api/radars/sources")
+def api_radar_sources():
+    """Public diagnostics for coverage; never exposes secrets or user location history."""
+    if not rate_limit("radar-sources", 20, 60):
+        return jsonify({"error": "Muitas consultas."}), 429
+    lat = request.args.get("lat"); lon = request.args.get("lon")
+    try:
+        lat_v = float(lat) if lat is not None else None
+        lon_v = float(lon) if lon is not None else None
+    except ValueError:
+        return jsonify({"error": "Coordenadas inválidas."}), 400
+    return jsonify({"sources": source_catalog(lat_v, lon_v), "database": "vano-radar-db"})
 
 
 @app.route("/api/support-points")

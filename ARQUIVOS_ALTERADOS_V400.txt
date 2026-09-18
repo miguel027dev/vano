@@ -1,0 +1,23 @@
+VANO Radar Intelligence V400
+
+ALTERADOS:
+- app.py
+- static/vano-map-v300.js
+
+NOVOS:
+- vano_radars.py
+- RADAR_INTELLIGENCE_V400.md
+- test_vano_radars.py
+
+BANCO (criado automaticamente por init_db):
+- radar_points
+- radar_scan_cells
+
+Principais recursos:
+- PostgreSQL-first cache de radares
+- deduplicação geográfica entre fontes
+- ingestão regional de fontes abertas/oficiais
+- persistência de coordenadas públicas dos radares
+- OSM mundial + fontes oficiais/regionais
+- warning de radar já integrado ao mapa/navegação existente
+- endpoint /api/radars/sources
