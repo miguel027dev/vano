@@ -817,3 +817,71 @@ html[data-vano-theme="black"] body.vano-map-surface:not(.body-nav) #planSheet .p
     transform-origin:50% 0!important;
   }
 }
+
+/* ========================================================================== 
+   VANO MAPS V347 — Samsung/Android address-input stability
+   - Keep the focused search field directly above the IME instead of teleporting
+     the whole planner to the top-left of the map.
+   - Keep a normal LTR editable layer so numeric CEP/address input cannot render
+     or compose backwards after visualViewport updates.
+   - Suggestions continue opening above the field, preserving the normal planner
+     interaction while the keyboard is visible.
+   ========================================================================== */
+@media(max-width:899px){
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active,
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active.sheet-collapsed,
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active.sheet-expanded{
+    top:auto!important;
+    bottom:max(8px,calc(var(--vano-keyboard-bottom,0px) + 8px))!important;
+    left:max(8px,env(safe-area-inset-left))!important;
+    right:max(8px,env(safe-area-inset-right))!important;
+    width:auto!important;
+    height:82px!important;
+    min-height:82px!important;
+    max-height:82px!important;
+    padding:8px 10px!important;
+    overflow:visible!important;
+    transform:none!important;
+    -webkit-transform:none!important;
+    contain:none!important;
+    transition:none!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active :is(#planGrab,.planner-grab,.grab,.planner-heading,.planner-presets,.planner-expanded,#plannerSmartDestinations,.planner-expand-hint){
+    display:none!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-row{
+    margin:0!important;
+    padding:0!important;
+    width:100%!important;
+    height:64px!important;
+    grid-template-columns:minmax(0,1fr) 58px!important;
+    gap:8px!important;
+    align-items:center!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-card.search-card{
+    height:64px!important;
+    min-height:64px!important;
+    max-height:64px!important;
+    margin:0!important;
+    transform:none!important;
+    -webkit-transform:none!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-location-row.location-row{
+    height:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    transform:none!important;
+    -webkit-transform:none!important;
+  }
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-card .location-input#destinationInput,
+  body.vano-map-surface.vano-keyboard-open.vano-search-interacting:not(.body-nav) #planSheet.planner-search-active .planner-search-card .location-input#originInput{
+    direction:ltr!important;
+    unicode-bidi:normal!important;
+    writing-mode:horizontal-tb!important;
+    text-align:left!important;
+    font-size:16px!important;
+    transform:none!important;
+    -webkit-transform:none!important;
+  }
+}
+

@@ -674,12 +674,12 @@ function syncSearchResultsPlacement(open=results?.classList.contains('show')){
   const viewportTop=Math.max(0,+vv?.offsetTop||0),viewportHeight=Math.max(260,+vv?.height||window.innerHeight||ar.height),viewportBottom=viewportTop+viewportHeight,gap=8;
   const above=Math.max(0,hr.top-viewportTop-gap),below=Math.max(0,viewportBottom-hr.bottom-gap);
   const collapsed=!!planSheet?.classList.contains('sheet-collapsed'),minUseful=96;
-  const keyboardSearch=!!(vanoKeyboardOpen&&searchInteractionActive&&(document.activeElement===destinationInput||document.activeElement===originInput));
-  // Normal collapsed planner opens results upward because it lives at the bottom.
-  // While the keyboard is open we move the search surface to the visible top, so
-  // results must flow DOWN like a normal mobile search screen instead of appearing
-  // to type/grow in the opposite direction.
-  let preferAbove=keyboardSearch?false:(collapsed||above>=below);
+  // Keep suggestions on the side that actually has room. The mobile search field
+  // stays anchored immediately above the keyboard, so a collapsed planner should
+  // continue opening results upward. Moving the focused field to the top of the
+  // visual viewport caused Samsung/Chrome to repeatedly rebuild the editable layer
+  // and could reset the caret to column zero between keystrokes.
+  let preferAbove=collapsed||above>=below;
   if((preferAbove?above:below)<minUseful&&(preferAbove?below:above)>(preferAbove?above:below)+18)preferAbove=!preferAbove;
   const sideSpace=preferAbove?above:below,available=Math.max(54,Math.min(360,sideSpace-6));
   if(results.parentElement!==app)app.appendChild(results);
@@ -1711,6 +1711,28 @@ function lockIOSInputViewport(input=null){
   keepTop();clearTimeout(vanoScrollLockTimer);let count=0;const tick=()=>{keepTop();if(++count<8&&(document.activeElement===originInput||document.activeElement===destinationInput))vanoScrollLockTimer=setTimeout(tick,70)};vanoScrollLockTimer=setTimeout(tick,35);
 }
 function releaseIOSInputViewport(){clearTimeout(vanoScrollLockTimer);setTimeout(()=>{if(document.activeElement!==originInput&&document.activeElement!==destinationInput){if(VANO_IOS_WEBKIT){document.documentElement.classList.remove('vano-ios-keyboard-lock');document.body.classList.remove('vano-ios-keyboard-lock');try{window.scrollTo(0,0)}catch{}}document.documentElement.classList.remove('vano-keyboard-open');document.body.classList.remove('vano-keyboard-open');document.documentElement.style.setProperty('--vano-keyboard-bottom','0px');refreshResponsiveViewport()}},120)}
+// Samsung Internet/Chrome can occasionally reset selectionStart to 0 while a
+// transformed/fixed ancestor is reacting to visualViewport changes. When that
+// happens every new character is inserted before the previous one (e.g. a CEP is
+// visibly typed backwards). Preserve the user's intended caret without forcing it
+// to the end when they deliberately move it.
+const searchCaretState=new WeakMap();
+function searchCaretFor(input){let state=searchCaretState.get(input);if(!state){state={start:0,end:0,value:'',manualUntil:0,before:null};searchCaretState.set(input,state)}return state}
+function rememberSearchCaret(input,{manual=false}={}){if(!input)return;const state=searchCaretFor(input),start=Number.isFinite(input.selectionStart)?input.selectionStart:String(input.value||'').length,end=Number.isFinite(input.selectionEnd)?input.selectionEnd:start;state.start=start;state.end=end;state.value=String(input.value||'');if(manual)state.manualUntil=performance.now()+650}
+function prepareSearchCaret(input,event){
+  if(!input||document.activeElement!==input)return;const state=searchCaretFor(input),value=String(input.value||''),actualStart=Number.isFinite(input.selectionStart)?input.selectionStart:value.length,actualEnd=Number.isFinite(input.selectionEnd)?input.selectionEnd:actualStart,inputType=String(event?.inputType||'');
+  const insertion=inputType.startsWith('insert'),unexpectedReset=insertion&&performance.now()>state.manualUntil&&value.length>0&&actualStart===0&&actualEnd===0&&state.value===value&&state.start===state.end&&state.start===value.length;
+  if(unexpectedReset){try{input.setSelectionRange(value.length,value.length)}catch{}}
+  state.before={start:Number.isFinite(input.selectionStart)?input.selectionStart:actualStart,end:Number.isFinite(input.selectionEnd)?input.selectionEnd:actualEnd,length:value.length,inputType,data:String(event?.data??'')};
+}
+function stabilizeSearchCaret(input,event){
+  if(!input||document.activeElement!==input)return;const state=searchCaretFor(input),value=String(input.value||''),before=state.before,inputType=String(event?.inputType||before?.inputType||''),insertion=inputType.startsWith('insert');
+  let start=Number.isFinite(input.selectionStart)?input.selectionStart:value.length,end=Number.isFinite(input.selectionEnd)?input.selectionEnd:start;
+  if(insertion&&before&&performance.now()>state.manualUntil){const delta=value.length-before.length,expected=Math.max(0,Math.min(value.length,before.start+Math.max(0,delta)));if(start===0&&end===0&&expected>0){start=expected;end=expected}}
+  state.start=start;state.end=end;state.value=value;state.before=null;
+  const restore=()=>{if(document.activeElement!==input||String(input.value||'')!==value)return;try{if(input.selectionStart!==start||input.selectionEnd!==end)input.setSelectionRange(start,end)}catch{}};
+  queueMicrotask(restore);requestAnimationFrame(()=>{restore();requestAnimationFrame(restore)});setTimeout(restore,48);
+}
 function setSearchInteraction(active){
   clearTimeout(searchInteractionTimer);
   const next=!!active,changed=searchInteractionActive!==next;
@@ -1734,12 +1756,16 @@ const smartBalance=$('smartBalance');if(smartBalance){syncSmartBalanceUI();let s
 refreshUnreadNotifications();setTimeout(refreshUnreadNotifications,1800);document.body.dataset.mood=(moodFromConditions(window.__sparkWeatherState||null)==='night'?'night':'day');updateWeatherPill(window.__sparkWeatherState||null);updateFloatingSpeedometer(0);
 [originInput,destinationInput].forEach(inp=>{
   const kind=inp===originInput?'origin':'destination';
-  inp.addEventListener('compositionstart',()=>{searchComposing=true;setSearchInteraction(true)});
-  inp.addEventListener('compositionend',()=>{searchComposing=false;queueSearch(inp,kind)});
-  inp.addEventListener('input',()=>{setSearchInteraction(true);if(!searchComposing)queueSearch(inp,kind)});
-  inp.addEventListener('focus',()=>{activeSearchKind=kind;setSearchInteraction(true);planSheet?.classList.add('planner-search-active');/* Focusing the address field must never expand the whole planner. The grab/drag control is the only owner of sheet expansion. */lockIOSInputViewport(inp);refreshResponsiveViewport();requestAnimationFrame(()=>{lockIOSInputViewport(inp);syncFloatingLocate();syncSearchResultsPlacement();if(results?.classList.contains('show'))syncSearchResultsPlacement(true)});if(inp.value.trim().length>=SEARCH_FAST_MIN&&!searchComposing)queueSearch(inp,kind);else{hideResults();if(kind==='destination')showSavedSearchSuggestions(kind)}});
+  inp.setAttribute('dir','ltr');
+  inp.addEventListener('pointerdown',()=>rememberSearchCaret(inp,{manual:true}),{passive:true});
+  inp.addEventListener('pointerup',()=>rememberSearchCaret(inp,{manual:true}),{passive:true});
+  inp.addEventListener('beforeinput',e=>prepareSearchCaret(inp,e));
+  inp.addEventListener('compositionstart',()=>{searchComposing=true;setSearchInteraction(true);rememberSearchCaret(inp)});
+  inp.addEventListener('compositionend',e=>{searchComposing=false;stabilizeSearchCaret(inp,e);queueSearch(inp,kind)});
+  inp.addEventListener('input',e=>{stabilizeSearchCaret(inp,e);if(!searchInteractionActive)setSearchInteraction(true);if(!searchComposing)queueSearch(inp,kind)});
+  inp.addEventListener('focus',()=>{activeSearchKind=kind;rememberSearchCaret(inp);setSearchInteraction(true);planSheet?.classList.add('planner-search-active');/* Focusing the address field must never expand the whole planner. The grab/drag control is the only owner of sheet expansion. */lockIOSInputViewport(inp);refreshResponsiveViewport();requestAnimationFrame(()=>{lockIOSInputViewport(inp);syncFloatingLocate();syncSearchResultsPlacement();if(results?.classList.contains('show'))syncSearchResultsPlacement(true);rememberSearchCaret(inp)});if(inp.value.trim().length>=SEARCH_FAST_MIN&&!searchComposing)queueSearch(inp,kind);else{hideResults();if(kind==='destination')showSavedSearchSuggestions(kind)}});
   inp.addEventListener('blur',()=>{clearTimeout(searchInteractionTimer);searchInteractionTimer=setTimeout(()=>{const a=document.activeElement;if(a!==originInput&&a!==destinationInput){setSearchInteraction(false);if(!results?.classList.contains('show'))planSheet?.classList.remove('planner-search-active')}releaseIOSInputViewport()},180)});
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(searchTimer);clearTimeout(searchRefineTimer);const q=inp.value.trim();if(q.length>=SEARCH_FAST_MIN&&!searchComposing)searchPlaces(q,kind);return}if((e.key==='ArrowDown'||e.key==='ArrowUp')&&results?.classList.contains('show')){const items=[...results.querySelectorAll('button.search-item,button.search-suggestion')];if(items.length){e.preventDefault();(e.key==='ArrowDown'?items[0]:items[items.length-1]).focus({preventScroll:true})}}});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();clearTimeout(searchTimer);clearTimeout(searchRefineTimer);const q=inp.value.trim();if(q.length>=SEARCH_FAST_MIN&&!searchComposing)searchPlaces(q,kind);return}if((e.key==='ArrowDown'||e.key==='ArrowUp')&&results?.classList.contains('show')){const items=[...results.querySelectorAll('button.search-item,button.search-suggestion')];if(items.length){e.preventDefault();(e.key==='ArrowDown'?items[0]:items[items.length-1]).focus({preventScroll:true});return}}if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)||e.shiftKey)requestAnimationFrame(()=>rememberSearchCaret(inp,{manual:true}))});
 });
 document.addEventListener('click',e=>{if(!e.target.closest('.search-card,.search-results,.planner-adjust-btn,.voice-search-btn'))hideResults()});document.addEventListener('click',e=>{if(document.body.classList.contains('body-nav')&&$('navControlStack')?.classList.contains('drawer-open')&&!e.target.closest('#navControlStack'))setNavControlDrawer(false)});results.addEventListener('click',e=>{if(e.target.closest('.search-item')){destinationInput?.blur?.();originInput?.blur?.();}});
 document.querySelectorAll('.planner-search-card,.planner-search-row,.search-results').forEach(el=>{el?.addEventListener('pointerdown',e=>e.stopPropagation())});
