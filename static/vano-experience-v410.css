@@ -256,3 +256,76 @@ body.vano-route-onboarding .ob-step-v340.is-active{
     max-width:calc(100vw - 16px);
   }
 }
+
+/* VANO V512 — register mobile scroll hardening.
+   Registration is document-scrolled on phones: no nested/frozen viewport. */
+body.vano-route-register{
+  height:auto!important;
+  min-height:100dvh!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:auto!important;
+  touch-action:pan-y pinch-zoom;
+  -webkit-overflow-scrolling:touch;
+  scroll-padding-top:max(12px,env(safe-area-inset-top));
+  scroll-padding-bottom:max(120px,calc(env(safe-area-inset-bottom) + 96px));
+}
+body.vano-route-register .vano-register-v340,
+body.vano-route-register .register-shell,
+body.vano-route-register .register-panel{
+  height:auto!important;
+  max-height:none!important;
+}
+
+@media(max-width:900px){
+  body.vano-route-register{
+    min-height:var(--vano-x-vh,100dvh)!important;
+    padding-bottom:0!important;
+  }
+  body.vano-route-register .vano-register-v340{
+    min-height:var(--vano-x-vh,100dvh)!important;
+    overflow:visible!important;
+    padding:0!important;
+  }
+  body.vano-route-register .register-shell{
+    width:100%!important;
+    min-height:var(--vano-x-vh,100dvh)!important;
+    overflow:visible!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  body.vano-route-register .register-panel{
+    width:100%!important;
+    min-height:var(--vano-x-vh,100dvh)!important;
+    overflow:visible!important;
+    touch-action:pan-y;
+    padding-bottom:max(34px,calc(env(safe-area-inset-bottom) + 28px))!important;
+  }
+  body.vano-route-register .register-actions,
+  body.vano-route-register .register-form,
+  body.vano-route-register .register-field,
+  body.vano-route-register .register-input-shell{
+    max-height:none!important;
+    overflow:visible!important;
+  }
+  body.vano-route-register .register-legal{
+    margin-top:28px!important;
+    padding-top:0!important;
+    padding-bottom:max(4px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-route-register :is(input,button,a){
+    scroll-margin-block:18vh;
+  }
+}
+
+@media(max-width:480px){
+  body.vano-route-register .register-panel{
+    padding-top:max(20px,env(safe-area-inset-top))!important;
+    padding-left:max(15px,env(safe-area-inset-left))!important;
+    padding-right:max(15px,env(safe-area-inset-right))!important;
+  }
+  body.vano-route-register .register-brand{margin-bottom:26px!important}
+  body.vano-route-register .register-copy{margin-top:0!important}
+  body.vano-route-register .register-actions{margin-top:22px!important}
+}
