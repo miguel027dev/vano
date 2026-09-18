@@ -1,0 +1,193 @@
+/* V410 — Unified UX motion & interaction polish.
+   This file intentionally layers on top of the existing VANO visual system.
+   It focuses on feel: feedback, continuity, hierarchy and motion without
+   changing product behavior or the established orange/neutral identity. */
+
+:root{
+  --vano-x-ease:cubic-bezier(.22,.82,.24,1);
+  --vano-x-ease-soft:cubic-bezier(.2,.72,.2,1);
+  --vano-x-fast:150ms;
+  --vano-x-base:260ms;
+  --vano-x-slow:520ms;
+}
+
+html{scroll-behavior:smooth}
+body{overscroll-behavior-y:none}
+
+/* Page arrival: tiny depth cue instead of a hard paint. */
+body.vano-page-surface > main,
+body.vano-page-surface > .page,
+body.vano-map-surface #planSheet{
+  animation:vano-x-page-in .52s var(--vano-x-ease) both;
+}
+body.vano-map-surface #map{animation:vano-x-map-fade .34s ease-out both}
+@keyframes vano-x-map-fade{from{opacity:.72}to{opacity:1}}
+@keyframes vano-x-page-in{
+  from{opacity:.001;transform:translateY(7px) scale(.997)}
+  to{opacity:1;transform:none}
+}
+
+/* One consistent tactile language for interactive elements. */
+:where(button,a,.btn,[role="button"],label):not([aria-disabled="true"]){
+  -webkit-tap-highlight-color:transparent;
+}
+:where(button,.btn,[role="button"],.route-variant,.planner-preset,.nearby-service,.sub-action,.profile350-button,.profile350-save,.ob-language-v340,.ob-choice-v340){
+  transform-origin:center;
+}
+.vano-x-pressing{
+  transform:scale(.974)!important;
+  transition:transform 90ms ease!important;
+}
+
+/* Inputs feel like one responsive surface instead of static rectangles. */
+:where(.startup-input-wrap,.register-input-wrap,.ob-field-v340>div,.profile350-field>div,.input-wrap){
+  transition:border-color var(--vano-x-base) var(--vano-x-ease),box-shadow var(--vano-x-base) var(--vano-x-ease),background var(--vano-x-base) var(--vano-x-ease),transform var(--vano-x-base) var(--vano-x-ease)!important;
+}
+:where(.startup-input-wrap,.register-input-wrap,.ob-field-v340>div,.profile350-field>div,.input-wrap):focus-within{
+  transform:translateY(-1px);
+}
+.vano-x-field-focus{
+  box-shadow:0 0 0 4px rgba(245,154,98,.10),0 12px 30px rgba(33,25,20,.07)!important;
+}
+
+/* Useful, quiet submit feedback across account flows. */
+form.vano-x-submitting :is(button[type="submit"],input[type="submit"]){
+  pointer-events:none;
+  filter:saturate(.9);
+}
+form.vano-x-submitting button[type="submit"]:not(.is-loading)::after{
+  content:"";
+  width:13px;height:13px;border-radius:50%;
+  border:2px solid currentColor;border-right-color:transparent;
+  margin-left:8px;display:inline-block;vertical-align:-2px;
+  animation:vano-x-spin .72s linear infinite;
+}
+@keyframes vano-x-spin{to{transform:rotate(360deg)}}
+
+/* Theme changes should blend, not flash. */
+html.vano-x-theme-changing *,
+html.vano-x-theme-changing *::before,
+html.vano-x-theme-changing *::after{
+  transition-property:background-color,border-color,color,box-shadow,fill,stroke!important;
+  transition-duration:260ms!important;
+  transition-timing-function:var(--vano-x-ease)!important;
+}
+
+/* Auth/onboarding: staged content arrives with continuity. */
+[data-auth-page="register"] :is(.register-copy,.register-form-card),
+[data-vano-auth="startup"] :is(.startup-brand,.startup-copy,.startup-stage),
+.vano-route-onboarding .ob-step-v340.is-active > *{
+  animation:vano-x-rise .46s var(--vano-x-ease) both;
+}
+[data-vano-auth="startup"] .startup-copy{animation-delay:45ms}
+[data-vano-auth="startup"] .startup-stage{animation-delay:90ms}
+.vano-route-onboarding .ob-step-v340.is-active > *:nth-child(2){animation-delay:45ms}
+.vano-route-onboarding .ob-step-v340.is-active > *:nth-child(3){animation-delay:85ms}
+@keyframes vano-x-rise{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1;transform:none}
+}
+
+/* Choice cards have a satisfying select state without becoming bouncy. */
+:where(.ob-choice-v340,.ob-language-v340,.profile350-accent,.profile350-chip-select label) input:checked + span,
+:where(.ob-choice-v340,.ob-language-v340).is-picked{
+  animation:vano-x-select .34s var(--vano-x-ease) both;
+}
+@keyframes vano-x-select{
+  0%{transform:scale(.985)}
+  64%{transform:scale(1.012)}
+  100%{transform:none}
+}
+
+/* Route result reveal. */
+body.vano-map-surface #routeState.vano-x-route-enter .vr-hero,
+body.vano-map-surface #routeState.vano-x-route-enter .vano-primary-transport-row,
+body.vano-map-surface #routeState.vano-x-route-enter #routeVariants,
+body.vano-map-surface #routeState.vano-x-route-enter #startTripBtn,
+body.vano-map-surface #routeState.vano-x-route-enter .vano-route-more{
+  animation:vano-x-route-up .48s var(--vano-x-ease) both;
+}
+body.vano-map-surface #routeState.vano-x-route-enter .vano-primary-transport-row{animation-delay:35ms}
+body.vano-map-surface #routeState.vano-x-route-enter #routeVariants{animation-delay:70ms}
+body.vano-map-surface #routeState.vano-x-route-enter #startTripBtn{animation-delay:105ms}
+body.vano-map-surface #routeState.vano-x-route-enter .vano-route-more{animation-delay:135ms}
+@keyframes vano-x-route-up{
+  from{opacity:0;transform:translateY(14px) scale(.99)}
+  to{opacity:1;transform:none}
+}
+
+/* Route CTA gets a subtle moving highlight only while idle. */
+body.vano-map-surface #startTripBtn{position:relative!important;overflow:hidden!important;isolation:isolate}
+body.vano-map-surface #startTripBtn::after{
+  content:"";position:absolute;z-index:-1;inset:-60% auto -60% -38%;width:28%;
+  transform:rotate(14deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.30),transparent);
+  opacity:0;pointer-events:none;
+}
+body.vano-map-surface #startTripBtn:not(:disabled):hover::after{
+  opacity:1;animation:vano-x-cta-sheen .78s var(--vano-x-ease) both;
+}
+@keyframes vano-x-cta-sheen{from{left:-42%}to{left:116%}}
+
+/* Cinematic navigation launch — planner settles down while map dives in. */
+body.vano-map-surface.vano-nav-launching #planSheet{
+  pointer-events:none!important;
+  transform:translateY(18px) scale(.985)!important;
+  opacity:.72!important;
+  transition:transform .55s var(--vano-x-ease),opacity .42s var(--vano-x-ease)!important;
+}
+body.vano-map-surface.vano-nav-launching #map::after{
+  content:"";position:absolute;inset:0;z-index:20;pointer-events:none;
+  background:radial-gradient(circle at 50% 58%,transparent 12%,rgba(10,11,13,.12) 72%,rgba(10,11,13,.26));
+  opacity:0;animation:vano-x-nav-vignette .72s var(--vano-x-ease) both;
+}
+body.vano-map-surface.vano-nav-launching #startTripBtn{
+  transform:scale(.985)!important;box-shadow:0 10px 28px rgba(245,154,98,.22)!important;
+}
+@keyframes vano-x-nav-vignette{
+  0%{opacity:0}
+  42%{opacity:1}
+  100%{opacity:0}
+}
+
+/* HUD appears from the road, not as an abrupt overlay. */
+body.vano-map-surface .active-navigation.show,
+body.vano-map-surface #activeNav.show{
+  animation:vano-x-nav-hud .52s var(--vano-x-ease) both;
+}
+@keyframes vano-x-nav-hud{
+  from{opacity:.25;transform:translateY(10px)}
+  to{opacity:1;transform:none}
+}
+
+/* Generic pop used by important map overlays when their .show state is added. */
+.vano-x-pop-in{animation:vano-x-pop .38s var(--vano-x-ease) both!important}
+@keyframes vano-x-pop{
+  from{opacity:0;transform:translateY(8px) scale(.985)}
+  to{opacity:1;transform:none}
+}
+
+/* Profile: sections come in quietly and save bar reacts to dirty state. */
+body.vano-route-profile .profile350-section,
+body.vano-route-profile .profile350-danger{
+  transition:border-color .24s var(--vano-x-ease),box-shadow .24s var(--vano-x-ease),transform .24s var(--vano-x-ease)!important;
+}
+body.vano-route-profile .profile350-section:hover{transform:translateY(-1px)}
+body.vano-route-profile .profile350-savebar{transition:transform .32s var(--vano-x-ease),box-shadow .32s var(--vano-x-ease),border-color .32s var(--vano-x-ease)!important}
+body.vano-route-profile form.vano-x-dirty .profile350-savebar{transform:translateY(-2px);box-shadow:0 18px 44px rgba(39,28,20,.10)!important}
+
+/* Mobile keyboard and safe-area stability. */
+@media(max-width:760px){
+  body{min-height:var(--vano-x-vh,100dvh)}
+  body.vano-map-surface #planSheet{will-change:transform}
+  :where(button,.btn,[role="button"]){touch-action:manipulation}
+}
+
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto!important}
+  body.vano-page-surface > main,body.vano-page-surface > .page,body.vano-map-surface #map,body.vano-map-surface #planSheet,
+  [data-auth-page="register"] :is(.register-copy,.register-form-card),[data-vano-auth="startup"] :is(.startup-brand,.startup-copy,.startup-stage),
+  .vano-route-onboarding .ob-step-v340.is-active > *,body.vano-map-surface #routeState.vano-x-route-enter *,
+  .vano-x-pop-in,body.vano-map-surface .active-navigation.show,body.vano-map-surface #activeNav.show{animation:none!important}
+  body.vano-map-surface.vano-nav-launching #planSheet{transform:none!important;opacity:1!important}
+  body.vano-map-surface.vano-nav-launching #map::after{display:none!important}
+}

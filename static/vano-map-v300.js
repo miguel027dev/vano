@@ -1612,6 +1612,34 @@ function beginNavigationGpsWatch(){
   requestGpsHeartbeat(g=>{if(activeNav.classList.contains('show')&&!adminSimulation)updateNavigation(g)},1800,0);
   startNavigationGpsHeartbeat();
 }
+function playNavigationLaunchCue(p){
+  if(REDUCED_MOTION||!map||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat))return Promise.resolve();
+  document.body.classList.add('vano-nav-launching');
+  const coords=selectedRoute?.geometry?.coordinates||[];
+  let bearing=Number.isFinite(+p.heading)?((+p.heading%360)+360)%360:null;
+  if(!Number.isFinite(bearing)&&coords.length>1){
+    const look=Math.min(coords.length-1,Math.max(1,Math.min(10,Math.floor(coords.length*.025))));
+    bearing=bearingBetween(coords[0],coords[look]);
+  }
+  if(!Number.isFinite(bearing))bearing=map.getBearing?.()||0;
+  try{
+    const currentZoom=Number.isFinite(+map.getZoom?.())?+map.getZoom():15.2;
+    map.stop?.();
+    map.easeTo?.({
+      center:[+p.lon,+p.lat],
+      zoom:Math.max(16.1,Math.min(17.05,currentZoom+.82)),
+      pitch:Math.max(34,Math.min(48,(+map.getPitch?.()||0)+28)),
+      bearing,
+      padding:{top:58,bottom:Math.min(250,Math.max(150,window.innerHeight*.22)),left:18,right:18},
+      retainPadding:false,
+      duration:560,
+      essential:true,
+      easing:t=>1-Math.pow(1-t,3)
+    });
+  }catch(e){console.debug('[VANO MAPS:launch-cue]',e)}
+  setTimeout(()=>document.body.classList.remove('vano-nav-launching'),760);
+  return new Promise(resolve=>setTimeout(resolve,300));
+}
 async function startTrip(){
   if(starting)return;if(!selectedRoute&&routes.length)chooseByMode();if(!selectedRoute){showToast('Calcule e selecione uma rota primeiro.');return}
   setNavigationExperience('immersive',{recenter:false,announce:false});
@@ -1621,7 +1649,7 @@ async function startTrip(){
     if(navigator.geolocation){try{const g=await requestFreshNavigationPosition(cached?2100:3200),raw=geoRaw(g);lastGpsFixAt=Date.now();saveLastGps(raw);updateGpsQuality(raw.accuracy);smoothedPos=null;p=filterPosition(raw)}catch(e){console.debug('[VANO MAPS:fresh-nav-fix]',e?.code||e?.message||e)}}
     if(!p&&cached&&Number.isFinite(+cached.lat)&&Number.isFinite(+cached.lon)){smoothedPos=null;p=filterPosition({lat:+cached.lat,lon:+cached.lon,accuracy:+cached.accuracy||80,heading:Number.isFinite(+cached.heading)?+cached.heading:null,speed:Number.isFinite(+cached.speed)?+cached.speed:null,ts:+cached.ts||Date.now()})}
     if(!p)throw new Error('Não foi possível determinar uma posição inicial.');
-    await activateNavigationAt(p,{simulated:false});productTelemetry('route','navigation-start','navigation');beginNavigationGpsWatch();setTimeout(()=>nonFatal('event-start',()=>checkEventDisruption(true,{pretrip:false})),4200);setTimeout(()=>nonFatal('traffic-start',()=>checkLiveTraffic(true)),12000);showToast('Navegação iniciada.');
+    await playNavigationLaunchCue(p);await activateNavigationAt(p,{simulated:false});productTelemetry('route','navigation-start','navigation');beginNavigationGpsWatch();setTimeout(()=>nonFatal('event-start',()=>checkEventDisruption(true,{pretrip:false})),4200);setTimeout(()=>nonFatal('traffic-start',()=>checkLiveTraffic(true)),12000);showToast('Navegação iniciada.');
   }catch(e){console.error('[VANO MAPS:startTrip]',e);if(activeNav.classList.contains('show')){showToast('Navegação iniciada. Alguns recursos ainda estão carregando.')}else{const geoCode=Number.isFinite(+e?.code)?+e.code:null;if(geoCode)showPermission(locationErrorMessage(e));showToast(geoCode?locationErrorMessage(e):(e?.message||'Não foi possível iniciar a navegação. Tente recalcular a rota.'))}}
   finally{starting=false;if(btn){btn.disabled=false;btn.classList.remove('is-starting');btn.innerHTML='<span class="start-trip-icon"><i data-lucide="navigation" width="18"></i></span><span class="start-trip-copy"><b>Iniciar</b><small>Modo imersivo · câmera alinhada ao trajeto</small></span><span class="start-trip-arrow">›</span>'}if(window.lucide)lucide.createIcons()}
 }

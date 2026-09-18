@@ -135,6 +135,7 @@
   {% if current_user and not vano_admin_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-shell-v353.css') }}?v={{ vano_build_id }}-353">{% endif %}
   {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-v353.css') }}?v={{ vano_build_id }}-353">{% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-color-system-v403.css') }}?v={{ vano_build_id }}-403">
+  {% if not vano_admin_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-experience-v410.css') }}?v={{ vano_build_id }}-410">{% endif %}
   {% if vano_map_surface %}
   <script>try{
     const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);
@@ -190,6 +191,7 @@
 <script>if(window.lucide){lucide.createIcons();} setTimeout(()=>document.querySelectorAll('.flash').forEach(x=>x.remove()),6000); if(window.parent!==window){window.parent.postMessage({type:'vano:ready',path:location.pathname},'*');}</script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}-324',{scope:'/'}).catch(()=>{}),{once:true});}</script>
 <script src="{{ url_for('static', filename='vano-telemetry-v123.js') }}?v={{ vano_build_id }}"></script>
+{% if not vano_admin_surface %}<script defer src="{{ url_for('static', filename='vano-experience-v410.js') }}?v={{ vano_build_id }}-410"></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>
