@@ -452,3 +452,164 @@ html[data-vano-theme="black"] .ob500-progress>span{background:#211d1a}
 .ob500-launch-screen.is-visible>.ring{animation:ob500LaunchRing .9s ease-out forwards}
 .ob500-launch-screen>.r2{animation-delay:.14s!important}.ob500-launch-screen>.r3{animation-delay:.28s!important}
 @keyframes ob500LaunchRing{0%{opacity:.8;transform:scale(.45)}100%{opacity:0;transform:scale(4.6)}}
+
+/* VANO V510 — interaction hardening / bug-fix pass */
+.vano-onboarding-v500,
+.vano-onboarding-v500 *,
+.vano-onboarding-v500 *::before,
+.vano-onboarding-v500 *::after{box-sizing:border-box}
+.vano-onboarding-v500 button,
+.vano-onboarding-v500 label,
+.vano-onboarding-v500 input{-webkit-tap-highlight-color:transparent}
+.vano-onboarding-v500 button,
+.vano-onboarding-v500 label{touch-action:manipulation}
+.vano-onboarding-v500 .ob500-step-grid>* ,
+.vano-onboarding-v500 .ob500-field-grid>* ,
+.vano-onboarding-v500 .ob500-config-grid>* ,
+.vano-onboarding-v500 .ob500-section-head>* ,
+.vano-onboarding-v500 .ob500-player-card>* ,
+.vano-onboarding-v500 .ob500-route-card>*{min-width:0}
+.vano-onboarding-v500 .ob500-heading,
+.vano-onboarding-v500 .ob500-route-copy,
+.vano-onboarding-v500 .ob500-id-copy,
+.vano-onboarding-v500 .ob500-summary-copy-v340{overflow-wrap:anywhere}
+
+/* class fallbacks for browsers/webviews where :has() is flaky */
+.ob500-route-card.is-selected{transform:translateY(-2px);border-color:rgba(242,139,80,.36);background:linear-gradient(150deg,var(--ob500-orange-soft),var(--ob500-surface) 62%);box-shadow:0 15px 38px rgba(223,111,54,.09)}
+.ob500-route-card.is-selected:before{opacity:1}
+.ob500-route-card.is-selected .ob500-route-icon{background:linear-gradient(145deg,#ffa66e,#e8753a);color:#fff;box-shadow:0 9px 22px rgba(223,111,54,.20);transform:rotate(-4deg) scale(1.04)}
+.ob500-route-card.is-selected .ob500-stat>i:after{transform:scaleX(1)}
+.ob500-route-card.is-selected .ob500-select-ring{opacity:1;background:var(--ob500-orange);border-color:transparent;transform:scale(1.03)}
+.ob500-route-card.is-safe.is-selected .ob500-route-icon{background:linear-gradient(145deg,#66bf8b,#379362)}
+.ob500-route-card.is-fast.is-selected .ob500-route-icon{background:linear-gradient(145deg,#ff9e65,#d95f2b)}
+.ob500-power-toggle.is-selected{border-color:rgba(242,139,80,.25);background:linear-gradient(145deg,var(--ob500-orange-soft),var(--ob500-surface))}
+.ob500-power-toggle.is-selected .ob500-power-icon{background:linear-gradient(145deg,#5d5369,#312b39);color:#ffd7a9;box-shadow:0 9px 20px rgba(50,42,59,.15)}
+.ob500-power-toggle.is-selected>em{background:var(--ob500-orange);border-color:transparent}
+.ob500-power-toggle.is-selected>em>i{transform:translateX(18px);background:#fff}
+.ob500-avoid-grid label.is-selected>span{border-color:rgba(242,139,80,.30);background:var(--ob500-orange-soft);color:var(--ob500-orange-strong);transform:translateY(-1px)}
+.ob500-avoid-grid label.is-selected>span>i{color:var(--ob500-orange-strong)}
+.ob500-avoid-grid label.is-selected>span>em{opacity:1;background:var(--ob500-orange);border-color:transparent}
+.ob500-map-card.is-selected>.ob500-map-mini{transform:translateY(-3px) scale(1.012);border-color:rgba(242,139,80,.52);box-shadow:0 0 0 3px rgba(242,139,80,.08),0 12px 25px rgba(50,38,30,.08)}
+.ob500-map-card.is-selected>b{color:var(--ob500-orange-strong)}
+.ob500-language.is-selected .ob-language-card-v340{transform:translateY(-2px)!important;border-color:rgba(242,139,80,.38)!important;background:linear-gradient(145deg,var(--ob500-orange-soft),var(--ob500-surface))!important;box-shadow:0 12px 26px rgba(223,111,54,.07)!important}
+.ob500-language.is-selected .ob-language-check-v344{background:var(--ob500-orange)!important;border-color:transparent!important}
+
+/* keyboard, focus and accessibility states */
+.vano-onboarding-v500 input:focus-visible + .ob-choice-card-v340,
+.vano-onboarding-v500 input:focus-visible + .ob-language-card-v340,
+.vano-onboarding-v500 .ob500-route-card:has(input:focus-visible),
+.vano-onboarding-v500 .ob500-map-card:has(input:focus-visible)>.ob500-map-mini,
+.vano-onboarding-v500 .ob500-power-toggle:has(input:focus-visible),
+.vano-onboarding-v500 .ob500-avoid-grid label:has(input:focus-visible)>span{
+  outline:2px solid rgba(242,139,80,.72)!important;
+  outline-offset:3px!important;
+}
+.vano-onboarding-v500 button:focus-visible,
+.vano-onboarding-v500 a:focus-visible{
+  outline:2px solid rgba(242,139,80,.78)!important;
+  outline-offset:3px!important;
+}
+.vano-onboarding-v500 .ob500-field,
+.vano-onboarding-v500 .ob500-section-card{scroll-margin-top:88px;scroll-margin-bottom:110px}
+.vano-onboarding-v500 .ob500-primary:disabled{cursor:wait!important;opacity:.88!important;filter:saturate(.92)!important;transform:none!important}
+.vano-onboarding-v500 .ob500-primary:disabled:before{display:none}
+
+/* prevent selected/hover transforms from fighting on touch */
+@media(hover:hover) and (pointer:fine){
+  .ob500-choice:hover .ob-choice-card-v340{transform:translateY(-2px)}
+  .ob500-route-card:hover{transform:translateY(-3px)}
+  .ob500-power-toggle:hover{transform:translateY(-1px)}
+  .ob500-avoid-grid label:hover>span{transform:translateY(-2px)}
+  .ob500-map-card:hover>.ob500-map-mini{transform:translateY(-3px)}
+  .ob500-language:hover .ob-language-card-v340{transform:translateY(-2px)!important}
+}
+@media(hover:none),(pointer:coarse){
+  .ob500-choice:hover .ob-choice-card-v340,
+  .ob500-route-card:hover,
+  .ob500-power-toggle:hover,
+  .ob500-avoid-grid label:hover>span,
+  .ob500-map-card:hover>.ob500-map-mini,
+  .ob500-language:hover .ob-language-card-v340{box-shadow:inherit}
+  .ob500-route-card:not(.is-selected):hover,
+  .ob500-power-toggle:not(.is-selected):hover,
+  .ob500-avoid-grid label:not(.is-selected):hover>span,
+  .ob500-map-card:not(.is-selected):hover>.ob500-map-mini,
+  .ob500-language:not(.is-selected):hover .ob-language-card-v340,
+  .ob500-choice:not(.is-selected):hover .ob-choice-card-v340{transform:none!important}
+}
+
+/* smoother press feedback without lingering hover */
+.ob500-choice:active .ob-choice-card-v340,
+.ob500-route-card:active,
+.ob500-power-toggle:active,
+.ob500-avoid-grid label:active>span,
+.ob500-map-card:active>.ob500-map-mini,
+.ob500-language:active .ob-language-card-v340{transform:scale(.985)!important;transition-duration:.08s!important}
+.ob500-primary,.ob500-back{user-select:none;-webkit-user-select:none}
+.ob500-back{transition:transform .18s var(--ob500-ease),border-color .18s,background .18s!important}
+.ob500-back:active{transform:scale(.975)!important}
+
+/* make the right preview stable on short/long desktop pages */
+@media(min-width:901px){
+  .ob500-shell{align-items:stretch!important}
+  .ob500-preview{height:auto!important;min-height:calc(100svh - 24px)!important;align-self:stretch!important}
+  .ob500-main{min-height:calc(100svh - 24px)!important}
+}
+
+/* mobile hardening */
+@media(max-width:900px){
+  html.vano-onboarding-v500-js,
+  html.vano-onboarding-v500-js body{width:100%!important;max-width:100%!important}
+  body.vano-route-onboarding{position:relative!important;max-width:100vw!important;-webkit-overflow-scrolling:touch}
+  .vano-onboarding-v500{width:100%!important;max-width:100vw!important}
+  .ob500-main{width:100%!important;max-width:100vw!important;padding-bottom:max(132px,calc(env(safe-area-inset-bottom) + 120px))!important}
+  .ob500-top,.ob500-journey,.ob500-step,.ob500-section-card,.ob500-card,.ob500-loadout{max-width:100%!important}
+  .ob500-progress{top:env(safe-area-inset-top);isolation:isolate}
+  .ob500-progress:after{content:"";position:absolute;left:0;right:0;top:-12px;height:12px;background:var(--ob500-surface);z-index:-1}
+  .ob500-map-grid{touch-action:pan-x!important;scrollbar-width:none;scroll-padding-inline:12px;max-width:100%;width:100%}
+  .ob500-map-grid::-webkit-scrollbar{display:none}
+  .ob500-map-card{touch-action:pan-x}
+  .ob500-route-card,.ob500-choice,.ob500-language,.ob500-power-toggle,.ob500-avoid-grid label{touch-action:manipulation}
+  .ob500-actions{transition:opacity .18s ease,transform .22s var(--ob500-ease),box-shadow .22s ease!important;contain:layout paint}
+  .vano-onboarding-v500.is-input-focused .ob500-actions{
+    position:static!important;
+    left:auto!important;right:auto!important;bottom:auto!important;
+    margin-top:18px!important;
+    padding:10px 0 0!important;
+    min-height:62px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:linear-gradient(180deg,transparent,var(--ob500-surface) 28%)!important;
+    backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+    box-shadow:none!important;
+  }
+  .vano-onboarding-v500.is-input-focused .ob500-step{padding-bottom:10px!important}
+  .ob500-input input{min-width:0!important;width:100%!important}
+  .ob500-section-head{min-width:0}
+  .ob500-map-selected,.ob500-live-dot{flex:0 0 auto}
+}
+
+@media(max-width:520px){
+  .ob500-main{padding-left:12px!important;padding-right:12px!important}
+  .ob500-heading h1{overflow-wrap:normal;word-break:normal}
+  .ob500-section-card{padding:13px}
+  .ob500-id-card{padding:12px!important}
+  .ob500-loadout{padding:13px}
+  .ob500-actions{left:6px!important;right:6px!important;bottom:max(6px,env(safe-area-inset-bottom))!important;padding:7px!important;border-radius:18px!important}
+  .vano-onboarding-v500.is-input-focused .ob500-actions{padding:8px 0 0!important}
+  .ob500-primary{min-height:52px!important}
+  .ob500-map-grid{grid-template-columns:repeat(5,minmax(78px,1fr));gap:7px}
+}
+
+/* animate only the parts that actually change */
+.ob500-preview.is-map-changing .ob500-map-bg{animation:ob500MapSurface .42s var(--ob500-ease)}
+@keyframes ob500MapSurface{0%{opacity:.72;transform:scale(1.012)}100%{opacity:1;transform:none}}
+.ob500-language-current.is-changing{animation:ob500LanguagePop .34s var(--ob500-ease)}
+@keyframes ob500LanguagePop{0%{transform:scale(.97);opacity:.7}65%{transform:scale(1.02)}100%{transform:none;opacity:1}}
+.ob500-avoid-grid label.is-picked>span{animation:ob500Pick .35s var(--ob500-ease)}
+
+@media(prefers-reduced-motion:reduce){
+  .ob500-preview.is-map-changing .ob500-map-bg,
+  .ob500-language-current.is-changing,
+  .ob500-avoid-grid label.is-picked>span{animation:none!important}
+}
