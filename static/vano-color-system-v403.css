@@ -1,0 +1,250 @@
+/* VANO MAPS V403 — Global neutral surface system
+   Removes legacy brown/cream surfaces while preserving the VANO orange as accent. */
+:root{
+  --vano-ui-bg:#F4F5F8;
+  --vano-ui-surface:#FFFFFF;
+  --vano-ui-surface-2:#F8F9FC;
+  --vano-ui-surface-3:#EEF1F5;
+  --vano-ui-text:#171A21;
+  --vano-ui-muted:#687386;
+  --vano-ui-faint:#98A0AD;
+  --vano-ui-line:rgba(23,26,33,.09);
+  --vano-ui-line-strong:rgba(23,26,33,.14);
+  --vano-ui-shadow:0 24px 70px rgba(27,34,49,.10),0 2px 10px rgba(27,34,49,.035);
+  --vano-ui-shadow-soft:0 12px 32px rgba(27,34,49,.07);
+  --vano-ui-orange:#F28B50;
+  --vano-ui-orange-strong:#DE6F36;
+  --vano-ui-orange-soft:#FFF1E8;
+
+  /* legacy/global tokens */
+  --bg:var(--vano-ui-bg);
+  --surface:var(--vano-ui-surface);
+  --surface-2:var(--vano-ui-surface-2);
+  --surface-3:var(--vano-ui-surface-3);
+  --text:var(--vano-ui-text);
+  --muted:var(--vano-ui-muted);
+  --muted-2:var(--vano-ui-faint);
+  --line:var(--vano-ui-line);
+  --vano-bg:var(--vano-ui-bg);
+  --vano-card:var(--vano-ui-surface);
+  --vano-card-2:var(--vano-ui-surface-2);
+  --vano-paper:var(--vano-ui-surface);
+  --vano-soft-2:var(--vano-ui-surface-2);
+  --vano-ink:var(--vano-ui-text);
+  --v-card-solid:var(--vano-ui-surface);
+  --v-ink:var(--vano-ui-text);
+  --v171-paper:var(--vano-ui-surface);
+  --v171-ink:var(--vano-ui-text);
+  --v173-paper:var(--vano-ui-surface);
+  --v173-ink:var(--vano-ui-text);
+  --v268-ink:var(--vano-ui-text);
+  --vg-brand-softer:var(--vano-ui-surface-2);
+  --vg-primary-soft:var(--vano-ui-surface-2);
+
+  /* V402 auth/onboarding */
+  --v402-bg:var(--vano-ui-bg);
+  --v402-card:var(--vano-ui-surface);
+  --v402-card-2:var(--vano-ui-surface-2);
+  --v402-ink:var(--vano-ui-text);
+  --v402-muted:var(--vano-ui-muted);
+  --v402-faint:var(--vano-ui-faint);
+  --v402-line:var(--vano-ui-line);
+  --v402-line-strong:var(--vano-ui-line-strong);
+  --v402-shadow:var(--vano-ui-shadow);
+  --v402-shadow-soft:var(--vano-ui-shadow-soft);
+  --v402-accent-soft:var(--vano-ui-orange-soft);
+
+  /* V353 signed-in shell */
+  --v353-cream:var(--vano-ui-bg);
+  --v353-ink:var(--vano-ui-text);
+  --v353-muted:var(--vano-ui-muted);
+  --v353-line:var(--vano-ui-line);
+  --v353-card:rgba(255,255,255,.94);
+  --v353-shadow:var(--vano-ui-shadow-soft);
+  --v353-orange-soft:var(--vano-ui-orange-soft);
+}
+
+html[data-vano-theme="black"],
+html[data-vano-theme-mode="black"]{
+  --vano-ui-bg:#090B0E;
+  --vano-ui-surface:#11151A;
+  --vano-ui-surface-2:#171C22;
+  --vano-ui-surface-3:#1D232B;
+  --vano-ui-text:#F6F7F9;
+  --vano-ui-muted:#9AA3AF;
+  --vano-ui-faint:#6F7885;
+  --vano-ui-line:rgba(255,255,255,.075);
+  --vano-ui-line-strong:rgba(255,255,255,.13);
+  --vano-ui-shadow:0 28px 84px rgba(0,0,0,.36),0 2px 12px rgba(0,0,0,.22);
+  --vano-ui-shadow-soft:0 16px 42px rgba(0,0,0,.24);
+  --vano-ui-orange:#FF985C;
+  --vano-ui-orange-strong:#F08143;
+  --vano-ui-orange-soft:rgba(255,139,76,.11);
+
+  --bg:var(--vano-ui-bg);
+  --surface:var(--vano-ui-surface);
+  --surface-2:var(--vano-ui-surface-2);
+  --surface-3:var(--vano-ui-surface-3);
+  --text:var(--vano-ui-text);
+  --muted:var(--vano-ui-muted);
+  --muted-2:var(--vano-ui-faint);
+  --line:var(--vano-ui-line);
+  --vano-bg:var(--vano-ui-bg);
+  --vano-card:var(--vano-ui-surface);
+  --vano-card-2:var(--vano-ui-surface-2);
+  --vano-paper:var(--vano-ui-surface);
+  --vano-soft-2:var(--vano-ui-surface-2);
+  --vano-ink:var(--vano-ui-text);
+  --v-card-solid:var(--vano-ui-surface);
+  --v-ink:var(--vano-ui-text);
+  --v171-paper:var(--vano-ui-surface);
+  --v171-ink:var(--vano-ui-text);
+  --v173-paper:var(--vano-ui-surface);
+  --v173-black:var(--vano-ui-bg);
+  --v173-black-2:var(--vano-ui-surface);
+  --v173-ink:var(--vano-ui-text);
+  --v268-ink:var(--vano-ui-text);
+  --vb-bg:var(--vano-ui-bg);
+  --vb-surface:var(--vano-ui-surface);
+  --vb-surface-2:var(--vano-ui-surface-2);
+  --vb-text:var(--vano-ui-text);
+  --vr-surface:var(--vano-ui-surface);
+  --vt-bg:var(--vano-ui-bg);
+  --vt-surface:var(--vano-ui-surface);
+  --vt-surface-2:var(--vano-ui-surface-2);
+
+  --v402-bg:var(--vano-ui-bg);
+  --v402-card:var(--vano-ui-surface);
+  --v402-card-2:var(--vano-ui-surface-2);
+  --v402-ink:var(--vano-ui-text);
+  --v402-muted:var(--vano-ui-muted);
+  --v402-faint:var(--vano-ui-faint);
+  --v402-line:var(--vano-ui-line);
+  --v402-line-strong:var(--vano-ui-line-strong);
+  --v402-shadow:var(--vano-ui-shadow);
+  --v402-shadow-soft:var(--vano-ui-shadow-soft);
+  --v402-accent-soft:var(--vano-ui-orange-soft);
+
+  --v353-cream:var(--vano-ui-bg);
+  --v353-ink:var(--vano-ui-text);
+  --v353-muted:var(--vano-ui-muted);
+  --v353-line:var(--vano-ui-line);
+  --v353-card:rgba(17,21,26,.94);
+  --v353-shadow:var(--vano-ui-shadow-soft);
+  --v353-orange-soft:var(--vano-ui-orange-soft);
+}
+
+/* Base page background: one neutral canvas, no legacy beige/brown wash. */
+html,body{background-color:var(--vano-ui-bg)!important}
+body:not(.vano-map-surface){background:var(--vano-ui-bg)!important;color:var(--vano-ui-text)}
+body:not(.vano-map-surface):before{background:none!important}
+
+/* Auth / register / onboarding */
+body.vano-auth-startup,
+.startup-ambient,
+.vano-register-v340,
+.vano-onboarding-v340,
+.vano-onboarding-v402{background:var(--vano-ui-bg)!important}
+.startup-shell,.startup-auth,.register-shell,.register-panel,.ob-shell-v340.ob-shell-v402,.ob-main-v340{background:var(--vano-ui-surface)!important}
+.startup-benefits-v402 span,.startup-secondary,.startup-input-wrap,.register-google,.register-input-shell,.ob-card-v340,.ob-summary-v340,.ob-summary-grid-v340>div,.ob-ready-note-v340{background:var(--vano-ui-surface-2)!important}
+.startup-primary,.register-input-shell:hover,.register-input-shell:focus-within,.ob-input-v340,.ob-choice-card-v340,.ob-language-card-v340,.ob-language-current-v344,.ob-live-profile-v402{background:var(--vano-ui-surface)!important}
+
+/* Signed-in shell */
+body.vano-signed-in.vano-page-surface .topbar{background:color-mix(in srgb,var(--vano-ui-bg) 88%,transparent)!important;box-shadow:0 8px 28px rgba(27,34,49,.055)!important}
+body.vano-signed-in.vano-page-surface .navlinks,
+body.vano-signed-in.vano-page-surface .vano-theme-toggle,
+body.vano-signed-in.vano-page-surface .vano-nav-account{background:color-mix(in srgb,var(--vano-ui-surface) 92%,transparent)!important}
+@media(max-width:640px){body.vano-signed-in.vano-page-surface .mobile-dock.vano-mobile-nav{background:color-mix(in srgb,var(--vano-ui-surface) 95%,transparent)!important;box-shadow:0 18px 46px rgba(27,34,49,.13),inset 0 1px 0 rgba(255,255,255,.58)!important}}
+
+/* Profile — replaces the old cream/brown palette entirely. */
+.vano-profile353{
+  --p353-bg:var(--vano-ui-bg);
+  --p353-card:var(--vano-ui-surface);
+  --p353-card-2:var(--vano-ui-surface-2);
+  --p353-soft:var(--vano-ui-surface-2);
+  --p353-soft-2:var(--vano-ui-surface-3);
+  --p353-line:var(--vano-ui-line);
+  --p353-line-strong:var(--vano-ui-line-strong);
+  --p353-ink:var(--vano-ui-text);
+  --p353-muted:var(--vano-ui-muted);
+  --p353-faint:var(--vano-ui-faint);
+  --p353-orange-soft:var(--vano-ui-orange-soft);
+  --p353-shadow:var(--vano-ui-shadow);
+  --p353-shadow-soft:var(--vano-ui-shadow-soft);
+  background:var(--vano-ui-bg)!important;
+}
+html[data-vano-theme="black"] .vano-profile353,
+html[data-vano-theme-mode="black"] .vano-profile353{
+  --p353-bg:var(--vano-ui-bg);
+  --p353-card:var(--vano-ui-surface);
+  --p353-card-2:var(--vano-ui-surface-2);
+  --p353-soft:var(--vano-ui-surface-2);
+  --p353-soft-2:var(--vano-ui-surface-3);
+  --p353-line:var(--vano-ui-line);
+  --p353-line-strong:var(--vano-ui-line-strong);
+  --p353-ink:var(--vano-ui-text);
+  --p353-muted:var(--vano-ui-muted);
+  --p353-faint:var(--vano-ui-faint);
+  --p353-orange-soft:var(--vano-ui-orange-soft);
+  background:var(--vano-ui-bg)!important;
+}
+.vano-profile353 .profile350-hero{background:linear-gradient(135deg,var(--vano-ui-surface) 0%,var(--vano-ui-surface) 72%,var(--vano-ui-surface-2) 100%)!important}
+
+/* Map account drawer — this was one of the strongest remaining brown areas. */
+body.vano-map-surface .account-drawer{
+  --ad353-card:var(--vano-ui-surface);
+  --ad353-soft:var(--vano-ui-surface-2);
+  --ad353-line:var(--vano-ui-line);
+  --ad353-ink:var(--vano-ui-text);
+  --ad353-muted:var(--vano-ui-muted);
+  --ad353-orange-soft:var(--vano-ui-orange-soft);
+  background:color-mix(in srgb,var(--vano-ui-surface) 98%,transparent)!important;
+  box-shadow:0 28px 80px rgba(27,34,49,.18),0 3px 12px rgba(27,34,49,.05)!important;
+}
+body.vano-map-surface .drawer-user{background:var(--vano-ui-surface)!important;box-shadow:0 8px 24px rgba(27,34,49,.05)!important}
+body.vano-map-surface .drawer-grab{background:#D8DDE5!important}
+body.vano-map-surface .v258-drawer-close{color:var(--vano-ui-muted)!important}
+body.vano-map-surface .v258-drawer-label{color:var(--vano-ui-faint)!important}
+body.vano-map-surface .v258-drawer-label span:last-child{color:var(--vano-ui-faint)!important}
+body.vano-map-surface .drawer-link>svg:last-child{color:var(--vano-ui-faint)!important}
+body.vano-map-surface .drawer-profile:hover,
+body.vano-map-surface .drawer-link:hover{background:var(--vano-ui-orange-soft)!important}
+body.vano-map-surface .drawer-link:hover>svg:first-child{background:var(--vano-ui-surface)!important}
+body.vano-map-surface .v351-account-actions .drawer-link>svg:first-child{background:var(--vano-ui-surface)!important}
+
+html[data-vano-theme="black"] body.vano-map-surface .account-drawer,
+html[data-vano-theme-mode="black"] body.vano-map-surface .account-drawer{
+  --ad353-card:var(--vano-ui-surface);
+  --ad353-soft:var(--vano-ui-surface-2);
+  --ad353-line:var(--vano-ui-line);
+  --ad353-ink:var(--vano-ui-text);
+  --ad353-muted:var(--vano-ui-muted);
+  --ad353-orange-soft:var(--vano-ui-orange-soft);
+  background:rgba(17,21,26,.985)!important;
+}
+html[data-vano-theme="black"] body.vano-map-surface .drawer-user,
+html[data-vano-theme-mode="black"] body.vano-map-surface .drawer-user{background:var(--vano-ui-surface)!important}
+html[data-vano-theme="black"] body.vano-map-surface .drawer-grab,
+html[data-vano-theme-mode="black"] body.vano-map-surface .drawer-grab{background:#3A424D!important}
+html[data-vano-theme="black"] body.vano-map-surface .drawer-profile,
+html[data-vano-theme-mode="black"] body.vano-map-surface .drawer-profile{background:var(--vano-ui-orange-soft)!important;border-color:rgba(255,145,79,.18)!important}
+html[data-vano-theme="black"] body.vano-map-surface .drawer-link:hover,
+html[data-vano-theme-mode="black"] body.vano-map-surface .drawer-link:hover{background:var(--vano-ui-orange-soft)!important;border-color:rgba(255,145,79,.18)!important}
+html[data-vano-theme="black"] body.vano-map-surface .drawer-link:hover>svg:first-child,
+html[data-vano-theme-mode="black"] body.vano-map-surface .drawer-link:hover>svg:first-child,
+html[data-vano-theme="black"] body.vano-map-surface .v351-account-actions .drawer-link>svg:first-child,
+html[data-vano-theme-mode="black"] body.vano-map-surface .v351-account-actions .drawer-link>svg:first-child{background:var(--vano-ui-surface-2)!important}
+
+/* Prevent old warm mobile/auth styles from winning by specificity. */
+html[data-vano-theme="black"] body.vano-auth-startup,
+html[data-vano-theme-mode="black"] body.vano-auth-startup,
+html[data-vano-theme="black"] .vano-register-v340,
+html[data-vano-theme-mode="black"] .vano-register-v340,
+html[data-vano-theme="black"] .vano-onboarding-v340,
+html[data-vano-theme-mode="black"] .vano-onboarding-v340{background:var(--vano-ui-bg)!important;color:var(--vano-ui-text)!important}
+html[data-vano-theme="black"] .register-shell,
+html[data-vano-theme-mode="black"] .register-shell,
+html[data-vano-theme="black"] .register-panel,
+html[data-vano-theme-mode="black"] .register-panel{background:var(--vano-ui-surface)!important}
+
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-  <meta name="theme-color" content="#F7F5F2">
+  <meta name="theme-color" content="#F4F5F8">
   <script>
   (()=>{try{const keys=['vano.theme.mode.v200','vano.theme.mode.v60','vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55','vano.theme.mode'];let mode='light';for(const key of keys){const value=localStorage.getItem(key);if(value){mode=String(value).toLowerCase()==='black'?'black':'light';break}}document.documentElement.dataset.vanoTheme=mode;document.documentElement.dataset.vanoThemeMode=mode;document.documentElement.style.colorScheme=mode==='black'?'dark':'light'}catch(_){}})();
   </script>
@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-login-startup-v343.css') }}?v={{ vano_build_id }}-346">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-startup-v351.css') }}?v={{ vano_build_id }}-351">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-experience-v402.css') }}?v={{ vano_build_id }}-402">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-color-system-v403.css') }}?v={{ vano_build_id }}-403">
   <script defer src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
 </head>
 <body class="vano-auth-startup">

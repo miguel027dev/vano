@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
   <script src="{{ url_for('static', filename='vano-i18n-v230.js') }}?v={{ vano_build_id }}"></script>
-  <meta name="theme-color" content="#FFFBF2">
+  <meta name="theme-color" content="#F4F5F8">
   <script>(function(){
     var MODE_KEY='vano.theme.mode.v60';
     var LEGACY_KEYS=['vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55'];
@@ -24,7 +24,7 @@
     document.documentElement.dataset.vanoTheme=mode;
     document.documentElement.style.colorScheme=mode==='black'?'dark':'light';
     var meta=document.querySelector('meta[name="theme-color"]');
-    if(meta)meta.setAttribute('content',mode==='black'?'#171512':'#FFFBF2');
+    if(meta)meta.setAttribute('content',mode==='black'?'#090B0E':'#F4F5F8');
   })();</script>
   <meta name="description" content="{% block meta_description %}VANO MAPS — GPS com rotas rápidas, navegação inteligente e informações úteis para o trajeto.{% endblock %}">
   <meta name="robots" content="{% if seo_indexable %}index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1{% else %}noindex,nofollow{% endif %}">
@@ -134,6 +134,7 @@
   {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-v350.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if current_user and not vano_admin_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-shell-v353.css') }}?v={{ vano_build_id }}-353">{% endif %}
   {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-v353.css') }}?v={{ vano_build_id }}-353">{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-color-system-v403.css') }}?v={{ vano_build_id }}-403">
   {% if vano_map_surface %}
   <script>try{
     const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);
