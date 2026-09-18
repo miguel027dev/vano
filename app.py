@@ -8427,8 +8427,16 @@ def onboarding():
             age = 0
         sex = str(request.form.get("sex", "")).strip().lower()
         locale = _normalize_ui_locale(request.form.get("locale", ""))
+        route_preference = str(request.form.get("route_preference", "balanced")).strip().lower()
+        map_style = str(request.form.get("map_style", "auto")).strip().lower()
+        night_safety_mode = 1 if request.form.get("night_safety_mode") == "1" else 0
+        avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" else 0
+        avoid_tolls = 1 if request.form.get("avoid_tolls") == "1" else 0
+        avoid_unpaved = 1 if request.form.get("avoid_unpaved") == "1" else 0
 
         allowed_sex = {"female", "male", "intersex_other", "prefer_not_say"}
+        allowed_route_preferences = {"balanced", "safety_first", "fast_first"}
+        allowed_map_styles = {"auto", "day", "afternoon", "night", "rain"}
         errors = []
         if len(name) < 2 or len(name) > 80:
             errors.append("Informe um nome válido.")
@@ -8438,26 +8446,45 @@ def onboarding():
             errors.append("Selecione uma opção de sexo válida.")
         if locale not in SUPPORTED_UI_LOCALES:
             errors.append("Selecione um idioma válido.")
+        if route_preference not in allowed_route_preferences:
+            errors.append("Selecione uma preferência de rota válida.")
+        if map_style not in allowed_map_styles:
+            errors.append("Selecione um estilo de mapa válido.")
 
         if errors:
             for message in errors:
                 flash(message, "danger")
             form_user = dict(user)
-            form_user.update({"name": name, "age": age or "", "sex": sex, "locale": locale or active_ui_locale()})
+            form_user.update({
+                "name": name, "age": age or "", "sex": sex, "locale": locale or active_ui_locale(),
+                "route_preference": route_preference if route_preference in allowed_route_preferences else "balanced",
+                "map_style": map_style if map_style in allowed_map_styles else "auto",
+                "night_safety_mode": night_safety_mode, "avoid_ferries": avoid_ferries,
+                "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved,
+            })
             return render_template("onboarding.html", user=form_user), 400
 
         db = get_db()
         db.execute(
             """UPDATE users
                SET name=?, age=?, sex=?, locale=?,
+                   route_preference=?, night_safety_mode=?, map_style=?,
+                   avoid_ferries=?, avoid_tolls=?, avoid_unpaved=?,
                    is_app_driver=COALESCE(is_app_driver, 0),
                    onboarding_completed_at=?, presence_visible=?
                WHERE id=?""",
-            (name, age, sex, locale, utcnow_iso(), 0, user["id"]),
+            (
+                name, age, sex, locale, route_preference, night_safety_mode, map_style,
+                avoid_ferries, avoid_tolls, avoid_unpaved, utcnow_iso(), 0, user["id"],
+            ),
         )
         db.execute("DELETE FROM nearby_presence WHERE user_id=?", (user["id"],))
         db.commit()
-        audit("profile_onboarding_complete", {"locale": locale}, user["id"])
+        audit(
+            "profile_onboarding_complete",
+            {"locale": locale, "route_preference": route_preference, "map_style": map_style, "night_safety_mode": bool(night_safety_mode)},
+            user["id"],
+        )
 
         flash("Perfil configurado.", "success")
         response = redirect(safe_next_url(request.args.get("next")) or url_for("map_page"))

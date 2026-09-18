@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Personalizar conta · VANO MAPS{% endblock %}
 {% block head %}
-<script>document.documentElement.classList.add('vano-onboarding-js')</script>
+<script>document.documentElement.classList.add('vano-onboarding-js','vano-onboarding-v500-js')</script>
 {% endblock %}
 {% block tail_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding-v343.css') }}?v={{ vano_build_id }}">
@@ -11,188 +11,250 @@
 {% block content %}
 {% set selected_locale = user['locale'] or active_locale %}
 {% set selected_sex = user['sex'] or '' %}
-<div class="vano-onboarding-v340 vano-onboarding-v402">
-  <main class="ob-shell-v340 ob-shell-v402">
-    <section class="ob-main-v340">
-      <header class="ob-top-v340">
+{% set selected_route = user['route_preference'] or 'balanced' %}
+{% set selected_map = user['map_style'] or 'auto' %}
+{% set night_safety = user['night_safety_mode'] if user['night_safety_mode'] is not none else 1 %}
+<div class="vano-onboarding-v340 vano-onboarding-v402 vano-onboarding-v500" data-ob500-root>
+  <div class="ob500-ambient" aria-hidden="true"><i></i><i></i><i></i></div>
+  <main class="ob-shell-v340 ob-shell-v402 ob500-shell">
+    <section class="ob-main-v340 ob500-main">
+      <header class="ob-top-v340 ob500-top">
         <a class="ob-brand-v340" href="{{ url_for('index') }}" aria-label="VANO MAPS">
           <span class="vano-adaptive-brand">
             <img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS">
             <img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true">
           </span>
         </a>
-        <div class="ob-head-actions-v402">
+        <div class="ob500-statusbar">
+          <div class="ob500-xp" aria-live="polite"><span>SETUP</span><b id="ob500Xp">33%</b></div>
           <span class="ob-step-label-v340" id="obStepLabel">1 de 3</span>
-          <button class="ob-theme-v402" type="button" data-vano-theme-toggle aria-label="Alternar tema" title="Alternar tema">
+          <button class="ob-theme-v402 ob500-theme" type="button" data-vano-theme-toggle aria-label="Alternar tema" title="Alternar tema">
             <i class="v402-sun" data-lucide="sun" width="16"></i>
             <i class="v402-moon" data-lucide="moon-star" width="16"></i>
           </button>
         </div>
       </header>
 
-      <div class="ob-progress-v340" aria-hidden="true"><i id="obProgressBar"></i></div>
-      <div class="ob-journey-v402" aria-hidden="true">
-        <span class="is-active" data-ob-progress-step="1"><i>1</i><span><b>Você</b><small>Perfil essencial</small></span></span>
-        <span data-ob-progress-step="2"><i>2</i><span><b>Idioma</b><small>Experiência</small></span></span>
-        <span data-ob-progress-step="3"><i>3</i><span><b>Pronto</b><small>Abrir o mapa</small></span></span>
+      <div class="ob500-progress" aria-hidden="true"><i id="obProgressBar"></i><span id="ob500ProgressSpark"></span></div>
+      <div class="ob-journey-v402 ob500-journey" aria-label="Progresso da personalização">
+        <span class="is-active" data-ob-progress-step="1"><i><b>01</b><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"></circle></svg></i><span><b>Identidade</b><small>Monte seu perfil</small></span></span>
+        <span data-ob-progress-step="2"><i><b>02</b><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"></circle></svg></i><span><b>Pilotagem</b><small>Defina seu VANO</small></span></span>
+        <span data-ob-progress-step="3"><i><b>03</b><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"></circle></svg></i><span><b>Launch</b><small>Ative seu mapa</small></span></span>
       </div>
 
-      <form method="post" id="onboardingForm" class="ob-form-v340" novalidate>
+      <form method="post" id="onboardingForm" class="ob-form-v340 ob500-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <section class="ob-step-v340 is-active" data-ob-step="1" aria-labelledby="obTitle1">
-          <div class="ob-step-heading-v340">
-            <span class="ob-eyebrow-v340"><i data-lucide="sparkles" width="13"></i> Personalização rápida</span>
-            <h1 id="obTitle1">Deixe o VANO com<br><span>a sua cara.</span></h1>
-            <p>São poucos dados e nenhum formulário infinito. Você configura o essencial agora e já cai no mapa pronto para buscar o primeiro destino.</p>
+        <section class="ob-step-v340 ob500-step is-active" data-ob-step="1" aria-labelledby="obTitle1">
+          <div class="ob500-step-grid">
+            <div class="ob-step-heading-v340 ob500-heading">
+              <span class="ob-eyebrow-v340 ob500-eyebrow"><i data-lucide="fingerprint" width="14"></i> VANO ID // ETAPA 01</span>
+              <h1 id="obTitle1">Primeiro, o VANO<br><span>precisa conhecer você.</span></h1>
+              <p>Sem formulário chato. Só o necessário para montar sua experiência e deixar o app com cara de algo feito para você.</p>
+            </div>
+            <div class="ob500-level-card" aria-hidden="true"><span>NÍVEL DE SETUP</span><b id="ob500ProfileLevel">0/3</b><em><i id="ob500ProfileMeter"></i></em><small>Complete seu VANO ID</small></div>
           </div>
 
-          <div class="ob-card-v340 ob-profile-card-v344">
-            <div class="ob-card-head-v340 ob-card-head-profile-v344">
-              <div>
-                <b>Seu perfil</b>
-                <small>O básico para personalizar a experiência sem travar seu caminho.</small>
-              </div>
-              <span class="ob-completion-chip-v344" id="obProfileStatus"><i data-lucide="circle-dashed" width="14"></i><b>0/3</b><small>preenchidos</small></span>
+          <div class="ob-card-v340 ob-profile-card-v344 ob500-card ob500-id-card">
+            <div class="ob500-id-banner">
+              <div class="ob500-avatar" id="ob500Avatar"><span id="obLiveInitial">V</span><i></i></div>
+              <div class="ob500-id-copy"><small>VANO PLAYER</small><b id="obLiveGreeting">Seu perfil VANO</b><span id="ob500IdMeta">Novo explorador</span></div>
+              <span class="ob500-id-tag"><i data-lucide="sparkles" width="13"></i> ID LIVE</span>
             </div>
 
-            <div class="ob-live-profile-v402" aria-live="polite">
-              <span id="obLiveInitial">V</span>
-              <div><small>COMO VAI APARECER</small><b id="obLiveGreeting">Seu perfil VANO</b></div>
-              <em>Você pode mudar depois</em>
-            </div>
-
-            <label class="ob-field-v340 ob-field-full-v340" for="onboardingName">
-              <span>Como podemos te chamar?</span>
-              <div class="ob-input-v340">
-                <i data-lucide="user-round" width="17"></i>
+            <label class="ob-field-v340 ob-field-full-v340 ob500-field" for="onboardingName">
+              <span>Como o VANO vai te chamar?</span>
+              <div class="ob-input-v340 ob500-input">
+                <i data-lucide="user-round" width="18"></i>
                 <input id="onboardingName" type="text" name="name" maxlength="80" autocomplete="name" required value="{{ user['name'] or '' }}" placeholder="Seu nome" enterkeyhint="next">
+                <em class="ob500-field-check"><i data-lucide="check" width="14"></i></em>
               </div>
-              <small class="ob-field-note-v340">Usamos isso na conta e em mensagens úteis do aplicativo.</small>
+              <small class="ob-field-note-v340">O nome aparece em mensagens e no seu perfil.</small>
             </label>
 
-            <div class="ob-field-grid-v340 ob-field-grid-tight-v340">
-              <label class="ob-field-v340" for="onboardingAge">
-                <span>Idade</span>
-                <div class="ob-input-v340">
-                  <i data-lucide="calendar-days" width="17"></i>
+            <div class="ob-field-grid-v340 ob-field-grid-tight-v340 ob500-field-grid">
+              <label class="ob-field-v340 ob500-field" for="onboardingAge">
+                <span>Sua idade</span>
+                <div class="ob-input-v340 ob500-input">
+                  <i data-lucide="calendar-days" width="18"></i>
                   <input id="onboardingAge" type="number" name="age" min="13" max="100" inputmode="numeric" required value="{{ user['age'] or '' }}" placeholder="Ex.: 18" enterkeyhint="done">
+                  <em class="ob500-field-check"><i data-lucide="check" width="14"></i></em>
                 </div>
-                <small class="ob-field-note-v340">Ajuda a liberar apenas recursos compatíveis com a sua conta.</small>
+                <small class="ob-field-note-v340">Usada apenas para liberar recursos compatíveis com sua conta.</small>
               </label>
 
-              <div class="ob-field-v340 ob-field-choice-v340" id="onboardingSexField">
-                <span>Sexo</span>
-                <div class="ob-choice-grid-v340" role="radiogroup" aria-label="Sexo">
-                  <label class="ob-choice-v340">
-                    <input type="radio" name="sex" value="female" {% if selected_sex=='female' %}checked{% endif %}>
-                    <span class="ob-choice-card-v340"><i data-lucide="venus" width="17"></i><b>Feminino</b><small>Perfil</small></span>
-                  </label>
-                  <label class="ob-choice-v340">
-                    <input type="radio" name="sex" value="male" {% if selected_sex=='male' %}checked{% endif %}>
-                    <span class="ob-choice-card-v340"><i data-lucide="mars" width="17"></i><b>Masculino</b><small>Perfil</small></span>
-                  </label>
-                  <label class="ob-choice-v340">
-                    <input type="radio" name="sex" value="intersex_other" {% if selected_sex=='intersex_other' %}checked{% endif %}>
-                    <span class="ob-choice-card-v340"><i data-lucide="asterisk" width="17"></i><b>Outro</b><small>Intersexo / outro</small></span>
-                  </label>
-                  <label class="ob-choice-v340">
-                    <input type="radio" name="sex" value="prefer_not_say" {% if selected_sex=='prefer_not_say' %}checked{% endif %}>
-                    <span class="ob-choice-card-v340"><i data-lucide="shield" width="17"></i><b>Prefiro não informar</b><small>Privacidade</small></span>
-                  </label>
+              <div class="ob-field-v340 ob-field-choice-v340 ob500-field" id="onboardingSexField">
+                <span>Como prefere registrar seu perfil?</span>
+                <div class="ob-choice-grid-v340 ob500-choice-grid" role="radiogroup" aria-label="Sexo">
+                  <label class="ob-choice-v340 ob500-choice"><input type="radio" name="sex" value="female" {% if selected_sex=='female' %}checked{% endif %}><span class="ob-choice-card-v340"><i data-lucide="venus" width="18"></i><span><b>Feminino</b><small>Perfil</small></span><em><i data-lucide="check" width="12"></i></em></span></label>
+                  <label class="ob-choice-v340 ob500-choice"><input type="radio" name="sex" value="male" {% if selected_sex=='male' %}checked{% endif %}><span class="ob-choice-card-v340"><i data-lucide="mars" width="18"></i><span><b>Masculino</b><small>Perfil</small></span><em><i data-lucide="check" width="12"></i></em></span></label>
+                  <label class="ob-choice-v340 ob500-choice"><input type="radio" name="sex" value="intersex_other" {% if selected_sex=='intersex_other' %}checked{% endif %}><span class="ob-choice-card-v340"><i data-lucide="asterisk" width="18"></i><span><b>Outro</b><small>Intersexo / outro</small></span><em><i data-lucide="check" width="12"></i></em></span></label>
+                  <label class="ob-choice-v340 ob500-choice"><input type="radio" name="sex" value="prefer_not_say" {% if selected_sex=='prefer_not_say' %}checked{% endif %}><span class="ob-choice-card-v340"><i data-lucide="shield" width="18"></i><span><b>Prefiro não informar</b><small>Privacidade</small></span><em><i data-lucide="check" width="12"></i></em></span></label>
                 </div>
-                <small class="ob-field-note-v340">Escolha a opção que preferir. Dá para alterar depois.</small>
               </div>
             </div>
-            <div class="ob-profile-footer-v344"><span><i data-lucide="shield-check" width="15"></i> Dados vinculados à sua conta.</span><span><i data-lucide="pencil-line" width="15"></i> Editável no perfil.</span></div>
           </div>
 
-          <div class="ob-step-actions-v340">
-            <span class="ob-step-hint-v340"><i data-lucide="zap" width="14"></i> Menos de um minuto para entrar no mapa.</span>
-            <button class="ob-next-v340" type="button" data-ob-next><span>Continuar</span><i data-lucide="arrow-right" width="17"></i></button>
+          <div class="ob-step-actions-v340 ob500-actions">
+            <span class="ob-step-hint-v340 ob500-action-hint"><i data-lucide="gamepad-2" width="15"></i> Monte seu VANO em três fases.</span>
+            <button class="ob-next-v340 ob500-primary" type="button" data-ob-next><span>Próxima fase</span><i data-lucide="arrow-right" width="18"></i></button>
           </div>
         </section>
 
-        <section class="ob-step-v340" data-ob-step="2" aria-labelledby="obTitle2">
-          <div class="ob-step-heading-v340">
-            <span class="ob-eyebrow-v340"><i data-lucide="languages" width="13"></i> Sua experiência</span>
-            <h1 id="obTitle2">O VANO fala<br><span>do seu jeito.</span></h1>
-            <p>Escolha o idioma principal. Interface, buscas e instruções compatíveis passam a seguir essa preferência.</p>
+        <section class="ob-step-v340 ob500-step" data-ob-step="2" aria-labelledby="obTitle2">
+          <div class="ob500-step-grid">
+            <div class="ob-step-heading-v340 ob500-heading">
+              <span class="ob-eyebrow-v340 ob500-eyebrow"><i data-lucide="route" width="14"></i> VANO CORE // ETAPA 02</span>
+              <h1 id="obTitle2">Escolha como seu<br><span>VANO pensa na rua.</span></h1>
+              <p>Essa é a parte diferente: você define o cérebro da rota, o comportamento noturno e a aparência do seu mapa.</p>
+            </div>
+            <div class="ob500-core-badge" id="ob500CoreBadge"><i data-lucide="cpu" width="17"></i><span><small>CORE ATIVO</small><b>Equilibrado</b></span></div>
           </div>
 
-          <div class="ob-card-v340 ob-language-panel-v344">
-            <div class="ob-card-head-v340 ob-language-head-v344">
-              <div>
-                <b>Idioma principal</b>
-                <small>Um toque para escolher. Você pode trocar quando quiser no perfil.</small>
+          <div class="ob500-section-card ob500-route-section">
+            <div class="ob500-section-head"><div><span>01 // CÉREBRO DA ROTA</span><h2>Qual é a sua prioridade?</h2><p>Isso altera o peso que o VANO dá para segurança e tempo durante o cálculo.</p></div><span class="ob500-live-dot"><i></i> LIVE</span></div>
+            <div class="ob500-route-grid" role="radiogroup" aria-label="Preferência de rota">
+              <label class="ob500-route-card is-safe" data-route-card="safety_first">
+                <input type="radio" name="route_preference" value="safety_first" {% if selected_route=='safety_first' %}checked{% endif %}>
+                <span class="ob500-route-icon"><i data-lucide="shield-check" width="22"></i></span>
+                <span class="ob500-route-copy"><small>GUARD</small><b>Mais seguro</b><em>Prioriza segurança mesmo que custe alguns minutos.</em></span>
+                <span class="ob500-stat"><i style="--p:88%"></i><small>SEGURANÇA</small><b>88</b></span>
+                <span class="ob500-select-ring"><i data-lucide="check" width="13"></i></span>
+              </label>
+              <label class="ob500-route-card is-balanced" data-route-card="balanced">
+                <input type="radio" name="route_preference" value="balanced" {% if selected_route=='balanced' %}checked{% endif %}>
+                <span class="ob500-route-icon"><i data-lucide="sparkles" width="22"></i></span>
+                <span class="ob500-route-copy"><small>SMART</small><b>Equilibrado</b><em>Combina segurança, trânsito e tempo de forma inteligente.</em></span>
+                <span class="ob500-stat"><i style="--p:76%"></i><small>EQUILÍBRIO</small><b>76</b></span>
+                <span class="ob500-select-ring"><i data-lucide="check" width="13"></i></span>
+              </label>
+              <label class="ob500-route-card is-fast" data-route-card="fast_first">
+                <input type="radio" name="route_preference" value="fast_first" {% if selected_route=='fast_first' %}checked{% endif %}>
+                <span class="ob500-route-icon"><i data-lucide="gauge" width="22"></i></span>
+                <span class="ob500-route-copy"><small>BOOST</small><b>Mais rápido</b><em>Dá mais peso para tempo e trânsito quando houver alternativas.</em></span>
+                <span class="ob500-stat"><i style="--p:91%"></i><small>VELOCIDADE</small><b>91</b></span>
+                <span class="ob500-select-ring"><i data-lucide="check" width="13"></i></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="ob500-config-grid">
+            <div class="ob500-section-card ob500-night-card">
+              <div class="ob500-section-head compact"><div><span>02 // ESCUDO NOTURNO</span><h2>Proteção automática à noite</h2></div></div>
+              <label class="ob500-power-toggle" for="nightSafetyMode">
+                <span class="ob500-power-icon"><i data-lucide="moon-star" width="20"></i></span>
+                <span><b>Modo noturno inteligente</b><small>Entre 19h e 5h, aumenta automaticamente o peso de segurança.</small></span>
+                <input id="nightSafetyMode" type="checkbox" name="night_safety_mode" value="1" {% if night_safety %}checked{% endif %}>
+                <em><i></i></em>
+              </label>
+            </div>
+
+            <div class="ob500-section-card ob500-avoid-card">
+              <div class="ob500-section-head compact"><div><span>03 // FILTROS</span><h2>Evitar quando der</h2></div></div>
+              <div class="ob500-avoid-grid">
+                <label><input type="checkbox" name="avoid_tolls" value="1" {% if user['avoid_tolls'] %}checked{% endif %}><span><i data-lucide="badge-dollar-sign" width="17"></i><b>Pedágios</b><em><i data-lucide="check" width="11"></i></em></span></label>
+                <label><input type="checkbox" name="avoid_unpaved" value="1" {% if user['avoid_unpaved'] %}checked{% endif %}><span><i data-lucide="construction" width="17"></i><b>Terra</b><em><i data-lucide="check" width="11"></i></em></span></label>
+                <label><input type="checkbox" name="avoid_ferries" value="1" {% if user['avoid_ferries'] %}checked{% endif %}><span><i data-lucide="ship-wheel" width="17"></i><b>Balsas</b><em><i data-lucide="check" width="11"></i></em></span></label>
               </div>
-              <div class="ob-language-current-v344" id="obLanguageCurrent" aria-live="polite"><em id="obLanguageCurrentFlag">🇧🇷</em><span><small>SELECIONADO</small><b id="obLanguageCurrentName">Português (Brasil)</b></span></div>
             </div>
-            <div class="ob-language-grid-v340 ob-language-grid-v344" role="radiogroup" aria-label="Idioma">
-              <label class="ob-language-v340" data-language-label="Português (Brasil)" data-language-flag="🇧🇷"><input id="langPt" type="radio" name="locale" value="pt-BR" {% if selected_locale=='pt-BR' %}checked{% endif %} required><span class="ob-language-card-v340"><em>🇧🇷</em><span><b>Português</b><small>Brasil</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
-              <label class="ob-language-v340" data-language-label="English" data-language-flag="🇺🇸"><input id="langEn" type="radio" name="locale" value="en-US" {% if selected_locale=='en-US' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇺🇸</em><span><b>English</b><small>United States</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
-              <label class="ob-language-v340" data-language-label="Español" data-language-flag="🇪🇸"><input id="langEs" type="radio" name="locale" value="es-ES" {% if selected_locale=='es-ES' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇪🇸</em><span><b>Español</b><small>España</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
-              <label class="ob-language-v340 ob-language-new-v344" data-language-label="Français" data-language-flag="🇫🇷"><input id="langFr" type="radio" name="locale" value="fr-FR" {% if selected_locale=='fr-FR' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇫🇷</em><span><b>Français</b><small>France</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
-              <label class="ob-language-v340 ob-language-new-v344" data-language-label="Português (Portugal)" data-language-flag="🇵🇹"><input id="langPtPt" type="radio" name="locale" value="pt-PT" {% if selected_locale=='pt-PT' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇵🇹</em><span><b>Português</b><small>Portugal</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
-              <label class="ob-language-v340" data-language-label="Русский" data-language-flag="🇷🇺"><input id="langRu" type="radio" name="locale" value="ru-RU" {% if selected_locale=='ru-RU' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇷🇺</em><span><b>Русский</b><small>Россия</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
-              <label class="ob-language-v340" data-language-label="العربية" data-language-flag="🇲🇦"><input id="langAr" type="radio" name="locale" value="ar-MA" {% if selected_locale=='ar-MA' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇲🇦</em><span><b>العربية</b><small>المغرب</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
-            </div>
-            <div class="ob-language-foot-v344"><i data-lucide="globe-2" width="15"></i><span>7 idiomas disponíveis. A escolha fica salva na sua conta.</span></div>
           </div>
 
-          <div class="ob-step-actions-v340">
-            <button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i><span>Voltar</span></button>
-            <button class="ob-next-v340" type="button" data-ob-next><span>Continuar</span><i data-lucide="arrow-right" width="17"></i></button>
+          <div class="ob500-section-card ob500-map-section">
+            <div class="ob500-section-head"><div><span>04 // VISUAL</span><h2>Escolha o clima do mapa</h2><p>A rota continua laranja. Você muda apenas o ambiente e o contraste.</p></div><span class="ob500-map-selected" id="ob500MapSelected">Automático</span></div>
+            <div class="ob500-map-grid" role="radiogroup" aria-label="Estilo do mapa">
+              <label class="ob500-map-card is-auto" data-map-label="Automático"><input type="radio" name="map_style" value="auto" {% if selected_map in ['auto','vivid','vano'] %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="wand-sparkles" width="16"></i></em></span><b>Auto</b><small>Se adapta</small></label>
+              <label class="ob500-map-card is-day" data-map-label="Dia"><input type="radio" name="map_style" value="day" {% if selected_map in ['day','standard','streets'] %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="sun" width="16"></i></em></span><b>Dia</b><small>Claro</small></label>
+              <label class="ob500-map-card is-afternoon" data-map-label="Tarde"><input type="radio" name="map_style" value="afternoon" {% if selected_map=='afternoon' %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="sunset" width="16"></i></em></span><b>Tarde</b><small>Quente</small></label>
+              <label class="ob500-map-card is-night" data-map-label="Escuro"><input type="radio" name="map_style" value="night" {% if selected_map=='night' %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="moon-star" width="16"></i></em></span><b>Escuro</b><small>Noite</small></label>
+              <label class="ob500-map-card is-rain" data-map-label="Chuva"><input type="radio" name="map_style" value="rain" {% if selected_map=='rain' %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="cloud-rain" width="16"></i></em></span><b>Chuva</b><small>Contraste</small></label>
+            </div>
+          </div>
+
+          <div class="ob-step-actions-v340 ob500-actions">
+            <button class="ob-back-v340 ob500-back" type="button" data-ob-back><i data-lucide="arrow-left" width="17"></i><span>Voltar</span></button>
+            <button class="ob-next-v340 ob500-primary" type="button" data-ob-next><span>Salvar meu CORE</span><i data-lucide="cpu" width="18"></i></button>
           </div>
         </section>
 
-        <section class="ob-step-v340" data-ob-step="3" aria-labelledby="obTitle3">
-          <div class="ob-step-heading-v340">
-            <span class="ob-eyebrow-v340"><i data-lucide="circle-check-big" width="13"></i> Tudo certo</span>
-            <h1 id="obTitle3">Conta pronta.<br><span>Agora é mapa.</span></h1>
-            <p>Confira o essencial. Ao concluir, o VANO abre direto no mapa para você pesquisar um destino e calcular sua primeira rota.</p>
+        <section class="ob-step-v340 ob500-step" data-ob-step="3" aria-labelledby="obTitle3">
+          <div class="ob500-step-grid">
+            <div class="ob-step-heading-v340 ob500-heading">
+              <span class="ob-eyebrow-v340 ob500-eyebrow"><i data-lucide="rocket" width="14"></i> LAUNCH // ETAPA 03</span>
+              <h1 id="obTitle3">Seu VANO está<br><span>quase online.</span></h1>
+              <p>Escolha o idioma e veja o seu loadout final. Depois disso, você entra direto no mapa com tudo configurado.</p>
+            </div>
+            <div class="ob500-launch-orb" aria-hidden="true"><span><i data-lucide="navigation" width="21"></i></span><i></i><i></i></div>
           </div>
 
-          <div class="ob-summary-v340">
-            <div class="ob-summary-avatar-v340"><span id="obSummaryInitial">V</span></div>
-            <div class="ob-summary-copy-v340"><small>SEU PERFIL</small><b id="obSummaryName">Seu nome</b><span id="obSummaryMeta">Conta pronta para navegar</span></div>
-            <div class="ob-summary-badge-v340"><i data-lucide="check" width="15"></i> Pronto</div>
+          <div class="ob500-section-card ob500-language-section">
+            <div class="ob500-section-head"><div><span>INTERFACE</span><h2>Como o VANO fala com você?</h2><p>Interface, mensagens e instruções compatíveis seguem este idioma.</p></div><div class="ob-language-current-v344 ob500-language-current" id="obLanguageCurrent" aria-live="polite"><em id="obLanguageCurrentFlag">🇧🇷</em><span><small>SELECIONADO</small><b id="obLanguageCurrentName">Português (Brasil)</b></span></div></div>
+            <div class="ob-language-grid-v340 ob-language-grid-v344 ob500-language-grid" role="radiogroup" aria-label="Idioma">
+              <label class="ob-language-v340 ob500-language" data-language-label="Português (Brasil)" data-language-flag="🇧🇷"><input id="langPt" type="radio" name="locale" value="pt-BR" {% if selected_locale=='pt-BR' %}checked{% endif %} required><span class="ob-language-card-v340"><em>🇧🇷</em><span><b>Português</b><small>Brasil</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob500-language" data-language-label="English" data-language-flag="🇺🇸"><input id="langEn" type="radio" name="locale" value="en-US" {% if selected_locale=='en-US' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇺🇸</em><span><b>English</b><small>United States</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob500-language" data-language-label="Español" data-language-flag="🇪🇸"><input id="langEs" type="radio" name="locale" value="es-ES" {% if selected_locale=='es-ES' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇪🇸</em><span><b>Español</b><small>España</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob500-language" data-language-label="Français" data-language-flag="🇫🇷"><input id="langFr" type="radio" name="locale" value="fr-FR" {% if selected_locale=='fr-FR' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇫🇷</em><span><b>Français</b><small>France</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob500-language" data-language-label="Português (Portugal)" data-language-flag="🇵🇹"><input id="langPtPt" type="radio" name="locale" value="pt-PT" {% if selected_locale=='pt-PT' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇵🇹</em><span><b>Português</b><small>Portugal</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob500-language" data-language-label="Русский" data-language-flag="🇷🇺"><input id="langRu" type="radio" name="locale" value="ru-RU" {% if selected_locale=='ru-RU' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇷🇺</em><span><b>Русский</b><small>Россия</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+              <label class="ob-language-v340 ob500-language" data-language-label="العربية" data-language-flag="🇲🇦"><input id="langAr" type="radio" name="locale" value="ar-MA" {% if selected_locale=='ar-MA' %}checked{% endif %}><span class="ob-language-card-v340"><em>🇲🇦</em><span><b>العربية</b><small>المغرب</small></span><span class="ob-language-check-v344"><i data-lucide="check" width="14"></i></span></span></label>
+            </div>
           </div>
-          <div class="ob-summary-grid-v340">
-            <div><span class="ob-summary-icon-v340"><i data-lucide="languages" width="17"></i></span><small>IDIOMA</small><b id="obSummaryLocale">Português</b></div>
-            <div><span class="ob-summary-icon-v340"><i data-lucide="route" width="17"></i></span><small>PRÓXIMO PASSO</small><b>Calcular uma rota</b></div>
-          </div>
-          <div class="ob-ready-note-v340"><i data-lucide="navigation" width="17"></i><span><b>Seu mapa está esperando.</b> Casa, trabalho, veículo, estilo do mapa e outras preferências podem ser configurados depois, sem segurar você aqui.</span></div>
 
-          <div class="ob-step-actions-v340">
-            <button class="ob-back-v340" type="button" data-ob-back><i data-lucide="arrow-left" width="16"></i><span>Voltar</span></button>
-            <button class="ob-finish-v340" type="submit"><span>Abrir mapa e calcular uma rota</span><i data-lucide="navigation" width="18"></i></button>
+          <div class="ob500-loadout" id="ob500Loadout">
+            <div class="ob500-loadout-head"><div><span>SEU LOADOUT</span><h2>VANO configurado.</h2></div><span class="ob500-ready-badge"><i data-lucide="check" width="13"></i> READY</span></div>
+            <div class="ob500-player-card">
+              <div class="ob-summary-avatar-v340 ob500-summary-avatar"><span id="obSummaryInitial">V</span></div>
+              <div class="ob-summary-copy-v340"><small>PLAYER</small><b id="obSummaryName">Seu nome</b><span id="obSummaryMeta">Conta pronta para navegar</span></div>
+              <div class="ob500-player-level"><small>STATUS</small><b>ONLINE</b></div>
+            </div>
+            <div class="ob500-loadout-grid">
+              <div><span><i data-lucide="brain-circuit" width="17"></i></span><small>CORE</small><b id="ob500SummaryRoute">Equilibrado</b></div>
+              <div><span><i data-lucide="map" width="17"></i></span><small>MAPA</small><b id="ob500SummaryMap">Automático</b></div>
+              <div><span><i data-lucide="languages" width="17"></i></span><small>IDIOMA</small><b id="obSummaryLocale">Português</b></div>
+              <div><span><i data-lucide="moon-star" width="17"></i></span><small>NOITE</small><b id="ob500SummaryNight">Proteção ativa</b></div>
+            </div>
+            <div class="ob500-launch-note"><i data-lucide="zap" width="17"></i><span><b>Próxima missão:</b> abrir o mapa, escolher um destino e deixar o VANO calcular sua primeira rota com esse perfil.</span></div>
+          </div>
+
+          <div class="ob-step-actions-v340 ob500-actions ob500-final-actions">
+            <button class="ob-back-v340 ob500-back" type="button" data-ob-back><i data-lucide="arrow-left" width="17"></i><span>Voltar</span></button>
+            <button class="ob-finish-v340 ob500-primary ob500-launch" type="submit"><span>Ativar meu VANO</span><i data-lucide="navigation" width="19"></i><em aria-hidden="true"></em></button>
           </div>
         </section>
       </form>
     </section>
 
-    <aside class="ob-preview-v340" aria-hidden="true">
-      <img src="{{ url_for('static', filename='vano-entry-day-v76.svg') }}" alt="">
-      <div class="ob-preview-overlay-v340"></div>
-      <div class="ob-preview-brand-v340"><img src="{{ url_for('static', filename='vano-maps-icon-192.png') }}" alt=""><span><small>VANO MAPS</small><b>Seu caminho começa aqui.</b></span></div>
-      <div class="ob-preview-route-v402">
-        <svg viewBox="0 0 430 520" preserveAspectRatio="none">
-          <path class="road" d="M-20 90 C92 142 126 198 214 183 S341 106 462 142"/>
-          <path class="road" d="M-12 398 C92 333 155 350 218 393 S341 460 452 415"/>
-          <path class="road" d="M88 -20 C117 97 103 174 151 250 S176 393 139 548"/>
-          <path class="road" d="M354 -20 C302 72 323 157 276 224 S274 385 332 545"/>
-          <path class="route-halo" d="M92 430 C134 390 120 337 174 304 C226 272 210 220 270 191 C324 165 320 112 367 82"/>
-          <path class="route" d="M92 430 C134 390 120 337 174 304 C226 272 210 220 270 191 C324 165 320 112 367 82"/>
-          <circle class="user" cx="92" cy="430" r="8"/>
-          <circle class="pin" cx="367" cy="82" r="9"/>
-        </svg>
+    <aside class="ob-preview-v340 ob500-preview" aria-hidden="true" data-map-skin="{{ selected_map if selected_map in ['day','afternoon','night','rain'] else 'auto' }}">
+      <div class="ob500-map-bg"><span class="g1"></span><span class="g2"></span><span class="g3"></span><span class="g4"></span></div>
+      <div class="ob500-scan"></div>
+      <div class="ob500-preview-top">
+        <div class="ob500-preview-brand"><img src="{{ url_for('static', filename='vano-maps-icon-192.png') }}" alt=""><span><small>VANO CORE</small><b id="ob500PreviewState">IDENTIDADE</b></span></div>
+        <span class="ob500-signal"><i></i> SYNC</span>
       </div>
-      <div class="ob-preview-card-v340"><small>CONFIGURAÇÃO DA CONTA</small><b id="obPreviewTitle">Seu perfil, em poucos toques.</b><span id="obPreviewText">Preencha o essencial e avance direto para o mapa.</span><div class="ob-preview-meter-v340"><i id="obPreviewMeter"></i></div></div>
+      <div class="ob500-map-hud"><span>MAP LIVE</span><b id="ob500HudMode">SMART</b><small id="ob500HudCopy">Equilíbrio entre tempo e segurança</small></div>
+      <svg class="ob500-map-svg" viewBox="0 0 430 650" preserveAspectRatio="none">
+        <g class="ob500-streets">
+          <path d="M-30 88 C70 150 150 130 230 104 S355 90 470 154"/>
+          <path d="M-30 292 C82 244 150 270 235 323 S360 390 470 344"/>
+          <path d="M-30 524 C85 476 150 512 242 570 S356 618 468 582"/>
+          <path d="M84 -30 C115 86 103 196 146 280 S164 470 128 688"/>
+          <path d="M348 -30 C308 94 330 178 282 254 S277 476 338 688"/>
+        </g>
+        <path class="ob500-route-glow" d="M72 566 C110 529 100 474 152 440 C205 406 184 344 248 308 C302 277 288 217 352 170 C375 153 380 125 390 96"/>
+        <path class="ob500-route-line" d="M72 566 C110 529 100 474 152 440 C205 406 184 344 248 308 C302 277 288 217 352 170 C375 153 380 125 390 96"/>
+        <circle class="ob500-user-dot" cx="72" cy="566" r="9"/>
+        <circle class="ob500-target-dot" cx="390" cy="96" r="10"/>
+      </svg>
+      <div class="ob500-floating-card ob500-float-a"><span><i data-lucide="shield-check" width="15"></i></span><div><small>SEGURANÇA</small><b id="ob500SafetyValue">76%</b></div></div>
+      <div class="ob500-floating-card ob500-float-b"><span><i data-lucide="timer" width="15"></i></span><div><small>ETA</small><b id="ob500EtaValue">18 min</b></div></div>
+      <div class="ob500-preview-bottom">
+        <div class="ob500-preview-player"><span id="ob500PreviewInitial">V</span><div><small>PERFIL ATIVO</small><b id="ob500PreviewName">Seu VANO</b></div><em id="ob500PreviewProgress">33%</em></div>
+        <div class="ob500-preview-meter"><i id="obPreviewMeter"></i></div>
+        <div class="ob500-preview-tags"><span id="ob500PreviewRouteTag"><i data-lucide="sparkles" width="12"></i> Equilibrado</span><span id="ob500PreviewNightTag"><i data-lucide="moon-star" width="12"></i> Noite ON</span></div>
+      </div>
     </aside>
   </main>
 </div>
 {% endblock %}
 {% block scripts %}
-<script src="{{ url_for('static', filename='vano-onboarding-v343.js') }}?v={{ vano_build_id }}-402"></script>
+<script src="{{ url_for('static', filename='vano-onboarding-v500.js') }}?v={{ vano_build_id }}-500"></script>
 {% endblock %}
