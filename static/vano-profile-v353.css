@@ -319,3 +319,99 @@ html[data-vano-theme="black"] .vano-profile353 .profile350-danger,html[data-vano
 .vano-profile353 .profile353-logout-form b{display:block!important;font-size:10px!important;color:var(--p353-ink)!important}.vano-profile353 .profile353-logout-form small{display:block!important;margin-top:2px!important;font-size:8px!important;color:var(--p353-muted)!important}.vano-profile353 .profile353-logout-form>button>svg{color:var(--p353-faint)!important}
 html[data-vano-theme="black"] .vano-profile353 .profile353-logout-form>button:hover,html[data-vano-theme-mode="black"] .vano-profile353 .profile353-logout-form>button:hover{background:#281b1b!important;border-color:#513333!important}
 html[data-vano-theme="black"] .vano-profile353 .profile353-logout-form>button>span,html[data-vano-theme-mode="black"] .vano-profile353 .profile353-logout-form>button>span{background:#2b1b1b!important}
+
+/* V353.1 — profile mobile scroll + account action sizing hotfix.
+   The profile owns vertical scrolling explicitly so short screens / mobile
+   browsers cannot inherit a locked viewport from another app surface. */
+html:has(body.vano-route-profile){
+  height:auto!important;
+  min-height:100%!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:auto!important;
+  -webkit-overflow-scrolling:touch;
+}
+body.vano-route-profile{
+  height:auto!important;
+  min-height:100dvh!important;
+  max-height:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:auto!important;
+  touch-action:pan-y pinch-zoom!important;
+  -webkit-overflow-scrolling:touch;
+}
+body.vano-route-profile .vano-profile350,
+body.vano-route-profile .vano-profile353,
+body.vano-route-profile .profile350-shell,
+body.vano-route-profile .profile350-layout,
+body.vano-route-profile .profile350-content,
+body.vano-route-profile .profile350-form{
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+body.vano-route-profile .profile350-content,
+body.vano-route-profile .profile350-form{min-height:0!important}
+
+/* Theme and logout are primary account-level actions: same full width. */
+.vano-profile353 .profile353-theme-action{
+  width:100%!important;
+  min-height:58px!important;
+  display:grid!important;
+  grid-template-columns:38px minmax(0,1fr) 16px!important;
+  align-items:center!important;
+  gap:9px!important;
+  padding:9px!important;
+  border:1px solid var(--p353-line)!important;
+  border-radius:15px!important;
+  background:var(--p353-card-2)!important;
+  color:var(--p353-ink)!important;
+  text-align:left!important;
+  transition:transform .18s ease,border-color .18s ease,background .18s ease!important;
+}
+.vano-profile353 .profile353-theme-action:hover{
+  transform:translateY(-1px)!important;
+  border-color:rgba(255,106,20,.23)!important;
+  background:var(--p353-orange-soft)!important;
+}
+.vano-profile353 .profile353-theme-action>span{
+  width:36px!important;
+  height:36px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:11px!important;
+  background:var(--p353-soft)!important;
+  color:#ef651a!important;
+}
+.vano-profile353 .profile353-theme-action b{display:block!important;font-size:10px!important;color:var(--p353-ink)!important}
+.vano-profile353 .profile353-theme-action small{display:block!important;margin-top:2px!important;font-size:8px!important;color:var(--p353-muted)!important}
+.vano-profile353 .profile353-theme-action>svg{color:var(--p353-faint)!important}
+.vano-profile353 .profile353-theme-action,
+.vano-profile353 .profile353-logout-form{
+  grid-column:1/-1!important;
+  width:100%!important;
+}
+
+@media(max-width:680px){
+  body.vano-route-profile{
+    min-height:var(--vano-x-vh,100dvh)!important;
+    padding-bottom:max(82px,calc(72px + env(safe-area-inset-bottom)))!important;
+  }
+  body.vano-route-profile .vano-profile353{
+    min-height:var(--vano-x-vh,100dvh)!important;
+    padding-bottom:max(118px,calc(102px + env(safe-area-inset-bottom)))!important;
+    touch-action:pan-y pinch-zoom!important;
+  }
+  body.vano-route-profile .profile350-shell,
+  body.vano-route-profile .profile350-layout,
+  body.vano-route-profile .profile350-content{
+    touch-action:pan-y pinch-zoom!important;
+  }
+  body.vano-route-profile .profile350-nav{
+    touch-action:pan-x pan-y!important;
+    overscroll-behavior-x:contain!important;
+  }
+  .vano-profile353 .profile353-theme-action,
+  .vano-profile353 .profile353-logout-form>button{min-height:58px!important}
+}

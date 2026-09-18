@@ -204,6 +204,7 @@
             <a href="{{ url_for('notifications_page') }}"><span><i data-lucide="bell" width="17"></i></span><div><b>Notificações</b><small>Alertas e avisos da conta</small></div><i data-lucide="chevron-right" width="17"></i></a>
             <a href="{{ url_for('help_page') }}"><span><i data-lucide="circle-help" width="17"></i></span><div><b>Ajuda e FAQ</b><small>Suporte e dúvidas frequentes</small></div><i data-lucide="chevron-right" width="17"></i></a>
             <a href="{{ url_for('privacy_policy') }}"><span><i data-lucide="lock-keyhole" width="17"></i></span><div><b>Privacidade</b><small>Dados, permissões e política</small></div><i data-lucide="chevron-right" width="17"></i></a>
+            <button class="profile353-theme-action" type="button" data-vano-theme-toggle aria-label="Alternar tema"><span><i data-lucide="circle-half" width="17"></i></span><div><b>Trocar tema</b><small data-theme-state>White padrão</small></div><i data-lucide="chevron-right" width="17"></i></button>
             <form class="profile353-logout-form" action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"><span><i data-lucide="log-out" width="17"></i></span><div><b>Sair desta conta</b><small>Encerra a sessão neste aparelho</small></div><i data-lucide="chevron-right" width="17"></i></button></form>
           </div>
         </section>
