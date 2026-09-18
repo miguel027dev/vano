@@ -18,6 +18,8 @@
   const summaryLocale=document.getElementById('obSummaryLocale');
   const summaryInitial=document.getElementById('obSummaryInitial');
   const profileStatus=document.getElementById('obProfileStatus');
+  const liveInitial=document.getElementById('obLiveInitial');
+  const liveGreeting=document.getElementById('obLiveGreeting');
   const languageCurrent=document.getElementById('obLanguageCurrent');
   const languageCurrentFlag=document.getElementById('obLanguageCurrentFlag');
   const languageCurrentName=document.getElementById('obLanguageCurrentName');
@@ -94,6 +96,12 @@
       Boolean(getSexValue())
     ].filter(Boolean).length;
 
+    if(liveInitial||liveGreeting){
+      const n=(name?.value||'').trim();
+      if(liveInitial)liveInitial.textContent=(n.slice(0,1)||'V').toUpperCase();
+      if(liveGreeting)liveGreeting.textContent=n?`Olá, ${n.split(/\s+/)[0]}`:'Seu perfil VANO';
+    }
+
     if(profileStatus){
       profileStatus.querySelector('b')?.replaceChildren(document.createTextNode(`${completed}/3`));
       const small=profileStatus.querySelector('small');
@@ -149,10 +157,10 @@
 
     if(previewTitle&&previewText){
       const copy=current===1
-        ? ['Seu perfil, em poucos toques.','Preencha o essencial e acompanhe cada escolha sem perder o contexto.']
+        ? ['Seu perfil, em poucos toques.','Preencha o essencial e avance direto para o mapa.']
         : current===2
-        ? ['Seu idioma, sua experiência.','Escolha entre sete idiomas e deixe essa preferência salva na conta.']
-        : ['Tudo certo para começar.','Revise o perfil, confirme o idioma e abra o mapa com a conta pronta.'];
+        ? ['Seu idioma, seu VANO.','Escolha como o aplicativo fala com você.']
+        : ['Pronto para a primeira rota.','Abra o mapa, pesquise um destino e comece a navegar.'];
       previewTitle.textContent=copy[0];
       previewText.textContent=copy[1];
     }
@@ -201,7 +209,7 @@
       submit.setAttribute('aria-busy','true');
       submit.classList.add('is-loading');
       const submitLabel=submit.querySelector('span');
-      if(submitLabel)submitLabel.textContent='Abrindo seu mapa…';
+      if(submitLabel)submitLabel.textContent='Abrindo o mapa…';
     }
   });
 
@@ -213,7 +221,7 @@
       submit.removeAttribute('aria-busy');
       submit.classList.remove('is-loading');
       const text=submit.querySelector('span');
-      if(text)text.textContent='Concluir e abrir o VANO MAPS';
+      if(text)text.textContent='Abrir mapa e calcular uma rota';
     }
   });
 

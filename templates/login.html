@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-brand-v330.css') }}?v={{ vano_build_id }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-login-startup-v343.css') }}?v={{ vano_build_id }}-346">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-startup-v351.css') }}?v={{ vano_build_id }}-351">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-experience-v402.css') }}?v={{ vano_build_id }}-402">
   <script defer src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
 </head>
 <body class="vano-auth-startup">
@@ -56,9 +57,14 @@
         <div class="startup-flow" id="startupFlow" data-step="choice">
           <section class="startup-stage startup-stage-choice" id="startupChoiceStage">
             <div class="startup-copy">
-              <div class="startup-eyebrow"><span></span> Seu caminho começa aqui</div>
-              <h1 id="startupTitle">Abra. Escolha.<br><em>Vá.</em></h1>
-              <p>Entre para manter suas rotas, preferências e lugares sempre com você.</p>
+              <div class="startup-eyebrow"><span></span> VANO MAPS</div>
+              <h1 id="startupTitle">Entre no mapa.<br><em>O resto flui.</em></h1>
+              <p>Suas rotas, preferências e lugares ficam com você. Entre e já comece escolhendo para onde ir.</p>
+              <div class="startup-benefits-v402" aria-label="Recursos VANO">
+                <span><i data-lucide="route"></i> Rotas inteligentes</span>
+                <span><i data-lucide="triangle-alert"></i> Alertas no caminho</span>
+                <span><i data-lucide="sparkles"></i> Preferências salvas</span>
+              </div>
             </div>
 
             {% if request.args.get('logged_out') %}
@@ -191,8 +197,8 @@
       </div>
 
       <div class="visual-footer">
-        <p>Menos distração.<br><strong>Mais caminho.</strong></p>
-        <span>Abra o VANO, escolha sua rota e vá.</span>
+        <p>Escolha o destino.<br><strong>O VANO cuida do caminho.</strong></p>
+        <span>Entre, pesquise um lugar e calcule sua rota em segundos.</span>
       </div>
     </aside>
   </main>
