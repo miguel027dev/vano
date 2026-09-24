@@ -185,7 +185,11 @@ body.vano-map-surface .permission button{border:0!important;border-radius:12px!i
 
 /* ---------- User puck ---------- */
 .vano-user-puck-v300{
-  position:relative!important;width:40px!important;height:48px!important;display:grid!important;place-items:center!important;
+  /* Mapbox owns the marker's screen transform. Keep the custom element absolutely
+     positioned just like .mapboxgl-marker; position:relative here made the GPS
+     puck participate in normal layout and could make it appear camera-locked. */
+  position:absolute!important;left:0!important;top:0!important;
+  width:40px!important;height:48px!important;display:grid!important;place-items:center!important;
   transform-origin:50% 52%!important;pointer-events:none!important;filter:drop-shadow(0 4px 5px rgba(18,24,32,.23));
   transition:filter .2s ease!important;
 }

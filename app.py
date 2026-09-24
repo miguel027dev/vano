@@ -42,7 +42,7 @@ from flask import (
 
 APP_NAME = "VANO MAPS"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "325.0.0").strip() or "325.0.0"
+VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "325.1.0").strip() or "325.1.0"
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -1859,6 +1859,15 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(days=REMEMBER_LOGIN_DAYS),
     TRUSTED_HOSTS=RAIRO_TRUSTED_HOSTS or None,
 )
+
+def public_upstream_failure(message, exc, *, code="upstream_unavailable", status=502):
+    """Log provider/internal details server-side without leaking them to clients."""
+    error_id = secrets.token_hex(4)
+    app.logger.error(
+        "%s [%s] %s: %s", code, error_id, request.path, exc,
+        exc_info=(type(exc), exc, exc.__traceback__),
+    )
+    return jsonify({"error": message, "code": code, "error_id": error_id}), status
 
 @app.after_request
 def security_headers(response):
@@ -10447,7 +10456,7 @@ def api_geocode():
         providers = sorted({str(x.get("source") or "mapbox") for x in results})
         return jsonify({"results": results, "provider": "+".join(providers) or "search", "query": parse_brazil_location_query(q)})
     except Exception as exc:
-        return jsonify({"error": "Busca de endereço temporariamente indisponível.", "detail": str(exc)}), 502
+        return public_upstream_failure("Busca de endereço temporariamente indisponível.", exc, code="geocode_upstream")
 
 
 @app.route("/api/reverse")
@@ -10463,7 +10472,9 @@ def api_reverse():
     try:
         return jsonify({"label": mapbox_reverse_geocode(lon, lat), "provider": "mapbox"})
     except Exception as exc:
-        return jsonify({"label": f"{lat:.5f}, {lon:.5f}", "warning": str(exc)})
+        error_id = secrets.token_hex(4)
+        app.logger.warning("reverse_geocode_failed [%s] %s", error_id, exc)
+        return jsonify({"label": f"{lat:.5f}, {lon:.5f}", "warning": "Endereço indisponível no momento.", "error_id": error_id})
 
 
 @app.route("/api/snap-road", methods=["POST"])
@@ -11150,7 +11161,7 @@ def event_route_check():
             base=mapbox_routes(slon,slat,elon,elat,profile,"now",alternatives=False,extra_excludes=extra_excludes,start_bearing=start_bearing,start_speed=start_speed,reroute=True)
             baseline=base[0] if base else None
         except Exception as exc:
-            return jsonify({"error":"Não foi possível verificar o corredor do evento agora.","detail":str(exc)}),502
+            return public_upstream_failure("Não foi possível verificar o corredor do evento agora.", exc, code="event_route_upstream")
     if not baseline:
         return jsonify({"active":False,"events":[],"recommend":False})
     bounds=_event_bounds_from_geometry(((baseline.get("geometry") or {}).get("coordinates") or []),.018)
@@ -11281,7 +11292,7 @@ def traffic_recommendation():
                 "message": (f"Rota mais rápida encontrada: economiza cerca de {max(1,round(saving/60))} min." if recommend else ("Trânsito detectado; nenhuma alternativa ficou realmente mais rápida agora." if traffic_detected else "Fluxo sem ganho de ETA relevante em outra rota.")),
             })
         except Exception as exc:
-            return jsonify({"error": "Não foi possível atualizar a rota rápida agora.", "detail": str(exc)}), 502
+            return public_upstream_failure("Não foi possível atualizar a rota rápida agora.", exc, code="fast_reroute_upstream")
 
     try:
         baseline = mapbox_routes_via(forced_points, "now", start_bearing=start_bearing, start_speed=start_speed, reroute=True) if len(forced_points) >= 2 else mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=False, extra_excludes=route_extra_excludes, start_bearing=start_bearing, start_speed=start_speed, reroute=True)[0]
@@ -11347,7 +11358,7 @@ def traffic_recommendation():
             except Exception:
                 pass
     except Exception as exc:
-        return jsonify({"error": "Não foi possível atualizar o trânsito agora.", "detail": str(exc)}), 502
+        return public_upstream_failure("Não foi possível atualizar o trânsito agora.", exc, code="traffic_reroute_upstream")
 
     candidates_raw = [baseline] + alternatives[:11]
     all_coords = []
@@ -11933,7 +11944,7 @@ def api_route():
             primary_provider = str((routes[0] if routes else {}).get("_provider") or "mapbox")
             mapbox_base_count=len(routes)
     except Exception as exc:
-        return jsonify({"error": "Não foi possível calcular a rota agora.", "detail": str(exc)}), 502
+        return public_upstream_failure("Não foi possível calcular a rota agora.", exc, code="route_upstream")
     if not routes:
         return jsonify({"error": "Nenhuma rota encontrada."}), 404
 

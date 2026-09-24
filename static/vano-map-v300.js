@@ -292,11 +292,20 @@ function requestGpsHeartbeat(handler,timeout=3500,maximumAge=0){if(gpsHeartbeatB
 function startPassiveGpsHeartbeat(){if(passiveGpsHeartbeatTimer||!navigator.geolocation)return;passiveGpsHeartbeatTimer=setInterval(()=>{if(activeNav?.classList.contains('show')||!mapFollowMode)return;if(Date.now()-lastGpsFixAt<7000)return;requestGpsHeartbeat(updatePassiveTracking,3500,1200)},7800)}
 function startNavigationGpsHeartbeat(){stopNavigationGpsHeartbeat();if(!navigator.geolocation)return;navGpsHeartbeatTimer=setInterval(()=>{if(!activeNav?.classList.contains('show')||adminSimulation)return;if(Date.now()-lastGpsFixAt<2400)return;requestGpsHeartbeat(g=>{if(activeNav?.classList.contains('show')&&!adminSimulation)updateNavigation(g)},2200,0)},2000)}
 function passiveCameraAllowed(){return !!map&&mapFollowMode&&!activeNav?.classList.contains('show')&&!previewing&&!destination&&!destinationConfirmed&&!selectedRoute&&!window.__searchPreviewPopup&&document.visibilityState!=='hidden'}
+function passiveFollowMoveThreshold(p){
+  const acc=Math.max(1,Math.min(120,+p?.accuracy||35)),speed=Math.max(0,+p?.speed||0);
+  // A stationary phone can wander several metres between GPS fixes. Following
+  // every sub-metre delta makes the whole map twitch and gives the illusion that
+  // the location puck is glued to the viewport. Moving users get a tighter gate.
+  if(speed>.8)return Math.max(.65,Math.min(2.2,acc*.035));
+  if(speed>.25)return Math.max(1.1,Math.min(3.2,acc*.06));
+  return Math.max(2.4,Math.min(7.5,acc*.12));
+}
 function updatePassiveTracking(g){
   if(!g?.coords)return;const raw=geoRaw(g);if(!acceptGpsRaw(raw))return;lastGpsFixAt=Date.now();const p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);emitVanoOsint('location',{location:osintLocationPayload(raw,p),navigation:false});
   const movedMeters=!lastPassivePosition?Infinity:hav([lastPassivePosition.lon,lastPassivePosition.lat],[p.lon,p.lat]);lastPassivePosition={...p};
-  if(!passiveCameraAllowed()||searchInteractionActive||movedMeters<.22)return;const now=performance.now(),gap=lastPassiveCameraAt?now-lastPassiveCameraAt:500;if(gap<110)return;lastPassiveCameraAt=now;
-  const z=Math.max(15.9,Math.min(17.15,map.getZoom?.()||16.25)),duration=Math.max(150,Math.min(680,gap*.96));
+  if(!passiveCameraAllowed()||searchInteractionActive||movedMeters<passiveFollowMoveThreshold(p))return;const now=performance.now(),gap=lastPassiveCameraAt?now-lastPassiveCameraAt:500;if(gap<150)return;lastPassiveCameraAt=now;
+  const z=Math.max(15.9,Math.min(17.15,map.getZoom?.()||16.25)),duration=Math.max(180,Math.min(620,gap*.88));
   try{map.easeTo({center:[p.lon,p.lat],zoom:z,duration,essential:true,easing:t=>1-Math.pow(1-t,3)})}catch{}
 }
 function startPassiveMapTracking(){
@@ -1163,7 +1172,7 @@ map.on('error',ev=>{
   }
 });
 map.addControl(new mapboxgl.AttributionControl({compact:true}),'bottom-right');
-try{const mapCanvas=map.getCanvas();const markMapPointer=()=>{lastMapPointerAt=Date.now()};mapCanvas?.addEventListener('pointerdown',markMapPointer,{passive:true});mapCanvas?.addEventListener('touchstart',markMapPointer,{passive:true});mapCanvas?.addEventListener('webglcontextlost',e=>{e.preventDefault?.();setTimeout(()=>hardRefreshMapViewport(),180)},{passive:false});mapCanvas?.addEventListener('webglcontextrestored',()=>hardRefreshMapViewport(),{passive:true})}catch{}
+try{const mapCanvas=map.getCanvas();const markMapPointer=()=>{lastMapPointerAt=Date.now();if(!activeNav?.classList.contains('show')){try{map?.stop?.()}catch{}}};mapCanvas?.addEventListener('pointerdown',markMapPointer,{passive:true});mapCanvas?.addEventListener('touchstart',markMapPointer,{passive:true});mapCanvas?.addEventListener('webglcontextlost',e=>{e.preventDefault?.();setTimeout(()=>hardRefreshMapViewport(),180)},{passive:false});mapCanvas?.addEventListener('webglcontextrestored',()=>hardRefreshMapViewport(),{passive:true})}catch{}
 function restoreMapGestureHealth(){
   if(!map)return;
   try{map.dragPan?.enable?.();map.dragRotate?.enable?.();map.scrollZoom?.enable?.();map.doubleClickZoom?.enable?.();map.touchZoomRotate?.enable?.();map.touchPitch?.enable?.();map.keyboard?.enable?.()}catch{}
@@ -1205,7 +1214,7 @@ function releaseNavigationCameraFromGesture(e){
   const userGesture=!!e?.originalEvent||(Date.now()-lastMapPointerAt<1400);
   if(!userGesture)return;
   if(activeNav?.classList.contains('show')){if(!followMode)return;setNavigationFollow(false,false);document.body.classList.add('nav-map-free');haptic(5);return}
-  mapFollowMode=false;
+  mapFollowMode=false;lastPassiveCameraAt=performance.now();try{map?.stop?.()}catch{}
 }
 ['dragstart','zoomstart','rotatestart','pitchstart'].forEach(evt=>map.on(evt,releaseNavigationCameraFromGesture));
 function alertVectorFC(items=lastAlertRecords){return{type:'FeatureCollection',features:(items||[]).map(alertFeature)}}
