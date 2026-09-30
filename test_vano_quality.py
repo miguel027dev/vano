@@ -37,13 +37,13 @@ class FrontendQualityContracts(unittest.TestCase):
                 offenders.append(js.name)
         self.assertEqual([], offenders)
 
-    def test_deploy_build_id_matches_gps_fix_release(self):
+    def test_deploy_build_id_matches_map_ux_release(self):
         app_py = (ROOT / 'app.py').read_text(encoding='utf-8')
         render = (ROOT / 'render.yaml').read_text(encoding='utf-8')
         sw = (ROOT / 'static' / 'vano-sw-v300.js').read_text(encoding='utf-8')
-        self.assertIn('"325.1.0"', app_py)
-        self.assertIn('value: 325.1.0', render)
-        self.assertIn("325.1.0-gps-anchor", sw)
+        self.assertIn('"600.0.0"', app_py)
+        self.assertIn('value: 600.0.0', render)
+        self.assertIn("600.0.0-map-ux", sw)
 
     def test_public_route_errors_do_not_leak_exception_detail(self):
         py = (ROOT / 'app.py').read_text(encoding='utf-8')

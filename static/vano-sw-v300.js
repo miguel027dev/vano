@@ -1,13 +1,15 @@
-/* VANO MAPS V325 — GPS puck anchoring + follow-camera stability. */
-const BUILD='325.1.0-gps-anchor';
-const CACHE=`vano-maps-v325-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v325-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS V600 — map UX, GPS anchoring and navigation. */
+const BUILD='600.0.0-map-ux';
+const CACHE=`vano-maps-v600-${BUILD}`;
+const MAP_CACHE=`vano-map-region-v600-${BUILD}`,MAP_CACHE_MAX=180;
 const PRECACHE=[
   '/static/vano-app-v262.css',
   '/static/vano-runtime-v262.js',
   '/static/vano-theme-v230.js',
   '/static/vano-map-v300.js',
   '/static/vano-map-v300.css',
+  '/static/vano-map-ux-v600.css',
+  '/static/vano-map-ux-v600.js',
   '/static/vano-planner-v263.css',
   '/static/vano-navigation-v300.css',
   '/static/vano-interface-v319.css',
@@ -33,7 +35,7 @@ const PRECACHE=[
   '/static/voices/vano/leve_curva_a_direita.mp3',
   '/static/voices/vano/leve_curva_a_esquerda.mp3'
 ];
-const CORE_RE=/\/static\/(vano-app-v262\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v300\.js|vano-map-v300\.css|vano-planner-v263\.css|vano-navigation-v300\.css|vano-interface-v319\.css|vano-access-v319\.css|vano-access-v319\.js)$/;
+const CORE_RE=/\/static\/(vano-app-v262\.css|vano-runtime-v262\.js|vano-theme-v230\.js|vano-map-v300\.js|vano-map-v300\.css|vano-map-ux-v600\.css|vano-map-ux-v600\.js|vano-planner-v263\.css|vano-navigation-v300\.css|vano-interface-v319\.css|vano-access-v319\.css|vano-access-v319\.js)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;
