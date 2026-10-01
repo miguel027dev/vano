@@ -337,7 +337,7 @@ def route_risk_metrics(route, reports, risk_zones=None, local_hour=None, travel_
         "nearby_alerts": sorted(nearby, key=lambda x: (-x.get("risk_strength", 0), x["distance_to_route_m"]))[:14],
         "risk_zones": sorted(zone_hits, key=lambda x: (x["distance_to_route_m"], -x["confidence"]))[:10],
         "risk_factors": list(dict.fromkeys(risk_factors))[:7],
-        "safety_engine": "rairo-safety-v3",
+        "safety_engine": "vano-safety-v3",
     }
 
 
@@ -377,7 +377,7 @@ def apply_route_intelligence(routes, travel_profile="walking", safety_bias=68, t
             safety * w_safety + eta_score * w_time + traffic_score * w_traffic +
             detour_score * w_detour + confidence * w_conf
         ) / total_w
-        rairo_score = clamp(raw - incident_penalty - low_safety_penalty, 0, 100)
+        vano_score = clamp(raw - incident_penalty - low_safety_penalty, 0, 100)
         reasons = []
         if safety >= 82: reasons.append("boa leitura de segurança")
         elif int(r.get("safety_level") or 0) <= 2: reasons.append("atenção elevada no corredor")
@@ -386,7 +386,7 @@ def apply_route_intelligence(routes, travel_profile="walking", safety_bias=68, t
         if travel_profile == "motorcycle" and int(r.get("incidents_count") or 0) + int(r.get("closures_count") or 0) > 0: reasons.append("atenção extra para moto")
         if float(r.get("distance") or 0) > shortest * 1.18: reasons.append("desvio maior")
         if r.get("micro_route"): reasons.append("micro-rota anti-gargalo")
-        r["rairo_score"] = round(rairo_score, 1)
+        r["vano_score"] = round(vano_score, 1)
         r["decision_confidence"] = round(clamp(confidence * 0.72 + 24, 35, 95))
         r["score_breakdown"] = {
             "safety": round(safety, 1), "eta": round(eta_score, 1),
@@ -805,7 +805,7 @@ def apply_admin_route_blocks(routes, zones, start_lat, start_lon, end_lat, end_l
 
 _ROUTE_CONTEXT_CACHE = {}
 _ROUTE_CONTEXT_CACHE_LOCK = threading.Lock()
-_ROUTE_CONTEXT_CACHE_TTL = max(5, min(45, int(os.environ.get("RAIRO_ROUTE_CONTEXT_TTL", "14"))))
+_ROUTE_CONTEXT_CACHE_TTL = max(5, min(45, int(os.environ.get("VANO_ROUTE_CONTEXT_TTL", "14"))))
 
 def _route_context_key(kind,min_lat,min_lon,max_lat,max_lon):
     # Coarse corridor buckets maximize reuse between Segura/Smart prefetches while
