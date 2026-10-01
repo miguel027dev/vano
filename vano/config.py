@@ -62,13 +62,13 @@ SEO_CANONICAL_PATHS = {
 }
 
 def _load_session_secret():
-    configured = (os.environ.get("VANO_SECRET_KEY", "").strip() or os.environ.get("RAIRO_SECRET_KEY", "").strip())
+    configured = (os.environ.get("VANO_SECRET_KEY", "").strip() or os.environ.get("VANO_SECRET_KEY", "").strip())
     if configured:
         return configured
     # Never fall back to a known public development secret. A shared temporary
     # file keeps all Gunicorn workers on the same key for this instance. Render
-    # restarts rotate it, so production should still configure RAIRO_SECRET_KEY.
-    path = (os.environ.get("VANO_EPHEMERAL_SECRET_FILE", "").strip() or os.environ.get("RAIRO_EPHEMERAL_SECRET_FILE", "").strip() or "/tmp/vano-session-secret")
+    # restarts rotate it, so production should still configure VANO_SECRET_KEY.
+    path = (os.environ.get("VANO_EPHEMERAL_SECRET_FILE", "").strip() or os.environ.get("VANO_EPHEMERAL_SECRET_FILE", "").strip() or "/tmp/vano-session-secret")
     try:
         import fcntl
         with open(path, "a+", encoding="utf-8") as fh:
@@ -140,22 +140,22 @@ OPENROUTESERVICE_URL = os.environ.get("OPENROUTESERVICE_URL", "https://api.heigi
 OSRM_BASE_URL = os.environ.get("OSRM_BASE_URL", "").strip().rstrip("/")
 # V164 — event-aware routing. Optional structured feeds can be added later via
 # env without changing code; OSM venue discovery + live traffic works by default.
-RAIGO_EVENT_INTELLIGENCE_ENABLED = os.environ.get("RAIGO_EVENT_INTELLIGENCE_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
-RAIGO_EVENT_FEED_URLS = [x.strip() for x in os.environ.get("RAIGO_EVENT_FEED_URLS", "").split(",") if x.strip()][:3]
-RAIGO_EVENT_SCAN_MAX_KM = max(8.0, min(180.0, float(os.environ.get("RAIGO_EVENT_SCAN_MAX_KM", "90") or 90)))
-RAIGO_ESPN_MATCH_FEED_ENABLED = os.environ.get("RAIGO_ESPN_MATCH_FEED_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
-RAIGO_ESPN_SOCCER_LEAGUES = [x.strip() for x in os.environ.get("RAIGO_ESPN_SOCCER_LEAGUES", "bra.1,bra.2,bra.copa_do_brazil,conmebol.libertadores,conmebol.sudamericana").split(",") if x.strip()][:8]
+VANO_EVENT_INTELLIGENCE_ENABLED = os.environ.get("VANO_EVENT_INTELLIGENCE_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
+VANO_EVENT_FEED_URLS = [x.strip() for x in os.environ.get("VANO_EVENT_FEED_URLS", "").split(",") if x.strip()][:3]
+VANO_EVENT_SCAN_MAX_KM = max(8.0, min(180.0, float(os.environ.get("VANO_EVENT_SCAN_MAX_KM", "90") or 90)))
+VANO_ESPN_MATCH_FEED_ENABLED = os.environ.get("VANO_ESPN_MATCH_FEED_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
+VANO_ESPN_SOCCER_LEAGUES = [x.strip() for x in os.environ.get("VANO_ESPN_SOCCER_LEAGUES", "bra.1,bra.2,bra.copa_do_brazil,conmebol.libertadores,conmebol.sudamericana").split(",") if x.strip()][:8]
 
 # V48 — Mapbox-only routing/search. HERE is intentionally disabled/removed for now.
 
 # V42 — lightweight self keep-alive. One GET + one POST every 120 seconds.
 # The URL and switch are environment-configurable so staging/local environments
 # can disable it without changing source code.
-RAIRO_KEEPALIVE_URL = (os.environ.get("VANO_KEEPALIVE_URL", "").strip() or os.environ.get("RAIRO_KEEPALIVE_URL", "").strip() or "https://vanomaps.online").rstrip("/")
-RAIRO_KEEPALIVE_ENABLED = os.environ.get("RAIRO_KEEPALIVE_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
-RAIRO_KEEPALIVE_INTERVAL = max(120, int(os.environ.get("RAIRO_KEEPALIVE_INTERVAL", "120") or 120))
-RAIRO_KEEPALIVE_TIMEOUT = max(2, min(15, int(os.environ.get("RAIRO_KEEPALIVE_TIMEOUT", "7") or 7)))
-RAIRO_KEEPALIVE_START_DELAY = max(3, min(60, int(os.environ.get("RAIRO_KEEPALIVE_START_DELAY", "12") or 12)))
+VANO_KEEPALIVE_URL = (os.environ.get("VANO_KEEPALIVE_URL", "").strip() or os.environ.get("VANO_KEEPALIVE_URL", "").strip() or "https://vanomaps.online").rstrip("/")
+VANO_KEEPALIVE_ENABLED = os.environ.get("VANO_KEEPALIVE_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
+VANO_KEEPALIVE_INTERVAL = max(120, int(os.environ.get("VANO_KEEPALIVE_INTERVAL", "120") or 120))
+VANO_KEEPALIVE_TIMEOUT = max(2, min(15, int(os.environ.get("VANO_KEEPALIVE_TIMEOUT", "7") or 7)))
+VANO_KEEPALIVE_START_DELAY = max(3, min(60, int(os.environ.get("VANO_KEEPALIVE_START_DELAY", "12") or 12)))
 _KEEPALIVE_THREAD_LOCK = threading.Lock()
 _KEEPALIVE_THREAD_STARTED = False
 _KEEPALIVE_LEADER_FD = None
@@ -169,50 +169,50 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 # Number of reverse-proxy hops whose forwarding headers are trusted. Render's
 # normal setup is one hop; deployments behind an additional CDN/proxy can set 2.
-RAIRO_PROXY_HOPS = max(0, min(5, int(os.environ.get("RAIRO_PROXY_HOPS", "1") or 1)))
+VANO_PROXY_HOPS = max(0, min(5, int(os.environ.get("VANO_PROXY_HOPS", "1") or 1)))
 
 # V342 — single-owner administration.
 # Only this verified account is allowed to hold administrator privileges.
 PRIMARY_ADMIN_EMAIL = "miguelpinxs@gmail.com"
-RAIRO_OWNER_EMAIL = PRIMARY_ADMIN_EMAIL
+VANO_OWNER_EMAIL = PRIMARY_ADMIN_EMAIL
 ADMIN_EMAILS = {PRIMARY_ADMIN_EMAIL}
 MOTORIZED_PROFILES = {"driving", "motorcycle"}
 
 
 # V85 — distributed infrastructure dashboard. The public URLs/regions are safe
 # configuration metadata only; secrets/tokens are intentionally never exposed.
-RAIRO_NODE_COUNT = max(1, min(5000, int(os.environ.get("RAIRO_NODE_COUNT", "15") or 15)))
-RAIRO_NODE_CAPACITY = max(1, min(100, int(os.environ.get("RAIRO_NODE_CAPACITY", "4") or 4)))
-RAIRO_NODE_HEALTH_PATH = os.environ.get("RAIRO_NODE_HEALTH_PATH", "/healthz").strip() or "/healthz"
-RAIRO_NODE_CHECK_TIMEOUT = max(0.7, min(8.0, float(os.environ.get("RAIRO_NODE_CHECK_TIMEOUT", "2.8") or 2.8)))
-RAIRO_NODE_STATUS_TTL = max(4, min(120, int(os.environ.get("RAIRO_NODE_STATUS_TTL", "20") or 20)))
-RAIRO_NODE_STATUS_CACHE = {}
-RAIRO_NODE_STATUS_LOCK = threading.Lock()
-RAIRO_DISTRIBUTED_ROUTING_ENABLED = os.environ.get("RAIRO_DISTRIBUTED_ROUTING_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
-RAIRO_NODE_ROUTE_TIMEOUT = max(4.0, min(30.0, float(os.environ.get("RAIRO_NODE_ROUTE_TIMEOUT", "10") or 10)))
-RAIRO_NODE_ROUTE_ATTEMPTS = max(1, min(6, int(os.environ.get("RAIRO_NODE_ROUTE_ATTEMPTS", "2") or 2)))
+VANO_NODE_COUNT = max(1, min(5000, int(os.environ.get("VANO_NODE_COUNT", "15") or 15)))
+VANO_NODE_CAPACITY = max(1, min(100, int(os.environ.get("VANO_NODE_CAPACITY", "4") or 4)))
+VANO_NODE_HEALTH_PATH = os.environ.get("VANO_NODE_HEALTH_PATH", "/healthz").strip() or "/healthz"
+VANO_NODE_CHECK_TIMEOUT = max(0.7, min(8.0, float(os.environ.get("VANO_NODE_CHECK_TIMEOUT", "2.8") or 2.8)))
+VANO_NODE_STATUS_TTL = max(4, min(120, int(os.environ.get("VANO_NODE_STATUS_TTL", "20") or 20)))
+VANO_NODE_STATUS_CACHE = {}
+VANO_NODE_STATUS_LOCK = threading.Lock()
+VANO_DISTRIBUTED_ROUTING_ENABLED = os.environ.get("VANO_DISTRIBUTED_ROUTING_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
+VANO_NODE_ROUTE_TIMEOUT = max(4.0, min(30.0, float(os.environ.get("VANO_NODE_ROUTE_TIMEOUT", "10") or 10)))
+VANO_NODE_ROUTE_ATTEMPTS = max(1, min(6, int(os.environ.get("VANO_NODE_ROUTE_ATTEMPTS", "2") or 2)))
 # V123.3 — heavy-route orchestration. Routes from 8 km up to 3,000 km can use
 # hedged requests across multiple healthy Route Nodes. A hedge is launched only
 # when the previous worker is slow/failing, avoiding a naive N-way duplicate on
 # every trip (important because Mapbox limits are per access token, not server).
-RAIRO_HEAVY_ROUTE_MIN_KM = max(0.0, min(5000.0, float(os.environ.get("RAIRO_HEAVY_ROUTE_MIN_KM", "8") or 8)))
-RAIRO_HEAVY_ROUTE_MAX_KM = max(RAIRO_HEAVY_ROUTE_MIN_KM, min(10000.0, float(os.environ.get("RAIRO_HEAVY_ROUTE_MAX_KM", "3000") or 3000)))
-RAIRO_HEAVY_ROUTE_MAX_FANOUT = max(2, min(8, int(os.environ.get("RAIRO_HEAVY_ROUTE_MAX_FANOUT", "5") or 5)))
-RAIRO_HEAVY_ROUTE_TOTAL_ATTEMPTS = max(2, min(16, int(os.environ.get("RAIRO_HEAVY_ROUTE_TOTAL_ATTEMPTS", "8") or 8)))
-RAIRO_HEAVY_ROUTE_HEDGE_DELAY_MS = max(80, min(1500, int(os.environ.get("RAIRO_HEAVY_ROUTE_HEDGE_DELAY_MS", "650") or 650)))
-RAIRO_HEAVY_ROUTE_TIMEOUT_MAX = max(20.0, min(90.0, float(os.environ.get("RAIRO_HEAVY_ROUTE_TIMEOUT_MAX", "55") or 55)))
-RAIRO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT = max(0.50, min(0.98, float(os.environ.get("RAIRO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT", "0.86") or 0.86)))
+VANO_HEAVY_ROUTE_MIN_KM = max(0.0, min(5000.0, float(os.environ.get("VANO_HEAVY_ROUTE_MIN_KM", "8") or 8)))
+VANO_HEAVY_ROUTE_MAX_KM = max(VANO_HEAVY_ROUTE_MIN_KM, min(10000.0, float(os.environ.get("VANO_HEAVY_ROUTE_MAX_KM", "3000") or 3000)))
+VANO_HEAVY_ROUTE_MAX_FANOUT = max(2, min(8, int(os.environ.get("VANO_HEAVY_ROUTE_MAX_FANOUT", "5") or 5)))
+VANO_HEAVY_ROUTE_TOTAL_ATTEMPTS = max(2, min(16, int(os.environ.get("VANO_HEAVY_ROUTE_TOTAL_ATTEMPTS", "8") or 8)))
+VANO_HEAVY_ROUTE_HEDGE_DELAY_MS = max(80, min(1500, int(os.environ.get("VANO_HEAVY_ROUTE_HEDGE_DELAY_MS", "650") or 650)))
+VANO_HEAVY_ROUTE_TIMEOUT_MAX = max(20.0, min(90.0, float(os.environ.get("VANO_HEAVY_ROUTE_TIMEOUT_MAX", "55") or 55)))
+VANO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT = max(0.50, min(0.98, float(os.environ.get("VANO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT", "0.86") or 0.86)))
 CENTRAL_API_SECRET = os.environ.get("CENTRAL_API_SECRET", "").strip()
-RAIRO_ALLOW_HTTP_NODES = os.environ.get("RAIRO_ALLOW_HTTP_NODES", "0").strip().lower() in {"1", "true", "yes", "on"}
+VANO_ALLOW_HTTP_NODES = os.environ.get("VANO_ALLOW_HTTP_NODES", "0").strip().lower() in {"1", "true", "yes", "on"}
 _NODE_CONFIG_TABLE_LOCK = threading.Lock()
 _NODE_CONFIG_TABLE_READY = False
 _NODE_CONFIG_CACHE = {}
 _NODE_CONFIG_CACHE_LOCK = threading.Lock()
-_NODE_CONFIG_CACHE_TTL = max(3, min(60, int(os.environ.get("RAIRO_NODE_CONFIG_CACHE_TTL", "12") or 12)))
+_NODE_CONFIG_CACHE_TTL = max(3, min(60, int(os.environ.get("VANO_NODE_CONFIG_CACHE_TTL", "12") or 12)))
 _NODE_REGISTRY_CACHE = {"ts": 0.0, "configs": []}
 _NODE_REGISTRY_LOCK = threading.Lock()
-_NODE_REGISTRY_TTL = max(2, min(60, int(os.environ.get("RAIRO_NODE_REGISTRY_TTL", "15") or 15)))
-_NODE_REGISTRY_LIMIT = min(5000, max(32, int(os.environ.get("RAIRO_NODE_REGISTRY_LIMIT", str(max(RAIRO_NODE_COUNT, 128))) or max(RAIRO_NODE_COUNT, 128))))
+_NODE_REGISTRY_TTL = max(2, min(60, int(os.environ.get("VANO_NODE_REGISTRY_TTL", "15") or 15)))
+_NODE_REGISTRY_LIMIT = min(5000, max(32, int(os.environ.get("VANO_NODE_REGISTRY_LIMIT", str(max(VANO_NODE_COUNT, 128))) or max(VANO_NODE_COUNT, 128))))
 _NODE_DISPATCH_LOCK = threading.Lock()
 _NODE_DISPATCH_CURSOR = 0
 _NODE_COOLDOWN_UNTIL = {}
@@ -237,7 +237,7 @@ def _make_http_session(pool=32):
     s.mount("http://", adapter)
     return s
 
-_NODE_HTTP = _make_http_session(max(64, min(512, int(os.environ.get("RAIRO_NODE_HTTP_POOL", "192") or 192))))
+_NODE_HTTP = _make_http_session(max(64, min(512, int(os.environ.get("VANO_NODE_HTTP_POOL", "192") or 192))))
 _MAPBOX_HTTP = _make_http_session(48)
 
 
