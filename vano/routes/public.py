@@ -8,10 +8,10 @@ _vano_inject(globals())
 del _vano_inject
 
 def legal_identity_context():
-    """Public legal identity with VANO-first env names and legacy fallbacks."""
+    """Public legal identity sourced from VANO deployment configuration."""
     return {
-        "legal_name": str(os.environ.get("VANO_LEGAL_NAME") or os.environ.get("VANO_LEGAL_NAME") or "VANO MAPS").strip()[:180],
-        "legal_cnpj": str(os.environ.get("VANO_LEGAL_CNPJ") or os.environ.get("VANO_LEGAL_CNPJ") or "").strip()[:32],
+        "legal_name": str(os.environ.get("VANO_LEGAL_NAME") or "VANO MAPS").strip()[:180],
+        "legal_cnpj": str(os.environ.get("VANO_LEGAL_CNPJ") or "").strip()[:32],
         "privacy_email": str(os.environ.get("VANO_PRIVACY_EMAIL") or os.environ.get("VANO_PRIVACY_EMAIL") or "").strip()[:220],
         "activity_log_retention_days": ACTIVITY_LOG_RETENTION_DAYS,
     }
@@ -361,4 +361,3 @@ def admin_privacy_request_status(request_id):
 # Admin
 # -----------------------------
 
-@app.route("/api/admin/simulation/authorize", methods=["POST"])
