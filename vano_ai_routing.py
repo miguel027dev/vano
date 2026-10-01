@@ -90,7 +90,7 @@ def _config_snapshot() -> Dict[str, Any]:
 
 def _api_key() -> str:
     # User-requested canonical key name first; uppercase remains a convenient fallback.
-    return (os.environ.get("ollama_key", "").strip() or os.environ.get("OLLAMA_API_KEY", "").strip())
+    return os.environ.get("OLLAMA_API_KEY", "").strip()
 
 
 def _candidate_summary(route: Dict[str, Any]) -> Dict[str, Any]:
@@ -350,7 +350,7 @@ def rerank_routes_with_ai(
             return metadata
         key = _api_key()
         if not key:
-            metadata["reason"] = "ollama_key_missing"
+            metadata["reason"] = "ollama_api_key_missing"
             return metadata
         if not isinstance(routes, (list, tuple)) or len(routes) < 2:
             metadata["reason"] = "not_enough_candidates"
