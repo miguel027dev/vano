@@ -142,7 +142,7 @@ def google_login():
     # Dedicated OAuth cookie: unlike the normal embedded session cookie this
     # uses SameSite=Lax so top-level navigation back from Google can carry it.
     response.set_cookie(
-        "rairo_oauth_state",
+        "vano_oauth_state",
         oauth_cookie_value(state),
         max_age=12 * 60,
         secure=True,
