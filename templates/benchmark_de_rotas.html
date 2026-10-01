@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css">
 <link rel="alternate" type="application/json" title="VANO benchmark capabilities" href="{{ public_site_url }}/api/benchmark/v1/capabilities">
 <meta name="vano-benchmark-api" content="{{ public_site_url }}/api/benchmark/v1/capabilities">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-benchmark-v325.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-benchmark.css') }}?v={{ vano_build_id }}">
 <style>
   .bench-public-hero{padding:18px 0 8px}
   .bench-public-brand{display:flex;align-items:center;gap:14px;margin-bottom:18px}
@@ -237,5 +237,5 @@ variant_budget=4&amp;include_geometry=0</pre>
 {% endblock %}
 {% block scripts %}
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js"></script>
-<script src="{{ url_for('static', filename='vano-benchmark-v325.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-benchmark.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}

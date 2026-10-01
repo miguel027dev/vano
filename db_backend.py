@@ -1,12 +1,10 @@
-"""PostgreSQL backend for RAIGO.
+"""PostgreSQL backend for VANO.
 
 Production storage is PostgreSQL only. The app keeps its historical ``db.execute``
 call style, while this adapter translates the small amount of SQLite-style
 placeholder syntax that remains in call sites.
 
-Connection priority:
-1. DATABASE_URL (primary source on Render and other PostgreSQL providers)
-2. PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE (compatibility fallback)
+Connection source: DATABASE_URL only. Keeping one canonical connection string avoids\nconfiguration drift between local, Render, and future deployments.
 
 There is intentionally no SQLite fallback, because Render web-service filesystems
 are ephemeral and user data must survive redeploys.
@@ -15,7 +13,7 @@ from __future__ import annotations
 
 import os
 import re
-from urllib.parse import quote, urlparse
+from urllib.parse import urlparse
 
 try:
     import psycopg2
@@ -39,8 +37,8 @@ _INSERT_ID_TABLES = {"users", "reports"}
 _QMARK_RE = re.compile(r"\?")
 _LIMIT_MINUS_ONE_RE = re.compile(r"\bLIMIT\s+-1\s+OFFSET\s+(\d+)\b", re.IGNORECASE)
 _INSERT_TABLE_RE = re.compile(r"^\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)\b", re.IGNORECASE)
-_BAD_HOSTS = {"host", "hostname", "host_real", "host_gerado", "hostrairo"}
-_BAD_DATABASES = {"banco", "database", "nome_real_do_banco", "rairodb_exemplo"}
+_BAD_HOSTS = {"host", "hostname", "host_real", "host_gerado", "hostvano"}
+_BAD_DATABASES = {"banco", "database", "nome_real_do_banco", "vanodb_exemplo"}
 _BAD_VALUES = {"senha", "senha_real", "password", "usuario", "usuario_real", "user"}
 
 
@@ -59,24 +57,6 @@ def _validate_parts(host: str, user: str, password: str, database: str) -> None:
         raise RuntimeError(
             "Configuração PostgreSQL contém placeholder. Use as credenciais reais do banco ou o Blueprint do Render."
         )
-
-
-def _url_from_pg_env() -> str:
-    """Build a PostgreSQL URL from standard libpq PG* environment variables."""
-    host = _clean(os.environ.get("PGHOST"))
-    user = _clean(os.environ.get("PGUSER"))
-    password = _clean(os.environ.get("PGPASSWORD"))
-    database = _clean(os.environ.get("PGDATABASE"))
-    port = _clean(os.environ.get("PGPORT")) or "5432"
-    if not any((host, user, password, database)):
-        return ""
-    _validate_parts(host, user, password, database)
-    if not port.isdigit():
-        raise RuntimeError("PGPORT precisa ser numérica.")
-    return (
-        f"postgresql://{quote(user, safe='')}:{quote(password, safe='')}@"
-        f"{host}:{port}/{quote(database, safe='')}"
-    )
 
 
 def _valid_database_url(url: str) -> str:
@@ -98,21 +78,10 @@ def _valid_database_url(url: str) -> str:
 
 
 def database_url() -> str:
-    # RAIGO production uses DATABASE_URL as the canonical connection string.
-    # This is the value configured on the existing Render Web Service. PG*
-    # variables remain only as a compatibility fallback for older Blueprints.
     url = _valid_database_url(os.environ.get("DATABASE_URL", ""))
     if url:
         return url
-
-    pg_url = _url_from_pg_env()
-    if pg_url:
-        return pg_url
-
-    raise RuntimeError(
-        "PostgreSQL não configurado. Use o render.yaml como Blueprint (recomendado) "
-        "ou defina DATABASE_URL com a URL real do seu PostgreSQL."
-    )
+    raise RuntimeError("PostgreSQL não configurado. Defina DATABASE_URL com a URL real do banco.")
 
 
 def _rewrite_sql(sql: str) -> str:

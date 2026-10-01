@@ -3,7 +3,7 @@
 {% block legacy_map_assets %}{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-benchmark-v262.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-benchmark-admin.css') }}?v={{ vano_build_id }}">
 {% endblock %}
 {% block content %}
 <main class="bench261">
@@ -116,5 +116,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js"></script>
-<script src="{{ url_for('static', filename='vano-benchmark-v262.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-benchmark-admin.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}

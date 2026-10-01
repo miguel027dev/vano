@@ -23,12 +23,12 @@ def _b64url_sha256(value: str) -> str:
 
 
 def register_mobile_routes(app, core: dict) -> None:
-    """Registra a ponte de autenticação entre o site VIENNA e o APK Android.
+    """Registra a ponte de autenticação entre o site VANO e o APK Android.
 
     O fluxo usa o OAuth Google já existente no app.py. O APK gera state/verifier,
     envia apenas state + challenge ao servidor, abre o Google no navegador e,
     depois do callback web, o servidor devolve um código curto para o deep link
-    rairo://auth/callback. O APK troca esse código usando o verifier original.
+    vano://auth/callback. O APK troca esse código usando o verifier original.
     """
 
     google_ready = core["google_ready"]
@@ -185,16 +185,11 @@ def register_mobile_routes(app, core: dict) -> None:
 
     # One canonical setting for the APK bridge. Keep legacy aliases only as
     # compatibility fallbacks so old deployments do not break silently.
-    allowed_return_uri = (
-        os.environ.get("VANO_MOBILE_RETURN_URI", "").strip()
-        or os.environ.get("VIENNA_MOBILE_RETURN_URI", "").strip()
-        or os.environ.get("RAIRO_MOBILE_RETURN_URI", "").strip()
-        or "vienna://auth/callback"
-    )
-    allowed_return_uris = {allowed_return_uri, "vienna://auth/callback", "vano://auth/callback"}
+    allowed_return_uri = (os.environ.get("VANO_MOBILE_RETURN_URI", "").strip() or "vano://auth/callback")
+    allowed_return_uris = {allowed_return_uri, "vano://auth/callback"}
 
     start_serializer = URLSafeTimedSerializer(
-        app.config["SECRET_KEY"], salt="rairo-mobile-start-v1"
+        app.config["SECRET_KEY"], salt="vano-mobile-start-v1"
     )
     code_serializer = URLSafeTimedSerializer(
         app.config["SECRET_KEY"], salt="vano-mobile-code-v2"

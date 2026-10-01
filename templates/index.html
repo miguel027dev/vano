@@ -23,14 +23,14 @@
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
 
-<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map-v300.js') }}?v={{ vano_build_id }}-401">
+<link rel="preload" as="script" href="{{ url_for('static', filename='vano-map.js') }}?v={{ vano_build_id }}">
 
 {% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page-v230.css') }}?v={{ vano_build_id }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-polish-v340.css') }}?v={{ vano_build_id }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account-v351.css') }}?v={{ vano_build_id }}-351">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-menu-fix-v326.css') }}?v={{ vano_build_id }}-326">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account-v353.css') }}?v={{ vano_build_id }}-353">
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-page.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-polish.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account-base.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-menu-fix.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-account.css') }}?v={{ vano_build_id }}">
 {% endblock %}
 {% block content %}
 <div class="ws-app" id="wsApp">
@@ -418,11 +418,11 @@
 {% endblock %}
 {% block scripts %}
 <script>window.VANO_BOOT={token:{{ mapbox_token|tojson }},style:{{ mapbox_style|tojson }},styleSet:{{ mapbox_styles|tojson }},mapStyleMode:{{ map_style_mode|tojson }},mapAccent:{{ map_accent_colors|tojson }},navPrefs:{{ nav_preferences|tojson }},loggedIn:{{ (current_user is not none)|tojson }},isAdmin:{{ (current_user is not none and current_user['role'] == 'admin')|tojson }},csrf:{{ csrf_token()|tojson }},distanceUnit:{{ (current_user['distance_unit'] if current_user else 'km')|tojson }},homeLabel:{{ (current_user['home_label'] if current_user else '')|tojson }},workLabel:{{ (current_user['work_label'] if current_user else '')|tojson }},presenceActive:{{ (current_user is not none and current_user['presence_visible'] and current_user['presence_terms_accepted_at'] and current_user['is_app_driver'] and (current_user['age'] or 0) >= 18)|tojson }},professionalDriver:{{ (current_user is not none and current_user['is_app_driver'])|tojson }},guestRoutesRemaining:{{ guest_routes_remaining|default(10)|tojson }},guestRouteLimit:{{ guest_route_limit|default(10)|tojson }},locale:(window.VANO_ACTIVE_LOCALE||{{ active_locale|tojson }}),loginUrl:{{ url_for('login', next=url_for('index'))|tojson }}};</script>
-<script src="{{ url_for('static', filename='vano-v63-ui.js') }}?v={{ vano_build_id }}"></script>
-<script src="{{ url_for('static', filename='vano-nearby-cars-v1322.js') }}?v={{ vano_build_id }}" defer></script>
-<script src="{{ url_for('static', filename='vano-routine-v230.js') }}?v={{ vano_build_id }}" defer></script>
-<script src="{{ url_for('static', filename='vano-nearby-users-v230.js') }}?v={{ vano_build_id }}" defer></script>
-<script src="{{ url_for('static', filename='vano-admob-search-v181.js') }}?v={{ vano_build_id }}" defer></script>
+<script src="{{ url_for('static', filename='vano-ui.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-nearby-cars.js') }}?v={{ vano_build_id }}" defer></script>
+<script src="{{ url_for('static', filename='vano-routine.js') }}?v={{ vano_build_id }}" defer></script>
+<script src="{{ url_for('static', filename='vano-nearby-users.js') }}?v={{ vano_build_id }}" defer></script>
+<script src="{{ url_for('static', filename='vano-admob-search.js') }}?v={{ vano_build_id }}" defer></script>
 <script>
 // VANO MAPS V126 — fast global boot with bounded CDN waits.
 // Load Mapbox first, verify the global exists, and only then execute the VANO MAPS
@@ -431,8 +431,8 @@
   if(window.__VANO_NATIVE_SCREEN_HANDOFF)return;
   const MAPBOX_PRIMARY='https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js';
   const MAPBOX_SECONDARY='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.js';
-  const MAIN={{ (url_for('static', filename='vano-map-v300.js') ~ '?v=' ~ vano_build_id ~ '-410')|tojson }};
-  const FALLBACK={{ (url_for('static', filename='vano-map-v122.js') ~ '?v=' ~ vano_build_id ~ '-fallback')|tojson }};
+  const MAIN={{ (url_for('static', filename='vano-map.js') ~ '?v=' ~ vano_build_id)|tojson }};
+  const FALLBACK={{ (url_for('static', filename='vano-map-fallback.js') ~ '?v=' ~ vano_build_id)|tojson }};
   const csrf=window.VANO?.csrf||'';
   let fallbackStarted=false;
   const bootStarted=performance.now();

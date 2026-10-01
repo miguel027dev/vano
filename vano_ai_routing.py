@@ -90,7 +90,7 @@ def _config_snapshot() -> Dict[str, Any]:
 
 def _api_key() -> str:
     # User-requested canonical key name first; uppercase remains a convenient fallback.
-    return (os.environ.get("ollama_key", "").strip() or os.environ.get("OLLAMA_API_KEY", "").strip())
+    return os.environ.get("OLLAMA_API_KEY", "").strip()
 
 
 def _candidate_summary(route: Dict[str, Any]) -> Dict[str, Any]:
@@ -110,7 +110,7 @@ def _candidate_summary(route: Dict[str, Any]) -> Dict[str, Any]:
         "closures": int(route.get("closures_count") or 0),
         "data_confidence": round(_clamp(route.get("data_confidence")), 1),
         "decision_confidence": round(_clamp(route.get("decision_confidence")), 1),
-        "vano_score": round(_clamp(route.get("rairo_score")), 1),
+        "vano_score": round(_clamp(route.get("vano_score")), 1),
         "quiet_score": round(_clamp(route.get("quiet_score")), 1),
         "micro_route": bool(route.get("micro_route")),
         "safety_variant": bool(route.get("safety_variant")),
@@ -168,7 +168,7 @@ def _base_candidate_pool(
         ))
     else:
         valid.sort(key=lambda route: (
-            -_clamp(route.get("rairo_score")),
+            -_clamp(route.get("vano_score")),
             float(route.get("duration") or 10**15),
         ))
     return valid[: int(config["max_candidates"])]
@@ -350,7 +350,7 @@ def rerank_routes_with_ai(
             return metadata
         key = _api_key()
         if not key:
-            metadata["reason"] = "ollama_key_missing"
+            metadata["reason"] = "ollama_api_key_missing"
             return metadata
         if not isinstance(routes, (list, tuple)) or len(routes) < 2:
             metadata["reason"] = "not_enough_candidates"

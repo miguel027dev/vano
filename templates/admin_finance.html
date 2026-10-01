@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Banco & Caixa · Admin VANO MAPS{% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
 <main class="finance93">
   <div class="finance-shell">
@@ -124,4 +124,4 @@
   <datalist id="financeCategories">{% for c in finance_categories %}<option value="{{ c }}">{% endfor %}</datalist>
 </main>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-finance-v93.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-finance.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
