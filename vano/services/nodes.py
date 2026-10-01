@@ -18,7 +18,7 @@ def _ensure_node_config_table():
             return True
         db = get_db()
         db.execute("""
-            CREATE TABLE IF NOT EXISTS rairo_node_configs (
+            CREATE TABLE IF NOT EXISTS vano_node_configs (
                 node_index INTEGER PRIMARY KEY,
                 name TEXT NOT NULL DEFAULT '',
                 url TEXT NOT NULL DEFAULT '',
@@ -40,22 +40,22 @@ def _ensure_node_config_table():
                 updated_at TEXT NOT NULL
             )
         """)
-        columns = table_columns(db, "rairo_node_configs")
+        columns = table_columns(db, "vano_node_configs")
         migrations = {
-            "provider": "ALTER TABLE rairo_node_configs ADD COLUMN provider TEXT NOT NULL DEFAULT 'Render'",
-            "environment": "ALTER TABLE rairo_node_configs ADD COLUMN environment TEXT NOT NULL DEFAULT 'production'",
-            "drain_mode": "ALTER TABLE rairo_node_configs ADD COLUMN drain_mode INTEGER NOT NULL DEFAULT 0",
-            "route_path": "ALTER TABLE rairo_node_configs ADD COLUMN route_path TEXT NOT NULL DEFAULT '/v1/route/calculate'",
-            "precalc_path": "ALTER TABLE rairo_node_configs ADD COLUMN precalc_path TEXT NOT NULL DEFAULT '/v1/route/precalculate'",
-            "connect_timeout_s": "ALTER TABLE rairo_node_configs ADD COLUMN connect_timeout_s REAL NOT NULL DEFAULT 2.2",
-            "route_timeout_s": "ALTER TABLE rairo_node_configs ADD COLUMN route_timeout_s REAL NOT NULL DEFAULT 10.0",
-            "cooldown_s": "ALTER TABLE rairo_node_configs ADD COLUMN cooldown_s INTEGER NOT NULL DEFAULT 20",
-            "notes": "ALTER TABLE rairo_node_configs ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
+            "provider": "ALTER TABLE vano_node_configs ADD COLUMN provider TEXT NOT NULL DEFAULT 'Render'",
+            "environment": "ALTER TABLE vano_node_configs ADD COLUMN environment TEXT NOT NULL DEFAULT 'production'",
+            "drain_mode": "ALTER TABLE vano_node_configs ADD COLUMN drain_mode INTEGER NOT NULL DEFAULT 0",
+            "route_path": "ALTER TABLE vano_node_configs ADD COLUMN route_path TEXT NOT NULL DEFAULT '/v1/route/calculate'",
+            "precalc_path": "ALTER TABLE vano_node_configs ADD COLUMN precalc_path TEXT NOT NULL DEFAULT '/v1/route/precalculate'",
+            "connect_timeout_s": "ALTER TABLE vano_node_configs ADD COLUMN connect_timeout_s REAL NOT NULL DEFAULT 2.2",
+            "route_timeout_s": "ALTER TABLE vano_node_configs ADD COLUMN route_timeout_s REAL NOT NULL DEFAULT 10.0",
+            "cooldown_s": "ALTER TABLE vano_node_configs ADD COLUMN cooldown_s INTEGER NOT NULL DEFAULT 20",
+            "notes": "ALTER TABLE vano_node_configs ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
         }
         for column, sql in migrations.items():
             if column not in columns:
                 db.execute(sql)
-        db.execute("CREATE INDEX IF NOT EXISTS idx_rairo_node_configs_enabled ON rairo_node_configs(enabled, priority, node_index)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_vano_node_configs_enabled ON vano_node_configs(enabled, priority, node_index)")
         db.commit()
         _NODE_CONFIG_TABLE_READY = True
         return True
@@ -72,7 +72,7 @@ def _ensure_node_dispatch_log_table():
             return True
         db = get_db()
         db.execute("""
-            CREATE TABLE IF NOT EXISTS rairo_node_dispatch_logs (
+            CREATE TABLE IF NOT EXISTS vano_node_dispatch_logs (
                 id SERIAL PRIMARY KEY,
                 node_index INTEGER NOT NULL DEFAULT 0,
                 node_name TEXT NOT NULL DEFAULT '',
@@ -88,9 +88,9 @@ def _ensure_node_dispatch_log_table():
                 created_at TEXT NOT NULL
             )
         """)
-        db.execute("CREATE INDEX IF NOT EXISTS idx_node_dispatch_node_time ON rairo_node_dispatch_logs(node_index, created_at DESC)")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_node_dispatch_user_time ON rairo_node_dispatch_logs(user_id, created_at DESC)")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_node_dispatch_success_time ON rairo_node_dispatch_logs(success, created_at DESC)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_node_dispatch_node_time ON vano_node_dispatch_logs(node_index, created_at DESC)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_node_dispatch_user_time ON vano_node_dispatch_logs(user_id, created_at DESC)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_node_dispatch_success_time ON vano_node_dispatch_logs(success, created_at DESC)")
         db.commit()
         _NODE_LOG_TABLE_READY = True
         return True
@@ -104,7 +104,7 @@ def _node_log_worker():
             if db is None:
                 db = connect_db()
             db.execute(
-                """INSERT INTO rairo_node_dispatch_logs(
+                """INSERT INTO vano_node_dispatch_logs(
                        node_index,node_name,user_id,request_id,mode,profile,prefetch,http_status,success,latency_ms,error,created_at
                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                 item,
@@ -128,7 +128,7 @@ def _ensure_node_log_worker():
     with _NODE_LOG_WORKER_LOCK:
         if _NODE_LOG_WORKER_STARTED:
             return
-        threading.Thread(target=_node_log_worker, name="rairo-node-telemetry", daemon=True).start()
+        threading.Thread(target=_node_log_worker, name="vano-node-telemetry", daemon=True).start()
         _NODE_LOG_WORKER_STARTED = True
 
 
@@ -180,7 +180,7 @@ def _node_config_row(index):
         row = get_db().execute(
             """SELECT node_index,name,url,region,provider,environment,capacity,enabled,drain_mode,priority,
                       health_path,route_path,precalc_path,connect_timeout_s,route_timeout_s,cooldown_s,notes,created_at,updated_at
-               FROM rairo_node_configs WHERE node_index=?""",
+               FROM vano_node_configs WHERE node_index=?""",
             (index,),
         ).fetchone()
         payload = dict(row) if row else None
@@ -197,7 +197,7 @@ def _normalize_node_url(value):
     if not value:
         return ""
     parsed = urlparse(value)
-    if parsed.scheme not in ({"https", "http"} if RAIRO_ALLOW_HTTP_NODES else {"https"}):
+    if parsed.scheme not in ({"https", "http"} if VANO_ALLOW_HTTP_NODES else {"https"}):
         raise ValueError("A URL do node precisa usar HTTPS.")
     if not parsed.hostname:
         raise ValueError("URL do node inválida.")
@@ -206,11 +206,11 @@ def _normalize_node_url(value):
     if parsed.path not in {"", "/"}:
         raise ValueError("Use somente a URL base do node, sem caminho adicional.")
     host = parsed.hostname.lower()
-    if host in {"localhost", "127.0.0.1", "::1"} and not RAIRO_ALLOW_HTTP_NODES:
+    if host in {"localhost", "127.0.0.1", "::1"} and not VANO_ALLOW_HTTP_NODES:
         raise ValueError("Endereço local não pode ser usado em produção.")
     try:
         ip = ipaddress.ip_address(host)
-        if (ip.is_private or ip.is_loopback or ip.is_link_local) and not RAIRO_ALLOW_HTTP_NODES:
+        if (ip.is_private or ip.is_loopback or ip.is_link_local) and not VANO_ALLOW_HTTP_NODES:
             raise ValueError("IP privado não pode ser usado como node em produção.")
     except ValueError as exc:
         # A hostname normal raises ValueError in ip_address(). Validation errors
@@ -227,24 +227,24 @@ def _normalize_node_path(value, fallback):
     return value
 
 
-def rairo_node_config(index):
+def vano_node_config(index):
     index = int(index)
     key = f"{index:02d}"
-    url = os.environ.get(f"RAIRO_NODE_{key}_URL", "").strip().rstrip("/")
-    region = os.environ.get(f"RAIRO_NODE_{key}_REGION", "Render · a configurar").strip() or "Render · a configurar"
-    provider = os.environ.get(f"RAIRO_NODE_{key}_PROVIDER", "Render").strip() or "Render"
-    environment = os.environ.get(f"RAIRO_NODE_{key}_ENVIRONMENT", "production").strip() or "production"
-    name = os.environ.get(f"RAIRO_NODE_{key}_NAME", f"VANO MAPS Node {key}").strip() or f"VANO MAPS Node {key}"
-    capacity = max(1, min(100, int(os.environ.get(f"RAIRO_NODE_{key}_CAPACITY", str(RAIRO_NODE_CAPACITY)) or RAIRO_NODE_CAPACITY)))
-    enabled = _env_bool(f"RAIRO_NODE_{key}_ENABLED", True)
-    drain_mode = _env_bool(f"RAIRO_NODE_{key}_DRAIN", False)
-    priority = max(1, min(999, int(os.environ.get(f"RAIRO_NODE_{key}_PRIORITY", "100") or 100)))
-    health_path = os.environ.get(f"RAIRO_NODE_{key}_HEALTH_PATH", RAIRO_NODE_HEALTH_PATH).strip() or RAIRO_NODE_HEALTH_PATH
-    route_path = os.environ.get(f"RAIRO_NODE_{key}_ROUTE_PATH", "/v1/route/calculate").strip() or "/v1/route/calculate"
-    precalc_path = os.environ.get(f"RAIRO_NODE_{key}_PRECALC_PATH", "/v1/route/precalculate").strip() or "/v1/route/precalculate"
-    connect_timeout_s = max(0.5, min(8.0, float(os.environ.get(f"RAIRO_NODE_{key}_CONNECT_TIMEOUT", "2.2") or 2.2)))
-    route_timeout_s = max(3.0, min(45.0, float(os.environ.get(f"RAIRO_NODE_{key}_ROUTE_TIMEOUT", str(RAIRO_NODE_ROUTE_TIMEOUT)) or RAIRO_NODE_ROUTE_TIMEOUT)))
-    cooldown_s = max(0, min(300, int(os.environ.get(f"RAIRO_NODE_{key}_COOLDOWN", "20") or 20)))
+    url = os.environ.get(f"VANO_NODE_{key}_URL", "").strip().rstrip("/")
+    region = os.environ.get(f"VANO_NODE_{key}_REGION", "Render · a configurar").strip() or "Render · a configurar"
+    provider = os.environ.get(f"VANO_NODE_{key}_PROVIDER", "Render").strip() or "Render"
+    environment = os.environ.get(f"VANO_NODE_{key}_ENVIRONMENT", "production").strip() or "production"
+    name = os.environ.get(f"VANO_NODE_{key}_NAME", f"VANO MAPS Node {key}").strip() or f"VANO MAPS Node {key}"
+    capacity = max(1, min(100, int(os.environ.get(f"VANO_NODE_{key}_CAPACITY", str(VANO_NODE_CAPACITY)) or VANO_NODE_CAPACITY)))
+    enabled = _env_bool(f"VANO_NODE_{key}_ENABLED", True)
+    drain_mode = _env_bool(f"VANO_NODE_{key}_DRAIN", False)
+    priority = max(1, min(999, int(os.environ.get(f"VANO_NODE_{key}_PRIORITY", "100") or 100)))
+    health_path = os.environ.get(f"VANO_NODE_{key}_HEALTH_PATH", VANO_NODE_HEALTH_PATH).strip() or VANO_NODE_HEALTH_PATH
+    route_path = os.environ.get(f"VANO_NODE_{key}_ROUTE_PATH", "/v1/route/calculate").strip() or "/v1/route/calculate"
+    precalc_path = os.environ.get(f"VANO_NODE_{key}_PRECALC_PATH", "/v1/route/precalculate").strip() or "/v1/route/precalculate"
+    connect_timeout_s = max(0.5, min(8.0, float(os.environ.get(f"VANO_NODE_{key}_CONNECT_TIMEOUT", "2.2") or 2.2)))
+    route_timeout_s = max(3.0, min(45.0, float(os.environ.get(f"VANO_NODE_{key}_ROUTE_TIMEOUT", str(VANO_NODE_ROUTE_TIMEOUT)) or VANO_NODE_ROUTE_TIMEOUT)))
+    cooldown_s = max(0, min(300, int(os.environ.get(f"VANO_NODE_{key}_COOLDOWN", "20") or 20)))
     notes = ""
     source = "environment" if url else "default"
     row = _node_config_row(index)
@@ -258,7 +258,7 @@ def rairo_node_config(index):
         enabled = bool(int(row.get("enabled") or 0))
         drain_mode = bool(int(row.get("drain_mode") or 0))
         priority = max(1, min(999, int(row.get("priority") or priority)))
-        health_path = str(row.get("health_path") or health_path).strip() or RAIRO_NODE_HEALTH_PATH
+        health_path = str(row.get("health_path") or health_path).strip() or VANO_NODE_HEALTH_PATH
         route_path = str(row.get("route_path") or route_path).strip() or "/v1/route/calculate"
         precalc_path = str(row.get("precalc_path") or precalc_path).strip() or "/v1/route/precalculate"
         connect_timeout_s = max(0.5, min(8.0, float(row.get("connect_timeout_s") or connect_timeout_s)))
@@ -303,9 +303,9 @@ def rairo_node_config(index):
     }
 
 
-def save_rairo_node_config(index, payload):
-    index = max(1, min(RAIRO_NODE_COUNT, int(index)))
-    current = rairo_node_config(index)
+def save_vano_node_config(index, payload):
+    index = max(1, min(VANO_NODE_COUNT, int(index)))
+    current = vano_node_config(index)
     name = str(payload.get("name", current["name"]) or current["name"]).strip()[:80] or current["name"]
     region = str(payload.get("region", current["region"]) or current["region"]).strip()[:80] or "Render"
     provider = str(payload.get("provider", current.get("provider", "Render")) or "Render").strip()[:40] or "Render"
@@ -330,19 +330,19 @@ def save_rairo_node_config(index, payload):
     _ensure_node_config_table()
     db = get_db()
     now = utcnow_iso()
-    existing = db.execute("SELECT node_index,created_at FROM rairo_node_configs WHERE node_index=?", (index,)).fetchone()
+    existing = db.execute("SELECT node_index,created_at FROM vano_node_configs WHERE node_index=?", (index,)).fetchone()
     values = (name, url, region, provider, environment, capacity, 1 if enabled else 0, 1 if drain_mode else 0, priority,
               health_path, route_path, precalc_path, connect_timeout_s, route_timeout_s, cooldown_s, notes, now)
     if existing:
         db.execute(
-            """UPDATE rairo_node_configs SET name=?,url=?,region=?,provider=?,environment=?,capacity=?,enabled=?,drain_mode=?,priority=?,
+            """UPDATE vano_node_configs SET name=?,url=?,region=?,provider=?,environment=?,capacity=?,enabled=?,drain_mode=?,priority=?,
                      health_path=?,route_path=?,precalc_path=?,connect_timeout_s=?,route_timeout_s=?,cooldown_s=?,notes=?,updated_at=?
                WHERE node_index=?""",
             values + (index,),
         )
     else:
         db.execute(
-            """INSERT INTO rairo_node_configs(node_index,name,url,region,provider,environment,capacity,enabled,drain_mode,priority,
+            """INSERT INTO vano_node_configs(node_index,name,url,region,provider,environment,capacity,enabled,drain_mode,priority,
                      health_path,route_path,precalc_path,connect_timeout_s,route_timeout_s,cooldown_s,notes,created_at,updated_at)
                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (index,) + values[:-1] + (now, now),
@@ -353,19 +353,19 @@ def save_rairo_node_config(index, payload):
     with _NODE_REGISTRY_LOCK:
         _NODE_REGISTRY_CACHE["ts"] = 0.0
         _NODE_REGISTRY_CACHE["configs"] = []
-    with RAIRO_NODE_STATUS_LOCK:
-        RAIRO_NODE_STATUS_CACHE.pop(f"{index:02d}", None)
+    with VANO_NODE_STATUS_LOCK:
+        VANO_NODE_STATUS_CACHE.pop(f"{index:02d}", None)
     with _NODE_COOLDOWN_LOCK:
         if not enabled or drain_mode:
             _NODE_COOLDOWN_UNTIL.pop(index, None)
-    return rairo_node_config(index)
+    return vano_node_config(index)
 
 
 def _test_node_metrics(config, active_users=0):
     """Stable test-mode telemetry until each Render node URL is configured."""
     idx = int(config["index"])
     bucket = int(time.time() // 12)
-    seed = int(hashlib.sha256(f"rairo-v85:{idx}:{bucket}".encode()).hexdigest()[:8], 16)
+    seed = int(hashlib.sha256(f"vano-v85:{idx}:{bucket}".encode()).hexdigest()[:8], 16)
     latency = 54 + (seed % 78)
     jitter = 4 + ((seed >> 7) % 17)
     cpu = 12 + ((seed >> 11) % 44)
@@ -407,7 +407,7 @@ def _probe_configured_node(config, active_users=0):
     body = {}
     try:
         target = config["url"] + (config["health_path"] if str(config["health_path"]).startswith("/") else "/" + str(config["health_path"]))
-        resp = _NODE_HTTP.get(target, timeout=(1.8, RAIRO_NODE_CHECK_TIMEOUT), headers={"User-Agent": "VANO MAPS-Central-Health/91", "Accept": "application/json"})
+        resp = _NODE_HTTP.get(target, timeout=(1.8, VANO_NODE_CHECK_TIMEOUT), headers={"User-Agent": "VANO MAPS-Central-Health/91", "Accept": "application/json"})
         status = int(resp.status_code)
         http_ok = 200 <= status < 400
         healthy = http_ok
@@ -426,8 +426,8 @@ def _probe_configured_node(config, active_users=0):
         error = type(exc).__name__
     latency = max(1, int((time.perf_counter() - started) * 1000))
     previous = None
-    with RAIRO_NODE_STATUS_LOCK:
-        previous = RAIRO_NODE_STATUS_CACHE.get(config["id"], {}).get("payload")
+    with VANO_NODE_STATUS_LOCK:
+        previous = VANO_NODE_STATUS_CACHE.get(config["id"], {}).get("payload")
     reported_avg = body.get("response_avg_ms")
     reported_p95 = body.get("response_p95_ms")
     avg = int(float(reported_avg)) if reported_avg is not None else (latency if not previous else int((float(previous.get("response_avg_ms") or latency) * 0.65) + latency * 0.35))
@@ -515,16 +515,16 @@ def admin_node_snapshot(refresh=False):
     # Rendering/probing thousands of cards on one request would itself become a
     # control-plane outage. Show configured nodes first and cap the visual slice;
     # any node remains directly manageable by /admin/servers/<index>.
-    view_limit = max(15, min(500, int(os.environ.get("RAIRO_ADMIN_NODE_VIEW_LIMIT", "160") or 160)))
+    view_limit = max(15, min(500, int(os.environ.get("VANO_ADMIN_NODE_VIEW_LIMIT", "160") or 160)))
     registry = _configured_node_registry()
     configs = list(registry[:view_limit])
     existing = {int(c["index"]) for c in configs}
-    if len(configs) < min(view_limit, RAIRO_NODE_COUNT):
-        for i in range(1, RAIRO_NODE_COUNT + 1):
+    if len(configs) < min(view_limit, VANO_NODE_COUNT):
+        for i in range(1, VANO_NODE_COUNT + 1):
             if i in existing:
                 continue
-            configs.append(rairo_node_config(i))
-            if len(configs) >= min(view_limit, RAIRO_NODE_COUNT):
+            configs.append(vano_node_config(i))
+            if len(configs) >= min(view_limit, VANO_NODE_COUNT):
                 break
     windows = _active_user_windows()
     active_total = windows["active_now_5m"]
@@ -539,11 +539,11 @@ def admin_node_snapshot(refresh=False):
     nodes = [None] * len(configs)
     to_probe = []
     for pos, cfg in enumerate(configs):
-        with RAIRO_NODE_STATUS_LOCK:
-            cached = RAIRO_NODE_STATUS_CACHE.get(cfg["id"])
+        with VANO_NODE_STATUS_LOCK:
+            cached = VANO_NODE_STATUS_CACHE.get(cfg["id"])
         if cfg["configured"] and refresh and (not cached or now - float(cached.get("ts", 0)) >= 1.0):
             to_probe.append((pos, cfg, allocations[pos]))
-        elif cfg["configured"] and cached and now - float(cached.get("ts", 0)) < RAIRO_NODE_STATUS_TTL:
+        elif cfg["configured"] and cached and now - float(cached.get("ts", 0)) < VANO_NODE_STATUS_TTL:
             nodes[pos] = dict(cached["payload"])
         else:
             nodes[pos] = _test_node_metrics(cfg, allocations[pos]) if not cfg["configured"] else {
@@ -557,23 +557,23 @@ def admin_node_snapshot(refresh=False):
             futures = {executor.submit(_probe_configured_node, cfg, users): (pos, cfg) for pos, cfg, users in to_probe}
             for future, (pos, cfg) in list(futures.items()):
                 try:
-                    payload = future.result(timeout=RAIRO_NODE_CHECK_TIMEOUT + 1.0)
+                    payload = future.result(timeout=VANO_NODE_CHECK_TIMEOUT + 1.0)
                 except Exception:
                     payload = {**_test_node_metrics(cfg, allocations[pos]), "mode": "real", "status": "offline", "healthy": False, "note": "Falha ao testar o node."}
                 nodes[pos] = payload
-                with RAIRO_NODE_STATUS_LOCK:
-                    RAIRO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": dict(payload)}
+                with VANO_NODE_STATUS_LOCK:
+                    VANO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": dict(payload)}
 
     # Capacity summary uses the full configured registry, not only visible cards.
     total_capacity = sum(int(c.get("capacity") or 0) for c in registry if c.get("enabled") and not c.get("drain_mode"))
     configured = len(registry)
-    healthy = sum(1 for c in registry if (RAIRO_NODE_STATUS_CACHE.get(c["id"]) or {}).get("payload",{}).get("healthy") is True)
+    healthy = sum(1 for c in registry if (VANO_NODE_STATUS_CACHE.get(c["id"]) or {}).get("payload",{}).get("healthy") is True)
     real_latencies = [int(n["latency_ms"]) for n in nodes if n.get("latency_ms") is not None and n.get("healthy") is not False]
     avg_latency = round(sum(real_latencies) / len(real_latencies)) if real_latencies else 0
     used_slots = 0
     for c in registry:
-        with RAIRO_NODE_STATUS_LOCK:
-            cached=(RAIRO_NODE_STATUS_CACHE.get(c["id"]) or {}).get("payload") or {}
+        with VANO_NODE_STATUS_LOCK:
+            cached=(VANO_NODE_STATUS_CACHE.get(c["id"]) or {}).get("payload") or {}
         used_slots += max(0,int(cached.get("active_jobs") if cached.get("active_jobs") is not None else cached.get("active_users") or 0))
     used_slots = min(used_slots, total_capacity)
     occupancy_pct = round((100 * used_slots / max(1, total_capacity)), 1) if total_capacity else 0
@@ -585,7 +585,7 @@ def admin_node_snapshot(refresh=False):
     return {
         "nodes": nodes,
         "summary": {
-            "total_nodes": RAIRO_NODE_COUNT,
+            "total_nodes": VANO_NODE_COUNT,
             "rendered_nodes": len(nodes),
             "configured_nodes": configured,
             "healthy_nodes": healthy,
@@ -596,7 +596,7 @@ def admin_node_snapshot(refresh=False):
             "user_occupancy_pct": round(100 * min(active_total, total_capacity) / max(1, total_capacity), 1) if total_capacity else 0,
             "used_slots": used_slots, "capacity": total_capacity, "available_slots": max(0, total_capacity - used_slots),
             "overflow_users": max(0, active_total - total_capacity), "active_jobs": used_slots,
-            "occupancy_pct": occupancy_pct, "avg_latency_ms": avg_latency, "max_users_per_node": RAIRO_NODE_CAPACITY,
+            "occupancy_pct": occupancy_pct, "avg_latency_ms": avg_latency, "max_users_per_node": VANO_NODE_CAPACITY,
         },
         "generated_at": utcnow_iso(),
     }
@@ -606,7 +606,7 @@ def admin_node_snapshot(refresh=False):
 def _configured_node_registry():
     """Load all configured workers with one PostgreSQL query, then cache it.
 
-    The old dispatcher called rairo_node_config() once per slot. That works for
+    The old dispatcher called vano_node_config() once per slot. That works for
     15 workers but becomes thousands of DB/cache lookups at global scale. V93
     builds a compact registry in one query and reuses it for a few seconds.
     """
@@ -621,7 +621,7 @@ def _configured_node_registry():
         rows = get_db().execute(
             """SELECT node_index,name,url,region,provider,environment,capacity,enabled,drain_mode,priority,
                       health_path,route_path,precalc_path,connect_timeout_s,route_timeout_s,cooldown_s,notes,created_at,updated_at
-               FROM rairo_node_configs
+               FROM vano_node_configs
                WHERE enabled=1 AND drain_mode=0 AND url<>''
                ORDER BY priority ASC,node_index ASC LIMIT ?""",
             (_NODE_REGISTRY_LIMIT,),
@@ -635,7 +635,7 @@ def _configured_node_registry():
                 _NODE_CONFIG_CACHE[idx] = (now, copy.deepcopy(payload))
                 seen.add(idx)
         for idx in sorted(seen):
-            cfg = rairo_node_config(idx)
+            cfg = vano_node_config(idx)
             if cfg.get("configured") and cfg.get("enabled") and not cfg.get("drain_mode"):
                 configs.append(cfg)
     except Exception:
@@ -643,10 +643,10 @@ def _configured_node_registry():
 
     # Environment-only nodes are still supported without turning the registry
     # refresh into N database reads. Also discover explicit indexes above the old
-    # RAIRO_NODE_COUNT slot ceiling so scaling from 15 -> 30 workers is automatic.
-    env_indexes = set(range(1, RAIRO_NODE_COUNT + 1))
+    # VANO_NODE_COUNT slot ceiling so scaling from 15 -> 30 workers is automatic.
+    env_indexes = set(range(1, VANO_NODE_COUNT + 1))
     for env_key in os.environ:
-        match = re.fullmatch(r"RAIRO_NODE_(\d+)_URL", str(env_key))
+        match = re.fullmatch(r"VANO_NODE_(\d+)_URL", str(env_key))
         if match:
             try:
                 idx = int(match.group(1))
@@ -658,9 +658,9 @@ def _configured_node_registry():
         if idx in seen or len(configs) >= _NODE_REGISTRY_LIMIT:
             continue
         key = f"{idx:02d}"
-        if not str(os.environ.get(f"RAIRO_NODE_{key}_URL", "")).strip():
+        if not str(os.environ.get(f"VANO_NODE_{key}_URL", "")).strip():
             continue
-        cfg = rairo_node_config(idx)
+        cfg = vano_node_config(idx)
         if cfg.get("configured") and cfg.get("enabled") and not cfg.get("drain_mode"):
             configs.append(cfg)
 
@@ -714,11 +714,11 @@ def _dispatch_node_candidates(job_payload=None):
         with _NODE_COOLDOWN_LOCK:
             if float(_NODE_COOLDOWN_UNTIL.get(int(cfg.get("index") or 0), 0) or 0) > now:
                 continue
-        with RAIRO_NODE_STATUS_LOCK:
-            cached = RAIRO_NODE_STATUS_CACHE.get(cfg["id"])
-        status = dict(cached.get("payload") or {}) if cached and now - float(cached.get("ts", 0)) < max(90, RAIRO_NODE_STATUS_TTL * 3) else {}
+        with VANO_NODE_STATUS_LOCK:
+            cached = VANO_NODE_STATUS_CACHE.get(cfg["id"])
+        status = dict(cached.get("payload") or {}) if cached and now - float(cached.get("ts", 0)) < max(90, VANO_NODE_STATUS_TTL * 3) else {}
         healthy = status.get("healthy")
-        capacity = max(1, int(status.get("capacity") or cfg.get("capacity") or RAIRO_NODE_CAPACITY))
+        capacity = max(1, int(status.get("capacity") or cfg.get("capacity") or VANO_NODE_CAPACITY))
         active = max(0, int(status.get("active_jobs") if status.get("active_jobs") is not None else status.get("active_users") or 0))
         with _NODE_INFLIGHT_LOCK:
             reserved = max(0, int(_NODE_INFLIGHT.get(int(cfg.get("index") or 0), 0) or 0))
@@ -743,7 +743,7 @@ def _dispatch_node_candidates(job_payload=None):
         return []
     # A route only needs a small failover set. Avoid O(N log N) sorting across
     # thousands of global workers on every request; select only the best slice.
-    candidate_limit = min(len(ranked), max(32, RAIRO_NODE_ROUTE_ATTEMPTS * 12))
+    candidate_limit = min(len(ranked), max(32, VANO_NODE_ROUTE_ATTEMPTS * 12))
     ranked = heapq.nsmallest(candidate_limit, ranked, key=lambda item: item[0])
     global _NODE_DISPATCH_CURSOR
     with _NODE_DISPATCH_LOCK:
@@ -806,41 +806,41 @@ def _heavy_route_dispatch_policy(job_payload, candidates, prefetch=False):
     distance_km = _job_direct_distance_km(job_payload)
     active = bool(
         str((job_payload or {}).get("profile") or "").lower() in MOTORIZED_PROFILES
-        and RAIRO_HEAVY_ROUTE_MIN_KM <= distance_km <= RAIRO_HEAVY_ROUTE_MAX_KM
+        and VANO_HEAVY_ROUTE_MIN_KM <= distance_km <= VANO_HEAVY_ROUTE_MAX_KM
     )
     if not active:
-        return {"active": False, "distance_km": round(distance_km, 2), "fanout": 1, "attempts": RAIRO_NODE_ROUTE_ATTEMPTS}
+        return {"active": False, "distance_km": round(distance_km, 2), "fanout": 1, "attempts": VANO_NODE_ROUTE_ATTEMPTS}
 
     if distance_km < 120:
-        fanout, timeout_s, hedge_ms = 2, 18.0, max(900, RAIRO_HEAVY_ROUTE_HEDGE_DELAY_MS)
+        fanout, timeout_s, hedge_ms = 2, 18.0, max(900, VANO_HEAVY_ROUTE_HEDGE_DELAY_MS)
     elif distance_km < 600:
-        fanout, timeout_s, hedge_ms = 3, 28.0, max(600, int(RAIRO_HEAVY_ROUTE_HEDGE_DELAY_MS * .85))
+        fanout, timeout_s, hedge_ms = 3, 28.0, max(600, int(VANO_HEAVY_ROUTE_HEDGE_DELAY_MS * .85))
     elif distance_km < 1500:
-        fanout, timeout_s, hedge_ms = 4, 40.0, max(380, int(RAIRO_HEAVY_ROUTE_HEDGE_DELAY_MS * .65))
+        fanout, timeout_s, hedge_ms = 4, 40.0, max(380, int(VANO_HEAVY_ROUTE_HEDGE_DELAY_MS * .65))
     else:
-        fanout, timeout_s, hedge_ms = 5, 52.0, max(220, int(RAIRO_HEAVY_ROUTE_HEDGE_DELAY_MS * .45))
+        fanout, timeout_s, hedge_ms = 5, 52.0, max(220, int(VANO_HEAVY_ROUTE_HEDGE_DELAY_MS * .45))
 
     total_capacity = 0
     total_active = 0
     for cfg, status in (candidates or []):
-        cap = max(1, int((status or {}).get("capacity") or cfg.get("capacity") or RAIRO_NODE_CAPACITY))
+        cap = max(1, int((status or {}).get("capacity") or cfg.get("capacity") or VANO_NODE_CAPACITY))
         busy = max(0, int((status or {}).get("active_jobs") if (status or {}).get("active_jobs") is not None else (status or {}).get("active_users") or 0))
         with _NODE_INFLIGHT_LOCK:
             busy += max(0, int(_NODE_INFLIGHT.get(int(cfg.get("index") or 0), 0) or 0))
         total_capacity += cap
         total_active += min(cap, busy)
     cluster_load = (float(total_active) / float(total_capacity)) if total_capacity else 0.0
-    if cluster_load >= RAIRO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT:
+    if cluster_load >= VANO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT:
         fanout = min(fanout, 2)
-    elif cluster_load >= max(.68, RAIRO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT - .12):
+    elif cluster_load >= max(.68, VANO_HEAVY_ROUTE_CLUSTER_LOAD_LIMIT - .12):
         fanout = min(fanout, 3)
     if prefetch:
         fanout = min(fanout, 2)
 
-    fanout = max(1, min(fanout, RAIRO_HEAVY_ROUTE_MAX_FANOUT, len(candidates or []) or 1))
-    attempts = max(fanout, min(RAIRO_HEAVY_ROUTE_TOTAL_ATTEMPTS, len(candidates or []) or fanout))
-    timeout_s = min(RAIRO_HEAVY_ROUTE_TIMEOUT_MAX, max(RAIRO_NODE_ROUTE_TIMEOUT, timeout_s))
-    overall_timeout_s = min(RAIRO_HEAVY_ROUTE_TIMEOUT_MAX + 5.0, timeout_s + ((attempts - 1) * hedge_ms / 1000.0))
+    fanout = max(1, min(fanout, VANO_HEAVY_ROUTE_MAX_FANOUT, len(candidates or []) or 1))
+    attempts = max(fanout, min(VANO_HEAVY_ROUTE_TOTAL_ATTEMPTS, len(candidates or []) or fanout))
+    timeout_s = min(VANO_HEAVY_ROUTE_TIMEOUT_MAX, max(VANO_NODE_ROUTE_TIMEOUT, timeout_s))
+    overall_timeout_s = min(VANO_HEAVY_ROUTE_TIMEOUT_MAX + 5.0, timeout_s + ((attempts - 1) * hedge_ms / 1000.0))
     return {
         "active": True,
         "distance_km": round(distance_km, 2),
@@ -894,7 +894,7 @@ def _node_inline_context(slat, slon, elat, elon, mode):
     path. Admin block zones are always included; reports are added for non-fast
     modes. Mapbox traffic remains the source for live ETA in the worker.
     """
-    if not _env_bool("RAIRO_NODE_INLINE_CONTEXT", True):
+    if not _env_bool("VANO_NODE_INLINE_CONTEXT", True):
         return None
     span = max(abs(float(slat)-float(elat)), abs(float(slon)-float(elon)))
     pad = min(.18, max(.035, span * .10 + .02))
@@ -925,9 +925,9 @@ def _call_route_node(cfg, job_payload, prefetch, headers, timeout_override=None,
             target = cfg["url"] + str(cfg.get("route_path") or "/v1/route/calculate")
             body = dict(job_payload)
         connect_timeout = max(0.5, min(8.0, float(cfg.get("connect_timeout_s") or 2.2)))
-        configured_timeout = max(3.0, float(cfg.get("route_timeout_s") or RAIRO_NODE_ROUTE_TIMEOUT))
+        configured_timeout = max(3.0, float(cfg.get("route_timeout_s") or VANO_NODE_ROUTE_TIMEOUT))
         route_timeout = max(configured_timeout, float(timeout_override or 0))
-        route_timeout = min(RAIRO_HEAVY_ROUTE_TIMEOUT_MAX if timeout_override else 45.0, route_timeout)
+        route_timeout = min(VANO_HEAVY_ROUTE_TIMEOUT_MAX if timeout_override else 45.0, route_timeout)
         resp = _NODE_HTTP.post(target, json=body, headers=headers, timeout=(connect_timeout, route_timeout))
         attempt["status"] = int(resp.status_code)
         attempt["latency_ms"] = int((time.perf_counter() - started) * 1000)
@@ -956,8 +956,8 @@ def _call_route_node(cfg, job_payload, prefetch, headers, timeout_override=None,
                         "last_check": utcnow_iso(), "http_status": 200,
                         "note": "Node respondeu a um cálculo de rota.",
                     }
-                    with RAIRO_NODE_STATUS_LOCK:
-                        RAIRO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": payload}
+                    with VANO_NODE_STATUS_LOCK:
+                        VANO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": payload}
                 return copy.deepcopy(result), attempt, True
         attempt["error"] = str(data.get("error") or f"http_{resp.status_code}")[:100]
         if resp.status_code == 429:
@@ -986,7 +986,7 @@ def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, poli
     max_parallel = max(1, min(int(policy.get("fanout") or 1), len(selected)))
     hedge_delay = max(.08, float(policy.get("hedge_delay_ms") or 320) / 1000.0)
     deadline = time.monotonic() + max(5.0, float(policy.get("overall_timeout_s") or 30))
-    pool = ThreadPoolExecutor(max_workers=max_parallel, thread_name_prefix="rairo-heavy-route")
+    pool = ThreadPoolExecutor(max_workers=max_parallel, thread_name_prefix="vano-heavy-route")
     pending = {}
     next_index = 0
     next_hedge_at = time.monotonic()
@@ -1000,7 +1000,7 @@ def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, poli
         next_index += 1
         fut = pool.submit(
             _call_route_node, cfg, job_payload, prefetch, headers,
-            float(policy.get("node_timeout_s") or RAIRO_NODE_ROUTE_TIMEOUT), rank,
+            float(policy.get("node_timeout_s") or VANO_NODE_ROUTE_TIMEOUT), rank,
         )
         pending[fut] = cfg
         next_hedge_at = time.monotonic() + hedge_delay
@@ -1069,13 +1069,13 @@ def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, poli
 
 def dispatch_route_to_nodes(job_payload, prefetch=False):
     """Route work to healthy nodes, using hedged fan-out for heavy trips."""
-    meta = {"enabled": bool(RAIRO_DISTRIBUTED_ROUTING_ENABLED), "attempted": [], "fallback": False}
+    meta = {"enabled": bool(VANO_DISTRIBUTED_ROUTING_ENABLED), "attempted": [], "fallback": False}
 
     def log_central_fallback(reason):
         attempt = {"status": None, "latency_ms": 0, "error": reason}
         _record_node_dispatch_log({"index": 0, "name": "Central fallback"}, job_payload, prefetch, attempt, False)
 
-    if not RAIRO_DISTRIBUTED_ROUTING_ENABLED:
+    if not VANO_DISTRIBUTED_ROUTING_ENABLED:
         meta["reason"] = "disabled"
         return None, meta
     if not CENTRAL_API_SECRET:
@@ -1110,7 +1110,7 @@ def dispatch_route_to_nodes(job_payload, prefetch=False):
         log_central_fallback(meta.get("reason") or "heavy_nodes_unavailable")
         return None, meta
 
-    for rank, (cfg, _cached_status) in enumerate(candidates[:RAIRO_NODE_ROUTE_ATTEMPTS], start=1):
+    for rank, (cfg, _cached_status) in enumerate(candidates[:VANO_NODE_ROUTE_ATTEMPTS], start=1):
         result, attempt, success = _call_route_node(cfg, job_payload, prefetch, headers, None, rank)
         meta["attempted"].append(attempt)
         if success and result is not None:
@@ -1132,5 +1132,5 @@ def dispatch_route_to_nodes(job_payload, prefetch=False):
 # V49 — frictionless guest trial. Anonymous visitors can calculate ten routes
 # before authentication is required. The counter lives in the signed Flask
 # session so refreshes do not reset the allowance.
-GUEST_ROUTE_LIMIT = max(1, min(50, int(os.environ.get("RAIRO_GUEST_ROUTE_LIMIT", "10") or 10)))
+GUEST_ROUTE_LIMIT = max(1, min(50, int(os.environ.get("VANO_GUEST_ROUTE_LIMIT", "10") or 10)))
 
