@@ -1,0 +1,1 @@
+"""VANO application package."""
