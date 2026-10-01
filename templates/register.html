@@ -3,9 +3,9 @@
 {% block legacy_map_assets %}{% endblock %}
 {% block head %}{% endblock %}
 {% block tail_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-register-v340.css') }}?v={{ vano_build_id }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-startup-v351.css') }}?v={{ vano_build_id }}-351">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-experience-v402.css') }}?v={{ vano_build_id }}-402">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-register.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-startup.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-auth-experience.css') }}?v={{ vano_build_id }}">
 {% endblock %}
 {% block content %}
 <div class="vano-register-v340" data-auth-page="register">
@@ -59,7 +59,7 @@
     </section>
 
     <aside class="register-preview" aria-label="Prévia VANO MAPS">
-      <img class="register-city" src="{{ url_for('static', filename='vano-entry-day-v76.svg') }}" alt="Mapa estilizado com uma rota VANO MAPS">
+      <img class="register-city" src="{{ url_for('static', filename='vano-entry-day.svg') }}" alt="Mapa estilizado com uma rota VANO MAPS">
       <div class="preview-shade"></div>
       <div class="preview-top"><span><i></i> VANO AO VIVO</span><b>Seu mapa.<br>Sua escolha.</b></div>
       <div class="preview-route-card">
@@ -73,5 +73,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='auth-entry.js') }}?v={{ vano_build_id }}"></script>
-<script src="{{ url_for('static', filename='vano-auth-startup-v351.js') }}?v={{ vano_build_id }}-351"></script>
+<script src="{{ url_for('static', filename='vano-auth-startup.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}
