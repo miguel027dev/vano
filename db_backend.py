@@ -1,4 +1,4 @@
-"""PostgreSQL backend for RAIGO.
+"""PostgreSQL backend for VANO.
 
 Production storage is PostgreSQL only. The app keeps its historical ``db.execute``
 call style, while this adapter translates the small amount of SQLite-style
@@ -39,8 +39,8 @@ _INSERT_ID_TABLES = {"users", "reports"}
 _QMARK_RE = re.compile(r"\?")
 _LIMIT_MINUS_ONE_RE = re.compile(r"\bLIMIT\s+-1\s+OFFSET\s+(\d+)\b", re.IGNORECASE)
 _INSERT_TABLE_RE = re.compile(r"^\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)\b", re.IGNORECASE)
-_BAD_HOSTS = {"host", "hostname", "host_real", "host_gerado", "hostrairo"}
-_BAD_DATABASES = {"banco", "database", "nome_real_do_banco", "rairodb_exemplo"}
+_BAD_HOSTS = {"host", "hostname", "host_real", "host_gerado", "hostvano"}
+_BAD_DATABASES = {"banco", "database", "nome_real_do_banco", "vanodb_exemplo"}
 _BAD_VALUES = {"senha", "senha_real", "password", "usuario", "usuario_real", "user"}
 
 
@@ -98,7 +98,7 @@ def _valid_database_url(url: str) -> str:
 
 
 def database_url() -> str:
-    # RAIGO production uses DATABASE_URL as the canonical connection string.
+    # VANO production uses DATABASE_URL as the canonical connection string.
     # This is the value configured on the existing Render Web Service. PG*
     # variables remain only as a compatibility fallback for older Blueprints.
     url = _valid_database_url(os.environ.get("DATABASE_URL", ""))
