@@ -487,7 +487,7 @@ def init_db():
                 created_at TEXT NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS rairo_node_configs (
+            CREATE TABLE IF NOT EXISTS vano_node_configs (
                 node_index INTEGER PRIMARY KEY,
                 name TEXT NOT NULL DEFAULT '',
                 url TEXT NOT NULL DEFAULT '',
@@ -509,7 +509,7 @@ def init_db():
                 updated_at TEXT NOT NULL
             );
 
-            CREATE TABLE IF NOT EXISTS rairo_node_dispatch_logs (
+            CREATE TABLE IF NOT EXISTS vano_node_dispatch_logs (
                 id SERIAL PRIMARY KEY,
                 node_index INTEGER NOT NULL DEFAULT 0,
                 node_name TEXT NOT NULL DEFAULT '',
@@ -570,10 +570,10 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_finance_entries_kind_date ON finance_entries(kind, occurred_on DESC, id DESC);
             CREATE INDEX IF NOT EXISTS idx_finance_commitments_active_due ON finance_commitments(active, next_due_on);
             CREATE INDEX IF NOT EXISTS idx_finance_audit_object ON finance_audit_logs(object_type, object_id, created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_rairo_node_configs_enabled ON rairo_node_configs(enabled, priority, node_index);
-            CREATE INDEX IF NOT EXISTS idx_node_dispatch_node_time ON rairo_node_dispatch_logs(node_index, created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_node_dispatch_user_time ON rairo_node_dispatch_logs(user_id, created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_node_dispatch_success_time ON rairo_node_dispatch_logs(success, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_vano_node_configs_enabled ON vano_node_configs(enabled, priority, node_index);
+            CREATE INDEX IF NOT EXISTS idx_node_dispatch_node_time ON vano_node_dispatch_logs(node_index, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_node_dispatch_user_time ON vano_node_dispatch_logs(user_id, created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_node_dispatch_success_time ON vano_node_dispatch_logs(success, created_at DESC);
             """
         )
 
@@ -612,17 +612,17 @@ def init_db():
                 db.execute(ddl)
         db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL")
 
-        node_columns = table_columns(db, "rairo_node_configs")
+        node_columns = table_columns(db, "vano_node_configs")
         node_migrations = {
-            "provider": "ALTER TABLE rairo_node_configs ADD COLUMN provider TEXT NOT NULL DEFAULT 'Render'",
-            "environment": "ALTER TABLE rairo_node_configs ADD COLUMN environment TEXT NOT NULL DEFAULT 'production'",
-            "drain_mode": "ALTER TABLE rairo_node_configs ADD COLUMN drain_mode INTEGER NOT NULL DEFAULT 0",
-            "route_path": "ALTER TABLE rairo_node_configs ADD COLUMN route_path TEXT NOT NULL DEFAULT '/v1/route/calculate'",
-            "precalc_path": "ALTER TABLE rairo_node_configs ADD COLUMN precalc_path TEXT NOT NULL DEFAULT '/v1/route/precalculate'",
-            "connect_timeout_s": "ALTER TABLE rairo_node_configs ADD COLUMN connect_timeout_s REAL NOT NULL DEFAULT 2.2",
-            "route_timeout_s": "ALTER TABLE rairo_node_configs ADD COLUMN route_timeout_s REAL NOT NULL DEFAULT 10.0",
-            "cooldown_s": "ALTER TABLE rairo_node_configs ADD COLUMN cooldown_s INTEGER NOT NULL DEFAULT 20",
-            "notes": "ALTER TABLE rairo_node_configs ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
+            "provider": "ALTER TABLE vano_node_configs ADD COLUMN provider TEXT NOT NULL DEFAULT 'Render'",
+            "environment": "ALTER TABLE vano_node_configs ADD COLUMN environment TEXT NOT NULL DEFAULT 'production'",
+            "drain_mode": "ALTER TABLE vano_node_configs ADD COLUMN drain_mode INTEGER NOT NULL DEFAULT 0",
+            "route_path": "ALTER TABLE vano_node_configs ADD COLUMN route_path TEXT NOT NULL DEFAULT '/v1/route/calculate'",
+            "precalc_path": "ALTER TABLE vano_node_configs ADD COLUMN precalc_path TEXT NOT NULL DEFAULT '/v1/route/precalculate'",
+            "connect_timeout_s": "ALTER TABLE vano_node_configs ADD COLUMN connect_timeout_s REAL NOT NULL DEFAULT 2.2",
+            "route_timeout_s": "ALTER TABLE vano_node_configs ADD COLUMN route_timeout_s REAL NOT NULL DEFAULT 10.0",
+            "cooldown_s": "ALTER TABLE vano_node_configs ADD COLUMN cooldown_s INTEGER NOT NULL DEFAULT 20",
+            "notes": "ALTER TABLE vano_node_configs ADD COLUMN notes TEXT NOT NULL DEFAULT ''",
         }
         for column, ddl in node_migrations.items():
             if column not in node_columns:
@@ -658,9 +658,9 @@ def init_db():
         if "fingerprint" not in oauth_columns:
             db.execute("ALTER TABLE oauth_states ADD COLUMN fingerprint TEXT NOT NULL DEFAULT ''")
 
-        # Security migration: old builds created admin@rairo.local with the
+        # Security migration: old builds created admin@vano.local with the
         # published password Vano Maps@2026!. Disable only that exact legacy hash.
-        legacy_admin = db.execute("SELECT id,password_hash FROM users WHERE email=?", ("admin@rairo.local",)).fetchone()
+        legacy_admin = db.execute("SELECT id,password_hash FROM users WHERE email=?", ("admin@vano.local",)).fetchone()
         if legacy_admin and verify_password(legacy_admin["password_hash"], "Vano Maps@2026!"):
             db.execute("UPDATE users SET password_hash=?,is_active=0 WHERE id=?", (hash_password(secrets.token_urlsafe(48)), legacy_admin["id"]))
 
