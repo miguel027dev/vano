@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
   
-  <script src="{{ url_for('static', filename='vano-i18n-v230.js') }}?v={{ vano_build_id }}"></script>
+  <script src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>
   
   <meta name="theme-color" content="#FFFBF2">
   <script>(function(){try{var k='vano.theme.mode.v60',m=localStorage.getItem(k),legacy=localStorage.getItem('vano.theme.mode.v57')||localStorage.getItem('vano.theme.mode.v56')||localStorage.getItem('vano.theme.v55');m=m||legacy||'light';m=m==='black'?'black':'light';document.documentElement.dataset.vanoTheme=m;document.documentElement.dataset.vanoThemeMode=m;document.documentElement.style.colorScheme=m==='black'?'dark':'light'}catch(_){}})();</script>
@@ -19,10 +19,10 @@
     @media(max-width:350px){.route-panel{padding:11px}.route-metrics{gap:4px}.metric{padding:8px 6px}.route-actions button,.route-actions a{font-size:9px}.route-title{font-size:17px}}
     @media(orientation:landscape) and (max-height:560px){.route-panel{top:max(64px,calc(env(safe-area-inset-top) + 60px));bottom:max(27px,calc(var(--safe-bottom) + 24px));width:min(360px,44vw);max-height:none}.route-note{display:none}.route-title{font-size:17px;margin-bottom:9px}.route-metrics{margin:9px 0}.route-actions button,.route-actions a{height:40px}}
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-shared-page-v230.css') }}?v={{ vano_build_id }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-shared-page.css') }}?v={{ vano_build_id }}">
   
   
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-ui-v258.css') }}?v={{ vano_build_id }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-ui.css') }}?v={{ vano_build_id }}">
 </head>
 <body class="vano-shared-v258">
 <div class="share-app">
@@ -56,6 +56,6 @@ async function copyLink(){const status=document.getElementById('copyStatus');try
 document.getElementById('copyLinkBtn').addEventListener('click',copyLink);
 if(TOKEN&&window.mapboxgl){mapboxgl.accessToken=TOKEN;const map=new mapboxgl.Map({container:'map',style:(document.documentElement.dataset.vanoTheme==='black'?(NIGHT||STYLE):STYLE),center:[ORIGIN.lon,ORIGIN.lat],zoom:12.5,attributionControl:true,cooperativeGestures:false});map.addControl(new mapboxgl.NavigationControl({showCompass:false}),'top-right');map.on('load',()=>{const coords=ROUTE.geometry?.coordinates||[];if(coords.length>1){map.addSource('route',{type:'geojson',data:{type:'Feature',properties:{},geometry:ROUTE.geometry}});map.addLayer({id:'route-casing',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],8,6,16,11],'line-opacity':.95}});map.addLayer({id:'route-line',type:'line',source:'route',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':'#7457F6','line-width':['interpolate',['linear'],['zoom'],8,3,16,6],'line-opacity':.98}});const b=new mapboxgl.LngLatBounds();coords.forEach(c=>b.extend(c));const mobile=innerWidth<=640,panel=document.querySelector('.route-panel'),panelH=Math.ceil(panel?.getBoundingClientRect?.().height||260);map.fitBounds(b,{padding:mobile?{top:70,bottom:Math.min(innerHeight*.58,panelH+42),left:24,right:24}:{top:70,bottom:60,left:455,right:60},maxZoom:15.5,duration:0})}const a=document.createElement('div');a.className='marker';new mapboxgl.Marker({element:a}).setLngLat([ORIGIN.lon,ORIGIN.lat]).addTo(map);const z=document.createElement('div');z.className='marker dest';z.innerHTML='<span class="arrival-visual"><span class="arrival-ground"></span><span class="arrival-bubble"><span class="arrival-ring"><span class="arrival-checkers"></span></span></span></span>';new mapboxgl.Marker({element:z,anchor:'bottom',offset:[0,0]}).setLngLat([DEST.lon,DEST.lat]).addTo(map)});window.addEventListener('resize',()=>map.resize(),{passive:true})}
 </script>
-<script src="{{ url_for('static', filename='vano-theme-v230.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>
 </body>
 </html>
