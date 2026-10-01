@@ -110,7 +110,7 @@ def _candidate_summary(route: Dict[str, Any]) -> Dict[str, Any]:
         "closures": int(route.get("closures_count") or 0),
         "data_confidence": round(_clamp(route.get("data_confidence")), 1),
         "decision_confidence": round(_clamp(route.get("decision_confidence")), 1),
-        "vano_score": round(_clamp(route.get("rairo_score")), 1),
+        "vano_score": round(_clamp(route.get("vano_score")), 1),
         "quiet_score": round(_clamp(route.get("quiet_score")), 1),
         "micro_route": bool(route.get("micro_route")),
         "safety_variant": bool(route.get("safety_variant")),
@@ -168,7 +168,7 @@ def _base_candidate_pool(
         ))
     else:
         valid.sort(key=lambda route: (
-            -_clamp(route.get("rairo_score")),
+            -_clamp(route.get("vano_score")),
             float(route.get("duration") or 10**15),
         ))
     return valid[: int(config["max_candidates"])]
