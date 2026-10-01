@@ -110,7 +110,7 @@ def _country_locale_from_headers():
 def detect_ui_locale():
     """Resolve UI language with an explicit account choice taking precedence."""
     if not has_request_context():
-        return _normalize_ui_locale(os.environ.get("RAIRO_DEFAULT_LANGUAGE", "pt-BR")) or "pt-BR", "default", ""
+        return _normalize_ui_locale(os.environ.get("VANO_DEFAULT_LANGUAGE", "pt-BR")) or "pt-BR", "default", ""
 
     # Logged-in users own their language choice. Region/browser detection must
     # never overwrite an explicit preference saved on the account.
@@ -134,7 +134,7 @@ def detect_ui_locale():
 
     # Keep compatibility with both historical client cookie names.
     cookie_locale = _normalize_ui_locale(
-        request.cookies.get("vano_locale_auto", "") or request.cookies.get("rairo_locale_auto", "")
+        request.cookies.get("vano_locale_auto", "") or request.cookies.get("vano_locale_auto", "")
     )
     if cookie_locale in SUPPORTED_UI_LOCALES:
         return cookie_locale, "client_auto", ""
@@ -151,16 +151,16 @@ def detect_ui_locale():
 @app.before_request
 def resolve_ui_locale():
     locale, source, country = detect_ui_locale()
-    g.rairo_locale = locale
-    g.rairo_locale_source = source
-    g.rairo_country = country
+    g.vano_locale = locale
+    g.vano_locale_source = source
+    g.vano_country = country
 
 
 def active_ui_locale():
     if has_request_context():
-        value = getattr(g, "rairo_locale", "") or detect_ui_locale()[0]
+        value = getattr(g, "vano_locale", "") or detect_ui_locale()[0]
         return _normalize_ui_locale(value) or "pt-BR"
-    return _normalize_ui_locale(os.environ.get("RAIRO_DEFAULT_LANGUAGE", "pt-BR")) or "pt-BR"
+    return _normalize_ui_locale(os.environ.get("VANO_DEFAULT_LANGUAGE", "pt-BR")) or "pt-BR"
 
 def preferred_language():
     """Return a safe language even when called outside Flask request context.
@@ -172,7 +172,7 @@ def preferred_language():
     """
     if has_request_context():
         return active_ui_locale()
-    raw = os.environ.get("RAIRO_DEFAULT_LANGUAGE", "pt-BR")
+    raw = os.environ.get("VANO_DEFAULT_LANGUAGE", "pt-BR")
     return _normalize_ui_locale(raw) or "pt-BR"
 
 
