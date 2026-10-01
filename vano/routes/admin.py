@@ -7,6 +7,7 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
+@app.route("/api/admin/simulation/authorize", methods=["POST"])
 @admin_required
 def api_admin_simulation_authorize():
     if not validate_csrf():
