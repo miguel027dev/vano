@@ -17,7 +17,7 @@ def security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), payment=(), usb=()")
-    response.headers["Permissions-Policy"] = RAIRO_PERMISSIONS_POLICY
+    response.headers["Permissions-Policy"] = VANO_PERMISSIONS_POLICY
 
     # Explicitly avoid cross-origin isolation policies that can interfere with
     # an embedded app or its popup/window relationships.
