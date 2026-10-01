@@ -790,7 +790,7 @@ def route_live_flow_metrics(route):
     points = [{
         "lat": float(row["cell_lat"]), "lon": float(row["cell_lon"]),
         "avg_speed_kmh": round(float(row["avg_speed"] or 0), 1), "sources": int(row["sources"] or 0),
-        "traffic_score": int(sc), "distance_to_route_m": round(d), "source": "rairo-live-flow",
+        "traffic_score": int(sc), "distance_to_route_m": round(d), "source": "vano-live-flow",
     } for sc, _w, row, d in sorted(hits, key=lambda x: x[3])[:18]]
     return {"live_flow_score": round(score, 1), "live_flow_cells": len(hits), "live_flow_confidence": round(confidence, 1), "live_flow_points": points}
 
@@ -1118,7 +1118,7 @@ def fast_route_payload(route, idx, travel_profile="driving"):
         "safety_level_label": "Não analisado no modo Rápida",
         "data_confidence": 0, "decision_confidence": 0, "risk_exposure_pct": 0,
         "hotspot_risk": 0, "risk_zones": [], "risk_factors": [], "nearby_alerts": [],
-        "quiet_score": 0, "rairo_score": 0,
+        "quiet_score": 0, "vano_score": 0,
         **{k: v for k, v in traffic.items() if k != "traffic_points"},
         **road,
     }
