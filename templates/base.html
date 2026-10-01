@@ -126,7 +126,7 @@
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-app-v262.css') }}?v={{ vano_build_id }}">
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-v300.css') }}?v={{ vano_build_id }}-421">{% endif %}
+  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map-v300.css') }}?v={{ vano_build_id }}-319">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner-v263.css') }}?v={{ vano_build_id }}-347">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation-v300.css') }}?v={{ vano_build_id }}-319">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page-v230.css') }}?v={{ vano_build_id }}">{% endif %}
@@ -146,10 +146,6 @@
       document.documentElement.classList.add('vano-native-android','vano-installed-app');
     }
   }catch(_){}</script>
-  {% endif %}
-  {% if vano_map_surface %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-map-ux-v600.css') }}?v={{ vano_build_id }}-600">
-  <script defer src="{{ url_for('static', filename='vano-map-ux-v600.js') }}?v={{ vano_build_id }}-600"></script>
   {% endif %}
 </head>
 <body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
