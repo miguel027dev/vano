@@ -1,6 +1,6 @@
 /* VANO MAPS V230 — bundle consolidado. Ordem preservada do runtime original. */
 
-/* ---- vano-map-v1231.css ---- */
+/* Map page foundation */
 :root{--o:#D9703F;--o2:#F59A62;--bg:#07080a;--glass:rgba(10,12,15,.86);--glass2:rgba(16,18,22,.965);--line:rgba(255,255,255,.075);--text:#f7f8fa;--muted:#9198a3;--green:#55d7a0;--red:#ff666d;--blue:#7fb3ff;--ink:#0b0d10;--soft:#171a1f}
 html,body{width:100%;height:100%;min-height:100%;overflow:hidden;background:#030405;-webkit-text-size-adjust:100%}.topbar,footer,.mobile-dock,.flash-wrap{display:none!important}body{padding:0!important;margin:0!important;overscroll-behavior:none;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 button,input{font:inherit}.ws-app{position:relative;width:100%;max-width:600px;height:var(--vano-vh,100dvh);min-height:var(--vano-vh,100dvh);max-height:var(--vano-vh,100dvh);margin:auto;background:var(--bg);overflow:hidden;isolation:isolate;box-shadow:0 0 100px rgba(0,0,0,.55)}
@@ -637,7 +637,7 @@ body[data-mood="day"] .planner-location-row{background:linear-gradient(180deg,rg
 body[data-mood="day"] .planner-search-copy small,body[data-mood="day"] .route-chooser-head small{color:#6a7381}body[data-mood="day"] .planner-search-copy b,body[data-mood="day"] .route-chooser-head b,body[data-mood="day"] .route-variant span{color:#141a21}body[data-mood="day"] .route-chooser-head span,body[data-mood="day"] .route-variant em{color:#66707d}
 body[data-mood="day"] .route-summary-pill,body[data-mood="day"] .route-card,body[data-mood="day"] .parking-nearby,body[data-mood="day"] .route-variant{background:rgba(255,255,255,.92);border-color:rgba(12,18,28,.08);color:#11161d}
 body[data-mood="day"] .planner-adjust-btn{background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(240,244,249,.96));border-color:rgba(12,18,28,.08);color:#16202b}
-/* bundled vano-map-v63.css */
+/* Bundled map layer */
 /* ============================================================
    VANO V63 — MAP / NAVIGATION COCKPIT
    Desktop: full canvas + bottom-left planning cockpit.
@@ -819,7 +819,7 @@ html[data-vano-theme="black"] .ws-app .guest-limit-card{background:#151821!impor
 @media(max-width:520px){.ws-app .guest-limit-modal{align-items:end!important;padding:8px!important}.ws-app .guest-limit-card{width:100%!important;border-radius:22px!important;padding:19px!important}.ws-app .guest-limit-actions{grid-template-columns:1fr!important}}
 
 
-/* bundled vano-map-v64.css */
+/* Bundled map layer */
 /* VANO V64 — focused polish requested after V63.
    This file intentionally changes only search results, nearby/support reliability UI,
    route alternatives, preview controls, navigation camera chooser and active HUD. */
@@ -1066,7 +1066,7 @@ html[data-vano-theme="black"] .immersive-option-icon{background:#27231F!importan
 }
 
 
-/* bundled vano-map-v65.css */
+/* Bundled map layer */
 /* VANO V65 — compact mobile free-map indicator.
    Scope: legacy free-map navigation chip styles retained for compatibility. */
 
@@ -1124,7 +1124,7 @@ html[data-vano-theme="black"] .immersive-option-icon{background:#27231F!importan
 }
 
 
-/* bundled vano-map-v69.css */
+/* Bundled map layer */
 /* ================================================================
    VANO V69 — MAP ONLY / MOBILE POLISH
    Scope: templates/index.html only. No backend/auth/database changes.
@@ -1500,7 +1500,7 @@ body[data-mood="night"]{
 }
 
 
-/* bundled vano-map-v70.css */
+/* Bundled map layer */
 /* VANO V70 — polish focused on the main destination card */
 :root{
   --planner-glass-dark: rgba(12,15,20,.92);
@@ -1800,7 +1800,7 @@ body[data-mood="day"] .planner-expand-hint{border-style:solid;color:#35404d}
 }
 
 
-/* bundled vano-map-v74.css */
+/* Bundled map layer */
 /* ============================================================
    VANO V74 — MAP UI REBUILD
    Mobile-first / tablet / desktop / White + Black
@@ -2445,7 +2445,7 @@ html[data-vano-theme="black"] .mapboxgl-popup-tip{border-top-color:var(--vg-surf
 }
 
 
-/* bundled vano-map-v75.css */
+/* Bundled map layer */
 /* ============================================================
    VANO V75 — PLANNER MOBILE HARDENING
    Fixes clipped "Para onde vamos?" card, safe-area margins,
@@ -2566,7 +2566,7 @@ html[data-vano-theme="black"] .mapboxgl-popup-tip{border-top-color:var(--vg-surf
 }
 
 
-/* bundled vano-map-v76.css */
+/* Bundled map layer */
 /* ============================================================
    VANO V76 — White / Day polish, compact navigation HUD
    ============================================================ */
@@ -2740,7 +2740,7 @@ html[data-vano-theme] body.body-nav .ws-app #activeNav.nav-panel.nav-minimal.sho
 @media(max-width:560px){.planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 
 
-/* bundled vano-map-v81.css */
+/* Bundled map layer */
 /* ============================================================
    VANO V81 — destination card + faster search polish
    - no recent destination shortcut or automatic recent request
@@ -3049,7 +3049,7 @@ html[data-vano-theme="black"] .result-meta.precise{color:#7DE2B8!important}
 @media(prefers-reduced-motion:reduce){.search-loading-pin:before{animation:none!important}}
 
 
-/* bundled vano-map-v84.css */
+/* Bundled map layer */
 /* ============================================================
    VANO V84 — universal phone geometry + fluid motion
    Goal: preserve one visual composition from compact Android/iPhone
@@ -5585,7 +5585,7 @@ body.body-nav .floating-speedo.over-limit::before,
 }
 
 
-/* ---- vano-nearby-users-notice-v135.css ---- */
+/* Nearby users notice */
 /* VANO V133 — nearby users notice + compact map brand.
    Isolated from the planner/map styles so it cannot reflow the existing UI. */
 .vano-map-brand{
@@ -5771,7 +5771,7 @@ html.vano-keyboard-open .vano-nearby-users-notice{
 }
 
 
-/* ---- vano-admob-search-v181.css ---- */
+/* Search integration layer */
 /* VANO V181 — lightweight Native AdMob reservation inside search results. */
 .vano-native-ad-slot{
   position:relative;
@@ -5815,7 +5815,7 @@ html[data-vano-theme="black"] .vano-native-ad-slot::before{background:#302720;co
 html[data-vano-theme="black"] .vano-native-ad-slot::after{background:#28231F}
 
 
-/* ---- vano-routine-v230.css ---- */
+/* Routine layer */
 /* VANO MAPS V229 — weekly routine planner */
 :root{--vano-routine-bg:#fff;--vano-routine-card:#f7f8fa;--vano-routine-line:#e7e9ee;--vano-routine-text:#1f2430;--vano-routine-muted:#7a8291;--vano-routine-accent:#ef7b45;--vano-routine-soft:#fff1e8}
 .planner-preset.routine-preset .planner-preset-icon{background:linear-gradient(145deg,#fff0e7,#ffe5d5)!important;color:#e46f38!important}
