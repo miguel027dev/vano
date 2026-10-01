@@ -9,8 +9,8 @@ del _vano_inject
 
 
 APP_NAME = "VANO MAPS"
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-VANO_BUILD_ID = os.environ.get("VANO_BUILD_ID", "325.0.0").strip() or "325.0.0"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+VANO_BUILD_ID = (os.environ.get("VANO_BUILD_ID", "").strip() or os.environ.get("RENDER_GIT_COMMIT", "").strip()[:12] or "dev")
 
 def load_local_env():
     """Carrega .env simples sem dependência extra. Variáveis já exportadas têm prioridade."""
@@ -62,13 +62,13 @@ SEO_CANONICAL_PATHS = {
 }
 
 def _load_session_secret():
-    configured = (os.environ.get("VANO_SECRET_KEY", "").strip() or os.environ.get("VANO_SECRET_KEY", "").strip())
+    configured = os.environ.get("VANO_SECRET_KEY", "").strip()
     if configured:
         return configured
     # Never fall back to a known public development secret. A shared temporary
     # file keeps all Gunicorn workers on the same key for this instance. Render
     # restarts rotate it, so production should still configure VANO_SECRET_KEY.
-    path = (os.environ.get("VANO_EPHEMERAL_SECRET_FILE", "").strip() or os.environ.get("VANO_EPHEMERAL_SECRET_FILE", "").strip() or "/tmp/vano-session-secret")
+    path = (os.environ.get("VANO_EPHEMERAL_SECRET_FILE", "").strip() or "/tmp/vano-session-secret")
     try:
         import fcntl
         with open(path, "a+", encoding="utf-8") as fh:
@@ -151,7 +151,7 @@ VANO_ESPN_SOCCER_LEAGUES = [x.strip() for x in os.environ.get("VANO_ESPN_SOCCER_
 # V42 — lightweight self keep-alive. One GET + one POST every 120 seconds.
 # The URL and switch are environment-configurable so staging/local environments
 # can disable it without changing source code.
-VANO_KEEPALIVE_URL = (os.environ.get("VANO_KEEPALIVE_URL", "").strip() or os.environ.get("VANO_KEEPALIVE_URL", "").strip() or "https://vanomaps.online").rstrip("/")
+VANO_KEEPALIVE_URL = (os.environ.get("VANO_KEEPALIVE_URL", "").strip() or "https://vanomaps.online").rstrip("/")
 VANO_KEEPALIVE_ENABLED = os.environ.get("VANO_KEEPALIVE_ENABLED", "1").strip().lower() not in {"0", "false", "off", "no"}
 VANO_KEEPALIVE_INTERVAL = max(120, int(os.environ.get("VANO_KEEPALIVE_INTERVAL", "120") or 120))
 VANO_KEEPALIVE_TIMEOUT = max(2, min(15, int(os.environ.get("VANO_KEEPALIVE_TIMEOUT", "7") or 7)))
