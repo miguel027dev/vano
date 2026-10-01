@@ -54,20 +54,20 @@ def is_motorized_profile(profile):
     return str(profile or "").strip().lower() in MOTORIZED_PROFILES
 
 MAX_REPORT_AGE_DAYS = 30
-REMEMBER_COOKIE_NAME = "rairo_remember"
-REMEMBER_EMBED_COOKIE_NAME = "rairo_remember_embed"
-REMEMBER_LOGIN_DAYS = max(30, min(3650, int(os.environ.get("RAIRO_REMEMBER_DAYS", "365"))))
+REMEMBER_COOKIE_NAME = "vano_remember"
+REMEMBER_EMBED_COOKIE_NAME = "vano_remember_embed"
+REMEMBER_LOGIN_DAYS = max(30, min(3650, int(os.environ.get("VANO_REMEMBER_DAYS", "365"))))
 
 # X10 — short-lived provider cache: repeated mode switches reuse the same fresh
 # Mapbox candidate set instead of repeating an identical network request.
 _ROUTE_PROVIDER_CACHE = {}
 _ROUTE_PROVIDER_CACHE_LOCK = threading.Lock()
-_ROUTE_PROVIDER_CACHE_TTL = max(10, min(90, int(os.environ.get("RAIRO_ROUTE_CACHE_TTL", "35"))))
+_ROUTE_PROVIDER_CACHE_TTL = max(10, min(90, int(os.environ.get("VANO_ROUTE_CACHE_TTL", "35"))))
 # X18: live driving traffic gets only a tiny dedupe window so switching UI modes
 # does not repeat identical requests, while a fresh navigation calculation never
 # relies on meaningfully stale traffic. Non-live profiles can safely cache longer.
-_ROUTE_PROVIDER_CACHE_TTL_LIVE = max(0, min(15, int(os.environ.get("RAIRO_ROUTE_CACHE_TTL_LIVE", "8"))))
-_ROUTE_PROVIDER_CACHE_TTL_STATIC = max(20, min(180, int(os.environ.get("RAIRO_ROUTE_CACHE_TTL_STATIC", "55"))))
+_ROUTE_PROVIDER_CACHE_TTL_LIVE = max(0, min(15, int(os.environ.get("VANO_ROUTE_CACHE_TTL_LIVE", "8"))))
+_ROUTE_PROVIDER_CACHE_TTL_STATIC = max(20, min(180, int(os.environ.get("VANO_ROUTE_CACHE_TTL_STATIC", "55"))))
 
 # V84 — single-flight for identical Directions requests. Safe and Fast route
 # prefetches intentionally start together; when both need the exact same base
@@ -124,7 +124,7 @@ def _route_mapbox_get(url, params, timeout=12):
 # route history; those side effects happen only on the confirmed request.
 _ROUTE_RESULT_CACHE = {}
 _ROUTE_RESULT_CACHE_LOCK = threading.Lock()
-_ROUTE_RESULT_CACHE_TTL = max(8, min(45, int(os.environ.get("RAIRO_ROUTE_RESULT_CACHE_TTL", "22"))))
+_ROUTE_RESULT_CACHE_TTL = max(8, min(45, int(os.environ.get("VANO_ROUTE_RESULT_CACHE_TTL", "22"))))
 
 def _route_result_cache_get(key):
     now = time.time()
@@ -247,7 +247,7 @@ def _public_benchmark_payload(payload, cache_hit=False):
         "risk_exposure_pct", "hotspot_risk", "traffic_score", "traffic_level",
         "congested_distance_km", "severe_segments", "live_flow_score",
         "live_flow_confidence", "incidents_count", "closures_count",
-        "eta_delta_vs_fastest_min", "safety_gain_vs_fastest", "rairo_score", "vano_score",
+        "eta_delta_vs_fastest_min", "safety_gain_vs_fastest", "vano_score", "vano_score",
     }
     routes = []
     for raw in raw_rows:
@@ -299,7 +299,7 @@ def _public_benchmark_payload(payload, cache_hit=False):
         safety = selected.get("safety_conservative_score")
         if safety is None:
             safety = selected.get("safety_score")
-        vano_score = selected.get("rairo_score")
+        vano_score = selected.get("vano_score")
         if vano_score is None:
             vano_score = selected.get("vano_score")
         result["benchmark_result"] = {
@@ -348,7 +348,7 @@ _ROUTE_CANDIDATE_POOL_CACHE = {}
 _ROUTE_CANDIDATE_POOL_LOCK = threading.Lock()
 _ROUTE_CANDIDATE_POOL_INFLIGHT = {}
 _ROUTE_CANDIDATE_POOL_INFLIGHT_LOCK = threading.Lock()
-_ROUTE_CANDIDATE_POOL_TTL = max(6, min(30, int(os.environ.get("RAIRO_CANDIDATE_POOL_TTL", "16"))))
+_ROUTE_CANDIDATE_POOL_TTL = max(6, min(30, int(os.environ.get("VANO_CANDIDATE_POOL_TTL", "16"))))
 
 def _candidate_pool_cache_get(key):
     now=time.time()
