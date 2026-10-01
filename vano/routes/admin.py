@@ -320,7 +320,7 @@ def admin_finance_export_csv():
     out=io.StringIO(); writer=csv.writer(out); writer.writerow(["id","data","tipo","status","valor_brl","categoria","descricao","contraparte","centro_custo","pagamento","documento","conta","criado_em","postado_em","estornado_em","motivo_estorno"])
     for r in rows:
         writer.writerow([r["id"],r["occurred_on"],r["kind"],r["status"],f"{int(r['amount_cents'] or 0)/100:.2f}",r["category"],r["description"],r["counterparty"],r["cost_center"],r["payment_method"],r["document_ref"],r["account_name"],r["created_at"],r["posted_at"],r["voided_at"],r["void_reason"]])
-    response=app.response_class(out.getvalue(),mimetype="text/csv; charset=utf-8"); response.headers["Content-Disposition"]="attachment; filename=rairo-financeiro.csv"; return response
+    response=app.response_class(out.getvalue(),mimetype="text/csv; charset=utf-8"); response.headers["Content-Disposition"]="attachment; filename=vano-financeiro.csv"; return response
 
 
 @app.route("/admin/finance/audit.csv")
@@ -333,7 +333,7 @@ def admin_finance_audit_export_csv():
     out=io.StringIO(); writer=csv.writer(out); writer.writerow(["id","criado_em","ator_id","ator","acao","objeto_tipo","objeto_id","sha256_evento","snapshot_json"])
     for r in rows:
         writer.writerow([r["id"],r["created_at"],r["actor_user_id"],r["actor_name"] or "Sistema",r["action"],r["object_type"],r["object_id"],r["snapshot_sha256"],r["snapshot_json"]])
-    response=app.response_class(out.getvalue(),mimetype="text/csv; charset=utf-8"); response.headers["Content-Disposition"]="attachment; filename=rairo-financeiro-auditoria.csv"; return response
+    response=app.response_class(out.getvalue(),mimetype="text/csv; charset=utf-8"); response.headers["Content-Disposition"]="attachment; filename=vano-financeiro-auditoria.csv"; return response
 
 
 def _admin_dispatch_overview(hours=24):
@@ -348,7 +348,7 @@ def _admin_dispatch_overview(hours=24):
              COUNT(DISTINCT user_id) FILTER (WHERE node_index > 0 AND user_id IS NOT NULL) AS unique_users,
              COUNT(*) FILTER (WHERE node_index=0) AS local_fallbacks,
              COALESCE(AVG(latency_ms) FILTER (WHERE node_index > 0 AND success=1),0) AS avg_latency_ms
-           FROM rairo_node_dispatch_logs WHERE created_at>=?""",
+           FROM vano_node_dispatch_logs WHERE created_at>=?""",
         (cutoff,),
     ).fetchone()
     attempts = int(row["node_attempts"] or 0) if row else 0
@@ -371,7 +371,7 @@ def _admin_node_logs(node_index, limit=200):
         """SELECT l.id,l.node_index,l.node_name,l.user_id,l.request_id,l.mode,l.profile,l.prefetch,
                   l.http_status,l.success,l.latency_ms,l.error,l.created_at,
                   COALESCE(u.name,'Visitante') AS user_name,COALESCE(u.email,'') AS user_email
-           FROM rairo_node_dispatch_logs l
+           FROM vano_node_dispatch_logs l
            LEFT JOIN users u ON u.id=l.user_id
            WHERE l.node_index=?
            ORDER BY l.id DESC LIMIT ?""",
@@ -391,13 +391,13 @@ def _admin_node_log_stats(node_index, hours=24):
                   COUNT(*) FILTER (WHERE prefetch=1) AS prefetches,
                   COALESCE(AVG(latency_ms) FILTER (WHERE success=1),0) AS avg_latency_ms,
                   COALESCE(MAX(latency_ms),0) AS max_latency_ms
-           FROM rairo_node_dispatch_logs WHERE node_index=? AND created_at>=?""",
+           FROM vano_node_dispatch_logs WHERE node_index=? AND created_at>=?""",
         (int(node_index), cutoff),
     ).fetchone()
     total = int(row["total"] or 0) if row else 0
     successes = int(row["successes"] or 0) if row else 0
     latencies = [int(r["latency_ms"] or 0) for r in db.execute(
-        "SELECT latency_ms FROM rairo_node_dispatch_logs WHERE node_index=? AND success=1 AND created_at>=? ORDER BY latency_ms",
+        "SELECT latency_ms FROM vano_node_dispatch_logs WHERE node_index=? AND success=1 AND created_at>=? ORDER BY latency_ms",
         (int(node_index), cutoff),
     ).fetchall()]
     p95 = latencies[min(len(latencies)-1, max(0, math.ceil(len(latencies)*0.95)-1))] if latencies else 0
@@ -415,17 +415,17 @@ def _admin_node_log_stats(node_index, hours=24):
 
 
 def _admin_single_node_snapshot(node_index, refresh=False):
-    cfg = rairo_node_config(node_index)
+    cfg = vano_node_config(node_index)
     if not cfg.get("configured"):
         return _test_node_metrics(cfg, 0)
     cached = None
-    with RAIRO_NODE_STATUS_LOCK:
-        cached = RAIRO_NODE_STATUS_CACHE.get(cfg["id"])
-    if not refresh and cached and time.time() - float(cached.get("ts",0)) < RAIRO_NODE_STATUS_TTL:
+    with VANO_NODE_STATUS_LOCK:
+        cached = VANO_NODE_STATUS_CACHE.get(cfg["id"])
+    if not refresh and cached and time.time() - float(cached.get("ts",0)) < VANO_NODE_STATUS_TTL:
         return dict(cached["payload"])
     payload = _probe_configured_node(cfg, 0)
-    with RAIRO_NODE_STATUS_LOCK:
-        RAIRO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": dict(payload)}
+    with VANO_NODE_STATUS_LOCK:
+        VANO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": dict(payload)}
     return payload
 
 
@@ -646,7 +646,7 @@ def admin_dashboard():
     dispatch_ops = _admin_dispatch_overview(24)
     recent_dispatch_failures = db.execute(
         """SELECT l.*,COALESCE(u.name,'Visitante') AS user_name
-           FROM rairo_node_dispatch_logs l LEFT JOIN users u ON u.id=l.user_id
+           FROM vano_node_dispatch_logs l LEFT JOIN users u ON u.id=l.user_id
            WHERE l.node_index>0 AND l.success=0 ORDER BY l.id DESC LIMIT 8"""
     ).fetchall()
     recent_audit = db.execute(
@@ -673,7 +673,7 @@ def admin_dashboard():
         "avg_distance_24h_km": round(float(stats["avg_distance_24h_m"] or 0) / 1000, 1),
         "avg_duration_24h_min": round(float(stats["avg_duration_24h_s"] or 0) / 60, 1),
         "feedback_good_pct": round(100 * int(stats["feedback_good_7d"] or 0) / max(1, int(stats["feedback_good_7d"] or 0) + int(stats["feedback_improve_7d"] or 0))),
-        "distributed_enabled": bool(RAIRO_DISTRIBUTED_ROUTING_ENABLED),
+        "distributed_enabled": bool(VANO_DISTRIBUTED_ROUTING_ENABLED),
         "central_secret_configured": bool(CENTRAL_API_SECRET),
         "configured_nodes": int(infra["summary"]["configured_nodes"]),
         "healthy_nodes": int(infra["summary"]["healthy_nodes"]),
@@ -696,16 +696,16 @@ def api_admin_servers_status():
 @app.route("/api/admin/servers/<int:node_index>/config", methods=["GET", "POST"])
 @admin_required
 def api_admin_server_config(node_index):
-    if node_index < 1 or node_index > RAIRO_NODE_COUNT:
+    if node_index < 1 or node_index > VANO_NODE_COUNT:
         return jsonify({"ok": False, "error": "Node fora do intervalo configurado."}), 404
     if request.method == "GET":
-        cfg = rairo_node_config(node_index)
+        cfg = vano_node_config(node_index)
         return jsonify({"ok": True, "config": cfg, "central_secret_configured": bool(CENTRAL_API_SECRET)})
     if not validate_csrf():
         return jsonify({"ok": False, "error": "Sessão expirada. Atualize a página e tente novamente."}), 400
     payload = request.get_json(silent=True) or {}
     try:
-        cfg = save_rairo_node_config(node_index, payload)
+        cfg = save_vano_node_config(node_index, payload)
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     except Exception as exc:
@@ -718,25 +718,25 @@ def api_admin_server_config(node_index):
 @app.route("/api/admin/servers/<int:node_index>/test", methods=["POST"])
 @admin_required
 def api_admin_server_test(node_index):
-    if node_index < 1 or node_index > RAIRO_NODE_COUNT:
+    if node_index < 1 or node_index > VANO_NODE_COUNT:
         return jsonify({"ok": False, "error": "Node fora do intervalo configurado."}), 404
     if not validate_csrf():
         return jsonify({"ok": False, "error": "Sessão expirada."}), 400
-    cfg = rairo_node_config(node_index)
+    cfg = vano_node_config(node_index)
     if not cfg.get("configured"):
         return jsonify({"ok": False, "error": "Configure a URL do node antes de testar.", "node": _test_node_metrics(cfg, 0)}), 400
     payload = _probe_configured_node(cfg, 0)
-    with RAIRO_NODE_STATUS_LOCK:
-        RAIRO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": dict(payload)}
+    with VANO_NODE_STATUS_LOCK:
+        VANO_NODE_STATUS_CACHE[cfg["id"]] = {"ts": time.time(), "payload": dict(payload)}
     return jsonify({"ok": bool(payload.get("healthy")), "node": payload}), 200 if payload.get("healthy") else 502
 
 
 @app.route("/admin/servers/<int:node_index>")
 @admin_required
 def admin_server_detail(node_index):
-    if node_index < 1 or node_index > RAIRO_NODE_COUNT:
+    if node_index < 1 or node_index > VANO_NODE_COUNT:
         abort(404)
-    cfg = rairo_node_config(node_index)
+    cfg = vano_node_config(node_index)
     status = _admin_single_node_snapshot(node_index, refresh=False)
     logs = _admin_node_logs(node_index, 250)
     stats = _admin_node_log_stats(node_index, 24)
@@ -746,11 +746,11 @@ def admin_server_detail(node_index):
 @app.route("/api/admin/servers/<int:node_index>/details")
 @admin_required
 def api_admin_server_details(node_index):
-    if node_index < 1 or node_index > RAIRO_NODE_COUNT:
+    if node_index < 1 or node_index > VANO_NODE_COUNT:
         return jsonify({"ok": False, "error": "Node inválido."}), 404
     refresh = str(request.args.get("refresh", "0")).lower() in {"1", "true", "yes", "on"}
     limit = max(1, min(500, int(request.args.get("limit", 120) or 120)))
-    cfg = rairo_node_config(node_index)
+    cfg = vano_node_config(node_index)
     status = _admin_single_node_snapshot(node_index, refresh=refresh)
     logs = [dict(r) for r in _admin_node_logs(node_index, limit)]
     stats = _admin_node_log_stats(node_index, 24)
@@ -760,15 +760,15 @@ def api_admin_server_details(node_index):
 @app.route("/api/admin/servers/<int:node_index>/logs/clear", methods=["POST"])
 @admin_required
 def api_admin_server_logs_clear(node_index):
-    if node_index < 1 or node_index > RAIRO_NODE_COUNT:
+    if node_index < 1 or node_index > VANO_NODE_COUNT:
         return jsonify({"ok": False, "error": "Node inválido."}), 404
     if not validate_csrf():
         return jsonify({"ok": False, "error": "Sessão expirada."}), 400
     _ensure_node_dispatch_log_table()
     db = get_db()
-    row = db.execute("SELECT COUNT(*) AS n FROM rairo_node_dispatch_logs WHERE node_index=?", (node_index,)).fetchone()
+    row = db.execute("SELECT COUNT(*) AS n FROM vano_node_dispatch_logs WHERE node_index=?", (node_index,)).fetchone()
     count = int(row["n"] or 0) if row else 0
-    db.execute("DELETE FROM rairo_node_dispatch_logs WHERE node_index=?", (node_index,))
+    db.execute("DELETE FROM vano_node_dispatch_logs WHERE node_index=?", (node_index,))
     db.commit()
     audit("admin_node_logs_clear", {"node": node_index, "deleted": count}, session.get("user_id"))
     return jsonify({"ok": True, "deleted": count})
@@ -777,13 +777,13 @@ def api_admin_server_logs_clear(node_index):
 @app.route("/admin/servers/<int:node_index>/logs.csv")
 @admin_required
 def admin_server_logs_csv(node_index):
-    if node_index < 1 or node_index > RAIRO_NODE_COUNT:
+    if node_index < 1 or node_index > VANO_NODE_COUNT:
         abort(404)
     _ensure_node_dispatch_log_table()
     rows = get_db().execute(
         """SELECT l.id,l.node_index,l.node_name,l.user_id,l.request_id,l.mode,l.profile,l.prefetch,l.http_status,l.success,l.latency_ms,l.error,l.created_at,
                   COALESCE(u.name,'Visitante') AS user_name,COALESCE(u.email,'') AS user_email
-           FROM rairo_node_dispatch_logs l LEFT JOIN users u ON u.id=l.user_id
+           FROM vano_node_dispatch_logs l LEFT JOIN users u ON u.id=l.user_id
            WHERE l.node_index=? ORDER BY l.id DESC LIMIT 10000""", (node_index,)
     ).fetchall()
     output = io.StringIO()
@@ -795,7 +795,7 @@ def admin_server_logs_csv(node_index):
             "sim" if row["prefetch"] else "nao", row["http_status"] or "", "sim" if row["success"] else "nao", row["latency_ms"], row["error"],
         ])
     response = app.response_class(output.getvalue(), mimetype="text/csv; charset=utf-8")
-    response.headers["Content-Disposition"] = f'attachment; filename="rairo-node-{node_index:02d}-logs.csv"'
+    response.headers["Content-Disposition"] = f'attachment; filename="vano-node-{node_index:02d}-logs.csv"'
     return response
 
 
