@@ -4,9 +4,7 @@ Production storage is PostgreSQL only. The app keeps its historical ``db.execute
 call style, while this adapter translates the small amount of SQLite-style
 placeholder syntax that remains in call sites.
 
-Connection priority:
-1. DATABASE_URL (primary source on Render and other PostgreSQL providers)
-2. PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE (compatibility fallback)
+Connection source: DATABASE_URL only. Keeping one canonical connection string avoids\nconfiguration drift between local, Render, and future deployments.
 
 There is intentionally no SQLite fallback, because Render web-service filesystems
 are ephemeral and user data must survive redeploys.
@@ -15,7 +13,7 @@ from __future__ import annotations
 
 import os
 import re
-from urllib.parse import quote, urlparse
+from urllib.parse import urlparse
 
 try:
     import psycopg2
@@ -61,24 +59,6 @@ def _validate_parts(host: str, user: str, password: str, database: str) -> None:
         )
 
 
-def _url_from_pg_env() -> str:
-    """Build a PostgreSQL URL from standard libpq PG* environment variables."""
-    host = _clean(os.environ.get("PGHOST"))
-    user = _clean(os.environ.get("PGUSER"))
-    password = _clean(os.environ.get("PGPASSWORD"))
-    database = _clean(os.environ.get("PGDATABASE"))
-    port = _clean(os.environ.get("PGPORT")) or "5432"
-    if not any((host, user, password, database)):
-        return ""
-    _validate_parts(host, user, password, database)
-    if not port.isdigit():
-        raise RuntimeError("PGPORT precisa ser numérica.")
-    return (
-        f"postgresql://{quote(user, safe='')}:{quote(password, safe='')}@"
-        f"{host}:{port}/{quote(database, safe='')}"
-    )
-
-
 def _valid_database_url(url: str) -> str:
     url = _clean(url)
     if not url:
@@ -98,21 +78,10 @@ def _valid_database_url(url: str) -> str:
 
 
 def database_url() -> str:
-    # VANO production uses DATABASE_URL as the canonical connection string.
-    # This is the value configured on the existing Render Web Service. PG*
-    # variables remain only as a compatibility fallback for older Blueprints.
     url = _valid_database_url(os.environ.get("DATABASE_URL", ""))
     if url:
         return url
-
-    pg_url = _url_from_pg_env()
-    if pg_url:
-        return pg_url
-
-    raise RuntimeError(
-        "PostgreSQL não configurado. Use o render.yaml como Blueprint (recomendado) "
-        "ou defina DATABASE_URL com a URL real do seu PostgreSQL."
-    )
+    raise RuntimeError("PostgreSQL não configurado. Defina DATABASE_URL com a URL real do banco.")
 
 
 def _rewrite_sql(sql: str) -> str:
