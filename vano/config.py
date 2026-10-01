@@ -171,11 +171,10 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 # normal setup is one hop; deployments behind an additional CDN/proxy can set 2.
 VANO_PROXY_HOPS = max(0, min(5, int(os.environ.get("VANO_PROXY_HOPS", "1") or 1)))
 
-# V342 — single-owner administration.
-# Only this verified account is allowed to hold administrator privileges.
-PRIMARY_ADMIN_EMAIL = "miguelpinxs@gmail.com"
+# Administration identity is deployment configuration, never source code.
+PRIMARY_ADMIN_EMAIL = os.environ.get("VANO_ADMIN_EMAIL", "").strip().lower()
 VANO_OWNER_EMAIL = PRIMARY_ADMIN_EMAIL
-ADMIN_EMAILS = {PRIMARY_ADMIN_EMAIL}
+ADMIN_EMAILS = {PRIMARY_ADMIN_EMAIL} if PRIMARY_ADMIN_EMAIL else set()
 MOTORIZED_PROFILES = {"driving", "motorcycle"}
 
 
