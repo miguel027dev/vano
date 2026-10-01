@@ -11,11 +11,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
       - name: Extract source
         run: unzip VANO-MAPS-source.zip
       - name: Install dependencies
