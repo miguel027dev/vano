@@ -1,18 +1,17 @@
-/* VANO MAPS V324 — mobile keyboard/address search stability. */
-const BUILD='324.0.0-mobile-search';
-const CACHE=`vano-maps-v324-${BUILD}`;
-const MAP_CACHE=`vano-map-region-v324-${BUILD}`,MAP_CACHE_MAX=180;
+/* VANO MAPS — canonical service worker. */
+const CACHE='vano-static-current';
+const MAP_CACHE='vano-map-region-current',MAP_CACHE_MAX=180;
 const PRECACHE=[
-  '/static/vano-app-v262.css',
-  '/static/vano-runtime-v262.js',
-  '/static/vano-theme-v230.js',
-  '/static/vano-map-v300.js',
-  '/static/vano-map-v300.css',
-  '/static/vano-planner-v263.css',
-  '/static/vano-navigation-v300.css',
-  '/static/vano-interface-v319.css',
-  '/static/vano-access-v319.css',
-  '/static/vano-access-v319.js',
+  '/static/vano-app.css',
+  '/static/vano-runtime.js',
+  '/static/vano-theme.js',
+  '/static/vano-map.js',
+  '/static/vano-map.css',
+  '/static/vano-planner.css',
+  '/static/vano-navigation.css',
+  '/static/vano-interface.css',
+  '/static/vano-access.css',
+  '/static/vano-access.js',
   '/static/vano-maps-icon-64.png',
   '/static/vano-maps-icon-192.png',
   '/static/vano-maps-icon-512.png',
@@ -62,7 +61,7 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
   event.waitUntil((async()=>{
     const keys=await caches.keys();
-    await Promise.all(keys.filter(k=>k!==CACHE&&k!==MAP_CACHE&&(k.startsWith('vano-')||k.startsWith('rairo-')||k.startsWith('vienna-')||k.startsWith('raigo-'))).map(k=>caches.delete(k)));
+    await Promise.all(keys.filter(k=>k!==CACHE&&k!==MAP_CACHE).map(k=>caches.delete(k)));
     await self.clients.claim();
   })());
 });
