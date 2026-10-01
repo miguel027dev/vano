@@ -50,7 +50,7 @@ def _heavy_route_central_fallback(slat, slon, elat, elon, travel_profile, mode, 
         "profile": travel_profile,
         "provider": selected.get("routing_provider") or "mapbox",
         "depart_at": depart_at,
-        "engine": "rairo-heavy-central-lite-fallback-v1233",
+        "engine": "vano-heavy-central-lite-fallback-v1233",
         "distributed_routing": {
             "used": False,
             "fallback": True,
@@ -129,12 +129,12 @@ def api_route():
             "max_distance_km": VANO_PUBLIC_BENCHMARK_MAX_KM,
             "message": "O endpoint público de benchmark limita a distância para proteger a infraestrutura. Use cenários menores ou o laboratório administrativo."
         }), 422
-    if is_motorized_profile(travel_profile) and direct_distance_km > RAIRO_HEAVY_ROUTE_MAX_KM:
+    if is_motorized_profile(travel_profile) and direct_distance_km > VANO_HEAVY_ROUTE_MAX_KM:
         return jsonify({
-            "error": f"A VANO MAPS aceita rotas motorizadas de até {int(RAIRO_HEAVY_ROUTE_MAX_KM)} km por cálculo.",
+            "error": f"A VANO MAPS aceita rotas motorizadas de até {int(VANO_HEAVY_ROUTE_MAX_KM)} km por cálculo.",
             "code": "route_distance_limit",
             "distance_km": round(direct_distance_km, 1),
-            "max_distance_km": int(RAIRO_HEAVY_ROUTE_MAX_KM),
+            "max_distance_km": int(VANO_HEAVY_ROUTE_MAX_KM),
         }), 422
     depart_at = sanitize_depart_at(request.args.get("depart_at", "now"))
     try:
@@ -196,7 +196,7 @@ def api_route():
             node_job["context"] = inline_context
         remote_payload, remote_meta = dispatch_route_to_nodes(node_job, prefetch=prefetch_requested)
         if remote_payload is not None:
-            remote_payload["central_engine"] = "rairo-central-v1233-distributed"
+            remote_payload["central_engine"] = "vano-central-v1233-distributed"
             remote_payload["distributed_routing_meta"] = {
                 "fallback": False,
                 "attempted": remote_meta.get("attempted", []),
@@ -234,7 +234,7 @@ def api_route():
         # Heavy requests must not collapse back into the full Central micro-route
         # engine after all workers fail. Use one lightweight base-provider call;
         # the service stays responsive and quality degrades gracefully.
-        if direct_distance_km >= RAIRO_HEAVY_ROUTE_MIN_KM and direct_distance_km <= RAIRO_HEAVY_ROUTE_MAX_KM:
+        if direct_distance_km >= VANO_HEAVY_ROUTE_MIN_KM and direct_distance_km <= VANO_HEAVY_ROUTE_MAX_KM:
             lite_payload = _heavy_route_central_fallback(
                 slat, slon, elat, elon, travel_profile, mode, depart_at,
                 avoid_ferries=avoid_ferries, avoid_tolls=avoid_tolls, avoid_unpaved=avoid_unpaved,
@@ -383,7 +383,7 @@ def api_route():
             "routes": quick, "selected_id": fastest["id"], "mode": "fastest", "profile": travel_profile,
             "distributed_routing": {"used": False, "fallback": bool(locals().get("remote_meta", {}).get("fallback")), "reason": locals().get("remote_meta", {}).get("reason", "local")},
             "provider": fastest.get("routing_provider") or primary_provider or "mapbox", "depart_at": depart_at,
-            "engine": "rairo-fast-v90-local-fallback",
+            "engine": "vano-fast-v90-local-fallback",
             "candidate_source": primary_provider, "mapbox_base_candidates": int(mapbox_base_count or 0),
             "candidate_pool_cache_hit": bool(candidate_pool_cache_hit),
             "candidate_pool_reuse": candidate_pool_reuse,
@@ -522,7 +522,7 @@ def api_route():
         min_level = int(fastest.get("safety_level", 0)) if user_nav["night_active"] else max(1, int(fastest.get("safety_level", 0)) - 1)
         eligible = [r for r in candidate_pool if float(r["duration"]) <= fastest_s * (1.34 if user_nav["night_active"] else 1.30) and int(r.get("safety_level", 0)) >= min_level]
         smart_guard_pool = list(eligible or candidate_pool)
-        smart = max(smart_guard_pool, key=lambda r: (float(r.get("rairo_score", 0)), int(r.get("safety_level", 0)), -float(r.get("duration", 0))))
+        smart = max(smart_guard_pool, key=lambda r: (float(r.get("vano_score", 0)), int(r.get("safety_level", 0)), -float(r.get("duration", 0))))
         smart_micro_locked = False
 
         # In real congestion, Vano Maps gives a controlled preference to block-scale
@@ -544,7 +544,7 @@ def api_route():
                 smart = max(
                     micro_pool,
                     key=lambda r: (
-                        float(r.get("rairo_score", 0)) + min(18.0, max(0.0, fastest_traffic - float(r.get("traffic_score") or 0)) * .45),
+                        float(r.get("vano_score", 0)) + min(18.0, max(0.0, fastest_traffic - float(r.get("traffic_score") or 0)) * .45),
                         -float(r.get("duration", 0)),
                     ),
                 )
@@ -555,12 +555,12 @@ def api_route():
         # different from the fastest route; a one-block safer deviation can overlap
         # almost all of the same trip.
         if not smart_micro_locked and (route_overlap_ratio(smart, fastest) >= .93 or route_overlap_ratio(smart, safest) >= .93):
-            best_spark = float(smart.get("rairo_score",0) or 0)
-            diverse_smart = [r for r in (eligible or candidate_pool) if route_overlap_ratio(r, fastest) < .93 and route_overlap_ratio(r, safest) < .93 and float(r.get("rairo_score",0) or 0) >= best_spark-10]
+            best_spark = float(smart.get("vano_score",0) or 0)
+            diverse_smart = [r for r in (eligible or candidate_pool) if route_overlap_ratio(r, fastest) < .93 and route_overlap_ratio(r, safest) < .93 and float(r.get("vano_score",0) or 0) >= best_spark-10]
             if diverse_smart:
-                smart = max(diverse_smart, key=lambda r:(float(r.get("rairo_score",0)), -float(r.get("duration",0))))
+                smart = max(diverse_smart, key=lambda r:(float(r.get("vano_score",0)), -float(r.get("duration",0))))
     else:
-        smart = max(candidate_pool, key=lambda r: (float(r.get("rairo_score", 0)), int(r.get("safety_level", 0)), -float(r.get("duration", 0))))
+        smart = max(candidate_pool, key=lambda r: (float(r.get("vano_score", 0)), int(r.get("safety_level", 0)), -float(r.get("duration", 0))))
 
     # VANO AI Route Judge — a bounded reranker, not a geometry generator.
     # Guardrails are computed by the deterministic engine first; the LLM can only
