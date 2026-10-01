@@ -1,6 +1,6 @@
 /* VANO MAPS V230 — bundle consolidado. Ordem preservada do runtime original. */
 
-/* ---- vano-system-v170.css ---- */
+/* Shared system layer */
 /* VANO v170 — complete visual system.
    Keeps the existing HTML/application structure and re-skins every shared surface
    with the VANO brand board: peach/orange, ivory, warm charcoal and warm gray. */
@@ -284,7 +284,7 @@ body:has(.vano-entry),.vano-entry{background:var(--vano-paper)!important;color:v
 .app .offline{background:var(--vano-paper)!important;color:var(--vano-ink)!important}.app .offline p{color:var(--vano-muted)!important}
 
 
-/* ---- vano-map-v170.css ---- */
+/* Map layer */
 /* VANO v170 — Mapbox/navigation redesign. Geometry and IDs are preserved. */
 .ws-app{
   --v-card:rgba(255,251,242,.965);
@@ -638,7 +638,7 @@ html[data-vano-theme="black"] .nav-maneuver-top{background:linear-gradient(150de
 .start-trip-cta.is-starting .start-trip-arrow{font-size:16px!important;font-weight:900!important;letter-spacing:2px!important}
 
 
-/* ---- vano-release-v173.css ---- */
+/* Release refinement */
 /* VANO v173 — production release polish.
    Mobile entry stability, guest drawer rebuild and explicit Black map mode. */
 :root{
@@ -912,7 +912,7 @@ html[data-vano-theme="black"] .vano-auth-tagline{color:#D5CBC4!important}
 }
 
 
-/* ---- vano-black-v176.css ---- */
+/* Black theme layer */
 /* VANO v176 — final black-mode authority and auth/banner polish. */
 :root{--vb-bg:#171512;--vb-surface:#211E1B;--vb-surface-2:#27231F;--vb-surface-3:#302B27;--vb-text:#FFFBF2;--vb-muted:#D5CBC4;--vb-muted-2:#B9AEA7;--vb-line:rgba(255,251,242,.11);--vb-orange:#F59A62;--vb-orange-2:#FFC39B;--vb-orange-3:#D9703F}
 
