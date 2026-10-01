@@ -1,4 +1,4 @@
-/* VANO MAPS V403 — Global neutral surface system
+/* VANO MAPS — Global neutral surface system
    Removes legacy brown/cream surfaces while preserving the VANO orange as accent. */
 :root{
   --vano-ui-bg:#F4F5F8;
@@ -145,7 +145,7 @@ body.vano-auth-startup,
 .vano-register-v340,
 .vano-onboarding-v340,
 .vano-onboarding-v402{background:var(--vano-ui-bg)!important}
-.startup-shell,.startup-auth,.register-shell,.register-panel,.ob-shell-v340.ob-shell-v402,.ob-main-v340{background:var(--vano-ui-surface)!important}
+.startup-shell,.startup-auth,.register-shell,.register-panel,.ob-shell.ob-shell-v402,.ob-main-v340{background:var(--vano-ui-surface)!important}
 .startup-benefits-v402 span,.startup-secondary,.startup-input-wrap,.register-google,.register-input-shell,.ob-card-v340,.ob-summary-v340,.ob-summary-grid-v340>div,.ob-ready-note-v340{background:var(--vano-ui-surface-2)!important}
 .startup-primary,.register-input-shell:hover,.register-input-shell:focus-within,.ob-input-v340,.ob-choice-card-v340,.ob-language-card-v340,.ob-language-current-v344,.ob-live-profile-v402{background:var(--vano-ui-surface)!important}
 

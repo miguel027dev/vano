@@ -76,13 +76,13 @@ html.vano-x-theme-changing *::after{
 /* Auth/onboarding: staged content arrives with continuity. */
 [data-auth-page="register"] :is(.register-copy,.register-form-card),
 [data-vano-auth="startup"] :is(.startup-brand,.startup-copy,.startup-stage),
-.vano-route-onboarding .ob-step-v340.is-active > *{
+.vano-route-onboarding .ob-step.is-active > *{
   animation:vano-x-rise .46s var(--vano-x-ease) both;
 }
 [data-vano-auth="startup"] .startup-copy{animation-delay:45ms}
 [data-vano-auth="startup"] .startup-stage{animation-delay:90ms}
-.vano-route-onboarding .ob-step-v340.is-active > *:nth-child(2){animation-delay:45ms}
-.vano-route-onboarding .ob-step-v340.is-active > *:nth-child(3){animation-delay:85ms}
+.vano-route-onboarding .ob-step.is-active > *:nth-child(2){animation-delay:45ms}
+.vano-route-onboarding .ob-step.is-active > *:nth-child(3){animation-delay:85ms}
 @keyframes vano-x-rise{
   from{opacity:0;transform:translateY(12px)}
   to{opacity:1;transform:none}
@@ -186,7 +186,7 @@ body.vano-route-profile form.vano-x-dirty .profile350-savebar{transform:translat
   html{scroll-behavior:auto!important}
   body.vano-page-surface > main,body.vano-page-surface > .page,body.vano-map-surface #map,body.vano-map-surface #planSheet,
   [data-auth-page="register"] :is(.register-copy,.register-form-card),[data-vano-auth="startup"] :is(.startup-brand,.startup-copy,.startup-stage),
-  .vano-route-onboarding .ob-step-v340.is-active > *,body.vano-map-surface #routeState.vano-x-route-enter *,
+  .vano-route-onboarding .ob-step.is-active > *,body.vano-map-surface #routeState.vano-x-route-enter *,
   .vano-x-pop-in,body.vano-map-surface .active-navigation.show,body.vano-map-surface #activeNav.show{animation:none!important}
   body.vano-map-surface.vano-nav-launching #planSheet{transform:none!important;opacity:1!important}
   body.vano-map-surface.vano-nav-launching #map::after{display:none!important}
@@ -218,16 +218,16 @@ body.vano-route-onboarding .ob-shell-v340,
 body.vano-route-onboarding .ob-shell-v402,
 body.vano-route-onboarding .ob-main-v340,
 body.vano-route-onboarding .ob-form-v340,
-body.vano-route-onboarding .ob-step-v340.is-active{
+body.vano-route-onboarding .ob-step.is-active{
   height:auto!important;
   max-height:none!important;
 }
 body.vano-route-onboarding .vano-onboarding-v340,
 body.vano-route-onboarding .vano-onboarding-v402,
-body.vano-route-onboarding .ob-shell-v340.ob-shell-v402,
+body.vano-route-onboarding .ob-shell.ob-shell-v402,
 body.vano-route-onboarding .ob-main-v340,
 body.vano-route-onboarding .ob-form-v340,
-body.vano-route-onboarding .ob-step-v340.is-active{
+body.vano-route-onboarding .ob-step.is-active{
   overflow:visible!important;
 }
 
@@ -241,11 +241,11 @@ body.vano-route-onboarding .ob-step-v340.is-active{
     min-height:var(--vano-x-vh,100dvh)!important;
     padding-bottom:max(8px,env(safe-area-inset-bottom))!important;
   }
-  body.vano-route-onboarding .ob-shell-v340.ob-shell-v402,
+  body.vano-route-onboarding .ob-shell.ob-shell-v402,
   body.vano-route-onboarding .ob-main-v340{
     min-height:var(--vano-x-vh,100dvh)!important;
   }
-  body.vano-route-onboarding .ob-step-v340.is-active{
+  body.vano-route-onboarding .ob-step.is-active{
     min-height:0!important;
     padding-bottom:112px!important;
     touch-action:pan-y;
@@ -257,7 +257,7 @@ body.vano-route-onboarding .ob-step-v340.is-active{
   }
 }
 
-/* VANO V512 — register mobile scroll hardening.
+/* VANO — register mobile scroll hardening.
    Registration is document-scrolled on phones: no nested/frozen viewport. */
 body.vano-route-register{
   height:auto!important;

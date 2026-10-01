@@ -1,4 +1,4 @@
-/* VANO V351 — startup-grade auth + onboarding polish */
+/* VANO — startup-grade auth + onboarding polish */
 :root{--v351-orange:#F59A62;--v351-orange-2:#E97742;--v351-ink:#211d1a;--v351-muted:#817873;--v351-line:rgba(42,35,31,.085);--v351-ease:cubic-bezier(.2,.78,.2,1)}
 
 /* LOGIN */
@@ -47,8 +47,8 @@ html[data-vano-theme="black"] .vano-auth-startup .startup-secondary{background:r
 .vano-onboarding-v340 .ob-progress-steps-v344 span{transition:color .2s ease,transform .24s var(--v351-ease),opacity .2s ease!important}
 .vano-onboarding-v340 .ob-progress-steps-v344 span.is-active{transform:translateY(-1px)}
 .vano-onboarding-v340 .ob-step-v340{will-change:transform,opacity}
-.vano-onboarding-v340 .ob-step-v340.v351-step-forward{animation:v351StepForward .42s var(--v351-ease) both}
-.vano-onboarding-v340 .ob-step-v340.v351-step-back{animation:v351StepBack .38s var(--v351-ease) both}
+.vano-onboarding-v340 .ob-step.v351-step-forward{animation:v351StepForward .42s var(--v351-ease) both}
+.vano-onboarding-v340 .ob-step.v351-step-back{animation:v351StepBack .38s var(--v351-ease) both}
 @keyframes v351StepForward{from{opacity:0;transform:translateX(24px) scale(.992)}to{opacity:1;transform:none}}
 @keyframes v351StepBack{from{opacity:0;transform:translateX(-24px) scale(.992)}to{opacity:1;transform:none}}
 .vano-onboarding-v340 .ob-step-heading-v340 h1{letter-spacing:-3.1px!important}

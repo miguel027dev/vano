@@ -1,8 +1,8 @@
-/* VANO MAPS V230 — bundle consolidado. Ordem preservada do runtime original. */
+/* VANO MAPS — bundle consolidado. Ordem preservada do runtime original. */
 
-/* ---- vano-entry-v64.css ---- */
+/* ---- vano-entry.css ---- */
 /* ============================================================
-   VANO V63 — ENTRY / AUTH
+   VANO — ENTRY / AUTH
    New concept: Navigation Desk. No photographic dependency.
    ============================================================ */
 :root{
@@ -96,7 +96,7 @@ html[data-vano-theme="black"] body:has(.vano-entry),html[data-vano-theme="black"
 .v63-stage-card.metric span{letter-spacing:0!important;font-weight:700!important}
 
 /* ============================================================
-   VANO V64 — CINEMATIC ENTRY PHOTO + MOBILE POLISH
+   VANO — CINEMATIC ENTRY PHOTO + MOBILE POLISH
    ============================================================ */
 .auth-theme-toggle{display:none!important}
 .v63-route-stage{
@@ -148,8 +148,8 @@ html[data-vano-theme="black"] body:has(.vano-entry),html[data-vano-theme="black"
 }
 
 
-/* ---- vano-entry-v76.css ---- */
-/* VANO V76 — bright/day entry refinement */
+/* ---- vano-entry.css ---- */
+/* VANO — bright/day entry refinement */
 body:has(.vano-entry){background:#f5f6fa!important}
 .vano-entry{background:#f5f6fa!important;padding:clamp(8px,1.2vw,18px)!important}
 .v63-entry-shell{border-color:#e5e7ee!important;border-radius:28px!important;background:#fff!important;box-shadow:0 22px 70px rgba(40,46,76,.10)!important}
@@ -197,8 +197,8 @@ body:has(.vano-entry){background:#f5f6fa!important}
 @media(min-width:901px) and (max-height:720px){.v63-entry-brand{margin-bottom:20px!important}.v63-entry-panel h1{font-size:48px!important}.v63-auth-block{margin-top:18px!important}.v63-entry-proof{margin-top:14px!important}}
 
 
-/* ---- vano-entry-v95.css ---- */
-/* VANO V95 — Registration aligned with the Figma white/violet identity. */
+/* ---- vano-entry.css ---- */
+/* VANO — Registration aligned with the Figma white/violet identity. */
 body:has(.vano-entry){background:#F7F7FB!important;color:#171821!important}
 body:has(.vano-entry):before{display:none!important}
 .vano-entry{background:#F7F7FB!important;color:#171821!important}

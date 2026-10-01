@@ -1,8 +1,8 @@
-/* VANO MAPS V262 — consolidated production shell. */
-/* VANO MAPS V230 — bundle consolidado. Ordem preservada do runtime original. */
+/* VANO MAPS — consolidated production shell. */
+/* VANO MAPS — bundle consolidado. Ordem preservada do runtime original. */
 
-/* ---- rebrand-vano-v50.css ---- */
-/* VANO V50 — complete bright design system */
+/* ---- rebrand-vano.css ---- */
+/* VANO — complete bright design system */
 :root{
   --vano:#F59A62;--vano-2:#FFC39B;--vano-deep:#D9703F;--vano-soft:#FFF2E8;
   --vano-mint:#2CC7A0;--vano-mint-soft:#E5F9F3;--vano-sky:#EAF3FF;
@@ -76,8 +76,8 @@ body:has(.onboard){background:var(--vano-bg)!important}
 .ws-app .risk-ahead{background:#FFF8E8!important;border-color:#F0DDB6!important}.ws-app .risk-ahead-icon{background:#FFF1CC!important;color:#A8751B!important}.ws-app .risk-ahead-copy small,.ws-app .risk-distance{color:#9B6A18!important}.ws-app .risk-ahead-copy b{color:#3E4758!important}.ws-app .risk-ahead-copy span{color:#7B8595!important}
 
 
-/* ---- rebrand-vano-v51.css ---- */
-/* VANO V51 — free-map navigation + calmer, clearer HUD */
+/* ---- rebrand-vano.css ---- */
+/* VANO — free-map navigation + calmer, clearer HUD */
 :root{
   --vano-nav-glass:rgba(255,255,255,.94);
   --vano-nav-glass-strong:rgba(255,255,255,.985);
@@ -230,8 +230,8 @@ body:has(.onboard){background:var(--vano-bg)!important}
 }
 
 
-/* ---- responsive-vano-v52.css ---- */
-/* VANO V52 — responsive phone / foldable / tablet / landscape layout */
+/* ---- responsive-vano.css ---- */
+/* VANO — responsive phone / foldable / tablet / landscape layout */
 :root{
   --vano-tablet-gutter:20px;
   --vano-tablet-panel:430px;
@@ -411,7 +411,7 @@ body:has(.onboard){background:var(--vano-bg)!important}
 
 
 /* ============================================================
-   VANO V54 — tablet search layering + entry redesign
+   VANO — tablet search layering + entry redesign
    ============================================================ */
 @media (min-width:700px){
   /* Search always owns the foreground while the user is choosing a place. */
@@ -529,9 +529,9 @@ body:has(.onboard){background:var(--vano-bg)!important}
 }
 
 
-/* ---- vano-theme-v55.css ---- */
+/* ---- vano-theme.css ---- */
 /* ============================================================
-   VANO V55 — global theme + black mode + responsive polish
+   VANO — global theme + black mode + responsive polish
    Brand purple stays exactly #F59A62 / #FFC39B.
    Purple is used for action, route and selection — not as a page wash.
    ============================================================ */
@@ -950,9 +950,9 @@ html[data-vano-theme="light"] .vano-entry{background:#F4F5F8!important}
 html[data-vano-theme="black"] .badge.orange{background:#27231F!important;color:#FFC39B!important;border-color:#27231F!important}
 
 
-/* ---- vano-theme-v56.css ---- */
+/* ---- vano-theme.css ---- */
 /* ============================================================
-   VANO V56 — white + purple system, automatic Black mode
+   VANO — white + purple system, automatic Black mode
    Official brand purple: #F59A62 / #FFC39B
    ============================================================ */
 :root{
@@ -1267,7 +1267,7 @@ html[data-vano-theme="light"] .app .stat{background:#F8F9FC!important;border-col
 html[data-vano-theme="light"] .share-app .veil,
 html[data-vano-theme="light"] .app .veil{background:linear-gradient(180deg,rgba(246,247,251,.18),transparent 24%,transparent 72%,rgba(246,247,251,.24))!important}
 .vano-entry .vano-splash:before{
-  background:linear-gradient(180deg,rgba(5,6,12,.28) 0%,rgba(5,6,12,.42) 34%,rgba(5,6,12,.64) 72%,#07080D 100%),url('/static/auth-city-route-vano-v56.webp') center 49%/cover no-repeat!important;
+  background:linear-gradient(180deg,rgba(5,6,12,.28) 0%,rgba(5,6,12,.42) 34%,rgba(5,6,12,.64) 72%,#07080D 100%),url('/static/auth-city-route-vano.webp') center 49%/cover no-repeat!important;
 }
 
 /* ---------- Onboarding: same white/purple language ---------- */
@@ -1336,8 +1336,8 @@ html[data-vano-theme="black"] .vano-entry .splash-mark{filter:drop-shadow(0 0 24
 @keyframes vanoMarkV56{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
 
 
-/* ---- vano-global-v60.css ---- */
-/* VANO V60 — global interaction/accessibility guardrails */
+/* ---- vano-global.css ---- */
+/* VANO — global interaction/accessibility guardrails */
 :root{--v60-focus:rgba(217,112,63,.28)}
 html{-webkit-text-size-adjust:100%}
 button,a,input,select,textarea{-webkit-tap-highlight-color:transparent}
@@ -1358,7 +1358,7 @@ html[data-vano-theme="black"] body{color-scheme:dark}
 }
 
 
-/* ---- vano-brand-assets-v159.css ---- */
+/* ---- vano-brand-assets.css ---- */
 /* VANO brand assets v159 — board-derived wordmark + app icon */
 .brand .vano-brand-wordmark{display:block;width:118px!important;height:40px!important;object-fit:contain!important;object-position:left center!important;filter:none!important;box-shadow:none!important;border-radius:0!important}
 .brand .vano-brand-wordmark + span{display:none!important}
@@ -1373,7 +1373,7 @@ html[data-vano-theme="black"] body{color-scheme:dark}
 }
 
 
-/* ---- vano-brand-v168.css ---- */
+/* ---- vano-brand.css ---- */
 /* VANO v168 — branding-only skin. Layout/geometry intentionally untouched. */
 :root{
   --vano-primary:#F59A62;--vano-light:#FFC39B;--vano-deep:#D9703F;
@@ -1406,7 +1406,7 @@ body:not(:has(.ws-app)):before{background:radial-gradient(circle at 10% -8%,rgba
 .nav-maneuver-top{background:#27231F!important;color:#FFFBF2!important;border-color:#27231F!important;box-shadow:0 16px 38px rgba(39,35,31,.22)!important}.nav-maneuver-top small,.nav-maneuver-top span{color:#D5CEC7!important}
 
 
-/* ---- vano-system-v170.css ---- */
+/* ---- vano-system.css ---- */
 /* VANO v170 — complete visual system.
    Keeps the existing HTML/application structure and re-skins every shared surface
    with the VANO brand board: peach/orange, ivory, warm charcoal and warm gray. */
@@ -1690,7 +1690,7 @@ body:has(.vano-entry),.vano-entry{background:var(--vano-paper)!important;color:v
 .app .offline{background:var(--vano-paper)!important;color:var(--vano-ink)!important}.app .offline p{color:var(--vano-muted)!important}
 
 
-/* ---- vano-map-v170.css ---- */
+/* ---- vano-map.css ---- */
 /* VANO v170 — Mapbox/navigation redesign. Geometry and IDs are preserved. */
 .ws-app{
   --v-card:rgba(255,251,242,.965);
@@ -2044,7 +2044,7 @@ html[data-vano-theme="black"] .nav-maneuver-top{background:linear-gradient(150de
 .start-trip-cta.is-starting .start-trip-arrow{font-size:16px!important;font-weight:900!important;letter-spacing:2px!important}
 
 
-/* ---- vano-polish-v171.css ---- */
+/* ---- vano-polish.css ---- */
 /* VANO v171 — palette cleanup + UI polish + exact Mapbox destination anchoring. */
 :root{
   --v171-primary:#F59A62;
@@ -2225,7 +2225,7 @@ button:not(:disabled):active{transform:scale(.985)}
 }
 
 
-/* ---- vano-release-v173.css ---- */
+/* ---- vano-release.css ---- */
 /* VANO v173 — production release polish.
    Mobile entry stability, guest drawer rebuild and explicit Black map mode. */
 :root{
@@ -2499,7 +2499,7 @@ html[data-vano-theme="black"] .vano-auth-tagline{color:#D5CBC4!important}
 }
 
 
-/* ---- vano-black-v176.css ---- */
+/* ---- vano-black.css ---- */
 /* VANO v176 — final black-mode authority and auth/banner polish. */
 :root{--vb-bg:#171512;--vb-surface:#211E1B;--vb-surface-2:#27231F;--vb-surface-3:#302B27;--vb-text:#FFFBF2;--vb-muted:#D5CBC4;--vb-muted-2:#B9AEA7;--vb-line:rgba(255,251,242,.11);--vb-orange:#F59A62;--vb-orange-2:#FFC39B;--vb-orange-3:#D9703F}
 
@@ -2726,9 +2726,9 @@ html[data-vano-theme="black"] .vano-auth-banner-clean:before{background:rgba(245
 }
 
 
-/* ---- vano-theme-v182.css ---- */
+/* ---- vano-theme.css ---- */
 /* ============================================================
-   VANO V182 — THEME CONTRAST AUTHORITY
+   VANO — THEME CONTRAST AUTHORITY
    Objetivo:
    - Black: texto principal realmente branco/claro em TODA a UI.
    - White: texto principal realmente escuro em TODA a UI.
@@ -3014,7 +3014,7 @@ html[data-vano-theme="light"] .mapboxgl-popup-content {
 }
 
 /* ============================================================
-   VANO V185 — BLACK MODE FINAL CONTRAST LOCK
+   VANO — BLACK MODE FINAL CONTRAST LOCK
    This block intentionally lives in the last-loaded theme sheet.
    It only affects Black mode and neutralizes late legacy light-mode
    hard-codes from the bundled map/navigation stylesheet.
@@ -3143,7 +3143,7 @@ html[data-vano-theme="black"] .ws-app .traffic-suggestion-icon {
 }
 
 
-/* ---- vano-route-studio-v184.css ---- */
+/* ---- vano-route-studio.css ---- */
 /* VANO Route Studio V184
    Full redesign of the pre-navigation route customization panel.
    Loaded last on purpose: this file owns the visual layer of #routeState only.
@@ -3562,9 +3562,9 @@ html[data-vano-theme="black"] #routeState.vano-route-studio .preview-actions .su
 }
 
 
-/* ---- vano-black-polish-v186.css ---- */
+/* ---- vano-black-polish.css ---- */
 /* ============================================================
-   VANO V186 — BLACK MODE UI POLISH AUTHORITY
+   VANO — BLACK MODE UI POLISH AUTHORITY
    Final map/application layer. Loaded after every legacy stylesheet.
    Focus: consistent dark surfaces, readable hierarchy, clean controls,
    rebuilt speedometer, and stable route customization UI.
@@ -4110,8 +4110,8 @@ html[data-vano-theme="black"] .ws-app .traffic-radar.speed-camera{
 }
 
 
-/* ---- vano-motion-v188.css ---- */
-/* VANO V188 — motion/performance + quick community reports.
+/* ---- vano-motion.css ---- */
+/* VANO — motion/performance + quick community reports.
    Loaded last on purpose: this file owns only the V188 navigation/report surface. */
 
 :root{
@@ -4345,8 +4345,8 @@ html[data-vano-theme="black"] .card,html[data-vano-theme="black"] .panel,html[da
 .vano-auth-theme-toggle{position:fixed;right:max(14px,env(safe-area-inset-right));top:max(14px,env(safe-area-inset-top));z-index:9999;font-size:18px}
 
 
-/* ---- vano-design-system-v215.css ---- */
-/* VANO MAPS V215 — camera height + speedometer + incident reporting polish
+/* ---- vano-design-system.css ---- */
+/* VANO MAPS — camera height + speedometer + incident reporting polish
    New work should land here instead of adding another legacy theme layer. */
 :root{
   --vano-accent:#f47a31;
@@ -4729,7 +4729,7 @@ body.nav-arrived :is(.nav-maneuver-top,.nav-street-chip,.nav-panel,.floating-spe
 
 
 /* V215 design system */
-/* VANO MAPS V215 — camera height + speedometer + incident reporting polish
+/* VANO MAPS — camera height + speedometer + incident reporting polish
    New work should land here instead of adding another legacy theme layer. */
 :root{
   --vano-accent:#f47a31;
@@ -5112,7 +5112,7 @@ body.nav-arrived :is(.nav-maneuver-top,.nav-street-chip,.nav-panel,.floating-spe
 
 
 /* ========================================================================== 
-   VANO MAPS V251 — Route personalization + route information cards
+   VANO MAPS — Route personalization + route information cards
    Modern, mobile-first, light/black adaptive. Loaded last in base.html.
    ========================================================================== */
 
@@ -5383,7 +5383,7 @@ html[data-vano-theme="dark"] #routeState .vano-route-more{background:#25221F!imp
 
 
 /* ========================================================================== 
-   VANO MAPS V252 — entry experience, personalization cleanup and card polish
+   VANO MAPS — entry experience, personalization cleanup and card polish
    ========================================================================== */
 
 /* Entry experience: search remains primary, capabilities communicate value only when expanded. */
@@ -5482,7 +5482,7 @@ html[data-vano-theme="dark"] #routeState.vano-route-studio .route-card{
 }
 
 
-/* VANO MAPS V253 — theme toggle icon-only, compact and touch-friendly */
+/* VANO MAPS — theme toggle icon-only, compact and touch-friendly */
 .vano-theme-toggle,
 #mapThemeBtn.map-theme-btn{
   appearance:none!important;
@@ -5525,7 +5525,7 @@ html[data-vano-theme="black"] #mapThemeBtn.map-theme-btn:hover{background:rgba(2
 @media(max-width:430px){.vano-theme-toggle,#mapThemeBtn.map-theme-btn{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important}}
 
 /* ========================================================================== 
-   VANO MAPS V255 — account sheet + profile personalization stabilization
+   VANO MAPS — account sheet + profile personalization stabilization
    Scoped final-layer rules. No map/navigation runtime overrides.
    ========================================================================== */
 
@@ -5554,7 +5554,7 @@ html[data-vano-theme="black"] #mapThemeBtn.map-theme-btn:hover{background:rgba(2
   transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .18s ease;
 }
 .ws-app .account-drawer.account-drawer-v255::-webkit-scrollbar{display:none}
-.ws-app .account-drawer.account-drawer-v255.show{transform:translateY(0);opacity:1}
+.ws-app .account-drawer.account-drawer.show{transform:translateY(0);opacity:1}
 .ws-app .account-drawer.account-drawer-v255 .drawer-grab{
   width:38px!important;height:4px!important;margin:1px auto 8px!important;border-radius:999px!important;background:#d7d9de!important;
 }
@@ -5691,7 +5691,7 @@ html[data-vano-theme="dark"] .ws-app .account-v255-logout{border-color:rgba(255,
 }
 
 /* ========================================================================== 
-   VANO MAPS V256 — three-dots account experience
+   VANO MAPS — three-dots account experience
    One isolated component for authenticated + guest states.
    ========================================================================== */
 
@@ -5733,7 +5733,7 @@ html[data-vano-theme="dark"] .ws-app .account-v255-logout{border-color:rgba(255,
   transition:transform .27s cubic-bezier(.22,.84,.24,1),opacity .18s ease!important;
 }
 .ws-app .account-drawer.account-drawer-v256::-webkit-scrollbar{display:none}
-.ws-app .account-drawer.account-drawer-v256.show{transform:translateY(0)}
+.ws-app .account-drawer.account-drawer.show{transform:translateY(0)}
 .ws-app .account-drawer.account-drawer-v256 .drawer-grab{
   display:block!important;width:38px!important;height:4px!important;margin:0 auto 8px!important;border-radius:999px!important;background:#D8D9DD!important;
 }
@@ -5934,7 +5934,7 @@ html[data-vano-theme="dark"] .ws-app .account-v256-login b{color:#FFF7F2}
 }
 
 /* ================================================================
-   VANO MAPS V257 — map/user puck stacking containment
+   VANO MAPS — map/user puck stacking containment
    The live user marker must belong to the map plane, never to the UI plane.
    ================================================================ */
 .ws-app #map{
@@ -5981,7 +5981,7 @@ html[data-vano-theme="dark"] .ws-app .account-v256-login b{color:#FFF7F2}
 
 /* V258 page polish */
 /* =====================================================================
-   VANO MAPS V259 — stable UI layer
+   VANO MAPS — stable UI layer
    Scope rule: account/admin pages and the map account drawer are isolated.
    No global map geometry is changed here.
    ===================================================================== */
@@ -6488,7 +6488,7 @@ html[data-vano-theme="black"] body.vano-page-surface .vano-nav-avatar{border-col
 
 /* V260 route HUD */
 /* ================================================================
-   VANO MAPS V260 — mobile active route information card
+   VANO MAPS — mobile active route information card
    Final owner of the lower route HUD. Loaded after all legacy map CSS.
    ================================================================ */
 
@@ -6740,7 +6740,7 @@ html[data-vano-theme="black"] body.vano-page-surface .vano-nav-avatar{border-col
 }
 
 /* ================================================================
-   VANO V262 — stability, mobile UX and accessibility final overrides
+   VANO — stability, mobile UX and accessibility final overrides
    ================================================================ */
 :root{
   --vano-touch:44px;
@@ -6865,7 +6865,7 @@ html[data-vano-theme="black"] .vano-confirm-card{background:#211e1b;color:#fff9f
 @media(max-width:380px){body.body-nav #activeNav.nav-panel.nav-minimal{left:6px!important;right:6px!important;border-radius:19px!important}}
 
 /* ============================================================
-   VANO V301 — global finishing pass
+   VANO — global finishing pass
    Small, low-risk interaction/accessibility improvements shared by the app.
    ============================================================ */
 .vano-app-root :is(button,a,[role="button"],input,select,textarea){

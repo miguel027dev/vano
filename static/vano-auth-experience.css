@@ -1,4 +1,4 @@
-/* VANO MAPS V402 — Auth + onboarding experience system
+/* VANO MAPS — Auth + onboarding experience system
    Unified startup visual language, mobile-first, light/black parity. */
 :root{
   --v402-accent:#f28b50;
@@ -176,7 +176,7 @@ html[data-vano-theme="black"] .startup-primary,html[data-vano-theme-mode="black"
 /* ---------------- ONBOARDING ---------------- */
 body.vano-route-onboarding{background:var(--v402-bg)!important;color:var(--v402-ink)!important}
 .vano-onboarding-v340,.vano-onboarding-v402{min-height:100svh!important;padding:14px!important;background:radial-gradient(circle at 8% -4%,rgba(242,139,80,.15),transparent 28%),radial-gradient(circle at 102% 102%,rgba(242,139,80,.06),transparent 25%),var(--v402-bg)!important}
-.ob-shell-v340.ob-shell-v402{width:min(1200px,100%)!important;min-height:calc(100svh - 28px)!important;grid-template-columns:minmax(0,1.04fr) minmax(400px,.76fr)!important;border:1px solid var(--v402-line)!important;border-radius:34px!important;background:var(--v402-card)!important;box-shadow:var(--v402-shadow)!important}
+.ob-shell.ob-shell-v402{width:min(1200px,100%)!important;min-height:calc(100svh - 28px)!important;grid-template-columns:minmax(0,1.04fr) minmax(400px,.76fr)!important;border:1px solid var(--v402-line)!important;border-radius:34px!important;background:var(--v402-card)!important;box-shadow:var(--v402-shadow)!important}
 .ob-main-v340{padding:clamp(24px,4vw,54px)!important;background:var(--v402-card)!important}
 .ob-top-v340{min-height:44px!important}
 .ob-brand-v340{max-width:184px!important}
@@ -212,7 +212,7 @@ html[data-vano-theme="black"] .ob-theme-v402 .v402-moon,html[data-vano-theme-mod
 .ob-card-head-v340 b{color:var(--v402-ink)!important;font-size:14px!important}
 .ob-card-head-v340 small{color:var(--v402-muted)!important;font-size:10px!important}
 .ob-completion-chip-v344{background:var(--v402-card)!important;border-color:var(--v402-line)!important;color:var(--v402-muted)!important}
-.ob-completion-chip-v344.is-complete{background:rgba(64,164,104,.09)!important;border-color:rgba(64,164,104,.14)!important;color:#3e9561!important}
+.ob-completion-chip.is-complete{background:rgba(64,164,104,.09)!important;border-color:rgba(64,164,104,.14)!important;color:#3e9561!important}
 .ob-live-profile-v402{display:flex;align-items:center;gap:11px;padding:12px 13px;margin-bottom:14px;border-radius:18px;background:var(--v402-card);border:1px solid var(--v402-line);box-shadow:0 8px 24px rgba(34,27,22,.035)}
 .ob-live-profile-v402>span{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,#ffa56e,#e9773d);color:#fff;font-size:15px;font-weight:900;box-shadow:0 10px 22px rgba(222,111,54,.18)}
 .ob-live-profile-v402 small{display:block;color:var(--v402-faint);font-size:8px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
@@ -337,7 +337,7 @@ html[data-vano-theme="black"] .ob-language-card-v340,html[data-vano-theme-mode="
   .register-preview{display:none!important}
 
   .vano-onboarding-v340,.vano-onboarding-v402{padding:8px!important}
-  .ob-shell-v340.ob-shell-v402{display:block!important;min-height:calc(100svh - 16px)!important;border-radius:26px!important;overflow:visible!important}
+  .ob-shell.ob-shell-v402{display:block!important;min-height:calc(100svh - 16px)!important;border-radius:26px!important;overflow:visible!important}
   .ob-main-v340{min-height:calc(100svh - 16px)!important;padding:18px 15px 13px!important}
   .ob-brand-v340{max-width:154px!important}.ob-brand-v340 img{height:27px!important;max-width:154px!important}
   .ob-head-actions-v402{gap:6px}.ob-step-label-v340{min-height:32px!important}.ob-theme-v402{width:34px;height:34px}
@@ -368,6 +368,6 @@ html[data-vano-theme="black"] .ob-language-card-v340,html[data-vano-theme-mode="
 }
 
 @media(prefers-reduced-motion:reduce){
-  .startup-shell,.startup-stage,.vano-onboarding-js .ob-step-v340.is-active{animation:none!important}
+  .startup-shell,.startup-stage,.vano-onboarding-js .ob-step.is-active{animation:none!important}
   .startup-primary,.startup-secondary,.startup-submit,.ob-next-v340,.ob-finish-v340,.ob-choice-card-v340,.ob-language-card-v340{transition:none!important}
 }
