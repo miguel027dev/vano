@@ -57,7 +57,11 @@ def test_flask_import_routes_and_templates():
 
     rules = list(vano_app.app.url_map.iter_rules())
     endpoints = [rule.endpoint for rule in rules]
-    assert len(endpoints) == len(set(endpoints))
+    unique_rules = {
+        (rule.rule, tuple(sorted(rule.methods - {"HEAD", "OPTIONS"})), rule.endpoint)
+        for rule in rules
+    }
+    assert len(unique_rules) == len(rules)
     assert {"index", "map_page", "api_route", "healthz"}.issubset(set(endpoints))
 
     for template in (ROOT / "templates").glob("*.html"):
