@@ -21,8 +21,8 @@ SEARCH_RESULT_LOCK = threading.Lock()
 USER_IP_LOG_CACHE = {}
 USER_IP_LOG_LOCK = threading.Lock()
 USER_IP_LOG_INTERVAL = 10 * 60
-ACTIVITY_LOG_QUEUE = queue.Queue(maxsize=max(1000, min(50000, int(os.environ.get("RAIRO_ACTIVITY_LOG_QUEUE", "12000") or 12000))))
-ACTIVITY_LOG_RETENTION_DAYS = max(7, min(3650, int(os.environ.get("RAIRO_ACTIVITY_LOG_RETENTION_DAYS", "90") or 90)))
+ACTIVITY_LOG_QUEUE = queue.Queue(maxsize=max(1000, min(50000, int(os.environ.get("VANO_ACTIVITY_LOG_QUEUE", "12000") or 12000))))
+ACTIVITY_LOG_RETENTION_DAYS = max(7, min(3650, int(os.environ.get("VANO_ACTIVITY_LOG_RETENTION_DAYS", "90") or 90)))
 ACTIVITY_LOG_WORKER_LOCK = threading.Lock()
 ACTIVITY_LOG_WORKER_STARTED = False
 _ACTIVITY_SENSITIVE_KEYS = {
@@ -50,7 +50,7 @@ def client_ip():
     """Return the client address after the explicitly configured trusted proxies.
 
     ``ProxyFix`` rewrites ``REMOTE_ADDR`` only from the number of forwarding hops
-    configured in ``RAIRO_PROXY_HOPS``. We intentionally do not trust arbitrary
+    configured in ``VANO_PROXY_HOPS``. We intentionally do not trust arbitrary
     X-Forwarded-For/CF headers here, which prevents a direct client from forging
     the address that appears in the admin audit log.
     """
@@ -157,7 +157,7 @@ def _ensure_activity_log_worker():
     with ACTIVITY_LOG_WORKER_LOCK:
         if ACTIVITY_LOG_WORKER_STARTED:
             return
-        threading.Thread(target=_activity_log_worker, name="rairo-activity-audit", daemon=True).start()
+        threading.Thread(target=_activity_log_worker, name="vano-activity-audit", daemon=True).start()
         ACTIVITY_LOG_WORKER_STARTED = True
 
 
@@ -205,7 +205,7 @@ def _request_forwarding_diagnostics():
     raw = (request.headers.get("X-Forwarded-For") or "")[:500]
     chain = [x.strip() for x in raw.split(",") if x.strip()][:8]
     return {
-        "proxy_hops": RAIRO_PROXY_HOPS,
+        "proxy_hops": VANO_PROXY_HOPS,
         "forwarded_for": chain,
         "forwarded_proto": (request.headers.get("X-Forwarded-Proto") or "")[:24],
     }
@@ -213,7 +213,7 @@ def _request_forwarding_diagnostics():
 
 @app.before_request
 def start_request_activity_timer():
-    g.rairo_request_started = time.monotonic()
+    g.vano_request_started = time.monotonic()
 
 
 @app.after_request
@@ -227,7 +227,7 @@ def record_request_activity(response):
             "/api/mobile/navigation/batch", "/mobile/health",
         }
         if endpoint != "static" and request.path != "/healthz" and endpoint != "api_telemetry_event" and request.path not in fast_mobile_paths:
-            started = getattr(g, "rairo_request_started", None)
+            started = getattr(g, "vano_request_started", None)
             duration = int((time.monotonic() - started) * 1000) if started else 0
             meta = {
                 "query_keys": [str(k)[:80] for k in request.args.keys()][:32],
