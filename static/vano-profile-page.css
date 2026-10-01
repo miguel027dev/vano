@@ -1,6 +1,6 @@
 /* VANO MAPS V230 — bundle consolidado. Ordem preservada do runtime original. */
 
-/* ---- vano-profile-v72.css ---- */
+/* Profile foundation */
 :root{
   --v72-bg:#f5f7fb;
   --v72-surface:#ffffff;
@@ -47,7 +47,7 @@ html[data-vano-theme="black"] .profile-v72-avatar-fallback{background:linear-gra
 @media(max-width:390px){.profile-v72-hero{gap:10px}.profile-v72-identity{gap:10px}.profile-v72-avatar{width:54px;height:54px;flex-basis:54px}.profile-v72-copy h1{font-size:19px}.profile-v72-badge-soft{display:none}.profile-v72-presence-card{grid-template-columns:40px minmax(0,1fr);padding:11px;gap:10px}.profile-v72-card-icon{width:40px;height:40px;border-radius:13px}.profile-v72-map-styles{grid-template-columns:1fr}.profile-v72-theme-options{grid-template-columns:1fr 1fr}.profile-v72-theme-options button{min-height:52px;padding:8px}.profile-v72-person{grid-template-columns:36px minmax(0,1fr) 36px}.profile-v72-person img,.profile-v72-person-avatar{width:36px;height:36px}.profile-v72-person button{width:36px;height:36px}.profile-v72-invite{grid-template-columns:1fr}.profile-v72-invite button{width:100%}}
 
 
-/* ---- vano-profile-v95.css ---- */
+/* Profile refinement */
 /* VANO V95 — Profile / settings polish. Figma white + violet palette. */
 body:has(.v72-profile-page){background:#F7F7FB!important;color:#171821!important}
 body:has(.v72-profile-page):before{display:none!important}
@@ -74,7 +74,7 @@ body:has(.v72-profile-page):before{display:none!important}
 @media(max-width:700px){.v72-profile-page{padding-top:12px!important}.profile-v72-shell{width:calc(100% - 14px)!important}.profile-v72-hero{padding:17px!important;border-radius:22px!important}.profile-v72-map-button{width:100%!important;justify-content:center!important}.profile-v72-card{padding:15px!important;border-radius:19px!important}.profile-v72-detail{border-radius:18px!important}.profile-v72-detail summary{min-height:68px!important;padding:13px 14px!important}.profile-v72-detail-body{padding:14px!important}.profile-v72-grid-two{grid-template-columns:1fr!important}.profile-v72-map-styles-five{grid-template-columns:1fr 1fr!important}.profile-v72-nav-pref{min-height:66px!important;padding:10px!important}}
 
 
-/* ---- vano-profile-v108.css ---- */
+/* Profile responsive refinement */
 /* VANO V108 — Profile / Settings redesign
    Driver-first, white surfaces, violet interaction states, mobile-first. */
 body:has(.v72-profile-page){
