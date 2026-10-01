@@ -1,5 +1,5 @@
 /* VANO MAPS V300 — single map UI layer
-   Loaded after vano-app-v262.css. This file owns the map surface layout,
+   Loaded after vano-app.css. This file owns the map surface layout,
    planner, route-ready state and active-navigation HUD. */
 
 :root{
