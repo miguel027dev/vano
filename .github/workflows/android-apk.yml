@@ -1,0 +1,34 @@
+name: Build VANO Android APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/vano-native-android]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Extract source
+        run: unzip VANO-MAPS-source.zip
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm ci
+      - name: Validate
+        working-directory: mobile
+        run: npx tsc --noEmit && npm run lint
+      - name: Build release APK
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VANO-MAPS-android
+          path: mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14
