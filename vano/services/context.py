@@ -202,10 +202,10 @@ def quantize_flow_cell(lat, lon, cell_deg=0.0022):
 
 _FLOW_PRUNE_LOCK = threading.Lock()
 _FLOW_PRUNE_LAST = 0.0
-_FLOW_PRUNE_INTERVAL = max(120, min(1800, int(os.environ.get("RAIRO_FLOW_PRUNE_INTERVAL", "600"))))
+_FLOW_PRUNE_INTERVAL = max(120, min(1800, int(os.environ.get("VANO_FLOW_PRUNE_INTERVAL", "600"))))
 _FLOW_QUERY_CACHE = {}
 _FLOW_QUERY_CACHE_LOCK = threading.Lock()
-_FLOW_QUERY_CACHE_TTL = max(3, min(30, int(os.environ.get("RAIRO_FLOW_QUERY_TTL", "8"))))
+_FLOW_QUERY_CACHE_TTL = max(3, min(30, int(os.environ.get("VANO_FLOW_QUERY_TTL", "8"))))
 
 def prune_flow_samples(db=None, force=False):
     global _FLOW_PRUNE_LAST
@@ -268,7 +268,7 @@ def query_live_flow(lat, lon, radius=2400):
         out.append({
             "lat": row["cell_lat"], "lon": row["cell_lon"], "direction": row["direction_bucket"],
             "avg_speed_kmh": round(speed, 1), "samples": int(row["samples"]), "sources": int(row["sources"]),
-            "traffic_level": level, "traffic_score": score, "updated_at": row["updated_at"], "source": "rairo-live-flow",
+            "traffic_level": level, "traffic_score": score, "updated_at": row["updated_at"], "source": "vano-live-flow",
         })
     with _FLOW_QUERY_CACHE_LOCK:
         _FLOW_QUERY_CACHE[key]=(now_ts,copy.deepcopy(out))
@@ -290,7 +290,7 @@ def community_context(lat, lon, radius=1800):
             "id": f"report-{r['id']}", "type": str(r["category"]), "label": str(r["title"]),
             "lat": float(r["latitude"]), "lon": float(r["longitude"]), "severity": int(r["severity"]),
             "confirmations": int(r["confirmations"] or 0), "created_at": r["created_at"],
-            "distance_m": round(d), "source": "rairo-community", "freshness": "community-live",
+            "distance_m": round(d), "source": "vano-community", "freshness": "community-live",
         })
     return sorted(items, key=lambda x: (x["distance_m"], -x["severity"]))[:80]
 
@@ -546,7 +546,7 @@ def event_venues_for_bounds(bounds):
     only becomes an active disruption when live traffic, recent crowd/road reports
     or an optional configured event feed corroborates it.
     """
-    if not RAIRO_EVENT_INTELLIGENCE_ENABLED or not bounds:
+    if not VANO_EVENT_INTELLIGENCE_ENABLED or not bounds:
         return []
     min_lat,min_lon,max_lat,max_lon = [float(x) for x in bounds]
     if max_lat <= min_lat or max_lon <= min_lon:
@@ -611,7 +611,7 @@ def _scheduled_match_events():
     Traffic/reports remain the fallback source of truth if the schema or service
     changes. Results are cached to avoid polling sports endpoints per route.
     """
-    if not RAIGO_ESPN_MATCH_FEED_ENABLED or not RAIGO_ESPN_SOCCER_LEAGUES:
+    if not VANO_ESPN_MATCH_FEED_ENABLED or not VANO_ESPN_SOCCER_LEAGUES:
         return []
     now=time.time()
     with _MATCH_SCHEDULE_LOCK:
@@ -638,8 +638,8 @@ def _scheduled_match_events():
             out.append({"event_name":str(ev.get("name") or ev.get("shortName") or "Jogo").strip()[:160],"venue_name":venue_name[:140],"venue_norm":_event_norm_name(venue_name),"start":start_dt.isoformat(),"league":league,"status":str(status.get("name") or status.get("description") or "")[:80],"source":"espn-scoreboard"})
         return out
     items=[]
-    with ThreadPoolExecutor(max_workers=min(3,len(RAIGO_ESPN_SOCCER_LEAGUES))) as pool:
-        for rows in pool.map(fetch,RAIGO_ESPN_SOCCER_LEAGUES):items.extend(rows)
+    with ThreadPoolExecutor(max_workers=min(3,len(VANO_ESPN_SOCCER_LEAGUES))) as pool:
+        for rows in pool.map(fetch,VANO_ESPN_SOCCER_LEAGUES):items.extend(rows)
     # same match can appear in national and continental schedule windows
     dedup={}
     for item in items:
@@ -665,14 +665,14 @@ def _scheduled_event_for_venue(venue, schedule):
 
 
 def _event_feed_items():
-    if not RAIGO_EVENT_FEED_URLS:
+    if not VANO_EVENT_FEED_URLS:
         return []
     now=time.time()
     with _EVENT_FEED_LOCK:
         if now-float(_EVENT_FEED_CACHE.get("ts") or 0)<180:
             return copy.deepcopy(_EVENT_FEED_CACHE.get("items") or [])
     items=[]
-    for url in RAIGO_EVENT_FEED_URLS:
+    for url in VANO_EVENT_FEED_URLS:
         try:
             r=requests.get(url,headers={"User-Agent":"VANO MAPS/164 event-intelligence"},timeout=4)
             r.raise_for_status(); data=r.json()
@@ -740,7 +740,7 @@ def _event_traffic_near(route, venue):
 
 def route_event_disruptions(route, start_lat, start_lon, end_lat, end_lon, reports=None, venues=None):
     """Return corroborated event-pressure zones touching a route corridor."""
-    if not RAIRO_EVENT_INTELLIGENCE_ENABLED or not route:
+    if not VANO_EVENT_INTELLIGENCE_ENABLED or not route:
         return []
     coords=((route.get("geometry") or {}).get("coordinates") or [])
     if len(coords)<2: return []
