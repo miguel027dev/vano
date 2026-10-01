@@ -477,8 +477,8 @@ def api_live_context():
         "sources": [
             {"id": "open-meteo", "kind": "weather", "credential": "none", "freshness": "current-model"},
             {"id": "openstreetmap-overpass", "kind": "road-map", "credential": "none", "freshness": "mapped"},
-            {"id": "rairo-community", "kind": "user-reports", "credential": "internal", "freshness": "recent"},
-            {"id": "rairo-live-flow", "kind": "anonymous-speed-aggregate", "credential": "internal", "freshness": "20-min"},
+            {"id": "vano-community", "kind": "user-reports", "credential": "internal", "freshness": "recent"},
+            {"id": "vano-live-flow", "kind": "anonymous-speed-aggregate", "credential": "internal", "freshness": "20-min"},
         ],
         "disclaimer": "Tempo e tráfego são estimativas. Dados OSM são mapeados e podem não refletir mudanças momentâneas; alertas comunitários precisam de confirmação.",
     })
@@ -840,7 +840,7 @@ def event_route_check():
     """
     if not validate_csrf():
         abort(400)
-    if not RAIRO_EVENT_INTELLIGENCE_ENABLED:
+    if not VANO_EVENT_INTELLIGENCE_ENABLED:
         return jsonify({"active":False,"enabled":False,"events":[],"recommend":False})
     if not rate_limit("event_route_check", 10, 60):
         return jsonify({"error":"Checagens de evento muito frequentes."}),429
@@ -852,7 +852,7 @@ def event_route_check():
     if not (-90<=slat<=90 and -90<=elat<=90 and -180<=slon<=180 and -180<=elon<=180):
         return jsonify({"error":"Coordenadas inválidas."}),400
     direct_km=haversine_m(slat,slon,elat,elon)/1000.0
-    if direct_km>RAIGO_EVENT_SCAN_MAX_KM:
+    if direct_km>VANO_EVENT_SCAN_MAX_KM:
         return jsonify({"active":False,"events":[],"recommend":False,"skipped":"long_distance"})
     profile=str(payload.get("profile") or "driving").strip().lower()
     if profile not in {"driving","motorcycle"}:
@@ -1136,12 +1136,12 @@ def traffic_recommendation():
     safety_floor=max(0, max(current_level, int(base.get("safety_level", current_level))))
     base_s=float(base.get("duration") or 0)
     safe_options=[r for r in options if (r.get("professional_ok",True) or not user_nav["professional_driver"]) and int(r.get("safety_level",0)) >= safety_floor and float(r.get("duration") or 1e12) <= max(base_s*(1.12 if user_nav["night_active"] else 1.08), base_s+(150 if user_nav["night_active"] else 90))]
-    best=max(safe_options, key=lambda r:(float(r.get("rairo_score",0)), -float(r.get("duration",1e12)))) if safe_options else None
+    best=max(safe_options, key=lambda r:(float(r.get("vano_score",0)), -float(r.get("duration",1e12)))) if safe_options else None
     base_traffic_score = float(base.get("traffic_score") or 0)
     if base_traffic_score >= 40:
         live_micro = [r for r in safe_options if r.get("micro_route") and (float(r.get("traffic_score") or 0) <= base_traffic_score - 6 or float(r.get("micro_traffic_relief") or 0) >= 5)]
         if live_micro:
-            best=max(live_micro,key=lambda r:(float(r.get("rairo_score",0))+min(18.0,max(0.0,base_traffic_score-float(r.get("traffic_score") or 0))*.45),-float(r.get("duration",1e12))))
+            best=max(live_micro,key=lambda r:(float(r.get("vano_score",0))+min(18.0,max(0.0,base_traffic_score-float(r.get("traffic_score") or 0))*.45),-float(r.get("duration",1e12))))
     saving=max(0, base_s-float(best.get("duration") or base_s)) if best else 0
     # V167: route-change hysteresis. The UI only offers a change from ~3 min,
     # and automatic changes require a stronger ~5 min benefit unless there is a
