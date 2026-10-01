@@ -67,7 +67,7 @@ def web_app_manifest():
 
 @app.route("/vano-sw.js")
 def vano_service_worker():
-        response = app.send_static_file("vano-sw.js")
+    response = app.send_static_file("vano-sw.js")
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Service-Worker-Allowed"] = "/"
     response.headers["X-VANO-Build"] = VANO_BUILD_ID
