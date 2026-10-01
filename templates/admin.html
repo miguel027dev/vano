@@ -181,4 +181,4 @@
 </main>
 <script id="infraInitial" type="application/json">{{ infra|tojson }}</script>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-v123.js') }}?v={{ vano_build_id }}"></script><script src="{{ url_for('static', filename='vano-admin-v342.js') }}?v={{ vano_build_id }}"></script><script src="{{ url_for('static', filename='vano-admin-v350.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-infrastructure.js') }}?v={{ vano_build_id }}"></script><script src="{{ url_for('static', filename='vano-admin-reset.js') }}?v={{ vano_build_id }}"></script><script src="{{ url_for('static', filename='vano-admin-experience.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
