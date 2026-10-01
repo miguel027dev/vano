@@ -69,8 +69,8 @@ def issue_persistent_login(user_id):
     if stale:
         db.executemany("UPDATE auth_sessions SET revoked_at=? WHERE id=?", [(now.isoformat(), row["id"]) for row in stale])
     db.commit()
-    g.rairo_remember_set = raw
-    g.rairo_remember_expires = expires
+    g.vano_remember_set = raw
+    g.vano_remember_expires = expires
     return raw
 
 
@@ -89,7 +89,7 @@ def revoke_current_persistent_login():
             db.commit()
         except Exception:
             app.logger.exception("Could not revoke remembered login during logout")
-    g.rairo_remember_clear = True
+    g.vano_remember_clear = True
 
 
 @app.before_request
@@ -115,7 +115,7 @@ def restore_persistent_login():
         (_remember_token_hash(raw), now.isoformat()),
     ).fetchone()
     if not row or not row["is_active"]:
-        g.rairo_remember_clear = True
+        g.vano_remember_clear = True
         return
     session["user_id"] = int(row["user_id"])
     session["csrf_token"] = secrets.token_urlsafe(32)
@@ -152,11 +152,11 @@ def record_authenticated_ip():
 @app.after_request
 def persistent_login_cookie(response):
     max_age = REMEMBER_LOGIN_DAYS * 24 * 60 * 60
-    if getattr(g, "rairo_remember_clear", False):
+    if getattr(g, "vano_remember_clear", False):
         response.delete_cookie(REMEMBER_COOKIE_NAME, path="/", secure=True, httponly=True, samesite="Lax")
         response.delete_cookie(REMEMBER_EMBED_COOKIE_NAME, path="/", secure=True, httponly=True, samesite="None", partitioned=True)
         return response
-    raw = getattr(g, "rairo_remember_set", None)
+    raw = getattr(g, "vano_remember_set", None)
     if raw:
         response.set_cookie(
             REMEMBER_COOKIE_NAME, raw, max_age=max_age, secure=True, httponly=True,
@@ -201,8 +201,8 @@ def inject_globals():
         "seo_canonical_url": canonical_url,
         "public_site_url": public_origin,
         "active_locale": active_ui_locale(),
-        "locale_source": getattr(g, "rairo_locale_source", "accept_language") if has_request_context() else "default",
-        "detected_country": getattr(g, "rairo_country", "") if has_request_context() else "",
+        "locale_source": getattr(g, "vano_locale_source", "accept_language") if has_request_context() else "default",
+        "detected_country": getattr(g, "vano_country", "") if has_request_context() else "",
     }
 
 
@@ -353,7 +353,7 @@ def oauth_cookie_value(state):
 
 
 def oauth_cookie_matches(returned_state):
-    raw = request.cookies.get("rairo_oauth_state", "")
+    raw = request.cookies.get("vano_oauth_state", "")
     if not raw or "." not in raw or not returned_state:
         return False
     cookie_state, signature = raw.rsplit(".", 1)
