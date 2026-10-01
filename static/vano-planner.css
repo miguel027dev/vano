@@ -1,7 +1,7 @@
 /* ========================================================================== 
    VANO MAPS V263 — destination planner card hardening
    Scope: only the initial "Para onde vamos?" planner on the map.
-   This file loads after vano-app-v262.css so legacy .search-card tablet/mobile
+   This file loads after vano-app.css so legacy .search-card tablet/mobile
    rules cannot move the nested destination field out of position.
    ========================================================================== */
 
