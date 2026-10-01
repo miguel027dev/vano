@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Acessar VANO MAPS — escolha como navegar{% endblock %}
 {% block meta_description %}Abra o VANO MAPS no Android, iPhone ou navegador. Acompanhe a contagem regressiva para o aplicativo Android.{% endblock %}
-{% block final_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-access-v319.css') }}?v={{ vano_build_id }}-319">{% endblock %}
+{% block final_styles %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-access.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
 <main class="access-page">
   <header class="access-header">
@@ -43,4 +43,4 @@
   <footer class="access-footer"><span>VANO MAPS · Seu caminho, mais simples.</span><nav aria-label="Informações"><a href="{{ url_for('help_page') }}">Ajuda</a><a href="{{ url_for('privacy_policy') }}">Privacidade</a></nav></footer>
 </main>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='vano-access-v319.js') }}?v={{ vano_build_id }}-319" defer></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-access.js') }}?v={{ vano_build_id }}" defer></script>{% endblock %}
