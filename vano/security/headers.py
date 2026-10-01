@@ -7,6 +7,7 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
+@app.after_request
 def security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
 
