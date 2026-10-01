@@ -66,10 +66,8 @@ def web_app_manifest():
 
 
 @app.route("/vano-sw.js")
-@app.route("/vienna-sw.js")
-def raigo_service_worker():
-    # /vienna-sw.js remains as a compatibility alias for already-installed clients.
-    response = app.send_static_file("vano-sw-v300.js")
+def vano_service_worker():
+        response = app.send_static_file("vano-sw.js")
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Service-Worker-Allowed"] = "/"
     response.headers["X-VANO-Build"] = VANO_BUILD_ID
@@ -102,7 +100,7 @@ def index():
     user = current_user()
     map_style_pref = (user["map_style"] if user and "map_style" in user.keys() else "auto") or "auto"
     # Normalize legacy values without destroying the user's new explicit choice.
-    if map_style_pref in {"rairo", "vivid"}:
+    if map_style_pref in {"vano", "vivid"}:
         map_style_pref = "auto"
     elif map_style_pref in {"standard", "streets"}:
         map_style_pref = "day"
