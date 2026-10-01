@@ -48,9 +48,9 @@ def _safe_header_env(name, fallback):
     value = str(os.environ.get(name, fallback) or fallback).strip()
     return fallback if "\r" in value or "\n" in value else value
 
-FRAME_ANCESTORS = _safe_header_env("RAIRO_FRAME_ANCESTORS", "*")
-RAIRO_PERMISSIONS_POLICY = _safe_header_env("RAIRO_PERMISSIONS_POLICY", "geolocation=*, fullscreen=*, clipboard-read=*, clipboard-write=*")
-RAIRO_TRUSTED_HOSTS = [x.strip() for x in os.environ.get("RAIRO_TRUSTED_HOSTS", "").split(",") if x.strip()]
+FRAME_ANCESTORS = _safe_header_env("VANO_FRAME_ANCESTORS", "*")
+VANO_PERMISSIONS_POLICY = _safe_header_env("VANO_PERMISSIONS_POLICY", "geolocation=*, fullscreen=*, clipboard-read=*, clipboard-write=*")
+VANO_TRUSTED_HOSTS = [x.strip() for x in os.environ.get("VANO_TRUSTED_HOSTS", "").split(",") if x.strip()]
 SECURE_COOKIE = True
 
 app = Flask(__name__, template_folder="templates")
@@ -61,7 +61,7 @@ app.config.update(
     SEND_FILE_MAX_AGE_DEFAULT=timedelta(days=30),
 )
 Compress(app)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=RAIRO_PROXY_HOPS, x_proto=RAIRO_PROXY_HOPS, x_host=RAIRO_PROXY_HOPS)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=VANO_PROXY_HOPS, x_proto=VANO_PROXY_HOPS, x_host=VANO_PROXY_HOPS)
 app.config.update(
     SECRET_KEY=SECRET_KEY,
     SESSION_COOKIE_HTTPONLY=True,
@@ -73,10 +73,9 @@ app.config.update(
     SESSION_COOKIE_PARTITIONED=EMBED_MODE,
     MAX_CONTENT_LENGTH=2 * 1024 * 1024,
     PERMANENT_SESSION_LIFETIME=timedelta(days=REMEMBER_LOGIN_DAYS),
-    TRUSTED_HOSTS=RAIRO_TRUSTED_HOSTS or None,
+    TRUSTED_HOSTS=VANO_TRUSTED_HOSTS or None,
 )
 
-@app.after_request
 _vano_install(globals(), "vano.security.headers")
 _vano_install(globals(), "vano.infrastructure.database")
 _vano_install(globals(), "vano.infrastructure.observability")
@@ -160,7 +159,7 @@ def _acquire_keepalive_leader():
     global _KEEPALIVE_LEADER_FD
     try:
         import fcntl
-        fd = open("/tmp/rairo-keepalive.lock", "a+")
+        fd = open("/tmp/vano-keepalive.lock", "a+")
         try:
             fcntl.flock(fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
@@ -180,11 +179,11 @@ def _keepalive_cycle(session_client):
         "Cache-Control": "no-cache",
         "Accept": "application/json",
     }
-    get_url = f"{RAIRO_KEEPALIVE_URL}/api/keepalive"
-    post_url = f"{RAIRO_KEEPALIVE_URL}/api/keepalive"
+    get_url = f"{VANO_KEEPALIVE_URL}/api/keepalive"
+    post_url = f"{VANO_KEEPALIVE_URL}/api/keepalive"
     results = []
     try:
-        response = session_client.get(get_url, headers=headers, timeout=RAIRO_KEEPALIVE_TIMEOUT, allow_redirects=True)
+        response = session_client.get(get_url, headers=headers, timeout=VANO_KEEPALIVE_TIMEOUT, allow_redirects=True)
         results.append(("GET", response.status_code))
     except requests.RequestException as exc:
         results.append(("GET", type(exc).__name__))
@@ -192,8 +191,8 @@ def _keepalive_cycle(session_client):
         response = session_client.post(
             post_url,
             headers={**headers, "Content-Type": "application/json"},
-            json={"source": "rairo-backend", "ts": int(time.time())},
-            timeout=RAIRO_KEEPALIVE_TIMEOUT,
+            json={"source": "vano-backend", "ts": int(time.time())},
+            timeout=VANO_KEEPALIVE_TIMEOUT,
             allow_redirects=True,
         )
         results.append(("POST", response.status_code))
@@ -203,7 +202,7 @@ def _keepalive_cycle(session_client):
 
 
 def _keepalive_worker():
-    time.sleep(RAIRO_KEEPALIVE_START_DELAY)
+    time.sleep(VANO_KEEPALIVE_START_DELAY)
     client = requests.Session()
     while True:
         started = time.monotonic()
@@ -212,19 +211,19 @@ def _keepalive_worker():
         if failures:
             app.logger.warning("VANO MAPS keep-alive: %s", ", ".join(failures))
         elapsed = time.monotonic() - started
-        time.sleep(max(1.0, RAIRO_KEEPALIVE_INTERVAL - elapsed))
+        time.sleep(max(1.0, VANO_KEEPALIVE_INTERVAL - elapsed))
 
 
 def start_keepalive_worker():
     global _KEEPALIVE_THREAD_STARTED
-    if not RAIRO_KEEPALIVE_ENABLED or not RAIRO_KEEPALIVE_URL.startswith(("http://", "https://")):
+    if not VANO_KEEPALIVE_ENABLED or not VANO_KEEPALIVE_URL.startswith(("http://", "https://")):
         return False
     with _KEEPALIVE_THREAD_LOCK:
         if _KEEPALIVE_THREAD_STARTED:
             return True
         if not _acquire_keepalive_leader():
             return False
-        thread = threading.Thread(target=_keepalive_worker, name="rairo-keepalive", daemon=True)
+        thread = threading.Thread(target=_keepalive_worker, name="vano-keepalive", daemon=True)
         thread.start()
         _KEEPALIVE_THREAD_STARTED = True
         return True
@@ -241,7 +240,7 @@ from mobile_routes import register_mobile_routes as _register_vano_mobile_routes
 _register_vano_mobile_routes(app, globals())
 # /VANO_ANDROID_MOBILE_BRIDGE_V2
 
-if os.environ.get("RAIRO_DB_INIT_ONLY", "0").strip().lower() not in {"1", "true", "yes", "on"}:
+if os.environ.get("VANO_DB_INIT_ONLY", "0").strip().lower() not in {"1", "true", "yes", "on"}:
     start_keepalive_worker()
 
 
