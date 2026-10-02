@@ -3,9 +3,6 @@
 {% block head %}
 <script>document.documentElement.classList.add('vano-onboarding-js','vano-onboarding-v500-js')</script>
 {% endblock %}
-{% block tail_head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding.css') }}?v={{ vano_build_id }}">
-{% endblock %}
 {% block content %}
 {% set selected_locale = user['locale'] or active_locale %}
 {% set selected_sex = user['sex'] or '' %}
