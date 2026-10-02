@@ -71,3 +71,35 @@ def test_flask_import_routes_and_templates():
     response = client.get("/api/keepalive")
     assert response.status_code == 200
     assert response.get_json()["service"] == "vano"
+
+
+def test_literal_static_references_exist():
+    """Every literal static asset reference in runtime code must resolve."""
+    refs = set()
+    url_for_re = re.compile(
+        r"url_for\(\s*['\"]static['\"]\s*,\s*filename\s*=\s*['\"]([^'\"]+)['\"]"
+    )
+    absolute_re = re.compile(
+        r"['\"](/static/[^'\"?#)<>\s]+)"
+    )
+
+    scan_roots = [ROOT / "templates", ROOT / "static", ROOT / "vano"]
+    scan_files = [
+        ROOT / "app.py",
+        ROOT / "mobile_routes.py",
+        ROOT / "vano_osint_bridge.py",
+        ROOT / "vano_ai_routing.py",
+    ]
+    for base in scan_roots:
+        scan_files.extend(
+            p for p in base.rglob("*")
+            if p.is_file() and p.suffix.lower() in {".py", ".html", ".css", ".js", ".json", ".xml", ".svg"}
+        )
+
+    for p in scan_files:
+        text = p.read_text(encoding="utf-8", errors="ignore")
+        refs.update(url_for_re.findall(text))
+        refs.update(ref.removeprefix("/static/") for ref in absolute_re.findall(text))
+
+    missing = sorted(ref for ref in refs if ref and not (ROOT / "static" / ref).exists())
+    assert missing == []
