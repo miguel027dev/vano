@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
   
-  <script src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>
+  {% if active_locale != 'pt-BR' %}<script defer src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>{% endif %}
   
   <meta name="theme-color" content="#FFFBF2">
   <script>(function(){try{var k='vano.theme.mode.v60',m=localStorage.getItem(k),legacy=localStorage.getItem('vano.theme.mode.v57')||localStorage.getItem('vano.theme.mode.v56')||localStorage.getItem('vano.theme.v55');m=m||legacy||'light';m=m==='black'?'black':'light';document.documentElement.dataset.vanoTheme=m;document.documentElement.dataset.vanoThemeMode=m;document.documentElement.style.colorScheme=m==='black'?'dark':'light'}catch(_){}})();</script>
