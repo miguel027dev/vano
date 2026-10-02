@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
-  <script src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>
+  <script defer src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>
   <meta name="theme-color" content="#F4F5F8">
   <script>(function(){
     var MODE_KEY='vano.theme.mode.v60';
