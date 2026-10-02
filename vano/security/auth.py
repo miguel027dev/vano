@@ -207,18 +207,34 @@ def inject_globals():
 
 
 def current_user():
+    """Return the authenticated user with one database read per request."""
     uid = session.get("user_id")
     if not uid:
         return None
+    try:
+        uid = int(uid)
+    except (TypeError, ValueError):
+        return None
+
+    if getattr(g, "vano_current_user_loaded", False) and getattr(g, "vano_current_user_uid", None) == uid:
+        return getattr(g, "vano_current_user_value", None)
+
     db = get_db()
     row = db.execute(
         "SELECT id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,presence_terms_accepted_at,emergency_name,emergency_phone,map_style,map_accent,avoid_ferries,avoid_tolls,avoid_unpaved FROM users WHERE id = ?",
         (uid,),
     ).fetchone()
-    # Role is authoritative in the database. Never elevate a password account
-    # merely because its unverified local e-mail matches an admin allow-list.
+    g.vano_current_user_loaded = True
+    g.vano_current_user_uid = uid
+    g.vano_current_user_value = row
     return row
 
+
+def invalidate_current_user_cache():
+    """Drop the request-local account cache after an in-request mutation."""
+    g.pop("vano_current_user_loaded", None)
+    g.pop("vano_current_user_uid", None)
+    g.pop("vano_current_user_value", None)
 
 def onboarding_needed(user):
     if not user or user["role"] == "admin":

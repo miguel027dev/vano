@@ -117,7 +117,10 @@ def detect_ui_locale():
     uid = session.get("user_id")
     if uid:
         try:
-            row = get_db().execute("SELECT locale FROM users WHERE id=?", (uid,)).fetchone()
+            resolver = globals().get("current_user")
+            row = resolver() if callable(resolver) else None
+            if row is None:
+                row = get_db().execute("SELECT locale FROM users WHERE id=?", (uid,)).fetchone()
             account_locale = _normalize_ui_locale(row["locale"] if row else "")
             if account_locale in SUPPORTED_UI_LOCALES:
                 return account_locale, "account", ""

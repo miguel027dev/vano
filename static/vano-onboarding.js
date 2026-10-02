@@ -270,7 +270,7 @@
     if(xp)xp.textContent=`${Math.round(pct)}%`;
     if(previewMeter)previewMeter.style.width=`${pct}%`;
     if(previewProgress)previewProgress.textContent=`${Math.round(pct)}%`;
-    if(previewState)previewState.textContent=current===1?'IDENTIDADE':current===2?'CORE DE ROTA':'PRONTO PARA LAUNCH';
+    if(previewState)previewState.textContent=current===1?'PERFIL':current===2?'PREFERÊNCIAS':'PRONTO';
     document.documentElement.dataset.obStep=String(current);
   }
 
@@ -311,6 +311,28 @@
       root.classList.toggle('is-input-focused',Boolean(isMobile()&&textEntry));
     },30);
   }
+
+  let pointerFrame=0;
+  let pendingPointer=null;
+  function updatePointerMotion(event){
+    if(reduced()||isMobile())return;
+    pendingPointer=event;
+    if(pointerFrame)return;
+    pointerFrame=requestAnimationFrame(()=>{
+      pointerFrame=0;
+      if(!pendingPointer)return;
+      const rect=root.getBoundingClientRect();
+      const px=Math.max(-1,Math.min(1,((pendingPointer.clientX-rect.left)/Math.max(1,rect.width)-.5)*2));
+      const py=Math.max(-1,Math.min(1,((pendingPointer.clientY-rect.top)/Math.max(1,rect.height)-.5)*2));
+      root.style.setProperty('--ob-px',px.toFixed(3));
+      root.style.setProperty('--ob-py',py.toFixed(3));
+    });
+  }
+  root.addEventListener('pointermove',updatePointerMotion,{passive:true});
+  root.addEventListener('pointerleave',()=>{
+    root.style.setProperty('--ob-px','0');
+    root.style.setProperty('--ob-py','0');
+  },{passive:true});
 
   form.addEventListener('focusin',updateKeyboardState);
   form.addEventListener('focusout',updateKeyboardState);
@@ -408,7 +430,7 @@
     if(finishBtn){
       finishBtn.disabled=true;
       finishBtn.classList.add('is-loading');
-      finishBtn.dataset.originalLabel=$('span',finishBtn)?.textContent||'Ativar meu VANO';
+      finishBtn.dataset.originalLabel=$('span',finishBtn)?.textContent||'Abrir meu VANO';
       const t=$('span',finishBtn); if(t)t.textContent='Ativando VANO…';
     }
     vibrate(16);
@@ -424,7 +446,7 @@
     if(finishBtn){
       finishBtn.disabled=false;
       finishBtn.classList.remove('is-loading');
-      const t=$('span',finishBtn); if(t)t.textContent=finishBtn.dataset.originalLabel||'Ativar meu VANO';
+      const t=$('span',finishBtn); if(t)t.textContent=finishBtn.dataset.originalLabel||'Abrir meu VANO';
     }
     updateKeyboardState();
   });

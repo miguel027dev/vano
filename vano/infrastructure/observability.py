@@ -21,6 +21,9 @@ SEARCH_RESULT_LOCK = threading.Lock()
 USER_IP_LOG_CACHE = {}
 USER_IP_LOG_LOCK = threading.Lock()
 USER_IP_LOG_INTERVAL = 10 * 60
+USER_ACCESS_QUEUE = queue.Queue(maxsize=max(256, min(10000, int(os.environ.get("VANO_USER_ACCESS_QUEUE", "2048") or 2048))))
+USER_ACCESS_WORKER_LOCK = threading.Lock()
+USER_ACCESS_WORKER_STARTED = False
 ACTIVITY_LOG_QUEUE = queue.Queue(maxsize=max(1000, min(50000, int(os.environ.get("VANO_ACTIVITY_LOG_QUEUE", "12000") or 12000))))
 ACTIVITY_LOG_RETENTION_DAYS = max(7, min(3650, int(os.environ.get("VANO_ACTIVITY_LOG_RETENTION_DAYS", "90") or 90)))
 ACTIVITY_LOG_WORKER_LOCK = threading.Lock()
@@ -277,12 +280,50 @@ def _user_agent_summary(user_agent):
     return browser, os_name, device_type
 
 
-def record_user_access(user_id, force=False):
-    """Store a compact, admin-only IP history for authenticated users.
+def _user_access_worker():
+    db = None
+    while True:
+        item = USER_ACCESS_QUEUE.get()
+        try:
+            try:
+                if db is None:
+                    db = connect_db()
+                db.execute(
+                    """INSERT INTO user_access_log(user_id,ip_address,user_agent,first_seen_at,last_seen_at,request_count)
+                       VALUES(?,?,?,?,?,1)
+                       ON CONFLICT (user_id,ip_address) DO UPDATE SET
+                         user_agent=EXCLUDED.user_agent,
+                         last_seen_at=EXCLUDED.last_seen_at,
+                         request_count=user_access_log.request_count+1""",
+                    (item["user_id"], item["ip"], item["user_agent"], item["seen_at"], item["seen_at"]),
+                )
+                db.commit()
+            except Exception:
+                try:
+                    if db is not None:
+                        db.rollback()
+                        db.close()
+                except Exception:
+                    pass
+                db = None
+                app.logger.exception("Could not persist authenticated user IP")
+        finally:
+            USER_ACCESS_QUEUE.task_done()
 
-    Writes are throttled per worker/IP so normal map polling does not create
-    unnecessary PostgreSQL traffic. A forced write is used on successful login.
-    """
+
+def _ensure_user_access_worker():
+    global USER_ACCESS_WORKER_STARTED
+    if USER_ACCESS_WORKER_STARTED:
+        return
+    with USER_ACCESS_WORKER_LOCK:
+        if USER_ACCESS_WORKER_STARTED:
+            return
+        threading.Thread(target=_user_access_worker, name="vano-user-access", daemon=True).start()
+        USER_ACCESS_WORKER_STARTED = True
+
+
+def record_user_access(user_id, force=False):
+    """Queue IP-history persistence without delaying the page response."""
     try:
         uid = int(user_id)
     except (TypeError, ValueError):
@@ -292,29 +333,20 @@ def record_user_access(user_id, force=False):
         return
     now_ts = time.time()
     key = (uid, ip)
-    if not force:
-        with USER_IP_LOG_LOCK:
-            if now_ts - USER_IP_LOG_CACHE.get(key, 0) < USER_IP_LOG_INTERVAL:
-                return
-            USER_IP_LOG_CACHE[key] = now_ts
-    ua = (request.headers.get("User-Agent") or "")[:500]
-    now = utcnow_iso()
-    db = get_db()
+    with USER_IP_LOG_LOCK:
+        if not force and now_ts - USER_IP_LOG_CACHE.get(key, 0) < USER_IP_LOG_INTERVAL:
+            return
+        USER_IP_LOG_CACHE[key] = now_ts
+    _ensure_user_access_worker()
+    item = {
+        "user_id": uid,
+        "ip": ip,
+        "user_agent": (request.headers.get("User-Agent") or "")[:500],
+        "seen_at": utcnow_iso(),
+    }
     try:
-        db.execute(
-            """INSERT INTO user_access_log(user_id,ip_address,user_agent,first_seen_at,last_seen_at,request_count)
-               VALUES(?,?,?,?,?,1)
-               ON CONFLICT (user_id,ip_address) DO UPDATE SET
-                 user_agent=EXCLUDED.user_agent,
-                 last_seen_at=EXCLUDED.last_seen_at,
-                 request_count=user_access_log.request_count+1""",
-            (uid, ip, ua, now, now),
-        )
-        db.commit()
-        with USER_IP_LOG_LOCK:
-            USER_IP_LOG_CACHE[key] = now_ts
-    except Exception:
-        db.rollback()
-        app.logger.exception("Could not record authenticated user IP")
+        USER_ACCESS_QUEUE.put_nowait(item)
+    except queue.Full:
+        app.logger.warning("VANO user access queue full; dropping telemetry event")
 
 

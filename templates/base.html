@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
-  <script src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>
+  {% if active_locale != 'pt-BR' %}<script defer src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>{% endif %}
   <meta name="theme-color" content="#F4F5F8">
   <script>(function(){
     var MODE_KEY='vano.theme.mode.v60';
@@ -125,17 +125,17 @@
   {% set vano_admin_surface = vano_endpoint == 'admin_dashboard' or vano_endpoint.startswith('admin_') %}
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-app.css') }}?v={{ vano_build_id }}">
+  {% if vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-app.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-base.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if current_user and not vano_admin_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-shell.css') }}?v={{ vano_build_id }}">{% endif %}
+  {% if current_user and not vano_admin_surface and vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-shell.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile.css') }}?v={{ vano_build_id }}">{% endif %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-color-system.css') }}?v={{ vano_build_id }}">
-  {% if not vano_admin_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-experience.css') }}?v={{ vano_build_id }}">{% endif %}
+  {% if vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-color-system.css') }}?v={{ vano_build_id }}">{% endif %}
+  {% if not vano_admin_surface and vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-experience.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_endpoint == 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding.css') }}?v={{ vano_build_id }}">{% endif %}
   {% if vano_map_surface %}
   <script>try{
@@ -189,12 +189,12 @@
 
 {% if vano_endpoint != 'onboarding' %}<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('about') }}">Como funciona</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a> · <a href="{{ url_for('account_delete_page') }}">Excluir conta</a></span></div></footer>{% endif %}
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
-<script src="{{ url_for('static', filename='vano-runtime.js') }}?v={{ vano_build_id }}"></script>
+{% if vano_endpoint != 'onboarding' %}<script src="{{ url_for('static', filename='vano-runtime.js') }}?v={{ vano_build_id }}"></script>{% endif %}
 <script src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>
 <script>if(window.lucide){lucide.createIcons();} setTimeout(()=>document.querySelectorAll('.flash').forEach(x=>x.remove()),6000); if(window.parent!==window){window.parent.postMessage({type:'vano:ready',path:location.pathname},'*');}</script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}',{scope:'/'}).catch(()=>{}),{once:true});}</script>
 <script src="{{ url_for('static', filename='vano-telemetry.js') }}?v={{ vano_build_id }}"></script>
-{% if not vano_admin_surface %}<script defer src="{{ url_for('static', filename='vano-experience.js') }}?v={{ vano_build_id }}"></script>{% endif %}
+{% if not vano_admin_surface and vano_endpoint != 'onboarding' %}<script defer src="{{ url_for('static', filename='vano-experience.js') }}?v={{ vano_build_id }}"></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>
