@@ -101,5 +101,5 @@ def test_literal_static_references_exist():
         refs.update(url_for_re.findall(text))
         refs.update(ref.removeprefix("/static/") for ref in absolute_re.findall(text))
 
-    missing = sorted(ref for ref in refs if ref and not (ROOT / "static" / ref).is_file())
+    missing = sorted(ref for ref in refs if ref and not (ROOT / "static" / ref).exists())
     assert missing == []
