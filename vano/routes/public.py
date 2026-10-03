@@ -280,7 +280,7 @@ def account_delete():
     if confirmation != "EXCLUIR":
         flash("Digite EXCLUIR para confirmar a exclusão permanente.", "danger")
         return redirect(url_for("profile") + "#accountDanger")
-    if str(user["auth_provider"] or "password") == "password" and not verify_password(user["password_hash"], password):
+    if str(user["auth_provider"] or "password") != "google" and not verify_password(user["password_hash"], password):
         flash("Senha atual incorreta.", "danger")
         return redirect(url_for("profile") + "#accountDanger")
     uid = int(user["id"])
