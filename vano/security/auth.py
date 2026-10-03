@@ -7,16 +7,99 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
-def rate_limit(key, limit=20, window=60):
+def _rate_bucket_key(key, identity=None, include_ip=True):
+    """Return a privacy-preserving bucket id for throttling."""
+    parts = [str(key or "generic")[:80]]
+    if include_ip:
+        parts.append(f"ip:{client_ip()}")
+    if identity is not None:
+        raw = str(identity)[:240]
+        digest = hashlib.sha256(raw.encode("utf-8", "ignore")).hexdigest()[:32]
+        parts.append(f"id:{digest}")
+    return hashlib.sha256("|".join(parts).encode("utf-8", "ignore")).hexdigest()
+
+
+def _shared_rate_limit(bucket_key, limit, window):
+    """Best-effort limiter shared by Gunicorn workers on the same instance."""
+    path = str(os.environ.get("VANO_RATE_LIMIT_FILE") or "/tmp/vano-rate-limits-v2.json").strip()
     now = time.time()
-    bucket_key = f"{key}:{client_ip()}"
+    try:
+        import fcntl
+        with open(path, "a+", encoding="utf-8") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+            fh.seek(0)
+            try:
+                payload = json.load(fh) or {}
+            except Exception:
+                payload = {}
+            buckets = payload.get("buckets") if isinstance(payload, dict) else None
+            if not isinstance(buckets, dict):
+                buckets = {}
+            if len(buckets) > 5000:
+                cutoff = now - 86400
+                buckets = {
+                    k: v for k, v in buckets.items()
+                    if isinstance(v, dict) and float(v.get("touched") or 0) >= cutoff
+                }
+                if len(buckets) > 5000:
+                    newest = sorted(
+                        buckets.items(),
+                        key=lambda item: float((item[1] or {}).get("touched") or 0),
+                        reverse=True,
+                    )[:4000]
+                    buckets = dict(newest)
+            row = buckets.get(bucket_key) or {}
+            values = row.get("values") if isinstance(row, dict) else []
+            if not isinstance(values, list):
+                values = []
+            clean = []
+            for x in values:
+                try:
+                    x = float(x)
+                except (TypeError, ValueError):
+                    continue
+                if now - x < window:
+                    clean.append(x)
+            allowed = len(clean) < limit
+            if allowed:
+                clean.append(now)
+            buckets[bucket_key] = {"values": clean, "touched": now, "window": int(window)}
+            fh.seek(0)
+            fh.truncate()
+            json.dump({"buckets": buckets}, fh, separators=(",", ":"))
+            fh.flush()
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            return allowed
+    except Exception:
+        return True
+
+
+def rate_limit(key, limit=20, window=60, *, identity=None, include_ip=True, shared=False):
+    """Sliding-window throttle with optional account/user identity binding."""
+    limit = max(1, int(limit))
+    window = max(1, int(window))
+    now = time.time()
+    bucket_key = _rate_bucket_key(key, identity=identity, include_ip=include_ip)
+    local_allowed = True
     with RATE_LOCK:
         values = RATE_BUCKETS.setdefault(bucket_key, [])
         values[:] = [x for x in values if now - x < window]
         if len(values) >= limit:
-            return False
-        values.append(now)
-        return True
+            local_allowed = False
+        else:
+            values.append(now)
+        if len(RATE_BUCKETS) > 6000:
+            stale = [
+                name for name, events in RATE_BUCKETS.items()
+                if not events or now - max(events) > 86400
+            ][:2500]
+            for name in stale:
+                RATE_BUCKETS.pop(name, None)
+    if not local_allowed:
+        return False
+    if shared and not _shared_rate_limit(bucket_key, limit, window):
+        return False
+    return True
 
 
 def _remember_token_hash(raw_token):
