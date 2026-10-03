@@ -21,7 +21,7 @@ def _rate_bucket_key(key, identity=None, include_ip=True):
 
 def _shared_rate_limit(bucket_key, limit, window):
     """Best-effort limiter shared by Gunicorn workers on the same instance."""
-    path = str(os.environ.get("VANO_RATE_LIMIT_FILE") or "/tmp/vano-rate-limits-v2.json").strip()
+    path = str(os.environ.get("VANO_RATE_LIMIT_FILE") or "/tmp/security-rate-buckets.json").strip()
     now = time.time()
     try:
         import fcntl
