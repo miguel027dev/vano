@@ -84,6 +84,7 @@ def test_browser_security_policy_is_defense_in_depth():
     assert "geolocation=(self)" in app
     assert "camera=()" in app
     assert "microphone=()" in app
+    assert "https://api.open-meteo.com" in headers
 
 
 def test_remembered_session_window_is_bounded():
