@@ -11,14 +11,30 @@ del _vano_inject
 def security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
 
-    # Force permissive framing on every Flask response. Do not emit
-    # X-Frame-Options at all: there is no standards-compliant ALLOW-ALL value.
+    # The Vértice integration needs configurable framing, but the rest of the
+    # document policy is kept explicit and deny-by-default where practical.
     response.headers.pop("X-Frame-Options", None)
-    response.headers["Content-Security-Policy"] = f"frame-ancestors {FRAME_ANCESTORS}"
+    csp = "; ".join([
+        "default-src 'self'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        f"frame-ancestors {FRAME_ANCESTORS}",
+        "object-src 'none'",
+        "script-src 'self' 'unsafe-inline' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
+        "img-src 'self' data: blob: https:",
+        "font-src 'self' data: https://api.mapbox.com https://*.mapbox.com",
+        "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.mapbox.com",
+        "worker-src 'self' blob:",
+        "child-src 'self' blob:",
+        "media-src 'self' blob:",
+        "manifest-src 'self'",
+    ])
+    response.headers["Content-Security-Policy"] = csp
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), payment=(), usb=()")
     response.headers["Permissions-Policy"] = VANO_PERMISSIONS_POLICY
+    response.headers.setdefault("X-DNS-Prefetch-Control", "off")
 
     # Explicitly avoid cross-origin isolation policies that can interfere with
     # an embedded app or its popup/window relationships.
@@ -27,6 +43,15 @@ def security_headers(response):
     response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
 
     # The parent page uses /healthz as a preflight before attaching the iframe.
+    sensitive_prefixes = (
+        "/api/live-trip/", "/live/", "/profile", "/notifications",
+        "/forgot-password", "/reset-password/", "/account/delete",
+    )
+    if request.path.startswith(sensitive_prefixes):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+
     if request.path.startswith("/admin") or request.path.startswith("/api/admin"):
         response.headers["Cache-Control"] = "no-store, max-age=0"
     if request.path == "/healthz":
@@ -56,6 +81,8 @@ def security_headers(response):
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     response.headers.setdefault("X-VANO-Build", VANO_BUILD_ID)
     response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
+    if response.status_code == 429:
+        response.headers.setdefault("Retry-After", "60")
     return response
 
 # -----------------------------
