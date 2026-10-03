@@ -91,6 +91,8 @@ _vano_install(globals(), "vano.routes.public")
 _vano_install(globals(), "vano.routes.admin")
 _vano_install(globals(), "vano.routes.api")
 _vano_install(globals(), "vano.routes.routing")
+from vano.services.indexnow import start_indexnow_submitter as _start_indexnow_submitter
+
 def _error_response(code, title, message, error_code):
     if request.path.startswith(("/api/", "/mobile/")):
         response = jsonify({"ok": False, "error": error_code, "message": message, "status": code})
@@ -242,6 +244,7 @@ _register_vano_mobile_routes(app, globals())
 
 if os.environ.get("VANO_DB_INIT_ONLY", "0").strip().lower() not in {"1", "true", "yes", "on"}:
     start_keepalive_worker()
+    _start_indexnow_submitter(app, base_dir=BASE_DIR, public_site_url=PUBLIC_SITE_URL)
 
 
 if __name__ == "__main__":
