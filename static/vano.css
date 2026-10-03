@@ -24761,3 +24761,155 @@ body[data-nav-camera-state="RECENTERING"] #recenterBtn{
   }
   body.vano-route-profile .profile350-reveal{opacity:1!important}
 }
+
+
+/* VANO NAV MOTION V400 — intent-owned navigation motion */
+body.vano-map-surface{
+  --vano-motion-fast:180ms;
+  --vano-motion-normal:240ms;
+  --vano-motion-slow:280ms;
+  --vano-motion-ease:cubic-bezier(.20,.78,.20,1);
+  --vano-motion-ease-out:cubic-bezier(.16,1,.30,1);
+}
+
+/* Navigation copy moves only when the instruction really changes. */
+body.vano-map-surface .vano-nav-text-swap{
+  animation:vano-nav-text-swap var(--vano-motion-normal) var(--vano-motion-ease-out) both!important;
+}
+@keyframes vano-nav-text-swap{
+  0%{opacity:.42;transform:translateY(3px)}
+  100%{opacity:1;transform:translateY(0)}
+}
+
+/* Recalculation is a system-state motion, not an alert. */
+body.vano-map-surface .reroute{
+  transition:opacity var(--vano-motion-fast) var(--vano-motion-ease),
+             transform var(--vano-motion-normal) var(--vano-motion-ease-out),
+             background var(--vano-motion-fast) ease,
+             border-color var(--vano-motion-fast) ease!important;
+}
+body.vano-map-surface .reroute.show{
+  animation:vano-reroute-enter var(--vano-motion-normal) var(--vano-motion-ease-out) both!important;
+}
+@keyframes vano-reroute-enter{
+  0%{opacity:0;transform:translateY(-5px) scale(.985)}
+  100%{opacity:1;transform:none}
+}
+body.vano-map-surface .reroute.is-success{
+  border-color:rgba(55,174,118,.24)!important;
+  background:rgba(236,251,244,.96)!important;
+}
+body.vano-map-surface .reroute.is-success .loading{
+  animation:none!important;border-color:#55b98b!important;background:#55b98b!important;
+  width:9px!important;height:9px!important;border-radius:50%!important;
+}
+body.vano-map-surface .reroute.is-error{
+  border-color:rgba(206,78,78,.22)!important;
+  background:rgba(255,243,243,.97)!important;
+}
+body.vano-map-surface .reroute.is-error .loading{
+  animation:none!important;border-color:#d66565!important;background:#d66565!important;
+  width:9px!important;height:9px!important;border-radius:50%!important;
+}
+
+/* Route recommendation is a decision card: lateral/settling motion instead of alert pulse. */
+body.vano-map-surface .traffic-suggestion{
+  transition:opacity var(--vano-motion-fast) ease,
+             transform var(--vano-motion-normal) var(--vano-motion-ease-out),
+             box-shadow var(--vano-motion-normal) ease!important;
+}
+body.vano-map-surface .traffic-suggestion.show{
+  animation:vano-route-decision-in var(--vano-motion-normal) var(--vano-motion-ease-out) both!important;
+}
+@keyframes vano-route-decision-in{
+  0%{opacity:0;transform:translateY(7px) scale(.985)}
+  100%{opacity:1;transform:none}
+}
+
+/* The report sheet uses a fast, confident bottom-sheet transition. */
+body.vano-map-surface .quick-alert-sheet{
+  transition:opacity var(--vano-motion-fast) ease!important;
+}
+body.vano-map-surface .quick-alert-card{
+  transition:transform var(--vano-motion-normal) var(--vano-motion-ease-out),
+             box-shadow var(--vano-motion-normal) ease!important;
+}
+body.vano-map-surface .quick-alert-sheet.show .quick-alert-card{
+  animation:vano-report-sheet-in var(--vano-motion-normal) var(--vano-motion-ease-out) both;
+}
+@keyframes vano-report-sheet-in{
+  0%{transform:translate(-50%,14px) scale(.992);opacity:.55}
+  100%{transform:translate(-50%,0) scale(1);opacity:1}
+}
+
+/* Arrival owns the final scene and lands quickly without competing overlays. */
+body.vano-map-surface .vano-arrival-card{
+  animation:vano-arrival-v400 var(--vano-motion-slow) var(--vano-motion-ease-out) both!important;
+}
+body.vano-map-surface .vano-arrival-mark{
+  animation:vano-arrival-mark-v400 var(--vano-motion-slow) var(--vano-motion-ease-out) 40ms both;
+}
+@keyframes vano-arrival-v400{
+  0%{opacity:0;transform:translateY(18px) scale(.985)}
+  100%{opacity:1;transform:none}
+}
+@keyframes vano-arrival-mark-v400{
+  0%{opacity:.2;transform:scale(.78) rotate(-7deg)}
+  100%{opacity:1;transform:scale(1) rotate(0)}
+}
+
+/* Intent ownership: secondary motion yields to the active user decision/state. */
+body.vano-map-surface[data-nav-motion="reroute"] .traffic-suggestion,
+body.vano-map-surface[data-nav-motion="reroute"] .nav-alt-hint,
+body.vano-map-surface[data-nav-motion="report"] .traffic-suggestion,
+body.vano-map-surface[data-nav-motion="report"] .nav-alt-hint{
+  opacity:0!important;pointer-events:none!important;transform:translateY(5px) scale(.985)!important;
+}
+body.vano-map-surface[data-nav-motion="reroute"] .ambient-halo,
+body.vano-map-surface[data-nav-motion="reroute"] .road-mood-hint,
+body.vano-map-surface[data-nav-motion="report"] .ambient-halo{
+  opacity:.18!important;transition:opacity var(--vano-motion-fast) ease!important;
+}
+body.vano-map-surface[data-nav-motion="arrival"] .traffic-suggestion,
+body.vano-map-surface[data-nav-motion="arrival"] .nav-alt-hint,
+body.vano-map-surface[data-nav-motion="arrival"] .traffic-radar,
+body.vano-map-surface[data-nav-motion="arrival"] .nav-context-alert,
+body.vano-map-surface[data-nav-motion="arrival"] .ambient-halo,
+body.vano-map-surface[data-nav-motion="arrival"] .road-mood-hint{
+  opacity:0!important;pointer-events:none!important;
+  transition:opacity var(--vano-motion-fast) ease!important;
+}
+
+/* Critical road context remains readable and does not bounce continuously. */
+body.vano-map-surface .nav-context-alert,
+body.vano-map-surface .traffic-radar{
+  transition:opacity var(--vano-motion-fast) ease,
+             transform var(--vano-motion-normal) var(--vano-motion-ease-out)!important;
+}
+body.vano-map-surface .nav-context-alert:not([hidden]){
+  animation:vano-road-context-in var(--vano-motion-normal) var(--vano-motion-ease-out) both;
+}
+@keyframes vano-road-context-in{
+  from{opacity:0;transform:translateX(-50%) translateY(-4px)}
+  to{opacity:1;transform:translateX(-50%) translateY(0)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body.vano-map-surface .vano-nav-text-swap,
+  body.vano-map-surface .reroute.show,
+  body.vano-map-surface .traffic-suggestion.show,
+  body.vano-map-surface .quick-alert-sheet.show .quick-alert-card,
+  body.vano-map-surface .vano-arrival-card,
+  body.vano-map-surface .vano-arrival-mark,
+  body.vano-map-surface .nav-context-alert:not([hidden]){
+    animation:none!important;
+  }
+  body.vano-map-surface .reroute,
+  body.vano-map-surface .traffic-suggestion,
+  body.vano-map-surface .quick-alert-sheet,
+  body.vano-map-surface .quick-alert-card,
+  body.vano-map-surface .nav-context-alert,
+  body.vano-map-surface .traffic-radar{
+    transition:none!important;
+  }
+}
