@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Alternativa ao Google Maps para rotas e trânsito | VANO MAPS{% endblock %}
+{% block meta_description %}Conheça o VANO MAPS como alternativa de navegação ao Google Maps para comparar rotas, ETA, trânsito em tempo real e modos de navegação para carro e moto.{% endblock %}
+{% block og_title %}VANO MAPS: alternativa de navegação ao Google Maps{% endblock %}
+{% block og_description %}Uma opção de GPS focada em comparação de rotas, ETA, trânsito e navegação adaptativa.{% endblock %}
+{% block content %}<main class="vano-seo"><div class="seo-wrap">
+<section class="seo-hero"><span class="seo-kicker"><i data-lucide="map" width="15"></i>Outra experiência de mapas</span><h1>Procurando uma alternativa ao Google Maps para navegar?</h1><p class="seo-lead">O VANO MAPS é uma opção de GPS e mapas para quem quer comparar rotas, acompanhar trânsito e experimentar modos próprios de decisão, como rota rápida, Spark e opções com mais contexto do trajeto.</p><div class="seo-actions"><a class="seo-primary" href="{{ url_for('index') }}">Abrir VANO MAPS</a><a class="seo-secondary" href="{{ url_for('what_is_vano') }}">O que é o VANO?</a></div></section>
+<section class="seo-grid"><article class="seo-card"><h2>Comparação de caminhos</h2><p>Alternativas válidas podem ser apresentadas lado a lado com seus tempos estimados.</p></article><article class="seo-card"><h2>Trânsito e ETA</h2><p>O VANO usa duração estimada e sinais do corredor para contextualizar a escolha.</p></article><article class="seo-card"><h2>Carro e moto</h2><p>A experiência contempla perfis de navegação motorizada para carro e motocicleta.</p></article></section>
+<section class="seo-section"><h2>Por que usar uma segunda opção de mapas?</h2><p>Aplicativos diferentes podem organizar e apresentar as alternativas de maneiras diferentes. Testar outra ferramenta pode ajudar quem quer uma segunda referência de ETA, comparar o trânsito ou experimentar uma interface de navegação com prioridades diferentes.</p></section>
+<section class="seo-section"><h2>O VANO substitui oficialmente o Google Maps?</h2><p>Não existe afiliação ou substituição oficial. Google Maps é uma marca de seu respectivo proprietário. O VANO MAPS é um produto independente e esta página apenas contextualiza a busca de usuários por alternativas de GPS e navegação.</p></section>
+{% include '_seo_links.html' %}
+</div></main>{% endblock %}
