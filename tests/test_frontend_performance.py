@@ -50,3 +50,9 @@ def test_motion_refinement_contract():
     assert "vano.motion.handoff.v1" in map_js
     assert "settleMeters" in map_js
     assert "fitEndpoints()" in map_js
+    assert "$$(\'.ob500-launch-screen\')" in onboarding
+    assert "document.body.appendChild(splash)" in map_js
+    assert ".vano-onboarding-v500.is-launching .ob500-shell" in css
+    assert ".ob500-map-card.is-selected" in css
+    assert '[data-profile-root][data-save-state="saving"]' in css
+    assert "*::before,*::after" not in css.split("/* VANO EXPERIENCE REFINEMENT",1)[1]

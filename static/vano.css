@@ -24575,13 +24575,13 @@ body.vano-route-onboarding .ob500-language,
 body.vano-route-onboarding .ob500-choice{
   transition:border-color 180ms ease,background 220ms ease,box-shadow 220ms ease,scale 140ms ease,filter 180ms ease!important;
 }
-body.vano-route-onboarding .ob500-map-card:has(input:checked),
-body.vano-route-onboarding .ob500-route-card:has(input:checked),
-body.vano-route-onboarding .ob500-language:has(input:checked),
-body.vano-route-onboarding .ob500-choice:has(input:checked){
+body.vano-route-onboarding .ob500-map-card.is-selected,
+body.vano-route-onboarding .ob500-route-card.is-selected,
+body.vano-route-onboarding .ob500-language.is-selected,
+body.vano-route-onboarding .ob500-choice.is-selected{
   box-shadow:0 10px 28px rgba(44,35,29,.08),0 0 0 3px rgba(245,154,98,.08);
 }
-body.vano-route-onboarding.is-launching .ob500-shell{
+.vano-onboarding-v500.is-launching .ob500-shell{
   pointer-events:none;
 }
 .ob500-launch-screen{
@@ -24697,7 +24697,7 @@ body.vano-route-profile .profile350-reveal{
 }
 body.vano-route-profile .profile350-reveal.is-visible{opacity:1;transform:none}
 body.vano-route-profile.is-saving-profile .profile350-savebar{filter:saturate(.92)}
-body.vano-route-profile [data-save-state="saving"] .profile350-savebar{cursor:progress}
+body.vano-route-profile [data-profile-root][data-save-state="saving"] .profile350-savebar{cursor:progress}
 
 /* Route and overlay choreography. */
 .vano-x-route-enter .vr-hero{animation:vano-route-rise 420ms var(--vano-ease-out) both}
@@ -24737,12 +24737,27 @@ body[data-nav-camera-state="RECENTERING"] #recenterBtn{
 }
 
 @media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{
-    scroll-behavior:auto!important;
-    animation-duration:.001ms!important;
-    animation-iteration-count:1!important;
-    transition-duration:.001ms!important;
+  html{scroll-behavior:auto!important}
+  .vano-x-pop-in,.vano-x-fade-in,.is-motion-selected,.is-motion-soft,.is-motion-pop,
+  .ob500-launch-mark .ring,.ob500-launch-track i,.vano-entry-splash-mark i,
+  .vano-entry-splash-track i,.vano-entry-splash.is-handoff .vano-entry-splash-mark img,
+  body[data-nav-camera-state="RECENTERING"] #navFollowToggle,
+  body[data-nav-camera-state="RECENTERING"] #navRecenter,
+  body[data-nav-camera-state="RECENTERING"] #recenterBtn,
+  .vano-x-route-enter .vr-hero,.vano-x-route-enter .vano-primary-transport-row,
+  .vano-x-route-enter .route-variants,.vano-x-route-enter .start-trip-cta{
+    animation:none!important
   }
-  .ob500-launch-screen,.vano-entry-splash{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-  body.vano-route-profile .profile350-reveal{opacity:1!important;transform:none!important}
+  .ob500-launch-screen,.vano-entry-splash{
+    backdrop-filter:none!important;
+    -webkit-backdrop-filter:none!important;
+    transition:none!important
+  }
+  body.vano-route-onboarding .ob500-form [data-ob-step],
+  body.vano-route-profile .profile350-reveal{
+    transition:none!important;
+    transform:none!important;
+    filter:none!important
+  }
+  body.vano-route-profile .profile350-reveal{opacity:1!important}
 }
