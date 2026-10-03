@@ -38,3 +38,15 @@ def test_canonical_stylesheet_has_reasonable_repository_budget():
     css = ROOT / "static" / "vano.css"
     assert css.exists()
     assert css.stat().st_size < 3_000_000
+
+
+
+def test_motion_refinement_contract():
+    css = (ROOT / "static" / "vano.css").read_text(encoding="utf-8")
+    onboarding = (ROOT / "static" / "vano-onboarding.js").read_text(encoding="utf-8")
+    map_js = (ROOT / "static" / "vano-map.js").read_text(encoding="utf-8")
+    assert "VANO EXPERIENCE REFINEMENT" in css
+    assert "vano.motion.handoff.v1" in onboarding
+    assert "vano.motion.handoff.v1" in map_js
+    assert "settleMeters" in map_js
+    assert "fitEndpoints()" in map_js

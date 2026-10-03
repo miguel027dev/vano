@@ -24504,3 +24504,245 @@ body.vano-route-onboarding *:after{animation-duration:.01ms!important;animation-
   body.vano-route-onboarding .ob500-scan{display:none}
 }
 
+/* VANO EXPERIENCE REFINEMENT · motion, handoff and microinteractions */
+:root{
+  --vano-motion-fast:140ms;
+  --vano-motion-base:260ms;
+  --vano-motion-slow:460ms;
+  --vano-ease-out:cubic-bezier(.22,.72,.18,1);
+  --vano-ease-spring:cubic-bezier(.2,.86,.25,1.08);
+}
+
+.vano-x-pressing{
+  scale:.985;
+  filter:brightness(.96);
+  transition:scale 80ms ease,filter 80ms ease!important;
+}
+
+.vano-x-pop-in{animation:vano-micro-pop var(--vano-motion-base) var(--vano-ease-out) both}
+.vano-x-fade-in{animation:vano-micro-fade 280ms ease both}
+.is-motion-selected{animation:vano-selection-pulse 360ms var(--vano-ease-spring) both}
+.is-motion-soft{animation:vano-soft-highlight 300ms ease both}
+.is-motion-pop{animation:vano-micro-pop 320ms var(--vano-ease-out) both}
+
+@keyframes vano-micro-pop{
+  0%{opacity:.72;filter:brightness(.96) saturate(.92)}
+  55%{opacity:1;filter:brightness(1.025) saturate(1.03)}
+  100%{opacity:1;filter:none}
+}
+@keyframes vano-micro-fade{from{opacity:0}to{opacity:1}}
+@keyframes vano-selection-pulse{
+  0%{box-shadow:0 0 0 0 rgba(245,154,98,0)}
+  45%{box-shadow:0 0 0 4px rgba(245,154,98,.12)}
+  100%{box-shadow:0 0 0 0 rgba(245,154,98,0)}
+}
+@keyframes vano-soft-highlight{
+  0%,100%{filter:none}
+  45%{filter:brightness(1.035)}
+}
+
+html.vano-x-theme-changing body{
+  transition:filter 280ms ease,opacity 280ms ease!important;
+  filter:saturate(.94) brightness(.985);
+}
+
+/* Onboarding: step choreography and one continuous handoff to the map. */
+body.vano-route-onboarding .ob500-form [data-ob-step]{
+  transform-origin:50% 12%;
+  transition:opacity 240ms var(--vano-ease-out),transform 340ms var(--vano-ease-out),filter 260ms ease;
+}
+body.vano-route-onboarding .ob500-form [data-ob-step]:not(.is-active){
+  opacity:0;
+  transform:translate3d(18px,0,0) scale(.992);
+  filter:blur(2px);
+  pointer-events:none;
+}
+body.vano-route-onboarding .ob500-form [data-ob-step].is-active{
+  opacity:1;
+  transform:none;
+  filter:none;
+}
+body.vano-route-onboarding .ob500-form [data-ob-step].is-active.is-back{
+  animation:vano-ob-back 320ms var(--vano-ease-out) both;
+}
+@keyframes vano-ob-back{
+  from{opacity:.35;transform:translate3d(-16px,0,0) scale(.992)}
+  to{opacity:1;transform:none}
+}
+body.vano-route-onboarding .ob500-map-card,
+body.vano-route-onboarding .ob500-route-card,
+body.vano-route-onboarding .ob500-language,
+body.vano-route-onboarding .ob500-choice{
+  transition:border-color 180ms ease,background 220ms ease,box-shadow 220ms ease,scale 140ms ease,filter 180ms ease!important;
+}
+body.vano-route-onboarding .ob500-map-card:has(input:checked),
+body.vano-route-onboarding .ob500-route-card:has(input:checked),
+body.vano-route-onboarding .ob500-language:has(input:checked),
+body.vano-route-onboarding .ob500-choice:has(input:checked){
+  box-shadow:0 10px 28px rgba(44,35,29,.08),0 0 0 3px rgba(245,154,98,.08);
+}
+body.vano-route-onboarding.is-launching .ob500-shell{
+  pointer-events:none;
+}
+.ob500-launch-screen{
+  position:fixed;inset:0;z-index:25000;
+  display:grid;place-items:center;padding:24px;
+  opacity:0;visibility:hidden;
+  transition:opacity 260ms ease,visibility 260ms step-end;
+}
+.ob500-launch-screen.is-visible{opacity:1;visibility:visible;transition:opacity 260ms ease}
+.ob500-launch-backdrop{
+  position:absolute;inset:0;
+  background:rgba(13,12,11,.72);
+  backdrop-filter:blur(18px) saturate(125%);
+  -webkit-backdrop-filter:blur(18px) saturate(125%);
+}
+.ob500-launch-core{
+  position:relative;z-index:1;
+  width:min(390px,calc(100vw - 36px));
+  padding:34px 30px 26px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:30px;
+  background:linear-gradient(165deg,rgba(31,28,26,.98),rgba(16,15,14,.98));
+  box-shadow:0 32px 90px rgba(0,0,0,.34);
+  text-align:center;
+  transform:translateY(14px) scale(.97);
+  transition:transform 460ms var(--vano-ease-spring);
+}
+.ob500-launch-screen.is-visible .ob500-launch-core{transform:none}
+.ob500-launch-mark{
+  position:relative;width:96px;height:96px;margin:0 auto 22px;display:grid;place-items:center;
+}
+.ob500-launch-mark>span{
+  position:relative;z-index:2;width:62px;height:62px;border-radius:22px;
+  display:grid;place-items:center;color:#fff;
+  background:linear-gradient(145deg,#ffc39b,#f59a62 55%,#d9703f);
+  box-shadow:0 16px 38px rgba(217,112,63,.27),inset 0 1px 0 rgba(255,255,255,.44);
+}
+.ob500-launch-mark .ring{
+  position:absolute;inset:8px;border:1px solid rgba(245,154,98,.24);border-radius:50%;
+  animation:vano-launch-ring 1.45s ease-out infinite;
+}
+.ob500-launch-mark .r2{animation-delay:.38s}
+@keyframes vano-launch-ring{0%{scale:.68;opacity:.75}80%,100%{scale:1.34;opacity:0}}
+.ob500-launch-copy b{display:block;color:#fff;font-size:22px;letter-spacing:-.6px}
+.ob500-launch-copy small{display:block;margin-top:7px;color:#a9a29d;font-size:12px}
+.ob500-launch-track{
+  height:4px;margin-top:26px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.08)
+}
+.ob500-launch-track i{
+  display:block;width:38%;height:100%;border-radius:inherit;
+  background:linear-gradient(90deg,transparent,#ffc39b,#f59a62,transparent);
+  animation:vano-launch-track 860ms ease-in-out infinite;
+}
+@keyframes vano-launch-track{from{transform:translateX(-120%)}to{transform:translateX(350%)}}
+
+/* Map entry handoff: short, deliberate, and never a second full splash. */
+.vano-entry-splash{
+  position:fixed;inset:0;z-index:24000;
+  display:grid;place-items:center;
+  background:rgba(249,248,246,.96);
+  opacity:0;visibility:hidden;
+  transition:opacity 340ms ease,visibility 340ms step-end;
+}
+html[data-vano-theme="black"] .vano-entry-splash{background:rgba(11,11,12,.96)}
+.vano-entry-splash.show{opacity:1;visibility:visible;transition:opacity 220ms ease}
+.vano-entry-splash.hide{opacity:0;pointer-events:none}
+.vano-entry-splash-inner{
+  width:min(330px,calc(100vw - 44px));
+  display:grid;justify-items:center;text-align:center;
+  transform:translateY(10px) scale(.98);
+  transition:transform 460ms var(--vano-ease-spring),opacity 300ms ease;
+}
+.vano-entry-splash.show .vano-entry-splash-inner{transform:none}
+.vano-entry-splash-mark{position:relative;width:86px;height:86px;display:grid;place-items:center}
+.vano-entry-splash-mark img{
+  width:62px;height:62px;border-radius:20px;position:relative;z-index:2;
+  box-shadow:0 14px 35px rgba(59,45,35,.16);
+}
+.vano-entry-splash-mark i{
+  position:absolute;inset:6px;border-radius:50%;border:1px solid rgba(245,154,98,.28);
+  animation:vano-entry-ring 1.2s ease-out infinite;
+}
+@keyframes vano-entry-ring{from{scale:.72;opacity:.8}to{scale:1.42;opacity:0}}
+.vano-entry-splash-copy strong{display:block;margin-top:12px;font-size:21px;letter-spacing:-.65px;color:#27231f}
+.vano-entry-splash-copy span{display:block;margin-top:5px;font-size:11px;color:#7c746d}
+html[data-vano-theme="black"] .vano-entry-splash-copy strong{color:#fff8f2}
+html[data-vano-theme="black"] .vano-entry-splash-copy span{color:#9e958e}
+.vano-entry-splash-track{
+  width:150px;height:3px;margin-top:22px;border-radius:99px;overflow:hidden;background:rgba(80,65,55,.10)
+}
+.vano-entry-splash-track i{
+  display:block;width:44%;height:100%;border-radius:inherit;background:#f59a62;
+  animation:vano-entry-progress 700ms var(--vano-ease-out) both;
+}
+@keyframes vano-entry-progress{from{transform:translateX(-105%)}to{transform:translateX(228%)}}
+.vano-entry-splash.is-handoff .vano-entry-splash-mark img{animation:vano-handoff-mark 520ms var(--vano-ease-spring) both}
+@keyframes vano-handoff-mark{0%{scale:.86;rotate:-4deg}65%{scale:1.04;rotate:1deg}100%{scale:1;rotate:0}}
+
+/* Profile: selection and save feedback without moving the layout. */
+body.vano-route-profile .profile350-map-card,
+body.vano-route-profile [data-language-card],
+body.vano-route-profile .profile350-chip-select label,
+body.vano-route-profile .profile350-accent label{
+  transition:border-color 180ms ease,background 220ms ease,box-shadow 220ms ease,filter 180ms ease!important;
+}
+body.vano-route-profile .profile350-map-card.is-selected,
+body.vano-route-profile [data-language-card].is-selected{
+  box-shadow:0 10px 28px rgba(57,46,37,.07),0 0 0 3px rgba(245,154,98,.08);
+}
+body.vano-route-profile .profile350-reveal{
+  opacity:0;transform:translateY(12px);
+  transition:opacity 420ms var(--vano-ease-out),transform 480ms var(--vano-ease-out);
+}
+body.vano-route-profile .profile350-reveal.is-visible{opacity:1;transform:none}
+body.vano-route-profile.is-saving-profile .profile350-savebar{filter:saturate(.92)}
+body.vano-route-profile [data-save-state="saving"] .profile350-savebar{cursor:progress}
+
+/* Route and overlay choreography. */
+.vano-x-route-enter .vr-hero{animation:vano-route-rise 420ms var(--vano-ease-out) both}
+.vano-x-route-enter .vano-primary-transport-row{animation:vano-route-rise 460ms 45ms var(--vano-ease-out) both}
+.vano-x-route-enter .route-variants{animation:vano-route-rise 500ms 80ms var(--vano-ease-out) both}
+.vano-x-route-enter .start-trip-cta{animation:vano-route-rise 520ms 115ms var(--vano-ease-out) both}
+@keyframes vano-route-rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+body.nav-launching .nav-maneuver-top,
+body.nav-launching .nav-street-chip,
+body.nav-launching .nav-control-stack{
+  opacity:.45;
+  transition:opacity 480ms ease;
+}
+body:not(.nav-launching) .nav-maneuver-top,
+body:not(.nav-launching) .nav-street-chip,
+body:not(.nav-launching) .nav-control-stack{
+  transition:opacity 380ms ease;
+}
+
+/* Camera free/follow state feedback stays visual, not jumpy. */
+body.nav-map-free #navFollowToggle{
+  box-shadow:0 0 0 4px rgba(245,154,98,.12);
+}
+body[data-nav-camera-state="RECENTERING"] #navFollowToggle,
+body[data-nav-camera-state="RECENTERING"] #navRecenter,
+body[data-nav-camera-state="RECENTERING"] #recenterBtn{
+  animation:vano-recenter-pulse 820ms ease-in-out infinite;
+}
+@keyframes vano-recenter-pulse{0%,100%{filter:none}50%{filter:brightness(1.12);box-shadow:0 0 0 5px rgba(245,154,98,.09)}}
+
+@media (hover:hover) and (pointer:fine){
+  .planner-preset,.nearby-service,.sub-action,.profile350-map-card,.ob500-map-card,.ob500-route-card{
+    transition:transform 180ms var(--vano-ease-out),box-shadow 200ms ease,filter 180ms ease!important;
+  }
+  .planner-preset:hover,.nearby-service:hover,.sub-action:hover{transform:translateY(-1px)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    scroll-behavior:auto!important;
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+  }
+  .ob500-launch-screen,.vano-entry-splash{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  body.vano-route-profile .profile350-reveal{opacity:1!important;transform:none!important}
+}
