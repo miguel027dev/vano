@@ -95,8 +95,18 @@ def api_route():
     else:
         rate_bucket = "route-benchmark" if benchmark_requested else ("route-prefetch" if prefetch_requested else "route")
         rate_limit_max = 120 if benchmark_requested else (36 if prefetch_requested else 30)
-    if not rate_limit(rate_bucket, rate_limit_max, 60):
+    route_user = session.get("user_id")
+    if not rate_limit(f"{rate_bucket}-ip", rate_limit_max, 60, shared=True):
         return jsonify({"ok": False, "error": "rate_limited", "message": "Muitos cálculos de rota. Aguarde um instante.", "retry_after_s": 60}), 429
+    if route_user and not rate_limit(
+        f"{rate_bucket}-user",
+        max(rate_limit_max, 45),
+        60,
+        identity=f"u:{int(route_user)}",
+        include_ip=False,
+        shared=True,
+    ):
+        return jsonify({"ok": False, "error": "rate_limited", "message": "Muitos cálculos de rota nesta conta. Aguarde um instante.", "retry_after_s": 60}), 429
 
     trial_id = re.sub(r"[^A-Za-z0-9_-]", "", str(request.args.get("trial_id", "") or ""))[:64]
     existing_guest_trials = guest_trial_ids() if (not public_benchmark and not session.get("user_id")) else []
