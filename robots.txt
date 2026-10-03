@@ -1,3 +1,15 @@
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /mobile/auth/
+Disallow: /logout
+Disallow: /profile
+Disallow: /notifications
+Disallow: /onboarding
+Disallow: /auth/
+Disallow: /login/google
+
 User-agent: *
 Allow: /
 Disallow: /admin
