@@ -1,0 +1,40 @@
+name: VANO experience CSS
+
+on:
+  push:
+    branches:
+      - experience/motion-camera-refinement-20261003
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experience/motion-camera-refinement-20261003
+          fetch-depth: 0
+
+      - name: Apply motion stylesheet refinement
+        run: python tools/apply_experience_motion_css.py
+
+      - name: Validate stylesheet and scripts
+        run: |
+          python -m compileall -q app.py vano db_backend.py mobile_routes.py vano_osint_bridge.py vano_ai_routing.py vano_radars.py
+          python - <<'PY'
+          from pathlib import Path
+          css=Path("static/vano.css").read_text(encoding="utf-8")
+          assert "VANO EXPERIENCE MOTION REFINEMENT 2026-10-03" in css
+          assert len(list(Path("static").glob("*.css")))==1
+          PY
+
+      - name: Commit experience CSS
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refine VANO motion and transition system"
+          git push origin HEAD:experience/motion-camera-refinement-20261003
