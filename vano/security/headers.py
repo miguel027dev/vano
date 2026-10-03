@@ -100,7 +100,7 @@ def security_headers(response):
         try:
             html = response.get_data(as_text=True)
             html = re.sub(
-                r"<script(?![^>]*\\bnonce=)",
+                r"<script(?![^>]*\bnonce=)",
                 lambda match: f'<script nonce="{nonce}"',
                 html,
                 flags=re.IGNORECASE,
