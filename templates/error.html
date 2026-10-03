@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ code }} · VANO MAPS<script>document.querySelector('[data-error-reload]')?.addEventListener('click',()=>location.reload());document.querySelector('[data-error-back]')?.addEventListener('click',()=>history.length>1?history.back():location.assign({{ url_for('index')|tojson }}));</script>
-{% endblock %}
+{% block title %}{{ code }} · VANO MAPS{% endblock %}
 {% block meta_description %}O VANO MAPS não conseguiu abrir esta página agora.{% endblock %}
 {% block tail_head %}{% endblock %}
 {% block content %}
@@ -14,4 +13,8 @@
   </div>
   {% if code == 404 %}<div class="error-v311__hint">O endereço pode ter mudado ou o conteúdo pode não existir mais.</div>{% elif code == 429 %}<div class="error-v311__hint">Muitas solicitações chegaram em pouco tempo. Aguarde um pouco antes de tentar de novo.</div>{% elif code >= 500 %}<div class="error-v311__hint">Sua conta e seus dados não foram apagados por causa desta tela. Tente novamente ou volte ao mapa.</div>{% endif %}
 </section></div></main>
+<script>
+document.querySelector('[data-error-reload]')?.addEventListener('click',()=>location.reload());
+document.querySelector('[data-error-back]')?.addEventListener('click',()=>history.length>1?history.back():location.assign({{ url_for('index')|tojson }}));
+</script>
 {% endblock %}
