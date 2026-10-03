@@ -1,7 +1,20 @@
 {% extends 'base.html' %}
 {% block legacy_map_assets %}{% endblock %}
-{% block title %}VANO MAPS — rotas seguras em tempo real{% endblock %}
+{% block title %}VANO MAPS — GPS, rotas rápidas e trânsito em tempo real{% endblock %}
+{% block meta_description %}VANO MAPS é um GPS e mapa de navegação que compara rotas, ETA e trânsito em tempo real para encontrar caminhos rápidos, alternativos ou com mais contexto para carro e moto.{% endblock %}
+{% block og_title %}VANO MAPS — GPS, rotas rápidas e trânsito em tempo real{% endblock %}
+{% block og_description %}Compare rotas, acompanhe o trânsito e escolha entre caminhos rápidos, Spark ou com mais contexto no VANO MAPS.{% endblock %}
 {% block head %}
+<script type="application/ld+json">{{ {
+  '@context':'https://schema.org',
+  '@type':'SoftwareApplication',
+  'name':'VANO MAPS',
+  'alternateName':'VANO',
+  'applicationCategory':'NavigationApplication',
+  'operatingSystem':'Web, Android',
+  'url':seo_canonical_url,
+  'description':'Aplicativo de GPS e mapas com comparação de rotas, ETA, trânsito em tempo real e navegação para carro e moto.'
+}|tojson }}</script>
 <script>
 (()=>{
   try{
