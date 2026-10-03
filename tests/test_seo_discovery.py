@@ -69,3 +69,13 @@ def test_discovery_pages_use_existing_seo_design_system():
         assert 'class="vano-seo"' in text
         assert 'class="seo-wrap"' in text
         assert "_seo_links.html" in text
+
+
+def test_indexnow_only_targets_fresh_sitemap_urls():
+    public_routes = (ROOT / "vano" / "routes" / "public.py").read_text(encoding="utf-8")
+    service = (ROOT / "vano" / "services" / "indexnow.py").read_text(encoding="utf-8")
+    app = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert '@app.route("/indexnow-key.txt")' in public_routes
+    assert 'lastmod != today' in service
+    assert 'https://api.indexnow.org/indexnow' in service
+    assert '_start_indexnow_submitter' in app
