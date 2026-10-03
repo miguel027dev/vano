@@ -52,6 +52,7 @@
   const summaryNight=$('#ob500SummaryNight');
   const finishBtn=$('.ob500-launch',form);
   const animationTimers=new WeakMap();
+  const HANDOFF_KEY='vano.motion.handoff.v1';
   let current=1;
   let launching=false;
   let lucideFrame=0;
@@ -397,15 +398,26 @@
   $$('[data-ob-back]',form).forEach(btn=>btn.addEventListener('click',()=>setStep(current-1)));
 
   function createLaunchScreen(){
-    if(reduced())return null;
     const layer=document.createElement('div');
     layer.className='ob500-launch-screen';
-    layer.setAttribute('aria-hidden','true');
-    layer.innerHTML='<div class="ob500-launch-core"><span><i data-lucide="navigation" width="30"></i></span><b>VANO ONLINE</b><small>Carregando seu mapa…</small></div><i class="ring r1"></i><i class="ring r2"></i><i class="ring r3"></i>';
+    layer.setAttribute('role','status');
+    layer.setAttribute('aria-live','polite');
+    layer.innerHTML='<div class="ob500-launch-backdrop"></div><div class="ob500-launch-core"><div class="ob500-launch-mark"><span><i data-lucide="navigation" width="28"></i></span><i class="ring r1"></i><i class="ring r2"></i></div><div class="ob500-launch-copy"><b>Seu VANO está pronto</b><small>Aplicando preferências e abrindo o mapa</small></div><div class="ob500-launch-track"><i></i></div></div>';
     document.body.appendChild(layer);
     refreshIcons();
-    requestAnimationFrame(()=>layer.classList.add('is-visible'));
+    requestAnimationFrame(()=>requestAnimationFrame(()=>layer.classList.add('is-visible')));
     return layer;
+  }
+
+  function saveLaunchHandoff(){
+    try{
+      sessionStorage.setItem(HANDOFF_KEY,JSON.stringify({
+        at:Date.now(),
+        name:firstName(),
+        route:selected(routeInputs,'balanced'),
+        map:selected(mapInputs,'auto')
+      }));
+    }catch(_){}
   }
 
   function revealInvalidStep(step){
@@ -425,7 +437,9 @@
     }
     e.preventDefault();
     launching=true;
+    saveLaunchHandoff();
     renderAll();
+    root.classList.add('is-launching');
     form.setAttribute('aria-busy','true');
     if(finishBtn){
       finishBtn.disabled=true;
@@ -435,14 +449,15 @@
     }
     vibrate(16);
     const layer=createLaunchScreen();
-    const delay=layer?680:20;
+    const delay=layer&&canMotion()?520:80;
     window.setTimeout(()=>HTMLFormElement.prototype.submit.call(form),delay);
   });
 
   window.addEventListener('pageshow',()=>{
     launching=false;
     form.setAttribute('aria-busy','false');
-    $$('.ob500-launch-screen').forEach(x=>x.remove());
+    $('.ob500-launch-screen').forEach(x=>x.remove());
+    root.classList.remove('is-launching');
     if(finishBtn){
       finishBtn.disabled=false;
       finishBtn.classList.remove('is-loading');
