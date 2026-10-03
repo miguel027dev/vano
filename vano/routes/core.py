@@ -219,6 +219,9 @@ def reset_password(token):
     if request.method == "POST":
         if not validate_csrf():
             abort(400)
+        if not rate_limit("reset-password", 10, 900, shared=True):
+            flash("Muitas tentativas. Aguarde antes de tentar novamente.", "danger")
+            return render_template("reset_password.html", reset_valid=valid), 429
         if not valid:
             flash("Esse link expirou ou já foi utilizado.", "danger")
             return redirect(url_for("forgot_password"))
