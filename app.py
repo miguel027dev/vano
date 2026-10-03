@@ -49,7 +49,7 @@ def _safe_header_env(name, fallback):
     return fallback if "\r" in value or "\n" in value else value
 
 FRAME_ANCESTORS = _safe_header_env("VANO_FRAME_ANCESTORS", "*")
-VANO_PERMISSIONS_POLICY = _safe_header_env("VANO_PERMISSIONS_POLICY", "geolocation=*, fullscreen=*, clipboard-read=*, clipboard-write=*")
+VANO_PERMISSIONS_POLICY = _safe_header_env("VANO_PERMISSIONS_POLICY", "geolocation=(self), fullscreen=(self), clipboard-read=(self), clipboard-write=(self), camera=(), microphone=(), payment=(), usb=()")
 VANO_TRUSTED_HOSTS = [x.strip() for x in os.environ.get("VANO_TRUSTED_HOSTS", "").split(",") if x.strip()]
 SECURE_COOKIE = True
 
