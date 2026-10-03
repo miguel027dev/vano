@@ -456,7 +456,8 @@
   window.addEventListener('pageshow',()=>{
     launching=false;
     form.setAttribute('aria-busy','false');
-    $$('.ob500-launch-screen').forEach(x=>x.remove());
+    $('.ob500-launch-screen').forEach(x=>x.remove());
+    document.body.classList.remove('vano-onboarding-leaving');
     root.classList.remove('is-launching');
     if(finishBtn){
       finishBtn.disabled=false;
