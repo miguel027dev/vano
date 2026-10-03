@@ -121,6 +121,6 @@
     if(ok){deleteForm.dataset.confirmed='1';deleteForm.requestSubmit();}
   });
   window.addEventListener('beforeunload',event=>{if(dirty&&!submitting){event.preventDefault();event.returnValue=''}});
-  window.addEventListener('pageshow',()=>{root.classList.remove('is-saving-profile');if(!submitting)setSaveState(dirty?'dirty':'saved')});
+  window.addEventListener('pageshow',()=>{submitting=false;form?.removeAttribute('aria-busy');root.classList.remove('is-saving-profile');setSaveState(dirty?'dirty':'saved')});
   setSaveState('saved');
 })();
