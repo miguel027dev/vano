@@ -102,7 +102,7 @@
 
 
   <div class="account-backdrop" id="accountBackdrop" aria-hidden="true"></div>
-  <section class="account-drawer{% if not current_user %} guest-account-drawer{% endif %}" id="accountDrawer" aria-label="Conta e preferências" aria-hidden="true">
+  <section class="account-drawer{% if not current_user %} guest-account-drawer{% endif %}" id="accountDrawer" role="dialog" aria-modal="true" aria-label="Conta e preferências" aria-hidden="true" tabindex="-1">
     <div class="drawer-grab" aria-hidden="true"></div>
 
     {% if current_user %}
@@ -202,12 +202,12 @@
           <a class="guest-drawer-primary" href="{{ url_for('register') }}">Criar conta</a>
           <a class="guest-drawer-secondary" href="{{ url_for('login', next=url_for('index')) }}">Já tenho conta</a>
         </div>
-        <button type="button" class="guest-drawer-continue" onclick="document.getElementById('accountBackdrop')?.click()">Continuar no mapa sem conta</button>
+        <button type="button" class="guest-drawer-continue" data-account-close>Continuar no mapa sem conta</button>
       </div>
     {% endif %}
   </section>
 
-  <section class="safety-drawer" id="safetyDrawer" aria-label="Ferramentas de segurança">
+  <section class="safety-drawer" id="safetyDrawer" role="dialog" aria-modal="true" aria-label="Ferramentas de segurança" aria-hidden="true" tabindex="-1">
     <div class="safety-head"><div><small>Segurança VANO MAPS</small><h3>Apoio durante o trajeto</h3></div><button type="button" class="safety-close" id="safetyCloseBtn" aria-label="Fechar"><i data-lucide="x" width="16"></i></button></div>
     <div class="safety-grid">
       <button type="button" class="safety-tool live" id="safetyLiveBtn"><i data-lucide="radio"></i><span><b>Compartilhar ao vivo</b><span>Link temporário com sua posição</span></span></button>
@@ -219,7 +219,7 @@
     <p class="safety-foot">Pontos de apoio e níveis de risco dependem dos dados disponíveis. O botão SOS compartilha sua posição; ele não aciona automaticamente polícia, bombeiros ou emergência.</p>
   </section>
 
-  <section class="prefs-drawer prefs-drawer-v251" id="prefsDrawer" aria-label="Personalizar rota e mapa">
+  <section class="prefs-drawer prefs-drawer-v251" id="prefsDrawer" role="dialog" aria-modal="true" aria-label="Personalizar rota e mapa" aria-hidden="true" tabindex="-1">
     <div class="prefs-head"><div class="prefs-head-main"><span class="prefs-head-icon"><i data-lucide="sliders-horizontal" width="18"></i></span><div class="prefs-head-copy"><small>PERSONALIZAÇÃO</small><h3>Personalizar rota</h3><p>Ajuste como o VANO escolhe e apresenta seus trajetos.</p></div></div><button type="button" class="prefs-close" id="prefsCloseBtn" aria-label="Fechar"><i data-lucide="x" width="16"></i></button></div>
     <div class="prefs-list prefs-list-v252">
       <section class="prefs-section" aria-label="Preferências de rota">
@@ -397,7 +397,7 @@
   </section>
 
 
-  <section class="quick-alert-sheet vano-incident-sheet" id="quickAlertSheet" aria-hidden="true" aria-label="Informar ocorrência">
+  <section class="quick-alert-sheet vano-incident-sheet" id="quickAlertSheet" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Informar ocorrência" tabindex="-1">
     <button type="button" class="quick-alert-backdrop" id="quickAlertBackdrop" aria-label="Fechar"></button>
     <div class="quick-alert-card">
       <div class="quick-alert-handle" aria-hidden="true"></div>
