@@ -3,13 +3,16 @@
   const d=document,root=d.documentElement;
   if(root.dataset.vanoExperience410==='1')return;
   root.dataset.vanoExperience410='1';
-  const reduced=()=>!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const motionQuery=window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const reduced=()=>!!motionQuery?.matches;
+  const pulseTimers=new WeakMap();
   const interactive='button:not(:disabled),a[href],[role="button"]:not([aria-disabled="true"]),.route-variant,.planner-preset,.nearby-service,.sub-action,.ob-choice-v340,.ob-language-v340,.profile350-accent';
 
   function pulse(el,cls='vano-x-pop-in',ms=430){
     if(!el||reduced())return;
+    const prior=pulseTimers.get(el);if(prior)clearTimeout(prior);
     el.classList.remove(cls);
-    requestAnimationFrame(()=>{el.classList.add(cls);setTimeout(()=>el.classList.remove(cls),ms)});
+    requestAnimationFrame(()=>{el.classList.add(cls);const timer=setTimeout(()=>{el.classList.remove(cls);pulseTimers.delete(el)},ms);pulseTimers.set(el,timer)});
   }
 
   function syncViewport(){
@@ -31,6 +34,8 @@
     el.addEventListener('pointercancel',done,{once:true});
     el.addEventListener('pointerleave',done,{once:true});
   },{passive:true});
+  window.addEventListener('pointerup',()=>d.querySelectorAll('.vano-x-pressing').forEach(clearPress),{passive:true});
+  window.addEventListener('blur',()=>d.querySelectorAll('.vano-x-pressing').forEach(clearPress));
 
   // Focus continuity for custom field wrappers.
   d.addEventListener('focusin',e=>{
@@ -79,18 +84,21 @@
   }
 
   // Pop important overlays only when they become visible.
-  ['arrivalExperience','guestLimitModal','locationPermission','safetyDrawer','prefsDrawer','resumeTripCard','routeLoadingOverlay'].forEach(id=>{
+  const overlayVisible=el=>el.classList.contains('show')||el.classList.contains('open')||el.classList.contains('drawer-open')||el.getAttribute('aria-hidden')==='false'||(!el.hidden&&getComputedStyle(el).display!=='none'&&el.id==='destinationConfirm');
+  ['arrivalExperience','guestLimitModal','locationPermission','safetyDrawer','prefsDrawer','accountDrawer','destinationConfirm','resumeTripCard','routeLoadingOverlay','vanoRoutineSheet','navControlDrawer','navVoicePopover'].forEach(id=>{
     const el=d.getElementById(id);if(!el)return;
-    let prior=el.classList.contains('show')||el.getAttribute('aria-hidden')==='false';
+    let prior=overlayVisible(el);
     new MutationObserver(()=>{
-      const now=el.classList.contains('show')||el.getAttribute('aria-hidden')==='false';
-      if(now&&!prior)pulse(el);prior=now;
-    }).observe(el,{attributes:true,attributeFilter:['class','aria-hidden','style']});
+      const now=overlayVisible(el);
+      if(now&&!prior)pulse(el,id==='routeLoadingOverlay'?'vano-x-fade-in':'vano-x-pop-in',id==='routeLoadingOverlay'?300:420);
+      prior=now;
+    }).observe(el,{attributes:true,attributeFilter:['class','aria-hidden','style','hidden']});
   });
 
   // Make language/choice selection feel immediate even when the page has its own logic.
   d.addEventListener('change',e=>{
-    if(!e.target.matches?.('.ob-choice-v340 input,.ob-language-v340 input,.profile350-accent input,.profile350-chip-select input'))return;
-    pulse(e.target.closest('label'), 'vano-x-pop-in', 320);
+    if(!e.target.matches?.('.ob-choice-v340 input,.ob-language-v340 input,.profile350-accent input,.profile350-chip-select input,.profile350-map-card input,.pref-switch,.voice-select'))return;
+    pulse(e.target.closest('label')||e.target, 'vano-x-pop-in', 320);
   },{passive:true});
+  motionQuery?.addEventListener?.('change',()=>{if(reduced())d.querySelectorAll('.vano-x-pop-in,.vano-x-fade-in,.vano-x-pressing').forEach(el=>el.classList.remove('vano-x-pop-in','vano-x-fade-in','vano-x-pressing'))});
 })();
