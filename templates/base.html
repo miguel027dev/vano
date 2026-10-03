@@ -125,18 +125,20 @@
   {% set vano_admin_surface = vano_endpoint == 'admin_dashboard' or vano_endpoint.startswith('admin_') %}
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
-  {% if vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-app.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-map.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-planner.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_map_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-navigation.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_endpoint == 'admin_dashboard' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-base.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if current_user and not vano_admin_surface and vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-shell.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_endpoint == 'profile' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-color-system.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if not vano_admin_surface and vano_endpoint != 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-experience.css') }}?v={{ vano_build_id }}">{% endif %}
-  {% if vano_endpoint == 'onboarding' %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-onboarding.css') }}?v={{ vano_build_id }}">{% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano.css') }}?v={{ vano_build_id }}">
+  
+  {% if vano_endpoint != 'onboarding' %}{% endif %}
+  {% if vano_map_surface %}{% endif %}
+  {% if vano_map_surface %}{% endif %}
+  {% if vano_map_surface %}{% endif %}
+  {% if vano_endpoint == 'admin_dashboard' %}{% endif %}
+  {% if vano_endpoint == 'admin_dashboard' %}{% endif %}
+  {% if vano_endpoint == 'profile' %}{% endif %}
+  {% if current_user and not vano_admin_surface and vano_endpoint != 'onboarding' %}{% endif %}
+  {% if vano_endpoint == 'profile' %}{% endif %}
+  {% if vano_endpoint != 'onboarding' %}{% endif %}
+  {% if not vano_admin_surface and vano_endpoint != 'onboarding' %}{% endif %}
+  {% if vano_endpoint == 'onboarding' %}{% endif %}
   {% if vano_map_surface %}
   <script>try{
     const uaAndroid=/VANO-MAPS-Android\//i.test(navigator.userAgent);

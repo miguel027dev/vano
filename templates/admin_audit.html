@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Auditoria · Admin VANO MAPS{% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-page.css') }}?v={{ vano_build_id }}">{% endblock %}
+{% block tail_head %}{% endblock %}
 {% block content %}
 <main class="audit-page admin86 audit123"><div class="admin-server-wrap">
   <header class="server-detail-head"><div><a class="server-detail-back" href="{{ url_for('admin_dashboard') }}"><i data-lucide="arrow-left" width="15"></i>Voltar ao Admin</a><h1>Atividade e auditoria</h1><p>Acessos, páginas, cliques e ações administrativas com IP, dispositivo e tempo de resposta.</p></div></header>

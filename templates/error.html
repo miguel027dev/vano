@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}{{ code }} · VANO MAPS{% endblock %}
 {% block meta_description %}O VANO MAPS não conseguiu abrir esta página agora.{% endblock %}
-{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-legal.css') }}?v={{ vano_build_id }}">{% endblock %}
+{% block tail_head %}{% endblock %}
 {% block content %}
 <main class="page" id="conteudo-principal"><div class="container"><section class="error-v311" role="alert">
   <div class="error-v311__code">ERRO {{ code }}</div><h1>{{ title }}</h1><p>{{ message }}</p>

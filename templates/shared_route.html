@@ -19,10 +19,11 @@
     @media(max-width:350px){.route-panel{padding:11px}.route-metrics{gap:4px}.metric{padding:8px 6px}.route-actions button,.route-actions a{font-size:9px}.route-title{font-size:17px}}
     @media(orientation:landscape) and (max-height:560px){.route-panel{top:max(64px,calc(env(safe-area-inset-top) + 60px));bottom:max(27px,calc(var(--safe-bottom) + 24px));width:min(360px,44vw);max-height:none}.route-note{display:none}.route-title{font-size:17px;margin-bottom:9px}.route-metrics{margin:9px 0}.route-actions button,.route-actions a{height:40px}}
   </style>
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-shared-page.css') }}?v={{ vano_build_id }}">
   
   
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-ui.css') }}?v={{ vano_build_id }}">
+  
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano.css') }}?v={{ vano_build_id }}">
 </head>
 <body class="vano-shared-v258">
 <div class="share-app">

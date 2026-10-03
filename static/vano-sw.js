@@ -2,15 +2,16 @@
 const CACHE='vano-static-current';
 const MAP_CACHE='vano-map-region-current',MAP_CACHE_MAX=180;
 const PRECACHE=[
-  '/static/vano-app.css',
+  '/static/vano.css',
+
   '/static/vano-runtime.js',
   '/static/vano-theme.js',
   '/static/vano-map.js',
-  '/static/vano-map.css',
-  '/static/vano-planner.css',
-  '/static/vano-navigation.css',
-  '/static/vano-interface.css',
-  '/static/vano-access.css',
+
+
+
+
+
   '/static/vano-access.js',
   '/static/vano-maps-icon-64.png',
   '/static/vano-maps-icon-192.png',
@@ -32,7 +33,7 @@ const PRECACHE=[
   '/static/voices/vano/leve_curva_a_direita.mp3',
   '/static/voices/vano/leve_curva_a_esquerda.mp3'
 ];
-const CORE_RE=/\/static\/(vano-app\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-map\.css|vano-planner\.css|vano-navigation\.css|vano-interface\.css|vano-access\.css|vano-access\.js)$/;
+const CORE_RE=/\/static\/(vano\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-access\.js)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;

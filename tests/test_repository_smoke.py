@@ -103,3 +103,9 @@ def test_literal_static_references_exist():
 
     missing = sorted(ref for ref in refs if ref and not (ROOT / "static" / ref).exists())
     assert missing == []
+
+
+
+def test_single_canonical_stylesheet_only():
+    css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
+    assert css_files == ["vano.css"]
