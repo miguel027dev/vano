@@ -21,5 +21,9 @@ def test_navigation_motion_v400_contract():
     assert "--vano-motion-slow:280ms" in css
     assert "vano-nav-text-swap" in css
     assert 'data-nav-motion="arrival"' in css
+    assert "setNavMotionIntent('resume'" in map_js
+    assert "VANO NAV MOTION V401" in css
+    assert "vano-resume-card-v401" in css
+    assert "vano-maneuver-cue-v401" in css
 
     assert 'id="rerouteNotice" role="status" aria-live="polite" aria-busy="false"' in index
