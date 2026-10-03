@@ -42,7 +42,7 @@ function normalizeBrandSurfaces(){
     splash=document.createElement('div');
     splash.id='appEntrySplash';
     splash.setAttribute('aria-hidden','true');
-    (document.getElementById('wsApp')||document.body).appendChild(splash);
+    document.body.appendChild(splash);
   }
   if(splash){
     splash.classList.add('vano-entry-splash');
