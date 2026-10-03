@@ -44,7 +44,8 @@ SMTP_FROM = os.environ.get("SMTP_FROM", SMTP_USER or "noreply@localhost").strip(
 SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "1").strip().lower() not in {"0","false","no","off"}
 SEO_INDEXABLE_ENDPOINTS = {
     "index", "about", "sobre", "help_page", "privacy_policy", "terms_of_use",
-    "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "route_benchmark_page",
+    "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "seo_fastest_route",
+    "seo_google_maps_alternative", "seo_motorcycle_gps", "route_benchmark_page",
     "account_delete_page",
 }
 SEO_CANONICAL_PATHS = {
@@ -57,6 +58,9 @@ SEO_CANONICAL_PATHS = {
     "what_is_vano": "/o-que-e-vano-maps",
     "seo_avoid_traffic": "/rotas-para-evitar-transito",
     "seo_waze_alternative": "/alternativa-ao-waze",
+    "seo_fastest_route": "/rota-mais-rapida",
+    "seo_google_maps_alternative": "/alternativa-ao-google-maps",
+    "seo_motorcycle_gps": "/gps-para-moto",
     "route_benchmark_page": "/benchmark-de-rotas",
     "account_delete_page": "/excluir-conta",
 }
