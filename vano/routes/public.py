@@ -99,6 +99,21 @@ def seo_waze_alternative():
     return render_template("seo_alternativa_waze.html")
 
 
+@app.route("/rota-mais-rapida")
+def seo_fastest_route():
+    return render_template("seo_rota_mais_rapida.html")
+
+
+@app.route("/alternativa-ao-google-maps")
+def seo_google_maps_alternative():
+    return render_template("seo_alternativa_google_maps.html")
+
+
+@app.route("/gps-para-moto")
+def seo_motorcycle_gps():
+    return render_template("seo_gps_moto.html")
+
+
 # V325 — public benchmark contract for humans and automated agents.
 # Keep this isolated from the normal navigation API: public benchmark traffic is
 # read-only, does not consume guest credits, does not write route history and is
