@@ -94,5 +94,5 @@ def test_ci_runs_security_audits():
 def test_default_trusted_hosts_are_bounded():
     app = read("app.py")
     assert "_public_host" in app
-    assert '"vaigo-1.onrender.com"' in app
+    assert '".onrender.com"' in app
     assert "TRUSTED_HOSTS=VANO_TRUSTED_HOSTS or None" in app
