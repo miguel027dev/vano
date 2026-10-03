@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}GPS para moto com rotas e trânsito | VANO MAPS{% endblock %}
+{% block meta_description %}Use o VANO MAPS como GPS para moto: compare rotas, ETA e trânsito em tempo real com um perfil de navegação para motocicleta.{% endblock %}
+{% block og_title %}GPS para moto e rotas com trânsito | VANO MAPS{% endblock %}
+{% block og_description %}Navegação para motocicleta com comparação de rotas, ETA e contexto do trânsito.{% endblock %}
+{% block content %}<main class="vano-seo"><div class="seo-wrap">
+<section class="seo-hero"><span class="seo-kicker"><i data-lucide="bike" width="15"></i>Navegação em motocicleta</span><h1>GPS para moto com comparação de rotas e trânsito</h1><p class="seo-lead">O VANO MAPS possui perfil de motocicleta para quem quer calcular trajetos de moto, comparar alternativas e acompanhar o ETA e o trânsito durante o deslocamento.</p><div class="seo-actions"><a class="seo-primary" href="{{ url_for('index') }}">Calcular rota de moto</a><a class="seo-secondary" href="{{ url_for('seo_fastest_route') }}">Como funciona a rota rápida</a></div></section>
+<section class="seo-grid"><article class="seo-card"><h2>Perfil de moto</h2><p>O meio de transporte selecionado é enviado ao cálculo para usar o perfil adequado quando suportado.</p></article><article class="seo-card"><h2>Rotas alternativas</h2><p>Quando existem opções válidas, o VANO pode compará-las por ETA e pelo modo de rota escolhido.</p></article><article class="seo-card"><h2>Trânsito no caminho</h2><p>Dados de duração e congestionamento ajudam a explicar por que uma opção pode ser mais rápida naquele momento.</p></article></section>
+<section class="seo-section"><h2>O que um GPS para moto precisa deixar claro</h2><p>Uma rota calculada não substitui a sinalização nem confirma que todas as condições da via continuarão iguais. Restrições locais, obras, clima e mudanças de trânsito devem ser observados durante o percurso. O VANO usa os dados disponíveis para auxiliar a navegação, não para substituir as regras da via.</p></section>
+<section class="seo-section"><h2>Posso escolher entre rota rápida e Spark de moto?</h2><p>O VANO permite selecionar a prioridade da rota e o perfil de transporte. A disponibilidade e o resultado das alternativas dependem dos dados retornados pelo serviço de rotas para aquele trajeto.</p></section>
+{% include '_seo_links.html' %}
+</div></main>{% endblock %}
