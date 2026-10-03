@@ -45,6 +45,7 @@ def security_headers(response):
     # The parent page uses /healthz as a preflight before attaching the iframe.
     sensitive_prefixes = (
         "/api/live-trip/", "/live/", "/profile", "/notifications",
+        "/login", "/register", "/auth/", "/onboarding", "/logout",
         "/forgot-password", "/reset-password/", "/account/delete",
     )
     if request.path.startswith(sensitive_prefixes):
