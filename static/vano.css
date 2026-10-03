@@ -24913,3 +24913,59 @@ body.vano-map-surface .nav-context-alert:not([hidden]){
     transition:none!important;
   }
 }
+
+
+/* VANO NAV MOTION V401 — resume and maneuver hierarchy */
+body.vano-map-surface .resume-trip-card{
+  transition:opacity var(--vano-motion-fast,180ms) ease,
+             transform var(--vano-motion-normal,240ms) var(--vano-motion-ease-out,cubic-bezier(.16,1,.3,1))!important;
+}
+body.vano-map-surface .resume-trip-card.show{
+  animation:vano-resume-card-v401 var(--vano-motion-normal,240ms) var(--vano-motion-ease-out,cubic-bezier(.16,1,.3,1)) both;
+}
+@keyframes vano-resume-card-v401{
+  0%{opacity:0;transform:translateY(10px) scale(.99)}
+  100%{opacity:1;transform:none}
+}
+body.vano-map-surface[data-nav-motion="resume"] .resume-trip-preview{
+  animation:vano-resume-context-v401 var(--vano-motion-slow,280ms) var(--vano-motion-ease-out,cubic-bezier(.16,1,.3,1)) 40ms both;
+}
+@keyframes vano-resume-context-v401{
+  from{opacity:.38;transform:translateY(4px)}
+  to{opacity:1;transform:none}
+}
+
+/* Critical maneuvers gain hierarchy without adding continuous map motion. */
+body.vano-map-surface.nav-drive-turn .nav-maneuver-top,
+body.vano-map-surface.nav-drive-junction .nav-maneuver-top,
+body.vano-map-surface.nav-drive-roundabout .nav-maneuver-top{
+  transition:transform var(--vano-motion-normal,240ms) var(--vano-motion-ease-out,cubic-bezier(.16,1,.3,1)),
+             box-shadow var(--vano-motion-normal,240ms) ease,
+             border-color var(--vano-motion-fast,180ms) ease!important;
+  box-shadow:0 14px 36px rgba(18,22,29,.18)!important;
+}
+body.vano-map-surface.nav-drive-turn .nav-maneuver-top{
+  border-color:rgba(245,154,98,.28)!important;
+}
+body.vano-map-surface.nav-drive-junction .nav-maneuver-top,
+body.vano-map-surface.nav-drive-roundabout .nav-maneuver-top{
+  border-color:rgba(245,154,98,.38)!important;
+}
+body.vano-map-surface.nav-drive-turn .maneuver-icon,
+body.vano-map-surface.nav-drive-junction .maneuver-icon,
+body.vano-map-surface.nav-drive-roundabout .maneuver-icon{
+  animation:vano-maneuver-cue-v401 var(--vano-motion-slow,280ms) var(--vano-motion-ease-out,cubic-bezier(.16,1,.3,1)) both;
+}
+@keyframes vano-maneuver-cue-v401{
+  0%{opacity:.62;transform:scale(.91)}
+  100%{opacity:1;transform:scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  body.vano-map-surface .resume-trip-card.show,
+  body.vano-map-surface[data-nav-motion="resume"] .resume-trip-preview,
+  body.vano-map-surface.nav-drive-turn .maneuver-icon,
+  body.vano-map-surface.nav-drive-junction .maneuver-icon,
+  body.vano-map-surface.nav-drive-roundabout .maneuver-icon{
+    animation:none!important;
+  }
+}
