@@ -24,7 +24,7 @@ def security_headers(response):
         "style-src 'self' 'unsafe-inline' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data: https://api.mapbox.com https://*.mapbox.com",
-        "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.mapbox.com",
+        "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.mapbox.com https://api.open-meteo.com",
         "worker-src 'self' blob:",
         "child-src 'self' blob:",
         "media-src 'self' blob:",
