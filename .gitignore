@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments and secrets
+.venv/
+venv/
+.env
+.env.*
+
+# OS/editor residue
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
