@@ -218,7 +218,7 @@ def register_mobile_routes(app, core: dict) -> None:
         if not google_ready():
             return mobile_error(503, "Login indisponível", "O login com Google não está configurado neste servidor.", "google_not_configured")
 
-        if not rate_limit("mobile-google-start", 20, 60):
+        if not rate_limit("mobile-google-start", 20, 60, shared=True):
             return mobile_error(429, "Muitas tentativas", "Aguarde um instante e tente entrar novamente.", "rate_limited")
 
         state = (request.args.get("state") or "").strip()
@@ -283,7 +283,7 @@ def register_mobile_routes(app, core: dict) -> None:
     @app.post("/mobile/auth/exchange")
     def mobile_auth_exchange():
         """Troca código + verifier PKCE por um remember-token do site."""
-        if not rate_limit("mobile-auth-exchange", 30, 60):
+        if not rate_limit("mobile-auth-exchange", 30, 60, shared=True):
             return jsonify({"ok": False, "error": "rate_limited"}), 429
 
         data = request.get_json(silent=True) or {}
@@ -427,7 +427,7 @@ def register_mobile_routes(app, core: dict) -> None:
         # The next Android build batches lightweight telemetry instead of doing
         # one HTTP request per navigation tick. Raw location is intentionally not
         # persisted here. This endpoint is cheap even when the audit trail is off.
-        if not rate_limit("mobile-navigation-batch", 90, 60):
+        if not rate_limit("mobile-navigation-batch", 90, 60, shared=True):
             return jsonify({"ok": False, "error": "rate_limited"}), 429
         data = request.get_json(silent=True) or {}
         events = data.get("events") or []
