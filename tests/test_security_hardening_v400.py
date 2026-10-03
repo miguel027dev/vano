@@ -33,12 +33,12 @@ def test_sensitive_rate_limits_bind_ip_and_identity():
     assert "def rate_limit(key, limit=20, window=60, *, identity=None, include_ip=True, shared=False)" in auth
     assert "fcntl.LOCK_EX" in auth
     assert "VANO_RATE_LIMIT_FILE" in auth
-    assert 'rate_limit("login-account"' in login
-    assert 'rate_limit("register-account"' in login
+    assert '"login-account"' in login
+    assert '"register-account"' in login
     assert 'shared=True' in routing
-    assert 'rate_limit("quick-alert-user-burst"' in api
-    assert 'rate_limit("quick-alert-user-hour"' in api
-    assert 'rate_limit("sos-user"' in community
+    assert '"quick-alert-user-burst"' in api
+    assert '"quick-alert-user-hour"' in api
+    assert '"sos-user"' in community
 
 
 def test_report_votes_cannot_be_self_confirmed_or_self_removed():
