@@ -175,7 +175,7 @@ def forgot_password():
     if request.method == "POST":
         if not validate_csrf():
             abort(400)
-        if not rate_limit("forgot-password", 5, 900):
+        if not rate_limit("forgot-password", 5, 900, shared=True):
             flash("Muitos pedidos em pouco tempo. Aguarde alguns minutos.", "danger")
             return render_template("forgot_password.html"), 429
         email = request.form.get("email", "").strip().lower()
