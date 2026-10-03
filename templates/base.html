@@ -26,7 +26,7 @@
     var meta=document.querySelector('meta[name="theme-color"]');
     if(meta)meta.setAttribute('content',mode==='black'?'#090B0E':'#F4F5F8');
   })();</script>
-  <meta name="description" content="{% block meta_description %}VANO MAPS — GPS com rotas rápidas, navegação inteligente e informações úteis para o trajeto.{% endblock %}">
+  <meta name="description" content="{% block meta_description %}VANO MAPS — GPS, mapas, rotas rápidas, trânsito em tempo real e navegação inteligente.{% endblock %}">
   <meta name="robots" content="{% if seo_indexable %}index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1{% else %}noindex,nofollow{% endif %}">
   {% if seo_indexable %}<link rel="canonical" href="{{ seo_canonical_url }}">{% endif %}
   <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}" type="image/png">
@@ -38,17 +38,17 @@
   <meta property="og:locale" content="{{ active_locale|replace('-','_') }}">
   <meta property="og:url" content="{{ seo_canonical_url }}">
   <meta property="og:title" content="{% block og_title %}VANO MAPS — navegação inteligente{% endblock %}">
-  <meta property="og:description" content="{% block og_description %}GPS com rotas rápidas, navegação inteligente e informações úteis para o trajeto.{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto.{% endblock %}">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="VANO MAPS — navegação inteligente">
-  <meta name="twitter:description" content="GPS com rotas rápidas, navegação inteligente e informações úteis para o trajeto.">
+  <meta name="twitter:description" content="GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto.">
   <script type="application/ld+json">{{ {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "VANO MAPS",
     "url": public_site_url ~ "/",
     "inLanguage": active_locale,
-    "description": "GPS com rotas rápidas, navegação inteligente e informações úteis para o trajeto."
+    "description": "GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto."
   } | tojson }}</script>
   <title>{% block title %}VANO MAPS{% endblock %}</title>
   {% block legacy_map_assets %}{% endblock %}
@@ -189,7 +189,7 @@
 {% block content %}{% endblock %}
 {% if current_user and not vano_admin_surface and vano_endpoint != 'onboarding' %}<nav class="mobile-dock vano-mobile-nav {% if current_user['role']=='admin' %}admin-dock{% endif %}" aria-label="Navegação mobile"><a class="{% if vano_endpoint in ['index','map_page'] %}active{% endif %}" {% if vano_endpoint in ['index','map_page'] %}aria-current="page"{% endif %} href="{{ url_for('map_page') }}"><i data-lucide="navigation"></i><span>Rotas</span></a><a class="{% if vano_endpoint == 'alerts_page' %}active{% endif %}" {% if vano_endpoint == 'alerts_page' %}aria-current="page"{% endif %} href="{{ url_for('alerts_page') }}"><i data-lucide="triangle-alert"></i><span>Alertas</span></a><a class="vano-mobile-report {% if vano_endpoint == 'report_page' %}active{% endif %}" {% if vano_endpoint == 'report_page' %}aria-current="page"{% endif %} href="{{ url_for('report_page') }}"><span class="vano-mobile-report-icon"><i data-lucide="plus"></i></span><span>Reportar</span></a><a class="{% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round"></i><span>Perfil</span></a>{% if current_user['role']=='admin' %}<a class="{% if vano_endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check"></i><span>Admin</span></a>{% endif %}</nav>{% endif %}
 
-{% if vano_endpoint != 'onboarding' %}<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('about') }}">Como funciona</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a> · <a href="{{ url_for('account_delete_page') }}">Excluir conta</a></span></div></footer>{% endif %}
+{% if vano_endpoint != 'onboarding' %}<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('what_is_vano') }}">O que é o VANO</a> · <a href="{{ url_for('seo_waze_alternative') }}">Alternativa ao Waze</a> · <a href="{{ url_for('seo_fastest_route') }}">Rota mais rápida</a> · <a href="{{ url_for('seo_avoid_traffic') }}">Evitar trânsito</a> · <a href="{{ url_for('seo_motorcycle_gps') }}">GPS para moto</a> · <a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a></span></div></footer>{% endif %}
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
 {% if vano_endpoint != 'onboarding' %}<script src="{{ url_for('static', filename='vano-runtime.js') }}?v={{ vano_build_id }}"></script>{% endif %}
 <script src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>
