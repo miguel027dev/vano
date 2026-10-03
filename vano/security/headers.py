@@ -20,8 +20,12 @@ def security_headers(response):
 
     # Normal pages cannot be framed. Only the explicit embed diagnostics/routes
     # use the configured integration allow-list.
-    response.headers.pop("X-Frame-Options", None)
-    frame_ancestors = FRAME_ANCESTORS if request.path in {"/embed", "/frame-test"} else "'self'"
+    embed_surface = request.path in {"/embed", "/frame-test"}
+    if embed_surface:
+        response.headers.pop("X-Frame-Options", None)
+    else:
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    frame_ancestors = FRAME_ANCESTORS if embed_surface else "'self'"
     nonce = str(getattr(g, "csp_nonce", "") or "")
     csp = "; ".join([
         "default-src 'self'",
@@ -47,9 +51,9 @@ def security_headers(response):
 
     # Explicitly avoid cross-origin isolation policies that can interfere with
     # an embedded app or its popup/window relationships.
-    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
+    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none" if embed_surface else "same-origin-allow-popups"
     response.headers["Cross-Origin-Embedder-Policy"] = "unsafe-none"
-    response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "cross-origin" if embed_surface else "same-site"
 
     # The parent page uses /healthz as a preflight before attaching the iframe.
     sensitive_prefixes = (
