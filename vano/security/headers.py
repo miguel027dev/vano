@@ -34,7 +34,9 @@ def security_headers(response):
         f"frame-ancestors {frame_ancestors}",
         "object-src 'none'",
         f"script-src 'self' 'nonce-{nonce}' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
-        "style-src 'self' 'unsafe-inline' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
+        "style-src 'self' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
+        f"style-src-elem 'self' 'nonce-{nonce}' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
+        "style-src-attr 'unsafe-inline'",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data: https://api.mapbox.com https://*.mapbox.com",
         "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.mapbox.com https://api.open-meteo.com",
@@ -106,6 +108,12 @@ def security_headers(response):
             html = re.sub(
                 r"<script(?![^>]*\bnonce=)",
                 lambda match: f'<script nonce="{nonce}"',
+                html,
+                flags=re.IGNORECASE,
+            )
+            html = re.sub(
+                r"<style(?![^>]*\bnonce=)",
+                lambda match: f'<style nonce="{nonce}"',
                 html,
                 flags=re.IGNORECASE,
             )
