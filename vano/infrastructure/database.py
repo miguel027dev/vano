@@ -7,6 +7,19 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
+try:
+    from argon2 import PasswordHasher
+except ImportError:
+    PasswordHasher = None
+
+_ARGON2 = PasswordHasher(
+    time_cost=2,
+    memory_cost=19_456,
+    parallelism=1,
+    hash_len=32,
+    salt_len=16,
+) if PasswordHasher is not None else None
+
 def get_db():
     if "db" not in g:
         g.db = connect_db()
@@ -35,14 +48,30 @@ def validate_password_strength(password):
     return True, ""
 
 
-def hash_password(password):
+def _legacy_pbkdf2_hash(password):
     iterations = 600_000
     salt = secrets.token_bytes(16)
     derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
     return f"pbkdf2_sha256${iterations}${salt.hex()}${derived.hex()}"
 
 
+def hash_password(password):
+    password = str(password or "")
+    if _ARGON2 is not None:
+        return _ARGON2.hash(password)
+    return _legacy_pbkdf2_hash(password)
+
+
 def verify_password(stored, password):
+    stored = str(stored or "")
+    password = str(password or "")
+    if stored.startswith("$argon2id$"):
+        if _ARGON2 is None:
+            return False
+        try:
+            return bool(_ARGON2.verify(stored, password))
+        except Exception:
+            return False
     try:
         algorithm, iterations, salt_hex, digest_hex = stored.split("$", 3)
         if algorithm != "pbkdf2_sha256":
@@ -53,6 +82,18 @@ def verify_password(stored, password):
         return secrets.compare_digest(candidate, digest_hex)
     except Exception:
         return False
+
+
+def password_needs_rehash(stored):
+    stored = str(stored or "")
+    if _ARGON2 is None:
+        return False
+    if not stored.startswith("$argon2id$"):
+        return True
+    try:
+        return bool(_ARGON2.check_needs_rehash(stored))
+    except Exception:
+        return True
 
 
 def init_db():
