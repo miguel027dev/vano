@@ -7,20 +7,29 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
+@app.before_request
+def prepare_security_nonce():
+    # One nonce per request lets templates keep small bootstrap scripts without
+    # enabling arbitrary inline JavaScript globally.
+    g.csp_nonce = secrets.token_urlsafe(18)
+
+
 @app.after_request
 def security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
 
-    # The Vértice integration needs configurable framing, but the rest of the
-    # document policy is kept explicit and deny-by-default where practical.
+    # Normal pages cannot be framed. Only the explicit embed diagnostics/routes
+    # use the configured integration allow-list.
     response.headers.pop("X-Frame-Options", None)
+    frame_ancestors = FRAME_ANCESTORS if request.path in {"/embed", "/frame-test"} else "'self'"
+    nonce = str(getattr(g, "csp_nonce", "") or "")
     csp = "; ".join([
         "default-src 'self'",
         "base-uri 'self'",
         "form-action 'self'",
-        f"frame-ancestors {FRAME_ANCESTORS}",
+        f"frame-ancestors {frame_ancestors}",
         "object-src 'none'",
-        "script-src 'self' 'unsafe-inline' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
+        f"script-src 'self' 'nonce-{nonce}' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
         "style-src 'self' 'unsafe-inline' https://unpkg.com https://api.mapbox.com https://cdn.jsdelivr.net",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data: https://api.mapbox.com https://*.mapbox.com",
@@ -84,6 +93,21 @@ def security_headers(response):
     response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
     if response.status_code == 429:
         response.headers.setdefault("Retry-After", "60")
+
+    # Add the request nonce to every rendered script tag. Static JS remains
+    # external; JSON-LD and small bootstraps are covered without unsafe-inline.
+    if nonce and response.mimetype == "text/html" and not response.direct_passthrough:
+        try:
+            html = response.get_data(as_text=True)
+            html = re.sub(
+                r"<script(?![^>]*\\bnonce=)",
+                lambda match: f'<script nonce="{nonce}"',
+                html,
+                flags=re.IGNORECASE,
+            )
+            response.set_data(html)
+        except Exception:
+            app.logger.exception("CSP nonce injection failed")
     return response
 
 # -----------------------------
