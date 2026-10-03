@@ -228,8 +228,13 @@ def api_alert_quick():
         return jsonify({"ok": False, "error": "Entre na sua conta para enviar um alerta."}), 401
     if not validate_csrf():
         return jsonify({"ok": False, "error": "Sessão expirada. Atualize a página e tente novamente."}), 400
-    if not rate_limit("quick-alert", 8, 300):
-        return jsonify({"ok": False, "error": "Muitos alertas em pouco tempo. Aguarde alguns minutos."}), 429
+    user_bucket = f"u:{int(user['id'])}"
+    if (
+        not rate_limit("quick-alert-ip", 6, 300, shared=True)
+        or not rate_limit("quick-alert-user-burst", 3, 60, identity=user_bucket, include_ip=False, shared=True)
+        or not rate_limit("quick-alert-user-hour", 16, 3600, identity=user_bucket, include_ip=False, shared=True)
+    ):
+        return jsonify({"ok": False, "error": "Muitos alertas em pouco tempo. Aguarde antes de publicar novamente."}), 429
 
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -323,10 +328,18 @@ def api_alert_quick():
 def api_confirm_alert(report_id):
     if not validate_csrf():
         return jsonify({"ok": False, "error": "Sessão inválida."}), 400
+    voter_bucket = f"u:{int(session['user_id'])}"
+    if (
+        not rate_limit("alert-confirm-ip", 60, 3600, shared=True)
+        or not rate_limit("alert-confirm-user", 35, 3600, identity=voter_bucket, include_ip=False, shared=True)
+    ):
+        return jsonify({"ok": False, "error": "Aguarde antes de confirmar mais alertas."}), 429
     db = get_db()
-    report = db.execute("SELECT id,status FROM reports WHERE id=?", (report_id,)).fetchone()
+    report = db.execute("SELECT id,user_id,status FROM reports WHERE id=?", (report_id,)).fetchone()
     if not report or report["status"] != "active":
         return jsonify({"ok": False, "error": "Alerta não está mais ativo."}), 404
+    if int(report["user_id"]) == int(session["user_id"]):
+        return jsonify({"ok": False, "error": "Você não pode confirmar seu próprio alerta."}), 409
     already = False
     try:
         db.execute("INSERT INTO report_confirmations(report_id,user_id,created_at) VALUES(?,?,?)", (report_id, session["user_id"], utcnow_iso()))
@@ -345,12 +358,18 @@ def api_confirm_alert(report_id):
 def api_alert_not_there(report_id):
     if not validate_csrf():
         return jsonify({"ok": False, "error": "Sessão inválida."}), 400
-    if not rate_limit("alert-not-there", 40, 3600):
+    voter_bucket = f"u:{int(session['user_id'])}"
+    if (
+        not rate_limit("alert-not-there-ip", 50, 3600, shared=True)
+        or not rate_limit("alert-not-there-user", 30, 3600, identity=voter_bucket, include_ip=False, shared=True)
+    ):
         return jsonify({"ok": False, "error": "Aguarde antes de avaliar mais alertas."}), 429
     db = get_db()
-    report = db.execute("SELECT id,status,confirmations FROM reports WHERE id=?", (report_id,)).fetchone()
+    report = db.execute("SELECT id,user_id,status,confirmations FROM reports WHERE id=?", (report_id,)).fetchone()
     if not report or report["status"] != "active":
         return jsonify({"ok": False, "error": "Alerta não está mais ativo."}), 404
+    if int(report["user_id"]) == int(session["user_id"]):
+        return jsonify({"ok": False, "error": "Você não pode avaliar seu próprio alerta."}), 409
     already = False
     try:
         db.execute("INSERT INTO report_absence_votes(report_id,user_id,created_at) VALUES(?,?,?)", (report_id, session["user_id"], utcnow_iso()))
@@ -1210,7 +1229,11 @@ def get_live_trip_or_404(token):
 def create_live_trip():
     if not validate_csrf():
         abort(400)
-    if not rate_limit("live_trip_create", 8, 3600):
+    live_bucket = f"u:{int(session['user_id'])}"
+    if (
+        not rate_limit("live-trip-create-ip", 10, 3600, shared=True)
+        or not rate_limit("live-trip-create-user", 6, 3600, identity=live_bucket, include_ip=False, shared=True)
+    ):
         return jsonify({"error": "Muitos compartilhamentos ao vivo criados."}), 429
     payload = request.get_json(silent=True) or {}
     destination_label = str(payload.get("destination_label") or "Destino")[:180]
@@ -1237,7 +1260,11 @@ def create_live_trip():
 def update_live_trip(token):
     if not validate_csrf():
         abort(400)
-    if not rate_limit("live_trip_update", 150, 60):
+    live_bucket = f"u:{int(session['user_id'])}"
+    if (
+        not rate_limit("live-trip-update-ip", 180, 60, shared=True)
+        or not rate_limit("live-trip-update-user", 150, 60, identity=live_bucket, include_ip=False, shared=True)
+    ):
         return jsonify({"error": "Atualizações rápidas demais."}), 429
     row = get_live_trip_or_404(token)
     if int(row["creator_user_id"]) != int(session["user_id"]):
@@ -1272,7 +1299,14 @@ def stop_live_trip(token):
     row = get_live_trip_or_404(token)
     if int(row["creator_user_id"]) != int(session["user_id"]):
         abort(403)
-    db = get_db(); db.execute("UPDATE live_trips SET active=0,updated_at=? WHERE id=?", (utcnow_iso(), row["id"])); db.commit()
+    db = get_db()
+    db.execute(
+        """UPDATE live_trips
+           SET active=0,last_lat=NULL,last_lon=NULL,last_accuracy=NULL,last_speed=NULL,last_heading=NULL,updated_at=?
+           WHERE id=?""",
+        (utcnow_iso(), row["id"]),
+    )
+    db.commit()
     audit("live_trip_stopped", {"token_prefix": token[:6]})
     return jsonify({"ok": True})
 
@@ -1280,12 +1314,16 @@ def stop_live_trip(token):
 @app.route("/api/live-trip/<token>")
 def live_trip_api(token):
     row = get_live_trip_or_404(token)
-    return jsonify({
+    response = jsonify({
         "active": bool(row["active"]), "destination_label": row["destination_label"],
         "lat": row["last_lat"], "lon": row["last_lon"], "accuracy": row["last_accuracy"],
         "speed": row["last_speed"], "heading": row["last_heading"], "progress": row["route_progress"],
         "safety_level": row["safety_level"], "updated_at": row["updated_at"], "expires_at": row["expires_at"],
     })
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    return response
 
 
 @app.route("/live/<token>")
