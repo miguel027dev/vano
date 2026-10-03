@@ -19,8 +19,12 @@ def report_page():
     if request.method == "POST":
         if not validate_csrf():
             abort(400)
-        if not rate_limit("report", 8, 3600):
-            flash("Limite temporário de denúncias atingido.", "danger")
+        report_bucket = f"u:{int(session['user_id'])}"
+        if (
+            not rate_limit("report-page-ip", 8, 3600, shared=True)
+            or not rate_limit("report-page-user", 8, 3600, identity=report_bucket, include_ip=False, shared=True)
+        ):
+            flash("Limite temporário de alertas atingido.", "danger")
             return render_template("report.html", categories=CATEGORY_META), 429
 
         category = request.form.get("category", "other")
@@ -97,10 +101,20 @@ def alerts_page():
 def confirm_report(report_id):
     if not validate_csrf():
         abort(400)
+    voter_bucket = f"u:{int(session['user_id'])}"
+    if (
+        not rate_limit("report-confirm-page-ip", 60, 3600, shared=True)
+        or not rate_limit("report-confirm-page-user", 35, 3600, identity=voter_bucket, include_ip=False, shared=True)
+    ):
+        flash("Aguarde antes de confirmar mais alertas.", "warning")
+        return redirect(url_for("alerts_page"))
     db = get_db()
-    report = db.execute("SELECT id,status FROM reports WHERE id=?", (report_id,)).fetchone()
+    report = db.execute("SELECT id,user_id,status FROM reports WHERE id=?", (report_id,)).fetchone()
     if not report or report["status"] != "active":
         abort(404)
+    if int(report["user_id"]) == int(session["user_id"]):
+        flash("Você não pode confirmar seu próprio alerta.", "warning")
+        return redirect(url_for("alerts_page"))
     try:
         db.execute(
             "INSERT INTO report_confirmations(report_id,user_id,created_at) VALUES(?,?,?)",
@@ -330,6 +344,12 @@ def api_notifications_unread():
 def api_sos():
     if not validate_csrf():
         abort(400)
+    sos_bucket = f"u:{int(session['user_id'])}"
+    if (
+        not rate_limit("sos-ip", 10, 600, shared=True)
+        or not rate_limit("sos-user", 6, 600, identity=sos_bucket, include_ip=False, shared=True)
+    ):
+        return jsonify({"error": "Muitos envios em pouco tempo. Aguarde antes de tentar novamente."}), 429
     payload = request.get_json(silent=True) or {}
     try:
         lat = float(payload.get("lat")); lon = float(payload.get("lon"))
