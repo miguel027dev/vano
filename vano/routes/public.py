@@ -57,6 +57,16 @@ def sitemap_xml():
     return _serve_root_seo_file("sitemap.xml", "application/xml")
 
 
+@app.route("/indexnow-key.txt")
+def indexnow_key_file():
+    key = str(os.environ.get("INDEXNOW_KEY") or "").strip()
+    if not key or len(key) < 8:
+        abort(404)
+    response = app.response_class(key + "\n", mimetype="text/plain")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
 @app.route("/politica-de-privacidade")
 @app.route("/privacy")
 def privacy_policy():
