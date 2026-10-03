@@ -37,18 +37,47 @@ document.querySelectorAll('button:not([type])').forEach(b=>b.type='button');
 function normalizeBrandSurfaces(){
   const guestBrand=document.querySelector('.guest-drawer-brand');
   if(guestBrand){guestBrand.classList.add('simple');guestBrand.innerHTML=`<img src="/static/vano-maps-icon-64.png" alt="Ícone VANO MAPS"><span>VANO MAPS</span>`}
-  const splash=$('appEntrySplash');
-  if(splash){splash.classList.add('vano-entry-splash');splash.innerHTML=`<div class="vano-entry-splash-inner"><img src="/static/vano-maps-icon-192.png" alt="Ícone VANO MAPS"><strong>VANO MAPS</strong></div>`}
+  let splash=$('appEntrySplash');
+  if(!splash&&LOGGED_IN){
+    splash=document.createElement('div');
+    splash.id='appEntrySplash';
+    splash.setAttribute('aria-hidden','true');
+    (document.getElementById('wsApp')||document.body).appendChild(splash);
+  }
+  if(splash){
+    splash.classList.add('vano-entry-splash');
+    splash.innerHTML=`<div class="vano-entry-splash-inner"><div class="vano-entry-splash-mark"><img src="/static/vano-maps-icon-192.png" alt=""><i></i></div><div class="vano-entry-splash-copy"><strong>VANO MAPS</strong><span>Preparando seu mapa</span></div><div class="vano-entry-splash-track"><i></i></div></div>`;
+  }
 }
 normalizeBrandSurfaces();
 
 function runEntrySplash(){
   const splash=$('appEntrySplash');
   if(!splash||!LOGGED_IN)return;
-  let seen=false;try{seen=sessionStorage.getItem('vano.app.splash.v57')==='1'}catch{}
-  if(seen){splash.remove();return;}
+  const reduce=!!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let seen=false,handoff=null;
+  try{
+    seen=sessionStorage.getItem('vano.app.splash.v57')==='1';
+    const raw=sessionStorage.getItem('vano.motion.handoff.v1');
+    handoff=raw?JSON.parse(raw):null;
+    sessionStorage.removeItem('vano.motion.handoff.v1');
+  }catch{}
+  const freshHandoff=!!handoff&&Date.now()-(+handoff.at||0)<20000;
+  if(seen&&!freshHandoff){splash.remove();return}
+  if(freshHandoff){
+    splash.classList.add('is-handoff');
+    const title=splash.querySelector('.vano-entry-splash-copy strong'),copy=splash.querySelector('.vano-entry-splash-copy span');
+    if(title)title.textContent=handoff.name?`Tudo pronto, ${handoff.name}`:'Tudo pronto';
+    if(copy)copy.textContent='Seu VANO foi configurado';
+  }
+  document.documentElement.classList.add('vano-entry-transitioning');
   splash.classList.add('show');
-  setTimeout(()=>{splash.classList.add('hide'); setTimeout(()=>splash.remove(),420)}, 980);
+  const visibleMs=reduce?120:(freshHandoff?720:620),exitMs=reduce?80:360;
+  setTimeout(()=>{
+    splash.classList.add('hide');
+    document.documentElement.classList.remove('vano-entry-transitioning');
+    setTimeout(()=>splash.remove(),exitMs);
+  },visibleMs);
   try{sessionStorage.setItem('vano.app.splash.v57','1')}catch{}
 }
 runEntrySplash();
@@ -297,14 +326,14 @@ function updatePassiveTracking(g){
   const movedMeters=!lastPassivePosition?Infinity:hav([lastPassivePosition.lon,lastPassivePosition.lat],[p.lon,p.lat]);lastPassivePosition={...p};
   if(!passiveCameraAllowed()||searchInteractionActive||movedMeters<.22)return;const now=performance.now(),gap=lastPassiveCameraAt?now-lastPassiveCameraAt:500;if(gap<110)return;lastPassiveCameraAt=now;
   const z=Math.max(15.9,Math.min(17.15,map.getZoom?.()||16.25)),duration=Math.max(150,Math.min(680,gap*.96));
-  try{map.easeTo({center:[p.lon,p.lat],zoom:z,duration,essential:true,easing:t=>1-Math.pow(1-t,3)})}catch{}
+  try{map.easeTo({center:[p.lon,p.lat],zoom:z,duration:REDUCED_MOTION?0:duration,essential:true,easing:t=>1-Math.pow(1-t,3)})}catch{}
 }
 function startPassiveMapTracking(){
   if(!navigator.geolocation||activeNav?.classList.contains('show'))return;
   if(passiveWatchId===null){try{passiveWatchId=navigator.geolocation.watchPosition(updatePassiveTracking,e=>{if(e?.code===1)showPermission(locationErrorMessage(e))},{enableHighAccuracy:true,maximumAge:500,timeout:7000})}catch(e){console.warn('[VANO MAPS:passive GPS]',e)}}
   startPassiveGpsHeartbeat();
 }
-function applyStartupFix(g,asOrigin=false,center=false){const raw=geoRaw(g);if(!acceptGpsRaw(raw))return null;lastGpsFixAt=Date.now();const p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();if(asOrigin){if(!origin||origin.is_gps){if(!origin)setPoint('origin',{...p,is_gps:true},'Minha localização',false);else{origin={...origin,...p,is_gps:true,label:'Minha localização'};originInput.value='Minha localização';originMarker?.setLngLat([p.lon,p.lat])}}}if(center&&map)map.jumpTo({center:[p.lon,p.lat],zoom:MAP_HOME_ZOOM});if(destinationConfirmed&&destination&&origin&&!window.__sparkStartupRouteQueued){window.__sparkStartupRouteQueued=true;setTimeout(()=>{window.__sparkStartupRouteQueued=false;calculateRoutes()},120)}maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);emitVanoOsint('location',{location:osintLocationPayload(raw,p),navigation:false});return p}
+function applyStartupFix(g,asOrigin=false,center=false){const raw=geoRaw(g);if(!acceptGpsRaw(raw))return null;lastGpsFixAt=Date.now();const p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();if(asOrigin){if(!origin||origin.is_gps){if(!origin)setPoint('origin',{...p,is_gps:true},'Minha localização',false);else{origin={...origin,...p,is_gps:true,label:'Minha localização'};originInput.value='Minha localização';originMarker?.setLngLat([p.lon,p.lat])}}}if(center&&map){try{map.stop?.();map.easeTo({center:[p.lon,p.lat],zoom:MAP_HOME_ZOOM,pitch:0,bearing:0,duration:REDUCED_MOTION?0:460,essential:true,easing:t=>1-Math.pow(1-t,3)})}catch{map.jumpTo({center:[p.lon,p.lat],zoom:MAP_HOME_ZOOM})}}if(destinationConfirmed&&destination&&origin&&!window.__sparkStartupRouteQueued){window.__sparkStartupRouteQueued=true;setTimeout(()=>{window.__sparkStartupRouteQueued=false;calculateRoutes()},120)}maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);emitVanoOsint('location',{location:osintLocationPayload(raw,p),navigation:false});return p}
 function bootstrapGps(asOrigin=false){const cached=readLastGps();mapFollowMode=true;if(cached){userLocation={lat:cached.lat,lon:cached.lon};lastPassivePosition={...cached};updateUserMarker(cached);updateGpsQuality(cached.accuracy);if(map)map.jumpTo({center:[cached.lon,cached.lat],zoom:MAP_HOME_ZOOM-.12});scheduleTrafficSnapshot(false);if(asOrigin&&!origin){setPoint('origin',{...cached,is_gps:true},'Minha localização',false);origin.is_gps=true}}if(!navigator.geolocation)return;let gotFresh=false;const finishStartup=()=>{stopStartupGps();startPassiveMapTracking()};navigator.geolocation.getCurrentPosition(g=>{gotFresh=true;applyStartupFix(g,asOrigin,!cached)},e=>{if(!cached&&e?.code===1)showPermission(locationErrorMessage(e))},{enableHighAccuracy:false,timeout:1200,maximumAge:60000});stopStartupGps();startupWatchId=navigator.geolocation.watchPosition(g=>{applyStartupFix(g,asOrigin,!cached&&!gotFresh);gotFresh=true;if((+g.coords.accuracy||999)<=35)finishStartup()},e=>{if(!cached&&e?.code===1)showPermission(locationErrorMessage(e))},{enableHighAccuracy:true,maximumAge:600,timeout:5000});startupWatchTimer=setTimeout(finishStartup,8500)}
 function updateGpsQuality(acc){if(!Number.isFinite(acc))return;const box=$('gpsQuality'),bars=$('gpsBars'),label=$('gpsAccuracy');if(!box||!bars||!label)return;const weak=acc>60,nav=!!activeNav?.classList.contains('show');box.classList.toggle('show',nav?weak:true);box.classList.toggle('weak',weak);label.textContent=weak?`GPS fraco · ±${Math.round(acc)} m`:`GPS ±${Math.round(acc)} m`;bars.className='gps-bars '+(acc<=20?'good':acc<=60?'mid':'')}
 function makeUserMarker(){
@@ -605,8 +634,8 @@ function cameraMotionTick(ts){
   const profile=cameraMotionProfile(target,ts,dt),ap=1-Math.exp(-dt/profile.posTau),av=1-Math.exp(-dt/profile.viewTau),ab=1-Math.exp(-dt/profile.bearingTau);
   cameraVisualState.center=[blendNumber(cameraVisualState.center[0],target.center[0],ap),blendNumber(cameraVisualState.center[1],target.center[1],ap)];cameraVisualState.zoom=blendNumber(cameraVisualState.zoom,target.zoom,av);cameraVisualState.pitch=blendNumber(cameraVisualState.pitch,target.pitch,av);cameraVisualState.bearing=blendBearing(cameraVisualState.bearing,target.bearing,ab);cameraVisualState.padding=blendPadding(cameraVisualState.padding,target.padding,av);lastCameraBearing=cameraVisualState.bearing;navLastCameraZoom=cameraVisualState.zoom;
   internalCameraMoveUntil=performance.now()+120;try{map.jumpTo({center:cameraVisualState.center,zoom:cameraVisualState.zoom,pitch:cameraVisualState.pitch,bearing:cameraVisualState.bearing,padding:cameraVisualState.padding,retainPadding:false})}catch(e){console.debug('[VANO MAPS:camera-motion]',e)}updateMarkerHeading(target.rawTarget,{speed:target.speed,accuracy:cameraTargetContext?.p?.accuracy});
-  const centerGap=hav(cameraVisualState.center,target.center),zoomGap=Math.abs(cameraVisualState.zoom-target.zoom),bearingGap=bearingDelta(cameraVisualState.bearing,target.bearing),predicting=(puckRouteVelocity>.08&&ts-puckRouteFixAt<2200)||(Math.max(0,+cameraTargetContext.p?.speed||0)>.75&&ts-(cameraTargetContext.updatedAt||ts)<1400),intentAlive=!!activeCameraIntent(ts);
-  if(centerGap>profile.centerEps||zoomGap>profile.zoomEps||bearingGap>profile.bearingEps||predicting||intentAlive)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
+  const centerGap=hav(cameraVisualState.center,target.center),zoomGap=Math.abs(cameraVisualState.zoom-target.zoom),bearingGap=bearingDelta(cameraVisualState.bearing,target.bearing),accuracy=Math.max(0,+cameraTargetContext?.p?.accuracy||0),settleMeters=Math.max(profile.centerEps,Math.min(1.8,.28+accuracy*.018+target.speed*.025)),predicting=(puckRouteVelocity>.08&&ts-puckRouteFixAt<2200)||(Math.max(0,+cameraTargetContext.p?.speed||0)>.75&&ts-(cameraTargetContext.updatedAt||ts)<1400),intentAlive=!!activeCameraIntent(ts);
+  if(centerGap>settleMeters||zoomGap>profile.zoomEps||bearingGap>profile.bearingEps||predicting||intentAlive)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
 }
 function stopCameraMotion(){if(cameraMotionFrame!==null){cancelAnimationFrame(cameraMotionFrame);cameraMotionFrame=null}if(navLaunchResumeTimer){clearTimeout(navLaunchResumeTimer);navLaunchResumeTimer=null}cameraTargetContext=null;cameraVisualState=null;cameraLastPaintAt=0;cameraTargetBearing=null;cameraTargetBearingAt=0;resetCameraKinematics()}
 function scheduleCamera(p,instant=false,progressInfo=null){if(followMode&&navCameraState===NAV_CAMERA_STATES.RECENTERING&&performance.now()>cameraCalibrationUntil&&activeCameraIntent()!=='recenter')setNavCameraState(NAV_CAMERA_STATES.FOLLOWING);if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;
@@ -658,9 +687,9 @@ async function confirmDestination(){if(!destination)return;destinationConfirmed=
 function parkingCacheKey(){return destination?`${(+destination.lat).toFixed(4)},${(+destination.lon).toFixed(4)}`:''}
 function renderParkingNearby(){const box=$('parkingNearby'),list=$('parkingList');if(!box||!list)return;const shouldShow=destinationConfirmed&&profile==='driving';box.classList.toggle('show',shouldShow);if(!shouldShow)return;if(!activeParkingItems.length&&list.dataset.state!=='loading'){list.innerHTML='<div class="parking-empty">Nenhum estacionamento mapeado encontrado perto deste destino.</div>';return}if(activeParkingItems.length){list.innerHTML=activeParkingItems.map((x,i)=>`<button type="button" class="parking-item" data-parking-i="${i}"><span><b>${esc(x.name||'Estacionamento')}</b><span>${fmtDistance(+x.walk_distance_m||+x.distance_straight_m||0)} a pé${x.fee==='yes'?' · pago':x.fee==='no'?' · gratuito':''}</span></span><strong>${Math.max(1,+x.walk_minutes||1)} min a pé</strong></button>`).join('');list.querySelectorAll('[data-parking-i]').forEach(btn=>btn.onclick=()=>{const x=activeParkingItems[+btn.dataset.parkingI];if(!x)return;map.easeTo({center:[+x.lon,+x.lat],zoom:17,pitch:38,duration:480});new mapboxgl.Popup({closeButton:false,offset:14}).setLngLat([+x.lon,+x.lat]).setHTML(`<b>${esc(x.name||'Estacionamento')}</b><div style="margin-top:4px;color:#9098a2;font-size:9px">${Math.max(1,+x.walk_minutes||1)} min a pé do destino · ${esc(fmtDistance(+x.walk_distance_m||0))}</div>`).addTo(map)})}}
 async function loadParkingNearby(force=false){if(!destinationConfirmed||!destination||profile!=='driving'){renderParkingNearby();return}const key=parkingCacheKey(),cached=parkingCache.get(key);if(!force&&cached&&Date.now()-cached.ts<10*60*1000){activeParkingItems=cached.items;renderParkingNearby();return}parkingController?.abort();parkingController=new AbortController();const list=$('parkingList');$('parkingNearby').classList.add('show');list.dataset.state='loading';list.innerHTML='<div class="parking-empty"><span class="loading"></span> Procurando estacionamentos próximos e calculando a caminhada…</div>';try{const q=new URLSearchParams({lat:destination.lat,lon:destination.lon,radius:2200}),r=await fetch('/api/parking-nearby?'+q,{signal:parkingController.signal}),d=await r.json();if(!r.ok)throw new Error(d.error||'Falha ao buscar estacionamentos');activeParkingItems=d.items||[];parkingCache.set(key,{ts:Date.now(),items:activeParkingItems});delete list.dataset.state;renderParkingNearby()}catch(e){if(e?.name==='AbortError')return;activeParkingItems=[];delete list.dataset.state;list.innerHTML='<div class="parking-empty">Não foi possível consultar estacionamentos agora.</div>'}}
-function fitEndpoints(){if(!origin||!destination)return;const b=new mapboxgl.LngLatBounds();b.extend([origin.lon,origin.lat]);b.extend([destination.lon,destination.lat]);map.fitBounds(b,{padding:{top:215,bottom:315,left:36,right:36},maxZoom:15.5,duration:680})}
+function fitEndpoints(){if(!origin||!destination)return;const b=new mapboxgl.LngLatBounds();b.extend([origin.lon,origin.lat]);b.extend([destination.lon,destination.lat]);const vh=Math.max(360,window.visualViewport?.height||window.innerHeight||720),vw=Math.max(320,window.innerWidth||390),sheet=planSheet?.getBoundingClientRect?.(),sheetHeight=sheet&&sheet.height>0?Math.min(vh*.48,sheet.height):vh*.34,padding=vw<760?{top:Math.round(Math.max(72,vh*.10)),bottom:Math.round(Math.max(170,Math.min(vh*.46,sheetHeight+54))),left:24,right:24}:{top:120,bottom:Math.round(Math.max(120,Math.min(260,sheetHeight*.62))),left:76,right:76};try{map.stop?.();map.fitBounds(b,{padding,maxZoom:15.5,duration:REDUCED_MOTION?0:620,essential:true,easing:t=>1-Math.pow(1-t,3)})}catch{}}
 async function reverseLabel(lat,lon){try{const r=await fetch(`/api/reverse?lat=${lat}&lon=${lon}`),d=await r.json();return d.label||'Minha localização'}catch{return 'Minha localização'}}
-async function locateUser(asOrigin=false,options={}){if(!navigator.geolocation){showPermission('Seu navegador não oferece geolocalização. Abra o VANO MAPS em um navegador com GPS.');return null}const centerMap=options.centerMap!==false,keepFollow=options.keepFollow!==false;if(keepFollow)mapFollowMode=true;startPassiveMapTracking();const cached=readLastGps();if(cached&&!userLocation){userLocation={lat:cached.lat,lon:cached.lon};lastPassivePosition={...cached};updateUserMarker(cached);if(centerMap)map.easeTo({center:[cached.lon,cached.lat],zoom:MAP_HOME_ZOOM-.12,duration:180})}try{const g=await requestPosition(),raw=geoRaw(g),p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};lastPassivePosition={...p};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();const label=await reverseLabel(p.lat,p.lon);$('cityStatus').textContent=(label.split(',').slice(0,2).join(',')||'Perto de você').slice(0,45);if(asOrigin||!origin){setPoint('origin',{...p,is_gps:true},'Minha localização',false);origin.is_gps=true}if(centerMap)map.easeTo({center:[p.lon,p.lat],zoom:MAP_HOME_ZOOM,duration:220});else mapFollowMode=false;updateFloatingSpeedometer(Number.isFinite(raw.speed)?raw.speed*3.6:0);maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,true);if(destinationConfirmed&&origin&&destination)calculateRoutes();return g}catch(e){if(cached){hidePermission();showToast('Usando sua última posição enquanto o GPS atualiza.');if(keepFollow)bootstrapGps(asOrigin);return null}showPermission(locationErrorMessage(e));return null}}
+async function locateUser(asOrigin=false,options={}){if(!navigator.geolocation){showPermission('Seu navegador não oferece geolocalização. Abra o VANO MAPS em um navegador com GPS.');return null}const centerMap=options.centerMap!==false,keepFollow=options.keepFollow!==false;if(keepFollow)mapFollowMode=true;startPassiveMapTracking();const cached=readLastGps();if(cached&&!userLocation){userLocation={lat:cached.lat,lon:cached.lon};lastPassivePosition={...cached};updateUserMarker(cached);if(centerMap)map.easeTo({center:[cached.lon,cached.lat],zoom:MAP_HOME_ZOOM-.12,duration:REDUCED_MOTION?0:260,easing:t=>1-Math.pow(1-t,3)})}try{const g=await requestPosition(),raw=geoRaw(g),p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};lastPassivePosition={...p};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();const label=await reverseLabel(p.lat,p.lon);$('cityStatus').textContent=(label.split(',').slice(0,2).join(',')||'Perto de você').slice(0,45);if(asOrigin||!origin){setPoint('origin',{...p,is_gps:true},'Minha localização',false);origin.is_gps=true}if(centerMap)map.easeTo({center:[p.lon,p.lat],zoom:MAP_HOME_ZOOM,duration:REDUCED_MOTION?0:420,essential:true,easing:t=>1-Math.pow(1-t,3)});else mapFollowMode=false;updateFloatingSpeedometer(Number.isFinite(raw.speed)?raw.speed*3.6:0);maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,true);if(destinationConfirmed&&origin&&destination)calculateRoutes();return g}catch(e){if(cached){hidePermission();showToast('Usando sua última posição enquanto o GPS atualiza.');if(keepFollow)bootstrapGps(asOrigin);return null}showPermission(locationErrorMessage(e));return null}}
 function syncSearchResultsPlacement(open=results?.classList.contains('show')){
   const app=$('wsApp'),home=document.querySelector('.planner-search-card');if(!results||!app||!home)return;
   const mobile=window.innerWidth<900;
