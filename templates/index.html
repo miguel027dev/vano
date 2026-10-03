@@ -31,7 +31,7 @@
 <link rel="preconnect" href="https://api.mapbox.com" crossorigin>
 <link rel="dns-prefetch" href="//api.mapbox.com">
 <link rel="preload" href="{{ url_for('static', filename='icons/vano/destination.svg') }}" as="image" type="image/svg+xml">
-<link rel="preload" as="style" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css" onload="this.onload=null;this.rel='stylesheet'" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/mapbox-gl@3.27.0/dist/mapbox-gl.css';this.rel='stylesheet'">
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css">
 <noscript><link href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css" rel="stylesheet"></noscript>
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <link rel="preload" as="script" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js">
@@ -111,7 +111,7 @@
           <img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}" alt="">
           <div><span>VANO MAPS</span><b>Conta & atalhos</b></div>
         </div>
-        <button class="v258-drawer-close" type="button" onclick="document.getElementById('accountBackdrop')?.click()" aria-label="Fechar painel"><i data-lucide="x" width="17"></i></button>
+        <button class="v258-drawer-close" type="button" data-account-close aria-label="Fechar painel"><i data-lucide="x" width="17"></i></button>
       </div>
 
       <div class="drawer-user">
@@ -188,7 +188,7 @@
             <img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}" alt="">
             <div><small>VANO MAPS</small><b>Seu mapa continua livre.</b></div>
           </div>
-          <button type="button" class="guest-drawer-close" onclick="document.getElementById('accountBackdrop')?.click()" aria-label="Fechar"><i data-lucide="x" width="17"></i></button>
+          <button type="button" class="guest-drawer-close" data-account-close aria-label="Fechar"><i data-lucide="x" width="17"></i></button>
         </div>
         <h3>Use agora. Salve quando quiser.</h3>
         <p>Você pode navegar sem conta. Entre apenas para sincronizar preferências, destinos, veículo e recursos de segurança entre dispositivos.</p>
