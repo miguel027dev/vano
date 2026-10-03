@@ -50,7 +50,9 @@ def _safe_header_env(name, fallback):
 
 FRAME_ANCESTORS = _safe_header_env("VANO_FRAME_ANCESTORS", "*")
 VANO_PERMISSIONS_POLICY = _safe_header_env("VANO_PERMISSIONS_POLICY", "geolocation=(self), fullscreen=(self), clipboard-read=(self), clipboard-write=(self), camera=(), microphone=(), payment=(), usb=()")
-VANO_TRUSTED_HOSTS = [x.strip() for x in os.environ.get("VANO_TRUSTED_HOSTS", "").split(",") if x.strip()]
+_trusted_hosts_env = [x.strip() for x in os.environ.get("VANO_TRUSTED_HOSTS", "").split(",") if x.strip()]
+_public_host = (urlparse(PUBLIC_SITE_URL).hostname or "").strip()
+VANO_TRUSTED_HOSTS = _trusted_hosts_env or [x for x in [_public_host, "vaigo-1.onrender.com", "localhost", "127.0.0.1"] if x]
 SECURE_COOKIE = True
 
 app = Flask(__name__, template_folder="templates")
