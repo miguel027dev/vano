@@ -24969,3 +24969,58 @@ body.vano-map-surface.nav-drive-roundabout .maneuver-icon{
     animation:none!important;
   }
 }
+
+
+/* VANO ROUTE CTA RESTORE V510 */
+body.vano-map-surface .route-variant-use{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin-top:8px!important;
+  min-height:28px!important;
+  padding:0 9px!important;
+  border-radius:9px!important;
+  background:rgba(245,154,98,.12)!important;
+  border:1px solid rgba(245,154,98,.28)!important;
+  color:#F59A62!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  letter-spacing:.02em!important;
+  white-space:nowrap!important;
+}
+body.vano-map-surface .route-variant.active .route-variant-use{
+  background:linear-gradient(135deg,#FFC39B,#F59A62 55%,#D9703F)!important;
+  border-color:transparent!important;
+  color:#fff!important;
+}
+body.vano-map-surface .destination-confirm{
+  z-index:72!important;
+}
+body.vano-map-surface .destination-confirm.show{
+  display:block!important;
+  pointer-events:auto!important;
+  opacity:1!important;
+}
+body.vano-map-surface .destination-confirm-actions{
+  position:relative!important;
+  z-index:2!important;
+}
+body.vano-map-surface .destination-confirm-actions button{
+  min-height:48px!important;
+}
+@media(max-width:767px){
+  body.vano-map-surface #routeState.vano-route-ready{
+    padding-bottom:max(92px,calc(env(safe-area-inset-bottom) + 82px))!important;
+  }
+  body.vano-map-surface #routeState .start-trip-cta{
+    position:sticky!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;
+    z-index:12!important;
+    margin-top:10px!important;
+  }
+  body.vano-map-surface .destination-confirm{
+    left:8px!important;
+    right:8px!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;
+  }
+}
