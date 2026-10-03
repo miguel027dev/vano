@@ -7,22 +7,37 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
+# Equalize the expensive password-verification path for unknown accounts so a
+# failed login does not trivially reveal whether an e-mail exists by timing.
+LOGIN_DUMMY_HASH = hash_password(secrets.token_urlsafe(24))
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         if not validate_csrf():
             abort(400)
-        if not rate_limit("login", 10, 60):
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        account_bucket = hashlib.sha256(email.encode("utf-8", "ignore")).hexdigest()[:32]
+        if not rate_limit("login-ip", 10, 60, shared=True) or not rate_limit(
+            "login-account", 12, 900, identity=account_bucket, include_ip=False, shared=True
+        ):
             flash("Muitas tentativas. Tente novamente em instantes.", "danger")
             return render_template("login.html"), 429
 
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        user = get_db().execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-        if not user or not user["is_active"] or not verify_password(user["password_hash"], password):
+        db = get_db()
+        user = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        candidate_hash = user["password_hash"] if user else LOGIN_DUMMY_HASH
+        password_ok = verify_password(candidate_hash, password)
+        if not user or not user["is_active"] or not password_ok:
             flash("E-mail ou senha inválidos.", "danger")
-            audit("login_failed", {"email_hash": hashlib.sha256(email.encode()).hexdigest()[:16]}, None)
+            audit("login_failed", {"email_hash": account_bucket[:16]}, None)
             return render_template("login.html"), 401
+
+        # Upgrade legacy PBKDF2 hashes only after a valid login; no schema
+        # migration or password reset is required for existing accounts.
+        if password_needs_rehash(user["password_hash"]):
+            db.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(password), user["id"]))
 
         session.clear()
         session["user_id"] = user["id"]
@@ -30,7 +45,6 @@ def login():
         session.permanent = True
         issue_persistent_login(user["id"])
         record_user_access(user["id"], force=True)
-        db = get_db()
         db.execute("UPDATE users SET last_login_at=? WHERE id=?", (utcnow_iso(), user["id"]))
         db.commit()
         audit("login_success", {}, user["id"])
@@ -48,13 +62,17 @@ def register():
     if request.method == "POST":
         if not validate_csrf():
             abort(400)
-        if not rate_limit("register", 6, 300):
+        if not rate_limit("register-ip", 6, 300, shared=True):
             flash("Muitas tentativas de cadastro. Tente novamente depois.", "danger")
             return render_template("register.html"), 429
 
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
+        register_bucket = hashlib.sha256(email.encode("utf-8", "ignore")).hexdigest()[:32]
+        if not rate_limit("register-account", 4, 3600, identity=register_bucket, include_ip=False, shared=True):
+            flash("Muitas tentativas de cadastro para esse e-mail. Tente novamente depois.", "danger")
+            return render_template("register.html"), 429
         locale = _normalize_ui_locale(request.form.get("locale") or active_ui_locale()) or active_ui_locale()
 
         errors = []
