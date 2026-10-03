@@ -115,6 +115,9 @@ def register():
 @app.route("/auth/google")
 @app.route("/login/google")
 def google_login():
+    if not rate_limit("google-login", 30, 300, shared=True):
+        flash("Muitas tentativas de login. Aguarde um instante.", "warning")
+        return redirect(url_for("login"))
     if not google_ready():
         flash("O login com Google ainda não foi configurado neste servidor.", "warning")
         return redirect(url_for("login"))
