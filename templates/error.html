@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
-{% block title %}{{ code }} · VANO MAPS{% endblock %}
+{% block title %}{{ code }} · VANO MAPS<script>document.querySelector('[data-error-reload]')?.addEventListener('click',()=>location.reload());document.querySelector('[data-error-back]')?.addEventListener('click',()=>history.length>1?history.back():location.assign({{ url_for('index')|tojson }}));</script>
+{% endblock %}
 {% block meta_description %}O VANO MAPS não conseguiu abrir esta página agora.{% endblock %}
 {% block tail_head %}{% endblock %}
 {% block content %}
 <main class="page" id="conteudo-principal"><div class="container"><section class="error-v311" role="alert">
   <div class="error-v311__code">ERRO {{ code }}</div><h1>{{ title }}</h1><p>{{ message }}</p>
   <div class="error-v311__actions">
-    {% if code in [408,429,500,502,503,504] %}<button class="btn btn-primary" type="button" onclick="location.reload()"><i data-lucide="refresh-cw" width="16"></i>Tentar novamente</button>{% endif %}
-    <button class="btn btn-ghost" type="button" onclick="history.length>1?history.back():location.assign('{{ url_for('index') }}')"><i data-lucide="arrow-left" width="16"></i>Voltar</button>
+    {% if code in [408,429,500,502,503,504] %}<button class="btn btn-primary" type="button" data-error-reload><i data-lucide="refresh-cw" width="16"></i>Tentar novamente</button>{% endif %}
+    <button class="btn btn-ghost" type="button" data-error-back><i data-lucide="arrow-left" width="16"></i>Voltar</button>
     <a class="btn btn-ghost" href="{{ url_for('index') }}"><i data-lucide="map" width="16"></i>Abrir mapa</a>
     <a class="btn btn-ghost" href="{{ url_for('help_page') }}"><i data-lucide="circle-help" width="16"></i>Ajuda</a>
   </div>
