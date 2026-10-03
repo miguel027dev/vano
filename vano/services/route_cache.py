@@ -56,7 +56,7 @@ def is_motorized_profile(profile):
 MAX_REPORT_AGE_DAYS = 30
 REMEMBER_COOKIE_NAME = "vano_remember"
 REMEMBER_EMBED_COOKIE_NAME = "vano_remember_embed"
-REMEMBER_LOGIN_DAYS = max(30, min(3650, int(os.environ.get("VANO_REMEMBER_DAYS", "365"))))
+REMEMBER_LOGIN_DAYS = max(14, min(365, int(os.environ.get("VANO_REMEMBER_DAYS", "90"))))
 
 # X10 — short-lived provider cache: repeated mode switches reuse the same fresh
 # Mapbox candidate set instead of repeating an identical network request.
