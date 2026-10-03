@@ -324,9 +324,12 @@ function passiveCameraAllowed(){return !!map&&mapFollowMode&&!activeNav?.classLi
 function updatePassiveTracking(g){
   if(!g?.coords)return;const raw=geoRaw(g);if(!acceptGpsRaw(raw))return;lastGpsFixAt=Date.now();const p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);emitVanoOsint('location',{location:osintLocationPayload(raw,p),navigation:false});
   const movedMeters=!lastPassivePosition?Infinity:hav([lastPassivePosition.lon,lastPassivePosition.lat],[p.lon,p.lat]);lastPassivePosition={...p};
-  if(!passiveCameraAllowed()||searchInteractionActive||movedMeters<.22)return;const now=performance.now(),gap=lastPassiveCameraAt?now-lastPassiveCameraAt:500;if(gap<110)return;lastPassiveCameraAt=now;
-  const z=Math.max(15.9,Math.min(17.15,map.getZoom?.()||16.25)),duration=Math.max(150,Math.min(680,gap*.96));
-  try{map.easeTo({center:[p.lon,p.lat],zoom:z,duration:REDUCED_MOTION?0:duration,essential:true,easing:t=>1-Math.pow(1-t,3)})}catch{}
+  const accuracy=Math.max(0,+raw.accuracy||999);
+  if(!passiveCameraAllowed()||searchInteractionActive||movedMeters<.35||accuracy>95)return;
+  const now=performance.now(),gap=lastPassiveCameraAt?now-lastPassiveCameraAt:520;if(gap<160)return;lastPassiveCameraAt=now;
+  const z=Math.max(15.9,Math.min(17.1,map.getZoom?.()||16.25)),duration=Math.max(180,Math.min(620,gap*.86));
+  internalCameraMoveUntil=now+duration+80;
+  try{map.easeTo({center:[p.lon,p.lat],zoom:z,duration:REDUCED_MOTION?0:duration,essential:true,easing:t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2})}catch{}
 }
 function startPassiveMapTracking(){
   if(!navigator.geolocation||activeNav?.classList.contains('show'))return;
@@ -639,7 +642,7 @@ function cameraMotionTick(ts){
 }
 function stopCameraMotion(){if(cameraMotionFrame!==null){cancelAnimationFrame(cameraMotionFrame);cameraMotionFrame=null}if(navLaunchResumeTimer){clearTimeout(navLaunchResumeTimer);navLaunchResumeTimer=null}cameraTargetContext=null;cameraVisualState=null;cameraLastPaintAt=0;cameraTargetBearing=null;cameraTargetBearingAt=0;resetCameraKinematics()}
 function scheduleCamera(p,instant=false,progressInfo=null){if(followMode&&navCameraState===NAV_CAMERA_STATES.RECENTERING&&performance.now()>cameraCalibrationUntil&&activeCameraIntent()!=='recenter')setNavCameraState(NAV_CAMERA_STATES.FOLLOWING);if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;
-  if(!p||!map||!selectedRoute||!followMode||searchInteractionActive)return;const now=performance.now();lastCameraUpdateAt=now;cameraTargetContext={p:{...p},progressInfo:progressInfo?{...progressInfo}:nearestProgress(p),instant:!!instant,updatedAt:now};if(now<navLaunchAnimationUntil){if(navLaunchResumeTimer===null)navLaunchResumeTimer=setTimeout(()=>{navLaunchResumeTimer=null;if(cameraTargetContext&&cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)},Math.max(30,navLaunchAnimationUntil-now+20));return}const intent=activeCameraIntent(now);if(instant&&(['recenter','follow','launch'].includes(intent)||now-(cameraLastPaintAt||0)>1200))cameraVisualState=null;if(cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
+  if(!p||!map||!selectedRoute||!followMode||searchInteractionActive)return;const now=performance.now(),accuracy=Math.max(0,+p.accuracy||0);if(accuracy>145&&cameraVisualState&&!instant)return;lastCameraUpdateAt=now;cameraTargetContext={p:{...p},progressInfo:progressInfo?{...progressInfo}:nearestProgress(p),instant:!!instant,updatedAt:now};if(now<navLaunchAnimationUntil){if(navLaunchResumeTimer===null)navLaunchResumeTimer=setTimeout(()=>{navLaunchResumeTimer=null;if(cameraTargetContext&&cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)},Math.max(30,navLaunchAnimationUntil-now+20));return}const intent=activeCameraIntent(now);if(instant&&(['recenter','follow','launch'].includes(intent)||now-(cameraLastPaintAt||0)>1200))cameraVisualState=null;if(cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
 }
 function markerEl(kind){
   const el=document.createElement('div');
@@ -1231,7 +1234,7 @@ map.on('move',()=>{if(!internalCameraMoveActive())scheduleTrafficSnapshot(false)
 if(alertLiveSyncTimer)clearInterval(alertLiveSyncTimer);alertLiveSyncTimer=setInterval(()=>{if(document.visibilityState==='visible'&&map?.loaded?.()&&map.getZoom()>=9)refreshAlerts(true)},5000);window.addEventListener('pagehide',()=>{if(alertLiveSyncTimer){clearInterval(alertLiveSyncTimer);alertLiveSyncTimer=null}},{once:true});
 ['alerts-marker','alerts-marker-symbol'].forEach(layer=>{map.on('click',layer,showMapAlertPopup);map.on('mouseenter',layer,()=>{map.getCanvas().style.cursor='pointer'});map.on('mouseleave',layer,()=>{map.getCanvas().style.cursor=''})});['alerts-cluster','alerts-cluster-count'].forEach(layer=>{map.on('click',layer,expandAlertCluster);map.on('mouseenter',layer,()=>{map.getCanvas().style.cursor='pointer'});map.on('mouseleave',layer,()=>{map.getCanvas().style.cursor=''})});
 function releaseNavigationCameraFromGesture(e){
-  const userGesture=!!e?.originalEvent||(Date.now()-lastMapPointerAt<1400);
+  const userGesture=!!e?.originalEvent||(Date.now()-lastMapPointerAt<650);
   if(!userGesture)return;
   if(activeNav?.classList.contains('show')){if(!followMode)return;setNavigationFollow(false,false);document.body.classList.add('nav-map-free');haptic(5);return}
   mapFollowMode=false;
@@ -1642,32 +1645,14 @@ function beginNavigationGpsWatch(){
   startNavigationGpsHeartbeat();
 }
 function playNavigationLaunchCue(p){
-  if(REDUCED_MOTION||!map||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat))return Promise.resolve();
+  if(!map||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat))return Promise.resolve();
   document.body.classList.add('vano-nav-launching');
-  const coords=selectedRoute?.geometry?.coordinates||[];
-  let bearing=Number.isFinite(+p.heading)?((+p.heading%360)+360)%360:null;
-  if(!Number.isFinite(bearing)&&coords.length>1){
-    const look=Math.min(coords.length-1,Math.max(1,Math.min(10,Math.floor(coords.length*.025))));
-    bearing=bearingBetween(coords[0],coords[look]);
-  }
-  if(!Number.isFinite(bearing))bearing=map.getBearing?.()||0;
-  try{
-    const currentZoom=Number.isFinite(+map.getZoom?.())?+map.getZoom():15.2;
-    map.stop?.();
-    map.easeTo?.({
-      center:[+p.lon,+p.lat],
-      zoom:Math.max(16.1,Math.min(17.05,currentZoom+.82)),
-      pitch:Math.max(34,Math.min(48,(+map.getPitch?.()||0)+28)),
-      bearing,
-      padding:{top:58,bottom:Math.min(250,Math.max(150,window.innerHeight*.22)),left:18,right:18},
-      retainPadding:false,
-      duration:560,
-      essential:true,
-      easing:t=>1-Math.pow(1-t,3)
-    });
-  }catch(e){console.debug('[VANO MAPS:launch-cue]',e)}
-  setTimeout(()=>document.body.classList.remove('vano-nav-launching'),760);
-  return new Promise(resolve=>setTimeout(resolve,300));
+  haptic(8);
+  // primeNavigationCamera owns the actual launch movement. Keeping this cue
+  // visual-only prevents two easeTo animations from fighting over bearing,
+  // pitch, padding and zoom during the first second of navigation.
+  setTimeout(()=>document.body.classList.remove('vano-nav-launching'),REDUCED_MOTION?120:720);
+  return new Promise(resolve=>setTimeout(resolve,REDUCED_MOTION?20:140));
 }
 async function startTrip(){
   if(starting)return;if(!selectedRoute&&routes.length)chooseByMode();if(!selectedRoute){showToast('Calcule e selecione uma rota primeiro.');return}

@@ -56,3 +56,15 @@ def test_motion_refinement_contract():
     assert ".ob500-map-card.is-selected" in css
     assert '[data-profile-root][data-save-state="saving"]' in css
     assert "*::before,*::after" not in css.split("/* VANO EXPERIENCE REFINEMENT",1)[1]
+
+
+def test_navigation_camera_has_single_launch_owner():
+    map_js = (ROOT / "static" / "vano-map.js").read_text(encoding="utf-8")
+    start = map_js.index("function playNavigationLaunchCue")
+    end = map_js.index("async function startTrip", start)
+    launch_cue = map_js[start:end]
+    assert "map.easeTo" not in launch_cue
+    assert "primeNavigationCamera owns the actual launch movement" in launch_cue
+    assert "accuracy>145&&cameraVisualState&&!instant" in map_js
+    assert "accuracy>95" in map_js
+    assert "lastMapPointerAt<650" in map_js
