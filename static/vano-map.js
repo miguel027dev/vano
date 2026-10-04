@@ -1915,7 +1915,7 @@ function bindPlanningSheetDrag(){
     if(pulse)haptic(6);
     requestAnimationFrame(()=>{syncFloatingLocate();syncSearchResultsPlacement();try{map?.resize?.()}catch{}});
   };
-  const dragRange=()=>Math.max(90,Math.min(window.innerHeight*.48,Math.max(180,planSheet.scrollHeight-plannerCollapsedHeight())));
+  const dragRange=()=>{const vh=Math.max(260,+window.visualViewport?.height||window.innerHeight||720);return Math.max(90,Math.min(vh*.48,Math.max(180,planSheet.scrollHeight-plannerCollapsedHeight()))) };
   toggle.addEventListener('pointerdown',e=>{
     if(planSheet.classList.contains('hidden')||e.button>0)return;
     active=true;pointerId=e.pointerId;moved=false;startY=lastY=e.clientY;lastT=performance.now();
@@ -1970,9 +1970,9 @@ function refreshResponsiveViewport(){
   clearTimeout(vanoViewportTimer);
   const vv=window.visualViewport,layoutH=Math.round(window.innerHeight||document.documentElement.clientHeight||vv?.height||vanoStableViewportH||0),layoutW=Math.round(window.innerWidth||document.documentElement.clientWidth||vv?.width||0),rawH=Math.round(vv?.height||layoutH),rawW=Math.round(vv?.width||layoutW);
   const searchFocused=document.activeElement===originInput||document.activeElement===destinationInput,baselineH=Math.max(vanoStableViewportH||0,layoutH),viewportLoss=Math.max(0,baselineH-rawH-(vv?.offsetTop||0));
-  const keyboardLikely=!!(searchFocused&&window.innerWidth<900&&vv&&(viewportLoss>110||layoutH-rawH>90||(+vv.offsetTop||0)>40));
+  const touchViewport=!!((window.matchMedia?.('(pointer:coarse)').matches)||(navigator.maxTouchPoints>0)),keyboardLikely=!!(searchFocused&&vv&&(touchViewport||window.innerWidth<900)&&(viewportLoss>110||layoutH-rawH>90||(+vv.offsetTop||0)>40));
   if(!keyboardLikely&&layoutH>260)vanoStableViewportH=layoutH;
-  vanoKeyboardOpen=keyboardLikely;document.documentElement.classList.toggle('vano-keyboard-open',keyboardLikely);document.body.classList.toggle('vano-keyboard-open',keyboardLikely);const viewportBand=rawW<360?'phone-xs':rawW<600?'phone':rawW<768?'phone-lg':rawW<1024?'tablet':rawW<1440?'notebook':'desktop';document.documentElement.dataset.vanoViewport=viewportBand;document.documentElement.dataset.vanoOrientation=rawW>rawH?'landscape':'portrait';document.documentElement.style.setProperty('--vano-layout-w',`${Math.max(280,layoutW)}px`);document.documentElement.style.setProperty('--vano-layout-h',`${Math.max(260,layoutH)}px`);
+  vanoKeyboardOpen=keyboardLikely;document.documentElement.classList.toggle('vano-keyboard-open',keyboardLikely);document.body.classList.toggle('vano-keyboard-open',keyboardLikely);const viewportBand=rawW<360?'phone-xs':rawW<600?'phone':rawW<768?'phone-lg':rawW<1024?'tablet':rawW<1440?'notebook':'desktop';document.documentElement.dataset.vanoViewport=viewportBand;document.documentElement.dataset.vanoOrientation=rawW>rawH?'landscape':'portrait';document.documentElement.dataset.vanoPointer=touchViewport?'touch':'fine';document.documentElement.style.setProperty('--vano-layout-w',`${Math.max(280,layoutW)}px`);document.documentElement.style.setProperty('--vano-layout-h',`${Math.max(260,layoutH)}px`);
   // V345: keep the map/app composition at its pre-keyboard height on every mobile browser.
   // Some Android devices (notably Samsung/Chrome combinations) resize BOTH the layout and
   // visual viewports when the keyboard opens; using rawH there made the whole UI look 70–80%
