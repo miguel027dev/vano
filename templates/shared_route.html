@@ -2,7 +2,7 @@
 <html lang="{{ active_locale }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
   
   {% if active_locale != 'pt-BR' %}<script defer src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>{% endif %}
@@ -17,7 +17,7 @@
     @media(min-width:900px){.route-panel{left:24px;bottom:34px;width:410px;padding:19px}.share-top{left:24px;top:20px}.route-title{font-size:24px}.route-actions button,.route-actions a{height:48px}}
     @media(max-width:640px){.share-top{height:42px;left:8px;top:max(8px,calc(env(safe-area-inset-top) + 6px));padding:0 11px}.route-panel{left:max(6px,env(safe-area-inset-left));right:max(6px,env(safe-area-inset-right));width:auto;bottom:max(29px,calc(var(--safe-bottom) + 25px));padding:13px;border-radius:21px;max-height:min(49dvh,420px)}.route-title{font-size:18px;margin-bottom:12px}.route-metrics{margin:12px 0}.route-note{display:none}.route-actions{grid-template-columns:1fr 1.25fr}.place b{font-size:10px}.mapboxgl-ctrl-logo{transform:scale(.68)}}
     @media(max-width:350px){.route-panel{padding:11px}.route-metrics{gap:4px}.metric{padding:8px 6px}.route-actions button,.route-actions a{font-size:9px}.route-title{font-size:17px}}
-    @media(orientation:landscape) and (max-height:560px){.route-panel{top:max(64px,calc(env(safe-area-inset-top) + 60px));bottom:max(27px,calc(var(--safe-bottom) + 24px));width:min(360px,44vw);max-height:none}.route-note{display:none}.route-title{font-size:17px;margin-bottom:9px}.route-metrics{margin:9px 0}.route-actions button,.route-actions a{height:40px}}
+    @media(orientation:landscape) and (max-height:560px){.route-panel{top:max(64px,calc(env(safe-area-inset-top) + 60px));bottom:max(27px,calc(var(--safe-bottom) + 24px));width:min(360px,44vw);max-height:none}.route-note{display:none}.route-title{font-size:17px;margin-bottom:9px}.route-metrics{margin:9px 0}.route-actions button,.route-actions a{height:44px}}@media(pointer:coarse){.route-actions button,.route-actions a{min-height:44px}.route-panel{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}}@media(min-width:700px) and (max-width:1100px){.route-panel{width:min(430px,46vw);max-height:calc(100dvh - 96px)}}
   </style>
   
   
