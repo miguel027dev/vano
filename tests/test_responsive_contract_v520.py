@@ -62,7 +62,7 @@ def test_route_framing_uses_actual_panel_geometry():
     js = read("static/vano-map.js")
     assert "function fitEndpoints()" in js
     assert "function routeOverviewPadding()" in js
-    assert "sheet?.getBoundingClientRect?.()" in js
+    assert "planSheet?.getBoundingClientRect?.()" in js
     assert "panelRight=sheet&&sheet.width>0" in js
     assert "bottomCover=Math.max(0" in js
 
