@@ -25355,3 +25355,179 @@ body.vano-keyboard-open.vano-map-surface .search-results.search-results-portal{
   body.vano-page-surface .grid-3,
   body.vano-admin-surface .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
+
+
+/* VANO RESPONSIVE HARDENING V521 */
+/* Shared safe-area geometry */
+body.vano-map-surface{
+  --vano-safe-top:max(8px,env(safe-area-inset-top));
+  --vano-safe-right:max(8px,env(safe-area-inset-right));
+  --vano-safe-bottom:max(8px,env(safe-area-inset-bottom));
+  --vano-safe-left:max(8px,env(safe-area-inset-left));
+}
+body.vano-map-surface .header{
+  top:var(--vano-safe-top)!important;
+  right:var(--vano-safe-right)!important;
+}
+body.vano-map-surface .map-tools{
+  top:var(--vano-safe-top)!important;
+  right:var(--vano-safe-right)!important;
+}
+body.vano-map-surface .search-results{
+  max-width:calc(var(--vano-vw,100vw) - var(--vano-safe-left) - var(--vano-safe-right) - 12px)!important;
+}
+body.vano-map-surface :is(#planSheet,#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet,#destinationConfirm,#resumeTripCard){
+  scrollbar-width:thin;
+}
+
+/* Side-rail layouts must scroll instead of clipping on short notebooks/tablets. */
+@media(min-width:768px){
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    scrollbar-gutter:stable;
+  }
+  body.vano-map-surface #routeState.vano-route-ready{
+    min-width:0!important;
+  }
+  body.vano-map-surface #routeState :is(.route-head,.route-card,.route-deep-grid,.vano-route-more-content){
+    min-width:0!important;
+  }
+  body.vano-map-surface #routeState :is(.vr-copy,.route-option-copy,.route-card-top>div){
+    min-width:0!important;
+  }
+}
+
+/* Phones: explicit navigation HUD geometry independent of legacy rules. */
+@media(max-width:767px){
+  body.vano-map-surface.body-nav #navManeuverTop{
+    left:var(--vano-safe-left)!important;
+    right:var(--vano-safe-right)!important;
+    top:var(--vano-safe-top)!important;
+    width:auto!important;
+    max-width:none!important;
+  }
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{
+    left:var(--vano-safe-left)!important;
+    right:var(--vano-safe-right)!important;
+    bottom:var(--vano-safe-bottom)!important;
+    width:auto!important;
+    max-width:none!important;
+    max-height:min(42dvh,360px)!important;
+    overflow-y:auto!important;
+  }
+  body.vano-map-surface.body-nav #navControlStack{
+    right:var(--vano-safe-right)!important;
+  }
+  body.vano-map-surface.body-nav #navStreetChip{
+    max-width:calc(100vw - 132px - env(safe-area-inset-left) - env(safe-area-inset-right))!important;
+  }
+  body.vano-map-surface .route-time{min-width:72px!important}
+  body.vano-map-surface .route-head{min-width:0!important}
+  body.vano-map-surface .route-head .vr-copy{min-width:0!important}
+  body.vano-map-surface .route-head h2,
+  body.vano-map-surface .route-head p{
+    overflow:hidden!important;text-overflow:ellipsis!important;
+  }
+}
+
+/* Very short portrait devices: retain core actions, hide secondary decoration. */
+@media(max-width:599px) and (max-height:620px) and (orientation:portrait){
+  body.vano-map-surface .planner-tip,
+  body.vano-map-surface .planner-smart-destinations{display:none!important}
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    max-height:calc(var(--vano-visible-vh,100dvh) - 12px)!important;
+  }
+  body.vano-map-surface #routeState .start-trip-cta{min-height:54px!important}
+  body.vano-map-surface #routeState .start-trip-copy small{display:none!important}
+}
+
+/* Landscape navigation on phones: keep map center clear by using left/right rails. */
+@media(max-width:899px) and (orientation:landscape) and (max-height:560px){
+  body.vano-map-surface.body-nav #navManeuverTop{
+    left:var(--vano-safe-left)!important;
+    right:auto!important;
+    top:var(--vano-safe-top)!important;
+    width:min(390px,46vw)!important;
+    max-height:calc(var(--vano-visible-vh,100dvh) * .42)!important;
+  }
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{
+    left:var(--vano-safe-left)!important;
+    right:auto!important;
+    bottom:var(--vano-safe-bottom)!important;
+    width:min(390px,46vw)!important;
+    max-height:48dvh!important;
+  }
+  body.vano-map-surface.body-nav #navControlStack{
+    right:var(--vano-safe-right)!important;
+    bottom:var(--vano-safe-bottom)!important;
+  }
+  body.vano-map-surface.body-nav .floating-locate{
+    right:calc(var(--vano-safe-right) + 52px)!important;
+  }
+}
+
+/* iPad / large Android tablet in landscape often reports notebook width. */
+@media(min-width:1024px) and (max-width:1366px) and (pointer:coarse){
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    width:clamp(390px,40vw,460px)!important;
+    left:max(16px,env(safe-area-inset-left))!important;
+    top:max(16px,env(safe-area-inset-top))!important;
+    bottom:max(16px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-map-surface .destination-confirm,
+  body.vano-map-surface #resumeTripCard{
+    width:clamp(390px,40vw,460px)!important;
+    left:max(16px,env(safe-area-inset-left))!important;
+    bottom:max(16px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    width:min(450px,44vw)!important;
+    right:max(16px,env(safe-area-inset-right))!important;
+    bottom:max(16px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-map-surface button{min-block-size:44px}
+}
+
+/* Touch notebook/tablet with an on-screen keyboard. */
+html[data-vano-pointer="touch"].vano-keyboard-open body.vano-map-surface #planSheet{
+  max-height:calc(var(--vano-visible-vh,100dvh) - 12px)!important;
+  bottom:max(6px,calc(var(--vano-keyboard-bottom,0px) + 6px))!important;
+}
+html[data-vano-pointer="touch"].vano-keyboard-open body.vano-map-surface .search-results.search-results-portal{
+  max-height:max(110px,calc(var(--vano-visible-vh,100dvh) - 118px))!important;
+}
+
+/* Short notebooks: compress secondary blocks, never core route CTA. */
+@media(min-width:900px) and (max-height:720px){
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    top:10px!important;bottom:10px!important;
+    max-height:calc(var(--vano-vh,100dvh) - 20px)!important;
+    padding-top:13px!important;padding-bottom:13px!important;
+  }
+  body.vano-map-surface .planner-tip{display:none!important}
+  body.vano-map-surface .nearby-service{min-height:58px!important}
+  body.vano-map-surface #routeState .vano-route-more-section{margin-top:8px!important}
+  body.vano-map-surface.body-nav #navManeuverTop{top:10px!important}
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{bottom:10px!important}
+}
+
+/* Ultrawide: do not let UI scale with empty horizontal space. */
+@media(min-width:2200px){
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{width:520px!important}
+  body.vano-map-surface .destination-confirm,
+  body.vano-map-surface #resumeTripCard{width:520px!important}
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){width:480px!important}
+  body.vano-map-surface.body-nav #navManeuverTop,
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{width:530px!important}
+}
+
+/* Prevent accidental horizontal growth from long localized strings. */
+body.vano-map-surface :is(
+  .planner-heading-copy,.planner-tip,.route-option-copy,.route-card,.route-ai,
+  .nav-maneuver-copy,.nav-trip-copy,.quick-alert-copy,.drawer-link-copy
+){
+  min-width:0!important;
+  overflow-wrap:anywhere;
+}
