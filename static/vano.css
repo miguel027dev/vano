@@ -25024,3 +25024,332 @@ body.vano-map-surface .destination-confirm-actions button{
     bottom:max(8px,env(safe-area-inset-bottom))!important;
   }
 }
+
+
+/* VANO RESPONSIVE CONTRACT V520 */
+html{
+  --vano-layout-h:100dvh;
+  --vano-layout-w:100vw;
+  --vano-responsive-gutter:10px;
+  --vano-responsive-panel:calc(100vw - 20px);
+}
+html,body{max-width:100%;overflow-x:hidden}
+body.vano-map-surface.vano-map-surface,
+body.vano-map-surface.vano-map-surface .ws-app{
+  width:100%!important;
+  height:var(--vano-vh,100dvh)!important;
+  min-height:100svh!important;
+  max-height:var(--vano-vh,100dvh)!important;
+}
+body.vano-map-surface.vano-map-surface .ws-app{
+  inset:0 auto auto 0!important;
+}
+body.vano-map-surface.vano-map-surface #map{
+  width:100%!important;height:100%!important;
+}
+
+/* Common adaptive sizing: keep every interactive surface inside the real viewport. */
+body.vano-map-surface :is(#planSheet,#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet,#destinationConfirm,#resumeTripCard,#arrivalExperience){
+  box-sizing:border-box!important;
+  max-width:calc(var(--vano-vw,100vw) - env(safe-area-inset-left) - env(safe-area-inset-right) - 16px)!important;
+}
+body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* XS phones: 320–359 px. Preserve tap size; reduce decoration instead of shrinking controls. */
+@media(max-width:359px){
+  html{--vano-responsive-gutter:6px;--vano-responsive-panel:calc(100vw - 12px)}
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(6px,env(safe-area-inset-left))!important;
+    right:max(6px,env(safe-area-inset-right))!important;
+    bottom:max(6px,env(safe-area-inset-bottom))!important;
+    width:auto!important;
+    max-height:min(calc(var(--vano-visible-vh,100dvh) - 18px),82dvh)!important;
+    padding:7px 8px 10px!important;
+    border-radius:21px!important;
+  }
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{
+    height:138px!important;min-height:138px!important;max-height:138px!important;
+  }
+  body.vano-map-surface .planner-heading{margin:1px 2px 7px!important}
+  body.vano-map-surface .planner-heading-copy small{font-size:8px!important}
+  body.vano-map-surface .planner-heading-copy b{font-size:18px!important;letter-spacing:-.45px!important}
+  body.vano-map-surface .planner-weather{display:none!important}
+  body.vano-map-surface .planner-search-row{grid-template-columns:minmax(0,1fr) 48px!important;gap:6px!important}
+  body.vano-map-surface .planner-location-row{height:54px!important;min-height:54px!important;padding-left:8px!important}
+  body.vano-map-surface #destinationInput{font-size:16px!important}
+  body.vano-map-surface .planner-presets{gap:5px!important}
+  body.vano-map-surface .planner-preset{min-height:54px!important;padding:7px!important}
+  body.vano-map-surface .nearby-services{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px!important}
+  body.vano-map-surface .nearby-service{min-height:62px!important;padding:7px!important}
+  body.vano-map-surface .route-variants{gap:6px!important}
+  body.vano-map-surface .route-variant{flex:0 0 min(84vw,230px)!important;max-width:min(84vw,230px)!important}
+  body.vano-map-surface .route-variant-use{min-height:34px!important;font-size:9px!important}
+  body.vano-map-surface #routeState .start-trip-cta{min-height:58px!important}
+  body.vano-map-surface #routeState .start-trip-copy small{font-size:8px!important}
+  body.vano-map-surface .destination-confirm{
+    left:max(6px,env(safe-area-inset-left))!important;
+    right:max(6px,env(safe-area-inset-right))!important;
+    bottom:max(6px,env(safe-area-inset-bottom))!important;
+    width:auto!important;
+  }
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    left:max(6px,env(safe-area-inset-left))!important;
+    right:max(6px,env(safe-area-inset-right))!important;
+    width:auto!important;
+    max-height:calc(var(--vano-visible-vh,100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 12px)!important;
+  }
+  body.vano-map-surface .map-tools{right:max(6px,env(safe-area-inset-right))!important}
+  body.vano-map-surface .map-tools .map-btn{width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important}
+  body.vano-map-surface .floating-locate{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important}
+}
+
+/* Regular phones. */
+@media(min-width:360px) and (max-width:599px){
+  html{--vano-responsive-gutter:8px;--vano-responsive-panel:calc(100vw - 16px)}
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(8px,env(safe-area-inset-left))!important;
+    right:max(8px,env(safe-area-inset-right))!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;
+    width:auto!important;
+    max-height:min(calc(var(--vano-visible-vh,100dvh) - 20px),84dvh)!important;
+    border-radius:24px!important;
+  }
+  body.vano-map-surface .route-variant{flex:0 0 min(72vw,250px)!important;max-width:min(72vw,250px)!important}
+  body.vano-map-surface .route-variant-use{min-height:34px!important;font-size:9px!important}
+  body.vano-map-surface .destination-confirm{
+    left:max(8px,env(safe-area-inset-left))!important;
+    right:max(8px,env(safe-area-inset-right))!important;
+    bottom:max(8px,env(safe-area-inset-bottom))!important;
+    width:auto!important;
+  }
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    left:max(8px,env(safe-area-inset-left))!important;
+    right:max(8px,env(safe-area-inset-right))!important;
+    width:auto!important;
+    max-height:min(86dvh,calc(var(--vano-visible-vh,100dvh) - env(safe-area-inset-top) - 12px))!important;
+  }
+}
+
+/* Large phones / foldables in narrow portrait. */
+@media(min-width:600px) and (max-width:767px){
+  html{--vano-responsive-gutter:12px;--vano-responsive-panel:min(560px,calc(100vw - 24px))}
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    left:50%!important;right:auto!important;
+    width:min(560px,calc(100vw - 24px))!important;
+    transform:translateX(-50%)!important;
+    bottom:max(12px,env(safe-area-inset-bottom))!important;
+    max-height:min(80dvh,760px)!important;
+  }
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet.hidden{
+    transform:translate(-50%,calc(100% + 40px))!important;
+  }
+  body.vano-map-surface .destination-confirm,
+  body.vano-map-surface #resumeTripCard{
+    left:50%!important;right:auto!important;
+    width:min(540px,calc(100vw - 24px))!important;
+    transform:translateX(-50%)!important;
+    bottom:max(12px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    left:auto!important;right:max(12px,env(safe-area-inset-right))!important;
+    width:min(440px,calc(100vw - 24px))!important;
+    max-height:min(84dvh,760px)!important;
+  }
+  body.vano-map-surface .route-variant{flex:0 0 210px!important;max-width:230px!important}
+}
+
+/* Tablets: persistent left work surface, map remains dominant. */
+@media(min-width:768px) and (max-width:1023px){
+  html{--vano-responsive-gutter:16px;--vano-responsive-panel:clamp(360px,43vw,420px)}
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(16px,env(safe-area-inset-left))!important;right:auto!important;
+    top:max(16px,env(safe-area-inset-top))!important;
+    bottom:max(16px,env(safe-area-inset-bottom))!important;
+    width:clamp(360px,43vw,420px)!important;
+    height:auto!important;
+    max-height:calc(var(--vano-vh,100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px)!important;
+    padding:16px!important;border-radius:26px!important;
+    transform:none!important;
+  }
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{
+    height:auto!important;min-height:0!important;max-height:calc(var(--vano-vh,100dvh) - 32px)!important;
+  }
+  body.vano-map-surface #planSheet .vano-planner-toggle-v221{display:none!important}
+  body.vano-map-surface .planner-heading-copy b{font-size:23px!important}
+  body.vano-map-surface .planner-presets{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-map-surface .nearby-services{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-map-surface .route-variants{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;overflow:visible!important}
+  body.vano-map-surface .route-variant{width:auto!important;min-width:0!important;max-width:none!important}
+  body.vano-map-surface .destination-confirm,
+  body.vano-map-surface #resumeTripCard{
+    left:max(16px,env(safe-area-inset-left))!important;right:auto!important;
+    width:clamp(360px,43vw,420px)!important;
+    bottom:max(16px,env(safe-area-inset-bottom))!important;
+  }
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    left:auto!important;right:max(16px,env(safe-area-inset-right))!important;
+    bottom:max(16px,env(safe-area-inset-bottom))!important;
+    width:min(420px,calc(100vw - 32px))!important;
+    max-height:calc(var(--vano-vh,100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px)!important;
+  }
+  body.vano-map-surface.body-nav #navManeuverTop,
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{
+    left:max(16px,env(safe-area-inset-left))!important;right:auto!important;width:clamp(380px,48vw,470px)!important;
+  }
+  body.vano-map-surface.body-nav #navManeuverTop{top:max(16px,env(safe-area-inset-top))!important}
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{bottom:max(16px,env(safe-area-inset-bottom))!important}
+  body.vano-map-surface.body-nav #navControlStack{right:max(16px,env(safe-area-inset-right))!important}
+}
+
+/* Notebook: enough room for a proper left rail without overgrowing cards. */
+@media(min-width:1024px) and (max-width:1439px){
+  html{--vano-responsive-gutter:20px;--vano-responsive-panel:430px}
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(20px,env(safe-area-inset-left))!important;right:auto!important;
+    top:max(20px,env(safe-area-inset-top))!important;bottom:max(20px,env(safe-area-inset-bottom))!important;
+    width:430px!important;height:auto!important;
+    max-height:calc(var(--vano-vh,100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 40px)!important;
+    padding:18px!important;border-radius:28px!important;transform:none!important;
+  }
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{
+    height:auto!important;min-height:0!important;max-height:calc(var(--vano-vh,100dvh) - 40px)!important;
+  }
+  body.vano-map-surface #planSheet .vano-planner-toggle-v221{display:none!important}
+  body.vano-map-surface .nearby-services{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-map-surface .route-variants{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;overflow:visible!important}
+  body.vano-map-surface .route-variant{width:auto!important;min-width:0!important;max-width:none!important}
+  body.vano-map-surface .destination-confirm,
+  body.vano-map-surface #resumeTripCard{
+    left:20px!important;right:auto!important;width:430px!important;bottom:20px!important;
+  }
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    left:auto!important;right:20px!important;bottom:20px!important;width:430px!important;
+    max-height:calc(var(--vano-vh,100dvh) - 40px)!important;
+  }
+  body.vano-map-surface.body-nav #navManeuverTop,
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{left:20px!important;right:auto!important;width:450px!important}
+  body.vano-map-surface.body-nav #navManeuverTop{top:20px!important}
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{bottom:20px!important}
+  body.vano-map-surface.body-nav #navControlStack{right:20px!important}
+}
+
+/* Desktop / wide desktop. */
+@media(min-width:1440px){
+  html{--vano-responsive-gutter:24px;--vano-responsive-panel:470px}
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(24px,env(safe-area-inset-left))!important;right:auto!important;
+    top:max(24px,env(safe-area-inset-top))!important;bottom:max(24px,env(safe-area-inset-bottom))!important;
+    width:470px!important;height:auto!important;max-height:calc(var(--vano-vh,100dvh) - 48px)!important;
+    padding:20px!important;border-radius:30px!important;transform:none!important;
+  }
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{
+    height:auto!important;min-height:0!important;max-height:calc(var(--vano-vh,100dvh) - 48px)!important;
+  }
+  body.vano-map-surface #planSheet .vano-planner-toggle-v221{display:none!important}
+  body.vano-map-surface .planner-heading-copy b{font-size:26px!important}
+  body.vano-map-surface .nearby-services{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  body.vano-map-surface .route-variants{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;overflow:visible!important}
+  body.vano-map-surface .route-variant{width:auto!important;min-width:0!important;max-width:none!important}
+  body.vano-map-surface .destination-confirm,
+  body.vano-map-surface #resumeTripCard{left:24px!important;right:auto!important;width:470px!important;bottom:24px!important}
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    left:auto!important;right:24px!important;bottom:24px!important;width:460px!important;max-height:calc(var(--vano-vh,100dvh) - 48px)!important;
+  }
+  body.vano-map-surface.body-nav #navManeuverTop,
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{left:24px!important;right:auto!important;width:480px!important}
+  body.vano-map-surface.body-nav #navManeuverTop{top:24px!important}
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{bottom:24px!important}
+  body.vano-map-surface.body-nav #navControlStack{right:24px!important}
+}
+@media(min-width:1800px){
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{width:500px!important}
+  body.vano-map-surface .destination-confirm,
+  body.vano-map-surface #resumeTripCard{width:500px!important}
+  body.vano-map-surface.body-nav #navManeuverTop,
+  body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal{width:510px!important}
+}
+
+/* iPhone / Android touch: prevent focus zoom and keep bottom chrome away from CTAs. */
+@media(max-width:767px) and (pointer:coarse){
+  body.vano-map-surface input,
+  body.vano-map-surface select,
+  body.vano-map-surface textarea{font-size:16px!important}
+  body.vano-map-surface button{min-block-size:44px}
+  body.vano-map-surface #routeState.vano-route-ready{
+    padding-bottom:max(98px,calc(env(safe-area-inset-bottom) + 88px))!important;
+  }
+  body.vano-map-surface #routeState .start-trip-cta{
+    bottom:max(8px,calc(env(safe-area-inset-bottom) + 2px))!important;
+  }
+}
+
+/* Virtual keyboard: prioritize search, not decoration. */
+html.vano-keyboard-open body.vano-map-surface #planSheet,
+body.vano-keyboard-open.vano-map-surface #planSheet{
+  bottom:max(6px,calc(var(--vano-keyboard-bottom,0px) + 6px))!important;
+  max-height:min(74dvh,calc(var(--vano-visible-vh,100dvh) - 12px))!important;
+}
+html.vano-keyboard-open body.vano-map-surface :is(.planner-presets,.planner-smart-destinations,.nearby-services,.planner-tip),
+body.vano-keyboard-open.vano-map-surface :is(.planner-presets,.planner-smart-destinations,.nearby-services,.planner-tip){
+  display:none!important;
+}
+html.vano-keyboard-open body.vano-map-surface .search-results.search-results-portal,
+body.vano-keyboard-open.vano-map-surface .search-results.search-results-portal{
+  max-height:min(46dvh,calc(var(--vano-visible-vh,100dvh) - 128px))!important;
+}
+
+/* Short landscape phones: switch from bottom-sheet thinking to a compact side panel. */
+@media(max-width:899px) and (orientation:landscape) and (max-height:560px){
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet{
+    left:max(8px,env(safe-area-inset-left))!important;right:auto!important;
+    top:max(8px,env(safe-area-inset-top))!important;bottom:max(8px,env(safe-area-inset-bottom))!important;
+    width:min(400px,52vw)!important;height:auto!important;max-height:calc(var(--vano-visible-vh,100dvh) - 16px)!important;
+    transform:none!important;border-radius:22px!important;padding:9px 10px!important;
+  }
+  body.vano-map-surface.vano-map-surface:not(.body-nav) #planSheet.sheet-collapsed{
+    height:auto!important;min-height:0!important;max-height:calc(var(--vano-visible-vh,100dvh) - 16px)!important;
+  }
+  body.vano-map-surface #planSheet .vano-planner-toggle-v221{display:none!important}
+  body.vano-map-surface .planner-heading{margin-bottom:6px!important}
+  body.vano-map-surface .planner-heading-copy small{display:none!important}
+  body.vano-map-surface .planner-heading-copy b{font-size:18px!important}
+  body.vano-map-surface .planner-presets,
+  body.vano-map-surface .nearby-services{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-map-surface .nearby-service{min-height:56px!important}
+  body.vano-map-surface .destination-confirm{left:8px!important;right:auto!important;width:min(400px,52vw)!important;bottom:8px!important}
+  body.vano-map-surface :is(#accountDrawer,#prefsDrawer,#safetyDrawer,#quickAlertSheet){
+    right:max(8px,env(safe-area-inset-right))!important;left:auto!important;width:min(420px,52vw)!important;max-height:calc(var(--vano-visible-vh,100dvh) - 16px)!important;
+  }
+}
+
+/* Generic pages: no horizontal clipping on phones/tablets, sensible notebook widths. */
+@media(max-width:767px){
+  body.vano-page-surface .container,
+  body.vano-admin-surface .container,
+  body.vano-page-surface .legal-shell,
+  body.vano-page-surface .faq-shell,
+  body.vano-page-surface .profile-shell{
+    width:calc(100% - 20px)!important;max-width:100%!important;
+  }
+  body.vano-page-surface :is(.grid-2,.grid-3,.public-grid,.public-split,.legal-layout),
+  body.vano-admin-surface :is(.grid-2,.grid-3,.kpi-grid){
+    grid-template-columns:1fr!important;
+  }
+  body.vano-page-surface :is(table,.table),
+  body.vano-admin-surface :is(table,.table){min-width:680px}
+  body.vano-page-surface :is(.table-wrap,.audit-table-wrap,.admin-table-wrap,.finance-table-wrap),
+  body.vano-admin-surface :is(.table-wrap,.audit-table-wrap,.admin-table-wrap,.finance-table-wrap){
+    overflow-x:auto!important;-webkit-overflow-scrolling:touch;
+  }
+}
+@media(min-width:768px) and (max-width:1023px){
+  body.vano-page-surface .container,
+  body.vano-admin-surface .container{width:min(calc(100% - 32px),1180px)!important}
+  body.vano-page-surface .grid-3,
+  body.vano-admin-surface .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
