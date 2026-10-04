@@ -25340,11 +25340,13 @@ body.vano-keyboard-open.vano-map-surface .search-results.search-results-portal{
   body.vano-admin-surface :is(.grid-2,.grid-3,.kpi-grid){
     grid-template-columns:1fr!important;
   }
-  body.vano-page-surface :is(table,.table),
-  body.vano-admin-surface :is(table,.table){min-width:680px}
   body.vano-page-surface :is(.table-wrap,.audit-table-wrap,.admin-table-wrap,.finance-table-wrap),
   body.vano-admin-surface :is(.table-wrap,.audit-table-wrap,.admin-table-wrap,.finance-table-wrap){
-    overflow-x:auto!important;-webkit-overflow-scrolling:touch;
+    max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch;
+  }
+  body.vano-page-surface :is(.table-wrap,.audit-table-wrap,.admin-table-wrap,.finance-table-wrap) table,
+  body.vano-admin-surface :is(.table-wrap,.audit-table-wrap,.admin-table-wrap,.finance-table-wrap) table{
+    min-width:680px;
   }
 }
 @media(min-width:768px) and (max-width:1023px){
