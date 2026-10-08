@@ -3,6 +3,7 @@
 Extracted from the historical monolithic app.py without changing route bodies or
 business rules. Runtime dependencies are injected once during application startup.
 """
+from time import perf_counter
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
@@ -11,12 +12,19 @@ del _vano_inject
 def prepare_security_nonce():
     # One nonce per request lets templates keep small bootstrap scripts without
     # enabling arbitrary inline JavaScript globally.
+    g.request_started_perf = perf_counter()
     g.csp_nonce = secrets.token_urlsafe(18)
 
 
 @app.after_request
 def security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    # Distinguish application processing from network/render delays.
+    if request.method == "GET" and response.mimetype == "text/html":
+        elapsed_ms = max(0.0, (perf_counter() - getattr(g, "request_started_perf", perf_counter())) * 1000)
+        response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}"
+        if elapsed_ms > 700:
+            app.logger.warning("[web-perf] slow HTML route=%s status=%s duration_ms=%.1f", request.path, response.status_code, elapsed_ms)
 
     # Normal pages cannot be framed. Only the explicit embed diagnostics/routes
     # use the configured integration allow-list.
@@ -96,7 +104,7 @@ def security_headers(response):
         static_name = request.path.rsplit("/", 1)[-1].lower()
         current_build = str(VANO_BUILD_ID or "")
         requested_build = str(request.args.get("v", ""))
-        fingerprinted = bool(current_build and requested_build and requested_build == current_build)
+        fingerprinted = bool(current_build and requested_build == current_build and re.fullmatch(r"[a-fA-F0-9]{7,40}", current_build))
         critical = static_name.startswith(("vano-map", "vano-runtime", "vano-telemetry", "vano-theme", "vano-benchmark", "vano-app"))
         if fingerprinted:
             response.headers["Cache-Control"] = "public, max-age=2592000, immutable"
