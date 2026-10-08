@@ -3,7 +3,7 @@
 {% block meta_description %}O VANO MAPS não conseguiu abrir esta página agora.{% endblock %}
 {% block tail_head %}{% endblock %}
 {% block content %}
-<main class="page" id="conteudo-principal"><div class="container"><section class="error-v311" role="alert">
+<main class="page" id="conteudo-principal" tabindex="-1"><div class="container"><section class="error-v311" role="alert">
   <div class="error-v311__code">ERRO {{ code }}</div><h1>{{ title }}</h1><p>{{ message }}</p>
   <div class="error-v311__actions">
     {% if code in [408,429,500,502,503,504] %}<button class="btn btn-primary" type="button" data-error-reload><i data-lucide="refresh-cw" width="16"></i>Tentar novamente</button>{% endif %}

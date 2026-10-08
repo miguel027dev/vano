@@ -447,17 +447,6 @@ def google_user_from_token(access_token):
     return response.json()
 
 
-def oauth_client_fingerprint():
-    # Used only as a fallback when an embedded browser drops the OAuth cookie.
-    # It deliberately avoids storing the raw IP/user-agent in the database.
-    material = "|".join([
-        client_ip(),
-        request.headers.get("User-Agent", "")[:500],
-        request.headers.get("Accept-Language", "")[:120],
-    ])
-    return hashlib.sha256(material.encode("utf-8", "ignore")).hexdigest()
-
-
 def oauth_cookie_value(state):
     signature = hmac.new(
         SECRET_KEY.encode("utf-8", "ignore"),
@@ -499,7 +488,7 @@ def persist_google_oauth_state(state, redirect_uri, next_url=None):
              fingerprint=EXCLUDED.fingerprint,
              created_at=EXCLUDED.created_at,
              expires_at=EXCLUDED.expires_at""",
-        (state, redirect_uri, safe_next_url(next_url), oauth_client_fingerprint(), created, expires),
+        (state, redirect_uri, safe_next_url(next_url), "", created, expires),
     )
     db.commit()
 
@@ -511,16 +500,28 @@ def consume_google_oauth_state(returned_state):
     db = get_db()
     now = utcnow_iso()
     row = db.execute(
-        "SELECT state,redirect_uri,next_url,fingerprint,expires_at FROM oauth_states WHERE state=? AND expires_at>=?",
+        """DELETE FROM oauth_states WHERE state=? AND expires_at>=?
+           RETURNING state,redirect_uri,next_url,expires_at""",
         (returned_state, now),
     ).fetchone()
     if not row:
-        db.execute("DELETE FROM oauth_states WHERE state=? OR expires_at < ?", (returned_state, now))
-        db.commit()
-        return None
-    db.execute("DELETE FROM oauth_states WHERE state=?", (returned_state,))
+        db.execute("DELETE FROM oauth_states WHERE state=? AND expires_at < ?", (returned_state, now))
     db.commit()
     return row
+
+
+def claim_password_reset(db, token_id, now):
+    """Claim a single-use reset inside the caller's password-change transaction.
+
+    UPDATE locks/rechecks the token, so only one concurrent request can claim
+    it. The caller commits the claim together with the new hash and revocations.
+    """
+    return db.execute(
+        """UPDATE password_reset_tokens SET used_at=?
+           WHERE id=? AND used_at IS NULL AND expires_at>?
+           RETURNING user_id""",
+        (now, token_id, now),
+    ).fetchone()
 
 # -----------------------------
 # Validation / route scoring

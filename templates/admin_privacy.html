@@ -2,7 +2,7 @@
 {% block title %}Privacidade · Admin VANO{% endblock %}
 {% block tail_head %}{% endblock %}
 {% block content %}
-<main class="admin86"><div class="admin86-wrap">
+<main class="admin86" id="conteudo-principal" tabindex="-1"><div class="admin86-wrap">
   <header class="admin255-head"><div><span class="admin255-kicker">Central operacional · privacidade</span><h1>Pedidos de dados</h1><p>Fila de solicitações de acesso, correção, exclusão e demais direitos enviados pelos usuários.</p></div><nav class="admin255-actions"><a href="{{ url_for('admin_dashboard') }}"><i data-lucide="layout-dashboard" width="15"></i>Dashboard</a><a href="{{ url_for('admin_users') }}"><i data-lucide="users" width="15"></i>Usuários</a></nav></header>
   <section class="admin255-card"><div class="admin255-card-head"><div><span class="section-tag">Fila</span><h2>{{ rows|length }} solicitações</h2><p>Pedidos pendentes aparecem primeiro.</p></div></div>
     <div class="table-wrap"><table class="table"><thead><tr><th>Protocolo</th><th>Usuário</th><th>Pedido</th><th>Status</th><th>Recebido</th><th>Ação</th></tr></thead><tbody>

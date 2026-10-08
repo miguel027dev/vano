@@ -234,11 +234,18 @@ def reset_password(token):
             flash(password_error, "danger")
             return render_template("reset_password.html", reset_valid=True), 400
         db = get_db()
-        db.execute("UPDATE users SET password_hash=? WHERE id=?", (hash_password(password), row["user_id"]))
-        db.execute("UPDATE password_reset_tokens SET used_at=? WHERE id=?", (utcnow_iso(), row["id"]))
-        db.execute("UPDATE auth_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", (utcnow_iso(), row["user_id"]))
+        # Compute the expensive hash before holding the token's row lock.
+        new_hash = hash_password(password)
+        from vano.security.auth import claim_password_reset
+        claimed = claim_password_reset(db, row["id"], utcnow_iso())
+        if not claimed:
+            db.rollback()
+            flash("Esse link expirou ou já foi utilizado.", "danger")
+            return redirect(url_for("forgot_password"))
+        db.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, claimed["user_id"]))
+        db.execute("UPDATE auth_sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL", (utcnow_iso(), claimed["user_id"]))
         db.commit()
-        audit("password_reset_completed", {}, row["user_id"])
+        audit("password_reset_completed", {}, claimed["user_id"])
         flash("Senha atualizada. Entre novamente.", "success")
         return redirect(url_for("login"))
     return render_template("reset_password.html", reset_valid=valid)

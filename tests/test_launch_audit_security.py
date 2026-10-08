@@ -143,6 +143,91 @@ def test_google_delete_requires_recent_authentication(db):
     assert db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 1
 
 
+def test_google_callback_rejects_matching_fingerprint_without_browser_cookie(db, monkeypatch):
+    auth = importlib.import_module("vano.routes.auth")
+    monkeypatch.setattr(auth, "google_ready", lambda: True)
+    consume = MagicMock(return_value={"redirect_uri": "https://localhost/login/google/callback", "next_url": "/map", "fingerprint": "same-nat-and-agent"})
+    monkeypatch.setattr(auth, "consume_google_oauth_state", consume)
+    exchange = MagicMock()
+    monkeypatch.setattr(auth.requests, "post", exchange)
+    client = runtime.app.test_client()
+    with client.session_transaction() as s:s["google_oauth_state"] = "legitimate-pending-state"
+    response = client.get("/login/google/callback?state=attacker-state&code=synthetic-code", base_url="https://localhost")
+    assert response.status_code == 302 and response.location.endswith("/login")
+    consume.assert_not_called()
+    exchange.assert_not_called()
+    with client.session_transaction() as s:
+        assert s["google_oauth_state"] == "legitimate-pending-state"
+        assert "user_id" not in s
+
+
+def test_google_signed_oauth_cookie_supports_missing_flask_session(db, monkeypatch):
+    auth = importlib.import_module("vano.routes.auth")
+    monkeypatch.setattr(auth, "google_ready", lambda: True)
+    consume = MagicMock(return_value={"redirect_uri": "https://localhost/login/google/callback", "next_url": "/map"})
+    monkeypatch.setattr(auth, "consume_google_oauth_state", consume)
+    monkeypatch.setattr(auth, "google_user_from_token", lambda token: {"sub": "synthetic-sub", "email": "qa@example.invalid", "email_verified": True, "name": "QA"})
+    response = MagicMock();response.json.return_value = {"access_token": "synthetic"}
+    monkeypatch.setattr(auth.requests, "post", lambda *a, **k: response)
+    db.execute("UPDATE users SET google_sub='synthetic-sub',auth_provider='google' WHERE id=1");db.commit()
+    client = runtime.app.test_client()
+    client.set_cookie("vano_oauth_state", runtime.oauth_cookie_value("synthetic-state"))
+    result = client.get("/login/google/callback?state=synthetic-state&code=synthetic-code", base_url="https://localhost")
+    assert result.status_code == 302
+    consume.assert_called_once_with("synthetic-state")
+    with client.session_transaction() as s:assert s["user_id"] == 1
+
+
+def reset_token(db):
+    from datetime import datetime, timedelta, timezone
+    token = "synthetic-reset-" + "a" * 32
+    expires = (datetime.now(timezone.utc)+timedelta(minutes=30)).isoformat()
+    db.execute("INSERT INTO password_reset_tokens(user_id,token_hash,created_at,expires_at) VALUES(?,?,?,?)",
+               (1, runtime.hashlib.sha256(token.encode()).hexdigest(), runtime.utcnow_iso(), expires))
+    db.commit()
+    return token
+
+
+def test_password_reset_is_single_use_and_revokes_existing_session(db):
+    signed = runtime.app.test_client();signin(signed, db)
+    token = reset_token(db)
+    client = runtime.app.test_client()
+    with client.session_transaction() as s:s["csrf_token"] = "reset-csrf"
+    body = {"password": "UpdatedPassword123!", "confirm_password": "UpdatedPassword123!", "csrf_token": "reset-csrf"}
+    result = client.post("/reset-password/"+token, data=body, base_url="https://localhost")
+    assert result.status_code == 302 and result.location.endswith("/login")
+    new_hash = db.execute("SELECT password_hash FROM users WHERE id=1").fetchone()[0]
+    assert runtime.verify_password(new_hash, body["password"])
+    assert signed.get("/api/saved-places", base_url="https://localhost").status_code == 401
+    body.update(password="AnotherPassword123!",confirm_password="AnotherPassword123!")
+    repeated = client.post("/reset-password/"+token, data=body, base_url="https://localhost")
+    assert repeated.location.endswith("/forgot-password")
+    assert db.execute("SELECT password_hash FROM users WHERE id=1").fetchone()[0] == new_hash
+
+
+def test_password_reset_losing_claim_does_not_change_password(db, monkeypatch):
+    core = importlib.import_module("vano.routes.core")
+    token = reset_token(db)
+    old_hash = db.execute("SELECT password_hash FROM users WHERE id=1").fetchone()[0]
+    def racing_hash(password):
+        # A competing worker finishes after this request read the valid token.
+        db.execute("UPDATE password_reset_tokens SET used_at=?", (runtime.utcnow_iso(),));db.commit()
+        return runtime.hash_password(password)
+    monkeypatch.setattr(core, "hash_password", racing_hash)
+    client = runtime.app.test_client()
+    with client.session_transaction() as s:s["csrf_token"] = "reset-csrf"
+    result = client.post("/reset-password/"+token, data={"password": "UpdatedPassword123!", "confirm_password": "UpdatedPassword123!", "csrf_token": "reset-csrf"}, base_url="https://localhost")
+    assert result.location.endswith("/forgot-password")
+    assert db.execute("SELECT password_hash FROM users WHERE id=1").fetchone()[0] == old_hash
+
+
+def test_reset_and_google_callback_do_not_forward_sensitive_url(db):
+    client = runtime.app.test_client()
+    token = reset_token(db)
+    for path in ("/reset-password/"+token,"/login/google/callback"):
+        assert client.get(path, base_url="https://localhost").headers["Referrer-Policy"] == "no-referrer"
+
+
 def route_fixture():
     return {"geometry": {"type": "LineString", "coordinates": [[-46.63, -23.55], [-46.62, -23.54]]},
             "distance": 1400, "duration": 300, "duration_min": 5, "safety_score": 72,

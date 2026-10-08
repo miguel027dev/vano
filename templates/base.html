@@ -155,6 +155,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
 </head>
 <body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
+{% if not vano_map_surface %}<a class="vano-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>{% endif %}
 {% if vano_endpoint != 'onboarding' %}
 <header class="topbar">
   <nav class="nav">
@@ -171,6 +172,18 @@
       {% endif %}
     </div>
     <div class="nav-actions">
+      {% if not vano_map_surface %}<details class="vano-support-menu">
+        <summary>Menu</summary>
+        <nav aria-label="Páginas do VANO">
+          <a href="{{ url_for('map_page') }}">Abrir mapa</a>
+          {% if current_user %}<a href="{{ url_for('profile') }}">Minha conta</a><a href="{{ url_for('notifications_page') }}">Notificações</a>{% else %}<a href="{{ url_for('login') }}">Entrar</a><a href="{{ url_for('register') }}">Criar conta</a>{% endif %}
+          <a href="{{ url_for('about') }}">Como funciona</a>
+          <a href="{{ url_for('help_page') }}">Ajuda</a>
+          <a href="{{ url_for('privacy_policy') }}">Privacidade</a>
+          <a href="{{ url_for('terms_of_use') }}">Termos de Uso</a>
+          <a href="{{ url_for('account_delete_page') }}">Excluir conta</a>
+        </nav>
+      </details>{% endif %}
       <button id="globalThemeToggle" class="vano-theme-toggle" type="button" data-vano-theme-toggle aria-label="Ativar modo Black" title="Alternar tema"><span class="vano-theme-sun"><i data-lucide="sun" width="17"></i></span><span class="vano-theme-moon"><i data-lucide="moon-star" width="17"></i></span></button>
       {% if current_user %}
         <a class="vano-nav-account" href="{{ url_for('profile') }}" aria-label="Abrir meu perfil">
@@ -187,7 +200,7 @@
 {% endif %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}
-<div class="flash-wrap">{% for category, message in messages %}<div class="flash {{ category }}"><i data-lucide="circle-info" width="18"></i><div>{{ message }}</div><button type="button" class="x" data-vano-flash-close aria-label="Fechar">×</button></div>{% endfor %}</div>
+<div class="flash-wrap">{% for category, message in messages %}<div class="flash {{ category }}" role="{{ 'alert' if category in ['danger','warning'] else 'status' }}" aria-atomic="true"><i data-lucide="circle-info" width="18" aria-hidden="true"></i><div>{{ message }}</div><button type="button" class="x" data-vano-flash-close aria-label="Fechar aviso">×</button></div>{% endfor %}</div>
 {% endif %}{% endwith %}
 
 {% block content %}{% endblock %}
@@ -197,7 +210,7 @@
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
 {% if vano_endpoint != 'onboarding' %}<script src="{{ url_for('static', filename='vano-runtime.js') }}?v={{ vano_build_id }}"></script>{% endif %}
 <script src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>
-<script>window.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons?.(),{once:true});document.querySelectorAll('[data-vano-flash-close]').forEach(b=>b.addEventListener('click',()=>b.closest('.flash')?.remove()));setTimeout(()=>document.querySelectorAll('.flash').forEach(x=>x.remove()),6000);if(window.parent!==window){window.parent.postMessage({type:'vano:ready',path:location.pathname},'*');}</script>
+<script>window.addEventListener('DOMContentLoaded',()=>window.lucide?.createIcons?.(),{once:true});document.querySelectorAll('[data-vano-flash-close]').forEach(b=>b.addEventListener('click',()=>b.closest('.flash')?.remove()));document.querySelectorAll('.flash.success').forEach(x=>setTimeout(()=>{if(!x.matches(':hover,:focus-within'))x.remove()},10000));document.querySelectorAll('.vano-support-menu').forEach(menu=>{menu.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.open=false;menu.querySelector('summary')?.focus()}});document.addEventListener('click',event=>{if(!menu.contains(event.target))menu.open=false});menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>menu.open=false))});if(window.parent!==window){window.parent.postMessage({type:'vano:ready',path:location.pathname},'*');}</script>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/vano-sw.js?v={{ vano_build_id }}',{scope:'/'}).catch(()=>{}),{once:true});}</script>
 <script src="{{ url_for('static', filename='vano-telemetry.js') }}?v={{ vano_build_id }}"></script>
 {% if not vano_admin_surface and vano_endpoint != 'onboarding' %}<script defer src="{{ url_for('static', filename='vano-experience.js') }}?v={{ vano_build_id }}"></script>{% endif %}
