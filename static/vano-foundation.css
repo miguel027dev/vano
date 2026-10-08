@@ -646,3 +646,246 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
     body.vano-page-surface .legal-actions .btn {flex:1 1 auto!important;}
   }
 }
+
+/* VANO ANDROID NAVIGATION SHELL V721
+   Mobile-installed only: guard in index.html detects WebView / Android TWA.
+   Geometry is measured by vano-android-nav-layout.js on state / inset changes. */
+@layer vanoFoundation {
+  html.vano-android-shell body.vano-map-surface.body-nav {
+    --vano-android-radar-top:128px;
+    --vano-android-context-top:220px;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav :is(
+    #navManeuverTop,#navStreetChip,#trafficRadar,#navContextAlert,#navAltHint,
+    #activeNav,#quickAlertSheet,#quickAlertSheet .quick-alert-card
+  ) {box-sizing:border-box!important;}
+  /* The traffic card was overlapping the upper navigation instruction on
+     WebView cutout devices. Use measured top of the visible instruction/street. */
+  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar {
+    position:fixed!important;
+    inset:auto 10px auto 10px!important;
+    top:var(--vano-android-radar-top)!important;
+    width:auto!important;
+    max-width:min(440px,calc(100vw - 20px))!important;
+    min-height:0!important;
+    max-height:min(22dvh,122px)!important;
+    margin:0 auto!important;
+    padding:11px 13px!important;
+    display:flex!important;align-items:flex-start!important;gap:9px!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
+    border-radius:16px!important;
+    background:rgba(255,251,247,.97)!important;color:#25211e!important;
+    border:1px solid rgba(155,112,78,.22)!important;
+    box-shadow:0 8px 30px rgba(33,22,12,.15)!important;
+    z-index:420!important;
+    -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+    overscroll-behavior:contain!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar:not(.show) {
+    display:none!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar :is(.traffic-radar-copy,.traffic-radar-copy b,.traffic-radar-copy span) {
+    display:block!important;min-width:0!important;max-width:100%!important;
+    width:auto!important;height:auto!important;min-height:0!important;
+    white-space:normal!important;overflow-wrap:anywhere!important;
+    overflow:visible!important;text-overflow:clip!important;position:static!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar .traffic-radar-copy {
+    flex:1 1 0!important;line-height:1.35!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar .traffic-radar-copy b {
+    font-size:13px!important;font-weight:800!important;line-height:1.35!important;color:#25211e!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar .traffic-radar-copy span {
+    margin-top:4px!important;font-size:12px!important;line-height:1.4!important;color:#625a52!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar .traffic-radar-dot {
+    flex:0 0 9px!important;margin-top:5px!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #navContextAlert:not([hidden]) {
+    position:fixed!important;inset:auto 10px auto 10px!important;
+    top:var(--vano-android-context-top)!important;
+    width:auto!important;max-width:min(440px,calc(100vw - 20px))!important;
+    margin:0 auto!important;min-width:0!important;
+    max-height:min(18dvh,104px)!important;overflow-x:hidden!important;overflow-y:auto!important;
+    z-index:415!important;box-sizing:border-box!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #navContextAlert :is(.nav-context-copy,#navContextText,#navContextDistance) {
+    min-width:0!important;max-width:100%!important;
+    overflow-wrap:anywhere!important;text-overflow:clip!important;
+    white-space:normal!important;
+  }
+  /* The nav footer must grow with content, not crop ETA/distance or place
+     absolute-positioned labels over each other on narrow Android viewports. */
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal {
+    position:fixed!important;
+    left:0!important;right:0!important;bottom:0!important;top:auto!important;
+    height:auto!important;min-height:0!important;
+    width:100%!important;max-width:100%!important;
+    max-height:min(47dvh,385px)!important;
+    overflow-x:hidden!important;overflow-y:auto!important;
+    display:flex!important;flex-direction:column!important;align-items:stretch!important;
+    padding:10px 12px calc(12px + env(safe-area-inset-bottom))!important;
+    gap:8px!important;border-radius:20px 20px 0 0!important;
+    background:#fffaf5!important;color:#24201d!important;
+    overscroll-behavior:contain!important;-webkit-overflow-scrolling:touch!important;
+    box-shadow:0 -9px 30px rgba(18,15,11,.14)!important;
+    border:1px solid rgba(124,90,62,.14)!important;
+    z-index:430!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal:not(.show) {
+    display:none!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav :is(
+    .vano-nav-tripline,.vano-nav-dock-head,.nav-summary-row,.traffic-suggestion,.reroute
+  ) {position:relative!important;inset:auto!important;transform:none!important;
+    width:100%!important;min-width:0!important;max-width:100%!important;
+    height:auto!important;flex-shrink:0!important;box-sizing:border-box!important;}
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .nav-summary-row {
+    display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr)) auto!important;
+    align-items:start!important;justify-content:stretch!important;gap:5px!important;
+    padding:8px 0!important;overflow:visible!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .nav-summary-item {
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    gap:3px!important;position:relative!important;min-width:0!important;
+    width:auto!important;max-width:100%!important;height:auto!important;
+    padding:5px 3px!important;transform:none!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .nav-summary-item :is(
+    strong,small,em,.nav-summary-label
+  ) {position:static!important;display:block!important;transform:none!important;
+    width:auto!important;max-width:100%!important;min-width:0!important;
+    margin:0!important;white-space:normal!important;
+    overflow:visible!important;overflow-wrap:anywhere!important;text-overflow:clip!important;}
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .nav-summary-item strong {
+    font-size:clamp(16px,4.5vw,24px)!important;line-height:1.2!important;
+    letter-spacing:-.025em!important;color:#24201d!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .nav-summary-item .nav-summary-label {
+    display:flex!important;align-items:center!important;gap:3px!important;
+    font-size:10px!important;line-height:1.25!important;color:#675e56!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .nav-eta-confidence {
+    font-size:10px!important;line-height:1.3!important;color:#675e56!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav #navSearchBtn {
+    position:relative!important;inset:auto!important;align-self:center!important;
+    width:42px!important;height:42px!important;min-width:42px!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .traffic-suggestion.show {
+    display:flex!important;flex-direction:column!important;gap:9px!important;
+    min-height:0!important;max-height:none!important;
+    padding:10px!important;overflow:visible!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .traffic-suggestion :is(
+    .traffic-suggestion-main,.traffic-suggestion-main>div,.traffic-suggestion-actions
+  ) {min-width:0!important;max-width:100%!important;height:auto!important;
+    position:relative!important;inset:auto!important;transform:none!important;}
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .traffic-suggestion-main {
+    display:flex!important;align-items:flex-start!important;gap:9px!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .traffic-suggestion-main :is(b,span,small) {
+    min-width:0!important;max-width:100%!important;white-space:normal!important;
+    overflow-wrap:anywhere!important;line-height:1.4!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .traffic-suggestion-actions {
+    display:flex!important;flex-wrap:wrap!important;gap:8px!important;
+  }
+  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .traffic-suggestion-actions button {
+    min-height:42px!important;flex:1!important;
+  }
+  /* Report sheet: always above the map, contrast-correct, scrollable and
+     keyboard/small-phone safe. Never let the black legacy card clip options. */
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet.quick-alert-sheet {
+    position:fixed!important;inset:0!important;
+    width:100%!important;height:100dvh!important;max-height:100dvh!important;
+    margin:0!important;padding:0!important;transform:none!important;
+    z-index:99990!important;overflow:hidden!important;align-items:flex-end!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet.quick-alert-sheet.show {
+    display:flex!important;opacity:1!important;visibility:visible!important;
+    pointer-events:auto!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet.quick-alert-sheet:not(.show) {
+    display:none!important;pointer-events:none!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-backdrop {
+    position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+    background:rgba(13,13,16,.53)!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-card {
+    position:relative!important;inset:auto!important;transform:none!important;
+    z-index:1!important;display:flex!important;flex-direction:column!important;
+    box-sizing:border-box!important;width:100%!important;max-width:580px!important;
+    height:auto!important;min-height:0!important;
+    max-height:calc(100dvh - 16px)!important;overflow-x:hidden!important;
+    overflow-y:auto!important;overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    margin:0 auto!important;
+    padding:12px 16px calc(24px + env(safe-area-inset-bottom))!important;
+    background:#fff9f4!important;color:#29221b!important;
+    border:1px solid rgba(180,110,60,.24)!important;
+    border-radius:24px 24px 0 0!important;
+    box-shadow:0 -10px 35px rgba(0,0,0,.17)!important;
+    -webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-head {
+    display:flex!important;align-items:flex-start!important;justify-content:space-between!important;
+    gap:10px!important;min-width:0!important;flex-shrink:0!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-head>div {
+    min-width:0!important;flex:1 1 auto!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet :is(
+    .quick-alert-head h3,.quick-alert-head p,.quick-alert-head small,
+    .quick-alert-copy b,.quick-alert-copy small,.quick-alert-status,.quick-alert-foot
+  ) {color:#29221b!important;white-space:normal!important;
+    overflow-wrap:anywhere!important;text-overflow:clip!important;
+    max-width:100%!important;}
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-grid {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;width:100%!important;min-width:0!important;
+    margin:14px 0!important;overflow:visible!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-grid button {
+    display:flex!important;align-items:center!important;gap:8px!important;
+    position:relative!important;min-width:0!important;width:100%!important;
+    min-height:70px!important;height:auto!important;
+    padding:12px 10px!important;border-radius:14px!important;
+    background:#fff!important;color:#29221b!important;
+    border:1px solid #ecd9cb!important;
+    text-align:left!important;box-shadow:none!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-copy {
+    display:flex!important;flex-direction:column!important;align-items:flex-start!important;
+    min-width:0!important;flex:1!important;gap:4px!important;position:static!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-premium-icon {
+    flex:0 0 32px!important;width:32px!important;height:32px!important;
+    display:flex!important;align-items:center!important;justify-content:center!important;
+    background:#fff1e6!important;color:#bc581b!important;border-radius:10px!important;
+  }
+  html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-head button {
+    flex:0 0 44px!important;min-width:44px!important;min-height:44px!important;
+  }
+  @media(max-width:350px) {
+    html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-grid {
+      grid-template-columns:1fr!important;gap:7px!important;
+    }
+  }
+  @media(orientation:landscape) and (max-height:560px) {
+    html.vano-android-shell body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal {
+      left:auto!important;right:0!important;width:min(380px,50vw)!important;
+      max-height:calc(100dvh - 12px)!important;border-radius:18px 0 0 18px!important;
+    }
+    html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar,
+    html.vano-android-shell body.vano-map-surface.body-nav #navContextAlert:not([hidden]) {
+      left:8px!important;right:auto!important;width:calc(50vw - 18px)!important;
+    }
+    html.vano-android-shell body.vano-map-surface #quickAlertSheet .quick-alert-card {
+      max-width:min(580px,86vw)!important;max-height:calc(100dvh - 8px)!important;
+      border-radius:18px 18px 0 0!important;
+    }
+  }
+}
