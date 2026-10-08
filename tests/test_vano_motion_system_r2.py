@@ -33,7 +33,8 @@ for(let i=0;i<20;i++){
   assert.ok(Math.abs(diff)<=4.1, 'excess yaw step '+diff);
   prev=next;
 }
-assert.ok(prev>45&&prev<100);
+const travelled=Math.abs(((prev-10+540)%360)-180);
+assert.ok(travelled>45&&travelled<100, 'rotation progress must be direction-agnostic');
 const wrap=boundCameraBearing(359,1,16,6,{decision:false});
 assert.ok(wrap>359||wrap<2,'must turn through north');
 assert.equal(boundCameraBearing(NaN,40,16,0,null),40);
