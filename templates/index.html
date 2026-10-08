@@ -5,6 +5,19 @@
 {% block og_title %}VANO MAPS — GPS, rotas rápidas e trânsito em tempo real{% endblock %}
 {% block og_description %}Compare rotas, acompanhe o trânsito e escolha entre caminhos rápidos, Spark ou com mais contexto no VANO MAPS.{% endblock %}
 {% block head %}
+<script>
+/* Detect installed Android shells before first CSS paint; leave normal browsers alone. */
+(()=>{
+  try{
+    const ua=navigator.userAgent||'',android=/Android/i.test(ua);
+    const webview=/VANOAndroid\//i.test(ua);
+    const twa=android&&(/^android-app:\/\//i.test(document.referrer||'')||
+      window.matchMedia?.('(display-mode: standalone)')?.matches);
+    if(webview||twa)document.documentElement.classList.add('vano-android-shell');
+  }catch(_){}
+})();
+</script>
+<script defer src="{{ url_for('static', filename='vano-android-nav-layout.js') }}?v={{ vano_build_id }}"></script>
 <script type="application/ld+json">{{ {
   '@context':'https://schema.org',
   '@type':'SoftwareApplication',
