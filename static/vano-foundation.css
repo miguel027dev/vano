@@ -179,3 +179,380 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
     color:#27231f!important;
   }
 }
+
+/* VANO MAPS — Public Experience 2026 / responsive editorial design.
+   Scoped to content and onboarding pages. Keeps the map/navigation UI untouched.
+   Foundation layer beats legacy !important overrides by design. */
+@layer vanoFoundation {
+  body.vano-page-surface:has(.vano-seo,.legal-shell,.faq-shell,.bench-public-hero) {
+    background:var(--ui-bg)!important;
+    color:var(--ui-ink)!important;
+  }
+  :is(.vano-seo,.legal-shell,.faq-shell,.bench-public-hero,.bench-agent-contract,.bench-public-docs,.bench261) {
+    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+    -webkit-font-smoothing:antialiased;
+  }
+  :is(.vano-seo,.legal-shell,.faq-shell,.bench-public-hero) :is(h1,h2,h3) {
+    color:var(--ui-ink)!important;
+    text-wrap:balance;
+  }
+  :is(.vano-seo,.legal-shell,.faq-shell,.bench-public-hero) :is(p,li) {
+    overflow-wrap:break-word;
+  }
+  .vano-public-breadcrumb {
+    display:flex!important; align-items:center; flex-wrap:wrap; gap:10px!important;
+    margin:0 0 clamp(18px,3vw,30px)!important; padding:0!important;
+    font-size:13px!important; line-height:1.45!important; color:var(--ui-muted)!important;
+  }
+  .vano-public-breadcrumb a {
+    color:var(--ui-muted)!important; text-decoration:none!important;
+    padding:6px 2px!important; border-radius:5px;
+  }
+  .vano-public-breadcrumb a:hover,.vano-public-breadcrumb a:focus-visible {color:var(--ui-ink)!important;text-decoration:underline!important;}
+  .vano-public-breadcrumb [aria-current="page"] {color:var(--ui-ink)!important;font-weight:750!important;}
+  .vano-public-breadcrumb .vano-breadcrumb-sep {color:var(--ui-muted)!important;opacity:.55;}
+  /* SEO: editorial hero, readable sections, linked context cards. */
+  body.vano-page-surface .vano-seo .seo-wrap {
+    width:min(1180px,calc(100% - 48px))!important;
+    margin-inline:auto!important;
+    padding:clamp(22px,4vw,48px) 0 clamp(64px,8vw,110px)!important;
+  }
+  body.vano-page-surface .vano-seo .seo-hero {
+    position:relative!important; isolation:isolate; overflow:hidden!important;
+    max-width:none!important; border-radius:clamp(24px,3vw,36px)!important;
+    border:1px solid var(--ui-line)!important;
+    background:linear-gradient(130deg,var(--ui-surface) 0%,var(--ui-raised) 100%)!important;
+    box-shadow:var(--ui-shadow)!important;
+    padding:clamp(24px,5vw,70px)!important;
+  }
+  body.vano-page-surface .vano-seo .seo-hero::after {
+    content:"";position:absolute;z-index:-1;right:-85px;top:-115px;
+    width:clamp(260px,32vw,450px);height:clamp(260px,32vw,450px);
+    border:1px solid var(--ui-line);border-radius:50%;pointer-events:none;
+    box-shadow:0 0 0 44px rgba(245,154,98,.045),0 0 0 91px rgba(245,154,98,.028);
+  }
+  body.vano-page-surface .vano-seo .seo-kicker {
+    display:inline-flex!important;gap:8px!important;align-items:center!important;
+    width:fit-content;max-width:100%;
+    background:var(--ui-raised)!important;color:var(--ui-ink)!important;
+    border:1px solid var(--ui-line)!important;border-radius:999px!important;
+    padding:9px 13px!important;font-size:12px!important;letter-spacing:.025em!important;
+  }
+  body.vano-page-surface .vano-seo h1 {
+    max-width:900px!important;margin:22px 0 20px!important;
+    font-size:clamp(36px,5.9vw,73px)!important;
+    line-height:1.06!important;letter-spacing:-.055em!important;
+  }
+  body.vano-page-surface .vano-seo .seo-lead {
+    max-width:780px!important;color:var(--ui-muted)!important;
+    font-size:clamp(16px,1.6vw,20px)!important;line-height:1.7!important;
+  }
+  body.vano-page-surface .vano-seo .seo-actions {
+    display:flex!important;flex-wrap:wrap!important;gap:11px!important;margin-top:28px!important;
+  }
+  body.vano-page-surface .vano-seo .seo-actions a {
+    min-height:48px!important;display:inline-flex!important;align-items:center!important;
+    justify-content:center!important;padding:13px 18px!important;
+    border-radius:14px!important;font-size:14px!important;font-weight:750!important;
+    text-align:center!important;transition:transform .18s ease,box-shadow .18s ease!important;
+  }
+  body.vano-page-surface .vano-seo .seo-actions a:hover {transform:translateY(-2px);}
+  body.vano-page-surface .vano-seo .seo-primary {
+    background:var(--ui-brand)!important;color:#27231f!important;border:1px solid transparent!important;
+    box-shadow:0 8px 21px rgba(185,91,42,.13)!important;
+  }
+  body.vano-page-surface .vano-seo .seo-secondary {
+    background:var(--ui-surface)!important;color:var(--ui-ink)!important;
+    border:1px solid var(--ui-line)!important;
+  }
+  body.vano-page-surface .vano-seo .seo-grid {
+    display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:16px!important;margin-top:clamp(18px,3vw,32px)!important;
+  }
+  body.vano-page-surface .vano-seo .seo-card {
+    min-width:0!important;padding:clamp(20px,2.4vw,30px)!important;
+    border:1px solid var(--ui-line)!important;background:var(--ui-surface)!important;
+    border-radius:24px!important;box-shadow:var(--ui-shadow)!important;
+    color:var(--ui-ink)!important;text-decoration:none!important;
+    transition:border-color .18s ease,transform .18s ease!important;
+  }
+  body.vano-page-surface .vano-seo a.seo-card:hover {border-color:var(--ui-brand)!important;transform:translateY(-3px)!important;}
+  body.vano-page-surface .vano-seo .seo-card :is(h2,h3) {
+    font-size:clamp(18px,1.7vw,22px)!important;letter-spacing:-.03em!important;margin:0 0 10px!important;
+  }
+  body.vano-page-surface .vano-seo .seo-card p {font-size:14px!important;line-height:1.7!important;color:var(--ui-muted)!important;}
+  body.vano-page-surface .vano-seo .seo-section {
+    padding:clamp(26px,4vw,46px)!important;margin-top:20px!important;
+    border:1px solid var(--ui-line)!important;border-radius:26px!important;
+    background:var(--ui-surface)!important;
+  }
+  body.vano-page-surface .vano-seo .seo-section>h2 {
+    margin:0 0 14px!important;font-size:clamp(24px,2.7vw,34px)!important;letter-spacing:-.04em!important;
+  }
+  body.vano-page-surface .vano-seo .seo-section>p,
+  body.vano-page-surface .vano-seo .seo-section>ul {
+    max-width:850px!important;color:var(--ui-muted)!important;
+    font-size:clamp(15px,1.2vw,17px)!important;line-height:1.85!important;
+  }
+  body.vano-page-surface .vano-seo .seo-section .seo-grid {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  /* Legal / methodology / about: content first, calm, scannable reading. */
+  body.vano-page-surface .legal-shell {
+    width:min(1160px,calc(100% - 48px))!important;
+    padding:clamp(22px,3.5vw,42px) 0 90px!important;
+    margin-inline:auto!important;
+  }
+  body.vano-page-surface .legal-hero {
+    background:linear-gradient(135deg,var(--ui-surface),var(--ui-raised))!important;
+    border:1px solid var(--ui-line)!important;border-radius:32px!important;
+    padding:clamp(24px,4.4vw,54px)!important;
+    box-shadow:var(--ui-shadow)!important;
+  }
+  body.vano-page-surface .legal-hero::after {opacity:.25!important;pointer-events:none!important;}
+  body.vano-page-surface .legal-hero__top {
+    display:flex!important;align-items:flex-start!important;justify-content:space-between!important;
+    gap:28px!important;flex-wrap:wrap!important;
+  }
+  body.vano-page-surface .legal-hero__top>div:first-child {flex:1 1 460px!important;min-width:0!important;}
+  body.vano-page-surface .legal-hero h1 {
+    font-size:clamp(32px,4.7vw,58px)!important;line-height:1.12!important;
+    letter-spacing:-.052em!important;margin:8px 0 18px!important;
+  }
+  body.vano-page-surface .legal-hero p:not(.eyebrow) {
+    max-width:760px!important;color:var(--ui-muted)!important;
+    font-size:clamp(15px,1.45vw,18px)!important;line-height:1.8!important;
+  }
+  body.vano-page-surface .legal-updated {
+    display:inline-flex!important;gap:8px!important;align-items:center!important;
+    background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;
+    border-radius:999px!important;padding:9px 13px!important;
+    color:var(--ui-muted)!important;font-size:12px!important;
+    max-width:100%!important;white-space:normal!important;
+  }
+  body.vano-page-surface .legal-summary {
+    display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:13px!important;margin-top:30px!important;
+  }
+  body.vano-page-surface .legal-summary__item {
+    min-width:0!important;background:var(--ui-surface)!important;
+    border:1px solid var(--ui-line)!important;border-radius:18px!important;
+    padding:20px!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:8px!important;
+  }
+  body.vano-page-surface .legal-summary__item b {color:var(--ui-ink)!important;font-size:14px!important;}
+  body.vano-page-surface .legal-summary__item span {color:var(--ui-muted)!important;font-size:13px!important;line-height:1.6!important;}
+  body.vano-page-surface .legal-layout {
+    display:grid!important;grid-template-columns:minmax(0,1fr) minmax(210px,260px)!important;
+    gap:20px!important;align-items:start!important;margin-top:22px!important;
+  }
+  body.vano-page-surface .legal-card,body.vano-page-surface .legal-toc,
+  body.vano-page-surface .public-info-card,body.vano-page-surface .public-highlight {
+    background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;
+    box-shadow:var(--ui-shadow)!important;border-radius:22px!important;
+  }
+  body.vano-page-surface .legal-copy {padding:clamp(22px,3.4vw,42px)!important;min-width:0!important;}
+  body.vano-page-surface .legal-copy section {scroll-margin-top:94px!important;}
+  body.vano-page-surface .legal-copy section + section {border-top:1px solid var(--ui-line)!important;padding-top:28px!important;margin-top:28px!important;}
+  body.vano-page-surface .legal-copy h2 {
+    color:var(--ui-ink)!important;font-size:clamp(20px,2vw,26px)!important;
+    line-height:1.24!important;letter-spacing:-.032em!important;
+  }
+  body.vano-page-surface .legal-copy :is(p,ul,ol,li) {
+    color:var(--ui-muted)!important;font-size:15px!important;line-height:1.83!important;
+  }
+  body.vano-page-surface .legal-copy a {color:var(--ui-ink)!important;text-decoration:underline!important;text-underline-offset:3px!important;}
+  body.vano-page-surface .legal-callout,body.vano-page-surface .legal-contact {
+    background:var(--ui-raised)!important;border:1px solid var(--ui-line)!important;
+    border-radius:16px!important;color:var(--ui-ink)!important;
+  }
+  body.vano-page-surface .legal-toc {
+    position:sticky!important;top:90px!important;padding:20px!important;
+    max-height:calc(100dvh - 110px)!important;overflow:auto!important;
+    backdrop-filter:none!important;
+  }
+  body.vano-page-surface .legal-toc b {font-size:12px!important;color:var(--ui-muted)!important;letter-spacing:.055em!important;}
+  body.vano-page-surface .legal-toc nav {display:flex!important;flex-direction:column!important;gap:2px!important;}
+  body.vano-page-surface .legal-toc nav a {
+    display:block!important;padding:10px 12px!important;border-radius:11px!important;
+    color:var(--ui-muted)!important;font-size:13px!important;line-height:1.35!important;
+  }
+  body.vano-page-surface .legal-toc nav a:hover,
+  body.vano-page-surface .legal-toc nav a:focus-visible {background:var(--ui-raised)!important;color:var(--ui-ink)!important;}
+  body.vano-page-surface .public-grid {display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:15px!important;}
+  body.vano-page-surface .public-info-card,body.vano-page-surface .public-highlight {padding:26px!important;min-width:0!important;}
+  /* Help: search and FAQs readable on both themes */
+  body.vano-page-surface .faq-shell {width:min(100% - 48px,1020px)!important;max-width:1020px!important;padding:38px 0 85px!important;}
+  body.vano-page-surface .faq-hero {
+    border-radius:28px!important;background:linear-gradient(120deg,var(--ui-surface),var(--ui-raised))!important;
+    border:1px solid var(--ui-line)!important;padding:clamp(25px,4vw,45px)!important;
+  }
+  body.vano-page-surface .faq-hero h1 {font-size:clamp(34px,5vw,57px)!important;letter-spacing:-.052em!important;line-height:1.12!important;}
+  body.vano-page-surface .faq-hero p {color:var(--ui-muted)!important;font-size:16px!important;line-height:1.7!important;}
+  body.vano-page-surface .faq-search-wrap {margin:20px 0 26px!important;}
+  body.vano-page-surface .faq-search {
+    width:100%!important;height:56px!important;border-radius:15px!important;
+    background:var(--ui-surface)!important;color:var(--ui-ink)!important;border:1px solid var(--ui-line)!important;
+    font-size:16px!important;
+  }
+  body.vano-page-surface .faq-group {border-radius:20px!important;border:1px solid var(--ui-line)!important;background:var(--ui-surface)!important;overflow:hidden!important;}
+  body.vano-page-surface .faq-group-head {background:var(--ui-raised)!important;border-color:var(--ui-line)!important;}
+  body.vano-page-surface .faq-group :is(summary,b) {color:var(--ui-ink)!important;}
+  body.vano-page-surface .faq-group :is(p,span) {color:var(--ui-muted)!important;line-height:1.7!important;}
+  body.vano-page-surface .faq-group details {border-color:var(--ui-line)!important;}
+  body.vano-page-surface .help-actions a {background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;border-radius:18px!important;}
+  /* Benchmark public hero and documentation; dashboard logic unchanged */
+  body.vano-page-surface .bench-public-hero {
+    width:min(1180px,calc(100% - 48px))!important;margin:24px auto!important;
+    padding:clamp(24px,4vw,44px)!important;border-radius:28px!important;
+    border:1px solid var(--ui-line)!important;background:linear-gradient(130deg,var(--ui-surface),var(--ui-raised))!important;
+  }
+  body.vano-page-surface .bench-public-hero :is(h1,p) {color:var(--ui-ink)!important;}
+  body.vano-page-surface .bench-public-hero p {color:var(--ui-muted)!important;}
+  body.vano-page-surface :is(.bench-agent-card,.bench261-panel,.bench261-map-card,.bench261-results-card) {border-radius:20px!important;}
+  /* Onboarding: keep content readable and buttons tappable on compact devices. */
+  body.vano-route-onboarding .ob500-shell {max-width:1480px!important;}
+  body.vano-route-onboarding .ob500-main {min-width:0!important;}
+  body.vano-route-onboarding .ob500-heading h1 {
+    font-size:clamp(30px,3.5vw,50px)!important;line-height:1.13!important;
+    letter-spacing:-.047em!important;text-wrap:balance;
+  }
+  body.vano-route-onboarding .ob500-heading p {font-size:15px!important;line-height:1.7!important;max-width:660px!important;}
+  body.vano-route-onboarding :is(.ob500-card,.ob500-section-card,.ob500-loadout) {max-width:100%!important;}
+  body.vano-route-onboarding .ob500-route-grid,body.vano-route-onboarding .ob500-map-grid,
+  body.vano-route-onboarding .ob500-config-grid,body.vano-route-onboarding .ob500-language-grid {min-width:0!important;}
+  body.vano-route-onboarding :is(.ob500-route-card,.ob500-map-card,.ob500-language,.ob500-choice) {min-width:0!important;}
+  body.vano-route-onboarding :is(.ob500-primary,.ob500-back) {min-height:48px!important;touch-action:manipulation;}
+  body.vano-route-onboarding :is(input[type="text"],input[type="number"]) {font-size:16px!important;}
+  body.vano-route-onboarding .ob500-step [aria-invalid="true"] {
+    outline:2px solid #cf613e!important;outline-offset:2px!important;
+  }
+  body.vano-route-onboarding .ob-screenreader {
+    position:absolute!important;width:1px!important;height:1px!important;
+    padding:0!important;margin:-1px!important;overflow:hidden!important;
+    clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+  }
+  @media (max-width:980px) {
+    body.vano-page-surface .legal-layout {grid-template-columns:minmax(0,1fr)!important;}
+    body.vano-page-surface .legal-toc {
+      position:static!important;max-height:none!important;order:-1!important;
+      overflow:hidden!important;
+    }
+    body.vano-page-surface .legal-toc nav {flex-direction:row!important;flex-wrap:wrap!important;gap:7px!important;overflow:visible!important;}
+    body.vano-page-surface .legal-toc nav a {background:var(--ui-raised)!important;border:1px solid var(--ui-line)!important;}
+    body.vano-page-surface .public-grid {grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  }
+  @media (max-width:740px) {
+    body.vano-page-surface .vano-seo .seo-wrap,body.vano-page-surface .legal-shell,
+    body.vano-page-surface .faq-shell,body.vano-page-surface .bench-public-hero {
+      width:calc(100% - 28px)!important;
+    }
+    body.vano-page-surface .vano-seo .seo-hero,body.vano-page-surface .legal-hero {border-radius:24px!important;padding:25px 21px!important;}
+    body.vano-page-surface .vano-seo h1 {font-size:clamp(32px,9vw,48px)!important;line-height:1.11!important;}
+    body.vano-page-surface .vano-seo .seo-grid,
+    body.vano-page-surface .vano-seo .seo-section .seo-grid,
+    body.vano-page-surface .legal-summary,body.vano-page-surface .public-grid {
+      grid-template-columns:minmax(0,1fr)!important;
+    }
+    body.vano-page-surface .vano-seo .seo-section {padding:25px 21px!important;}
+    body.vano-page-surface .vano-seo .seo-actions>a {flex:1 1 100%!important;}
+    body.vano-page-surface .legal-copy {padding:23px 20px!important;}
+    body.vano-page-surface .legal-toc {padding:17px!important;}
+    body.vano-page-surface .legal-summary__item {padding:17px!important;}
+    body.vano-page-surface .faq-shell {padding-top:22px!important;}
+    body.vano-route-onboarding .ob500-main {padding:16px 14px 26px!important;}
+    body.vano-route-onboarding .ob500-heading p {font-size:14px!important;}
+    body.vano-route-onboarding .ob500-map-grid {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;overflow:visible!important;gap:10px!important;}
+    body.vano-route-onboarding .ob500-route-grid {display:grid!important;grid-template-columns:1fr!important;gap:10px!important;}
+    body.vano-route-onboarding .ob500-language-grid {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+    body.vano-route-onboarding .ob500-actions {
+      margin-left:-14px!important;margin-right:-14px!important;
+      padding-left:14px!important;padding-right:14px!important;
+      gap:9px!important;bottom:0!important;
+      padding-bottom:calc(12px + env(safe-area-inset-bottom))!important;
+    }
+    body.vano-route-onboarding .ob500-actions .ob500-primary {flex:1!important;min-width:0!important;}
+    body.vano-route-onboarding .ob500-journey {overflow-x:auto!important;scrollbar-width:none;}
+    body.vano-route-onboarding .ob500-journey>* {min-width:0!important;}
+  }
+  @media (max-width:380px) {
+    body.vano-route-onboarding .ob500-language-grid,
+    body.vano-route-onboarding .ob500-map-grid {grid-template-columns:1fr!important;}
+    body.vano-route-onboarding .ob500-field-grid {grid-template-columns:1fr!important;}
+    body.vano-route-onboarding .ob500-actions .ob500-action-hint {display:none!important;}
+  }
+  @media (prefers-reduced-motion:reduce) {
+    body.vano-page-surface .vano-seo .seo-actions a,
+    body.vano-page-surface .vano-seo .seo-card {transition:none!important;transform:none!important;}
+  }
+}
+
+/* Small, unobtrusive reading controls and more cohesive benchmark/registration. */
+@layer vanoFoundation {
+  .vano-reading-progress {
+    position:fixed;z-index:999;top:0;left:0;right:0;height:3px;
+    pointer-events:none;opacity:0;transition:opacity .2s ease;
+  }
+  .vano-reading-progress.is-scrolled {opacity:1;}
+  .vano-reading-progress span {
+    display:block;width:100%;height:100%;background:var(--ui-brand,#f59a62);
+    transform:scaleX(0);transform-origin:left center;will-change:transform;
+  }
+  body.vano-page-surface .vano-public-topics {
+    margin:18px 0 26px!important;
+    display:flex!important;align-items:center!important;gap:9px!important;flex-wrap:wrap!important;
+  }
+  body.vano-page-surface .vano-public-topics>span {
+    padding:9px 6px 9px 0;color:var(--ui-muted)!important;font-size:12px!important;font-weight:780!important;
+  }
+  body.vano-page-surface .vano-public-topics>a {
+    display:inline-flex!important;align-items:center!important;padding:10px 14px!important;
+    min-height:42px!important;border-radius:999px!important;text-decoration:none!important;
+    background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;
+    color:var(--ui-muted)!important;font-size:12px!important;font-weight:680!important;
+  }
+  body.vano-page-surface .vano-public-topics>a:hover,
+  body.vano-page-surface :is(.vano-public-topics,.legal-toc) a[aria-current="location"] {
+    color:var(--ui-ink)!important;border-color:var(--ui-brand)!important;background:var(--ui-raised)!important;
+  }
+  body.vano-page-surface .bench-public-pills span,
+  body.vano-page-surface .bench-public-note {
+    background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;
+    border-radius:16px!important;color:var(--ui-ink)!important;
+  }
+  body.vano-page-surface .bench-public-pills span {border-radius:999px!important;}
+  body.vano-page-surface .bench-public-actions :is(.btn,a) {min-height:44px!important;border-radius:12px!important;}
+  body.vano-page-surface .bench-public-docs article,
+  body.vano-page-surface .bench-agent-card {
+    border:1px solid var(--ui-line)!important;
+    border-radius:22px!important;background:var(--ui-surface)!important;
+    box-shadow:var(--ui-shadow)!important;
+  }
+  body.vano-page-surface .bench-public-docs h2,
+  body.vano-page-surface .bench-agent-card h2 {color:var(--ui-ink)!important;}
+  body.vano-page-surface .bench-public-docs :is(p,li),
+  body.vano-page-surface .bench-agent-card>p {color:var(--ui-muted)!important;}
+  body.vano-page-surface .bench-agent-contract,
+  body.vano-page-surface .bench-public-docs {max-width:100%!important;}
+  body.vano-page-surface .bench261-table-wrap {max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;}
+  body.vano-page-surface .bench261-table {min-width:600px!important;}
+  body.vano-page-surface .bench-agent-code,body.vano-page-surface .bench-public-docs pre {white-space:pre-wrap!important;overflow-wrap:anywhere!important;}
+  body.vano-route-onboarding .ob500-privacy-note {
+    max-width:690px!important;margin:18px 0 8px!important;
+    display:flex!important;align-items:flex-start!important;gap:9px!important;
+    font-size:12px!important;line-height:1.55!important;color:var(--ob-muted,var(--ui-muted))!important;
+  }
+  body.vano-route-onboarding .ob500-privacy-note i {flex:0 0 auto!important;margin-top:1px!important;}
+  @media(max-width:720px){
+    body.vano-page-surface .vano-public-topics {
+      flex-wrap:nowrap!important;overflow-x:auto!important;scrollbar-width:none;
+      margin-right:-14px!important;padding-bottom:8px!important;
+    }
+    body.vano-page-surface .vano-public-topics>* {flex:0 0 auto!important;}
+    body.vano-page-surface .bench-agent-contract,
+    body.vano-page-surface .bench-public-docs {grid-template-columns:minmax(0,1fr)!important;}
+    body.vano-page-surface .bench-agent-endpoint {grid-template-columns:70px minmax(0,1fr)!important;}
+    body.vano-page-surface .bench-agent-endpoint code {min-width:0!important;overflow:hidden!important;}
+    body.vano-page-surface .bench-public-hero {padding:23px 18px!important;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .vano-reading-progress {transition:none;}
+  }
+}
