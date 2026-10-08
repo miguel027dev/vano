@@ -46,8 +46,8 @@ def test_android_host_does_not_propagate_applied_insets_to_webview():
 
 def test_route_camera_keeps_user_close_in_normal_gps_conditions():
     js=read("static/vano-map.js")
-    assert "zoomBase:17.48,zoomMin:16.70" in js
-    assert "zoomBase:17.56,zoomMin:16.75" in js
+    assert "zoomBase:installedAndroid?17.48:17.24" in js
+    assert "zoomBase:installedAndroid?17.56:17.34" in js
     assert "navCameraState!==NAV_CAMERA_STATES.REROUTING" in js
     assert "Math.max(0,+p.accuracy||0)<55" in js
     assert "cameraVisualState.center=[blendNumber" in js
