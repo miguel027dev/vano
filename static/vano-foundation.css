@@ -101,3 +101,9 @@
   .map-boot-recovery nav a {display:inline-flex!important;align-items:center!important;min-height:44px!important;padding:8px 12px!important;border:1px solid var(--ui-line)!important;border-radius:10px!important;color:var(--ui-ink)!important;font-size:14px!important;text-decoration:none!important;}
   .vano-webgl-unavailable :is(#optionsBtn,#locationPermission,#recenterBtn,#vanoSpeedometerV220,#activeNav,#prefsBtn,#planSheet) {display:none!important;}
 }
+
+@layer vanoFoundation {
+  #cancelBenchmarkBtn[hidden],#benchProgress[hidden] {display:none!important;}
+  .bench261-run {color:#27231f!important;min-height:44px!important;}
+  .bench261 :is(label,small,em,.bench261-resolved,.bench261-table th,.bench261-table td) {font-size:12px!important;}
+}

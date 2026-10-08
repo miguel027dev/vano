@@ -76,3 +76,11 @@ ANDROID-BUILD-01 (P0 para esses protótipos): bibliotecas do baseline exigiam SD
 
 UX-02 (P1): inicialização do mapa sem WebGL abortava scripts e oferecia apenas uma mensagem de conexão, com controles inertes. Adicionada detecção antecipada, causa explícita e acessos funcionais a conta/ajuda/benchmark. Sem GPU, o mapa 3D permanece indisponível; não se altera autenticação para facilitar auditoria.
 UI-01 (P3): ícone cloud-check inexistente na versão Lucide fixada substituído por cloud-upload.
+
+UI-02 (P2): CSS legado sobrescrevia o atributo hidden no botão Cancelar do benchmark, mantendo-o visível após concluir; corrigida precedência e contraste do botão Executar.
+
+## Verificação obtida
+
+CI web: 75 testes aprovados no PostgreSQL real, antes do teste adicional de endpoints; suíte local atual: 75 aprovados e uma integração ignorada por ausência de banco local. Produção: 39/39 checks aprovados em 12f94fcc8dc5 (login existente QA, dados pessoais sem cache, rota real assinada, adulteração recusada, revogação e replay após logout). Benchmark no navegador sem WebGL: 1/1 resposta válida, rota 11,18 km, ETA 30,5 min, latência observada 5.010 ms; medição única, sem inferência de p95 real. Política visualmente revisada em claro/Black, texto 16 px e ausência de overflow no viewport de 1363 px.
+
+Protótipo vano_android: compilação assembleDebug aprovada e PR 1 incorporado em main. Segundo repositório tinha atividade WebView antiga fora do namespace do aplicativo atual, causando erros de compilação; arquivada fora dos fontes ativos, mantendo histórico. Validação de GPS e AAB final segue obrigatória.
