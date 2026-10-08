@@ -36,9 +36,9 @@ def test_public_pages_have_accessible_breadcrumbs_and_real_headings():
 
 def test_public_design_is_scope_limited_and_responsive():
     base = read("templates/base.html")
-    css = read("static/vano-public-refresh.css")
+    css = read("static/vano-foundation.css")
     assert "not vano_map_surface and not vano_admin_surface" in base
-    assert "vano-public-refresh.css" in base
+    assert "vano-foundation.css" in base
     assert "vano-public-refresh.js" in base
     for selector in (
         ".vano-seo .seo-wrap",
