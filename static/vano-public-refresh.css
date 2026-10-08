@@ -301,3 +301,76 @@
     body.vano-page-surface .vano-seo .seo-card {transition:none!important;transform:none!important;}
   }
 }
+
+/* Small, unobtrusive reading controls and more cohesive benchmark/registration. */
+@layer vanoFoundation {
+  .vano-reading-progress {
+    position:fixed;z-index:999;top:0;left:0;right:0;height:3px;
+    pointer-events:none;opacity:0;transition:opacity .2s ease;
+  }
+  .vano-reading-progress.is-scrolled {opacity:1;}
+  .vano-reading-progress span {
+    display:block;width:100%;height:100%;background:var(--ui-brand,#f59a62);
+    transform:scaleX(0);transform-origin:left center;will-change:transform;
+  }
+  body.vano-page-surface .vano-public-topics {
+    margin:18px 0 26px!important;
+    display:flex!important;align-items:center!important;gap:9px!important;flex-wrap:wrap!important;
+  }
+  body.vano-page-surface .vano-public-topics>span {
+    padding:9px 6px 9px 0;color:var(--ui-muted)!important;font-size:12px!important;font-weight:780!important;
+  }
+  body.vano-page-surface .vano-public-topics>a {
+    display:inline-flex!important;align-items:center!important;padding:10px 14px!important;
+    min-height:42px!important;border-radius:999px!important;text-decoration:none!important;
+    background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;
+    color:var(--ui-muted)!important;font-size:12px!important;font-weight:680!important;
+  }
+  body.vano-page-surface .vano-public-topics>a:hover,
+  body.vano-page-surface :is(.vano-public-topics,.legal-toc) a[aria-current="location"] {
+    color:var(--ui-ink)!important;border-color:var(--ui-brand)!important;background:var(--ui-raised)!important;
+  }
+  body.vano-page-surface .bench-public-pills span,
+  body.vano-page-surface .bench-public-note {
+    background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;
+    border-radius:16px!important;color:var(--ui-ink)!important;
+  }
+  body.vano-page-surface .bench-public-pills span {border-radius:999px!important;}
+  body.vano-page-surface .bench-public-actions :is(.btn,a) {min-height:44px!important;border-radius:12px!important;}
+  body.vano-page-surface .bench-public-docs article,
+  body.vano-page-surface .bench-agent-card {
+    border:1px solid var(--ui-line)!important;
+    border-radius:22px!important;background:var(--ui-surface)!important;
+    box-shadow:var(--ui-shadow)!important;
+  }
+  body.vano-page-surface .bench-public-docs h2,
+  body.vano-page-surface .bench-agent-card h2 {color:var(--ui-ink)!important;}
+  body.vano-page-surface .bench-public-docs :is(p,li),
+  body.vano-page-surface .bench-agent-card>p {color:var(--ui-muted)!important;}
+  body.vano-page-surface .bench-agent-contract,
+  body.vano-page-surface .bench-public-docs {max-width:100%!important;}
+  body.vano-page-surface .bench261-table-wrap {max-width:100%!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;}
+  body.vano-page-surface .bench261-table {min-width:600px!important;}
+  body.vano-page-surface .bench-agent-code,body.vano-page-surface .bench-public-docs pre {white-space:pre-wrap!important;overflow-wrap:anywhere!important;}
+  body.vano-route-onboarding .ob500-privacy-note {
+    max-width:690px!important;margin:18px 0 8px!important;
+    display:flex!important;align-items:flex-start!important;gap:9px!important;
+    font-size:12px!important;line-height:1.55!important;color:var(--ob-muted,var(--ui-muted))!important;
+  }
+  body.vano-route-onboarding .ob500-privacy-note i {flex:0 0 auto!important;margin-top:1px!important;}
+  @media(max-width:720px){
+    body.vano-page-surface .vano-public-topics {
+      flex-wrap:nowrap!important;overflow-x:auto!important;scrollbar-width:none;
+      margin-right:-14px!important;padding-bottom:8px!important;
+    }
+    body.vano-page-surface .vano-public-topics>* {flex:0 0 auto!important;}
+    body.vano-page-surface .bench-agent-contract,
+    body.vano-page-surface .bench-public-docs {grid-template-columns:minmax(0,1fr)!important;}
+    body.vano-page-surface .bench-agent-endpoint {grid-template-columns:70px minmax(0,1fr)!important;}
+    body.vano-page-surface .bench-agent-endpoint code {min-width:0!important;overflow:hidden!important;}
+    body.vano-page-surface .bench-public-hero {padding:23px 18px!important;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .vano-reading-progress {transition:none;}
+  }
+}
