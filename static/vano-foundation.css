@@ -586,3 +586,63 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
     body.vano-page-surface .vano-nav-brand-lite b {font-size:17px!important;}
   }
 }
+
+/* VANO lightweight public reading layout without the map bundle. */
+@layer vanoFoundation {
+  body.vano-page-surface .legal-shell .section {padding:24px 0!important;}
+  body.vano-page-surface .legal-shell .public-split {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:16px!important;align-items:stretch!important;
+  }
+  body.vano-page-surface .legal-shell .public-pill-row {
+    display:flex!important;align-items:center!important;flex-wrap:wrap!important;gap:9px!important;
+  }
+  body.vano-page-surface .legal-shell .public-pill {
+    display:inline-flex!important;align-items:center!important;
+    padding:9px 12px!important;border-radius:999px!important;
+    border:1px solid var(--ui-line)!important;background:var(--ui-raised)!important;
+    color:var(--ui-ink)!important;font-size:13px!important;
+  }
+  body.vano-page-surface .legal-actions {
+    display:flex!important;align-items:center!important;gap:10px!important;
+    flex-wrap:wrap!important;margin:20px 0 0!important;
+  }
+  body.vano-page-surface .legal-actions .btn {
+    min-height:44px!important;display:inline-flex!important;align-items:center!important;
+    justify-content:center!important;gap:8px!important;padding:11px 15px!important;
+    text-decoration:none!important;font-size:14px!important;
+  }
+  body.vano-page-surface .legal-contact-grid {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;
+    margin:14px 0 0!important;
+  }
+  body.vano-page-surface .legal-contact {padding:16px!important;min-width:0!important;overflow-wrap:anywhere!important;}
+  body.vano-page-surface .legal-contact small {display:block!important;margin-bottom:4px!important;}
+  body.vano-page-surface .legal-request .panel {overflow:hidden!important;}
+  body.vano-page-surface .legal-request :is(.panel-head,.panel-body) {padding:clamp(18px,2.8vw,28px)!important;}
+  body.vano-page-surface .legal-request .panel-head {
+    display:flex!important;flex-wrap:wrap!important;justify-content:space-between!important;
+    gap:16px!important;align-items:center!important;border-bottom:1px solid var(--ui-line)!important;
+  }
+  body.vano-page-surface .legal-request .form-grid {
+    display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:16px!important;
+  }
+  body.vano-page-surface .legal-request .field {display:flex!important;flex-direction:column!important;gap:7px!important;min-width:0!important;}
+  body.vano-page-surface .legal-request .field.full {grid-column:1/-1!important;}
+  body.vano-page-surface .legal-request :is(.input,.select,.textarea) {
+    width:100%!important;max-width:100%!important;min-width:0!important;
+    padding:11px 12px!important;font-size:16px!important;line-height:1.4!important;
+  }
+  body.vano-page-surface .legal-request .field.full:last-child {
+    display:flex!important;flex-direction:row!important;align-items:center!important;
+    flex-wrap:wrap!important;gap:10px!important;
+  }
+  body.vano-page-surface .legal-request .table-wrap {max-width:100%!important;overflow:auto!important;}
+  body.vano-page-surface .legal-request .table {min-width:560px!important;}
+  @media(max-width:740px){
+    body.vano-page-surface .legal-shell .public-split,
+    body.vano-page-surface .legal-contact-grid,
+    body.vano-page-surface .legal-request .form-grid {grid-template-columns:1fr!important;}
+    body.vano-page-surface .legal-actions .btn {flex:1 1 auto!important;}
+  }
+}
