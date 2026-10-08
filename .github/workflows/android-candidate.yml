@@ -26,14 +26,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install Android API 36 using preinstalled runner SDK
-        run: |
-          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
-          manager="$sdk_root/cmdline-tools/16.0/bin/sdkmanager"
-          if [ ! -x "$manager" ]; then manager="$(command -v sdkmanager)"; fi
-          yes | "$manager" --licenses >/dev/null || true
-          "$manager" --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Set up Android SDK (supports removed legacy tools package)
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Install Android API 36
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
       - name: Build and verify isolated Android WebView
         run: |
           chmod +x android-webview/build.sh
