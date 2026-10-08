@@ -668,7 +668,7 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
     width:auto!important;
     max-width:min(440px,calc(100vw - 20px))!important;
     min-height:0!important;
-    max-height:min(22dvh,122px)!important;
+    max-height:min(22dvh,var(--vano-android-radar-cap,122px))!important;
     margin:0 auto!important;
     padding:11px 13px!important;
     display:flex!important;align-items:flex-start!important;gap:9px!important;
@@ -707,7 +707,7 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
     top:var(--vano-android-context-top)!important;
     width:auto!important;max-width:min(440px,calc(100vw - 20px))!important;
     margin:0 auto!important;min-width:0!important;
-    max-height:min(18dvh,104px)!important;overflow-x:hidden!important;overflow-y:auto!important;
+    max-height:min(18dvh,var(--vano-android-context-cap,104px))!important;overflow-x:hidden!important;overflow-y:auto!important;
     z-index:415!important;box-sizing:border-box!important;
   }
   html.vano-android-shell body.vano-map-surface.body-nav #navContextAlert :is(.nav-context-copy,#navContextText,#navContextDistance) {
