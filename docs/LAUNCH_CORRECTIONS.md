@@ -38,7 +38,7 @@ P0: corrigir antes do lançamento; P1: validar antes da liberação; P2: conclui
 | V26 | P1 / média | Testes comportamentais de sessão, OAuth, privacidade, compartilhamento e posição; integração PostgreSQL em CI | Suíte completa e CI aprovados; não confundir inspeção de texto com comportamento |
 | V27 | P2 / média | APIs protegidas retornam JSON 401 | Teste API sem sessão e sessão revogada |
 | V28 | P1 / média | Benchmark continua sem WebGL e informa ausência do mapa | Executar benchmark no navegador sem GPU |
-| N01 | P1 / alta condicional | Patch nativo invalida rota quando origem/destino/modo/veículo muda e descarta resposta assíncrona obsoleta | Compilar e testar AAB que efetivamente será publicado |
+| N01 | P1 / alta condicional | Patch nativo invalida rota quando destino/modo/veículo muda e descarta resposta assíncrona obsoleta | Compilar e testar AAB que efetivamente será publicado |
 | N02 | P1 / média condicional | Patch nativo comunica GPS ausente e recusa silenciosa eliminada | Testar sem permissão, GPS frio e localização aproximada |
 | N03 | P2 / média condicional | Patch nativo remove listeners ao pausar/desmontar; callback usa estado atual | Testar lifecycle e confirmar sem listeners duplicados |
 
@@ -61,3 +61,8 @@ Atualizar com `python -m piptools compile --generate-hashes --output-file requir
 ## Compatibilidade e rollback
 
 Cookies autenticados legados sem vínculo revogável poderão exigir novo login. Links antigos criados com payload não autenticado retornam 410 e precisam ser recriados. Novo compartilhamento de rota exige login; não depende de acesso administrativo. Migração acrescenta tabela/índices, sem apagar dados de usuários. Um rollback deve preservar estes objetos e considerar que reintroduzir código antigo reabre os riscos de sessão e compartilhamento.
+
+
+## Ajuste encontrado durante o deploy
+
+O serviço existente selecionava Python 3.14.3 por padrão; o primeiro build com lock recusou backports-zstd, cuja versão fixada exige Python < 3.14. Adicionado `.python-version` com 3.13, alinhado ao CI aprovado e usando o patch suportado mais recente. O build com falha não substituiu a versão previamente live. Referência operacional: https://render.com/docs/python-version.
