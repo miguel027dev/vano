@@ -72,7 +72,7 @@ O serviço existente selecionava Python 3.14.3 por padrão; o primeiro build com
 
 UX-01 (P1): cenário padrão e presets do benchmark descartavam coordenadas conhecidas e repetiam geocodificação; a Av. Paulista foi resolvida para Pereira Barreto, causando 422 por distância. Corrigido reaproveitamento das coordenadas do cenário e inicialização do preset padrão. Resultado 0/N deixa de receber aparência de sucesso. Validar cenário no navegador sem WebGL.
 
-ANDROID-BUILD-01 (P0 para esses protótipos): bibliotecas do baseline exigiam SDK 37 e AGP 9.1, incompatíveis com SDK 36/AGP 8.13.2. Em revisão, alinhar versões compatíveis e compilar antes de incorporar. Não há evidência de que este protótipo seja o AAB final da Play Store.
+ANDROID-BUILD-01 (P0 para esses protótipos): bibliotecas do baseline exigiam SDK 37 e AGP 9.1, incompatíveis com SDK 36/AGP 8.13.2. Corrigidas versões compatíveis com SDK 36 / AGP 8.13.2; ambos os protótipos compilados e PRs incorporados. Não há evidência de que este protótipo seja o AAB final da Play Store.
 
 UX-02 (P1): inicialização do mapa sem WebGL abortava scripts e oferecia apenas uma mensagem de conexão, com controles inertes. Adicionada detecção antecipada, causa explícita e acessos funcionais a conta/ajuda/benchmark. Sem GPU, o mapa 3D permanece indisponível; não se altera autenticação para facilitar auditoria.
 UI-01 (P3): ícone cloud-check inexistente na versão Lucide fixada substituído por cloud-upload.
@@ -81,6 +81,28 @@ UI-02 (P2): CSS legado sobrescrevia o atributo hidden no botão Cancelar do benc
 
 ## Verificação obtida
 
-CI web: 75 testes aprovados no PostgreSQL real, antes do teste adicional de endpoints; suíte local atual: 75 aprovados e uma integração ignorada por ausência de banco local. Produção: 39/39 checks aprovados em 12f94fcc8dc5 (login existente QA, dados pessoais sem cache, rota real assinada, adulteração recusada, revogação e replay após logout). Benchmark no navegador sem WebGL: 1/1 resposta válida, rota 11,18 km, ETA 30,5 min, latência observada 5.010 ms; medição única, sem inferência de p95 real. Política visualmente revisada em claro/Black, texto 16 px e ausência de overflow no viewport de 1363 px.
+CI web anterior: 76 testes aprovados com PostgreSQL real; nova suíte local: 80 aprovados e três integrações ignoradas por ausência de banco local. A nova CI executa os três testes PostgreSQL. Produção: 39/39 checks aprovados em 12f94fcc8dc5 (login existente QA, dados pessoais sem cache, rota real assinada, adulteração recusada, revogação e replay após logout). Benchmark no navegador sem WebGL: 1/1 resposta válida, rota 11,18 km, ETA 30,5 min, latência observada 5.010 ms; medição única, sem inferência de p95 real. Política visualmente revisada em claro/Black, texto 16 px e ausência de overflow no viewport de 1363 px.
 
 Protótipo vano_android: compilação assembleDebug aprovada e PR 1 incorporado em main. Segundo repositório tinha atividade WebView antiga fora do namespace do aplicativo atual, causando erros de compilação; arquivada fora dos fontes ativos, mantendo histórico. Validação de GPS e AAB final segue obrigatória.
+
+
+## Auditoria prioritária 2 — 08/10/2026
+
+| ID | Prioridade / severidade | Correção | Verificação / limite |
+|---|---|---|---|
+| SEC-29 | P0 / alta condicional | Callback OAuth aceita somente state vinculado à sessão ou cookie OAuth assinado. IP/UA não autenticam navegador; request forjado não consome state legítimo. | Testes: request sem cookie recusado antes de trocar código; cookie assinado mantém compatibilidade com ausência da sessão Flask. Fluxo Google real em Android segue pendente. |
+| SEC-30 | P1 / média | State OAuth consumido por DELETE RETURNING atômico. | CI PostgreSQL: oito workers disputam um state; apenas um vencedor esperado. |
+| SEC-31 | P1 / média | Reset reivindica token com UPDATE condicional RETURNING na mesma transação da senha e revogação das sessões. | Testes comportamentais de replay, perda da disputa e revogação; oito workers PostgreSQL devem produzir um vencedor. |
+| SEC-32 | P1 / média | no-referrer em recuperação de senha e callbacks OAuth. | Headers verificados com cliente Flask. |
+| UI-03 | P1 / média de UX | Ajuda, notificações e convite usam tokens, corpo 16 px, metadados 12–14 px e ação de posição com 44 px. | Ajuda anterior em produção: resposta 11 px; conferir novo build e temas. |
+| UX-03 | P1 / média de UX | Erros flash persistem até fechar; alert/status acessíveis; fechar com 44 px. Sucesso não some enquanto houver foco/hover. | Inspeção de HTML renderizado e teste interativo; mensagens de erro não têm temporizador. |
+| UX-04 | P1 / média de UX | Menu mobile de páginas públicas, Escape e clique externo; links para conta, ajuda, termos e privacidade. | Desktop não exibe menu; matriz mobile real segue pendente. |
+| UI-04 | P2 / baixa | Atalho Pular para conteúdo e landmark focável em 34 templates; labels associadas no relato. | Todos os templates compilam; navegação por teclado a conferir no build. |
+| UX-05 | P1 / média de UX | Relato sem ponto selecionado é impedido no cliente com instrução acessível; requisitos de senha corrigidos para 10 caracteres com letra e número; ajuda de privacidade informa acesso sem login. | Backend mantém validação; teste manual em dispositivo segue pendente. |
+| SEC-33 | P2 / média | Leaflet 1.9.4 fixado com SRI para script e CSS, conforme hashes do tag oficial. | Não adotar hashes do prerelease 2.0; conferir carregamento da página de relato. |
+
+Referências primárias: OWASP OAuth2 Cheat Sheet (state ligado ao navegador), OWASP Forgot Password Cheat Sheet (token de uso único/no-referrer), Leaflet/Leaflet v1.9.4 docs/_config.yml (SRI). Essas referências orientam correções; a severidade é inferência da análise do código, não afirmação de exploração observada.
+
+Pendências mantidas: healthCheckPath do serviço existente (conector sem atualização do campo; Dashboard requer login), AAB final identificado/assinado e teste físico, OAuth real, revisão de todas as telas administrativas com sessão legítima, matriz mobile/temas e migração integral do CSS legado ~2,34 MB. O relatório não declara ausência de vulnerabilidades nem conclusão absoluta.
+
+Android: vano_android PR 1 incorporado em 7e025b6f6310f079a86c9c6e45d5d5def32fa160; VAIGO-Android PR 1 incorporado em f5e77ac32cc4eeb504fbcc912c7b2a92063f605d. assembleDebug aprovado nos dois repositórios; isso não valida o release final da loja.

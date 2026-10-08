@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
 </head>
 <body class="vano-auth-startup">
+<a class="vano-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>
   <div class="startup-ambient" aria-hidden="true">
     <span class="ambient-orb ambient-orb-a"></span>
     <span class="ambient-orb ambient-orb-b"></span>
@@ -56,7 +57,7 @@
     {% endif %}
   {% endwith %}
 
-  <main class="startup-shell" id="startupShell">
+  <main class="startup-shell" id="startupShell" tabindex="-1">
     <section class="startup-auth" aria-labelledby="startupTitle">
       <div class="startup-auth-inner">
         <div class="startup-flow" id="startupFlow" data-step="choice">

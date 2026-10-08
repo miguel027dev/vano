@@ -73,7 +73,7 @@ def security_headers(response):
         response.headers["Cache-Control"] = "no-store, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.vary.add("Cookie")
-    if request.path.startswith(("/route/share/", "/live/", "/family/")):
+    if request.path.startswith(("/route/share/", "/live/", "/family/", "/reset-password/", "/login/google/callback", "/auth/google/callback")):
         response.headers["Referrer-Policy"] = "no-referrer"
 
     if request.path.startswith("/admin") or request.path.startswith("/api/admin"):

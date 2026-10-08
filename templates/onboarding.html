@@ -11,7 +11,7 @@
 {% set night_safety = user['night_safety_mode'] if user['night_safety_mode'] is not none else 1 %}
 <div class="vano-onboarding-v340 vano-onboarding-v402 vano-onboarding-v500" data-ob500-root>
   <div class="ob500-ambient" aria-hidden="true"><i></i><i></i><i></i></div>
-  <main class="ob-shell-v340 ob-shell-v402 ob500-shell">
+  <main class="ob-shell-v340 ob-shell-v402 ob500-shell" id="conteudo-principal" tabindex="-1">
     <section class="ob-main-v340 ob500-main">
       <header class="ob-top-v340 ob500-top">
         <a class="ob-brand-v340" href="{{ url_for('index') }}" aria-label="VANO MAPS">

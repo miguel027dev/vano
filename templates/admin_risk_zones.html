@@ -7,7 +7,7 @@ body:has(.risk-admin){background:#f5f6f9!important;color:#202533!important}body:
 </style>
 {% endblock %}
 {% block content %}
-<main class="risk-admin"><div class="container">
+<main class="risk-admin" id="conteudo-principal" tabindex="-1"><div class="container">
   <header class="risk-head"><div><div class="risk-eyebrow">Administração · Safety Engine</div><h1>Bairros e áreas evitadas</h1><p>Agora você pode controlar centro exato, raio, nível, horário de vigência e força de evitação. A política usa evidência operacional cadastrada, não o nome do bairro isoladamente.</p></div><a class="risk-back" href="{{ url_for('admin_dashboard') }}">Voltar ao painel</a></header>
   <div class="risk-grid">
     <section class="risk-card"><div class="risk-card-head"><h2>Cadastrar área</h2><p>Use o nome para geocodificação automática ou informe coordenadas manuais para posicionar o círculo exatamente onde quiser.</p></div>

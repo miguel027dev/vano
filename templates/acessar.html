@@ -3,7 +3,7 @@
 {% block meta_description %}Abra o VANO MAPS no Android, iPhone ou navegador. Acompanhe a contagem regressiva para o aplicativo Android.{% endblock %}
 {% block final_styles %}{% endblock %}
 {% block content %}
-<main class="access-page">
+<main class="access-page" id="conteudo-principal" tabindex="-1">
   <header class="access-header">
     <a class="access-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS — abrir mapa"><img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}" width="40" height="40" alt=""><span>VANO<span class="access-brand-light"> MAPS</span></span></a>
     <a class="access-back" href="{{ url_for('index') }}">Abrir mapa <i data-lucide="arrow-up-right" aria-hidden="true"></i></a>

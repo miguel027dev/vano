@@ -202,36 +202,38 @@ def google_callback():
         return redirect(url_for("login"))
 
     returned_state = request.args.get("state", "")
-    expected_state = session.pop("google_oauth_state", "")
-    link_user_id = session.pop("google_link_user_id", None)
-    session.pop("google_oauth_nonce", None)
+    expected_state = session.get("google_oauth_state", "")
+    link_user_id = session.get("google_link_user_id")
 
-    # First validate the normal same-session flow. Independently consume the
-    # persisted one-time state so iframe/mobile OAuth also works when the
-    # browser did not return the original partitioned session cookie.
-    stored_state = consume_google_oauth_state(returned_state)
+    # The callback must prove possession of the initiating browser's session
+    # or signed OAuth cookie. IP/UA similarity is not a security boundary:
+    # unrelated people behind the same NAT can share it.
     session_state_ok = bool(
         returned_state
         and expected_state
         and secrets.compare_digest(returned_state, expected_state)
     )
     cookie_state_ok = oauth_cookie_matches(returned_state)
-    fingerprint_ok = bool(
-        stored_state
-        and stored_state["fingerprint"]
-        and secrets.compare_digest(stored_state["fingerprint"], oauth_client_fingerprint())
-    )
-    if not stored_state or not (session_state_ok or cookie_state_ok or fingerprint_ok):
+    if not (session_state_ok or cookie_state_ok):
         audit(
             "google_login_state_mismatch",
             {
                 "session_state_present": bool(expected_state),
                 "signed_cookie_ok": cookie_state_ok,
-                "fingerprint_ok": fingerprint_ok,
             },
         )
         flash("A sessão do login Google expirou. Tente entrar novamente.", "warning")
         return redirect(url_for("login"))
+
+    # Consume only after browser binding is established. A forged callback
+    # must not invalidate a legitimate browser's outstanding state.
+    stored_state = consume_google_oauth_state(returned_state)
+    if not stored_state:
+        flash("A sessão do login Google expirou. Tente entrar novamente.", "warning")
+        return redirect(url_for("login"))
+    session.pop("google_oauth_state", None)
+    session.pop("google_link_user_id", None)
+    session.pop("google_oauth_nonce", None)
 
     code = request.args.get("code", "")
     session_redirect_uri = session.pop("google_oauth_redirect_uri", None)
