@@ -47,8 +47,13 @@ public final class MainActivity extends Activity {
         if(Build.VERSION.SDK_INT>=30){
             getWindow().setDecorFitsSystemWindows(false);
             root.setOnApplyWindowInsetsListener((view,insets)->{
-                android.graphics.Insets i=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout()|WindowInsets.Type.ime());
-                view.setPadding(i.left,i.top,i.right,i.bottom);return insets;
+                // Fit the WebView within both bars and IME exactly once. Forwarding
+                // the same insets to the child after padding the root could make
+                // Android WebView count safe areas twice and clip fixed nav cards.
+                android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());
+                android.graphics.Insets keyboard=insets.getInsets(WindowInsets.Type.ime());
+                view.setPadding(bars.left,bars.top,bars.right,Math.max(bars.bottom,keyboard.bottom));
+                return WindowInsets.CONSUMED;
             });
         } else root.setFitsSystemWindows(true);
         createWebView();
@@ -67,7 +72,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false); // Spoken navigation follows the explicit start-trip action.
-        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/2.7.0-fluidez-rc1");
+        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/2.7.1-navfix-rc2");
         settings.setSupportMultipleWindows(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
