@@ -81,6 +81,16 @@ self.addEventListener('fetch',event=>{
   if(CORE_RE.test(url.pathname)){
     event.respondWith((async()=>{
       const cache=await caches.open(CACHE);
+      // The ?v= fingerprint changes on every deployment. A cached matching
+      // URL is safe and avoids waiting for a 5s network timeout on every page.
+      const versioned=Boolean(url.searchParams.get('v'));
+      if(versioned){
+        const hit=await cache.match(req);
+        if(hit)return hit;
+        try{return await putSafe(cache,req,await fetchWithTimeout(req,5000))}
+        catch(_){return Response.error()}
+      }
+      // Older unversioned native clients still revalidate hotfixes.
       try{return await putSafe(cache,req,await fetchWithTimeout(req,5000))}
       catch(_){return (await cache.match(req))||(await cache.match(url.pathname))||Response.error()}
     })());
