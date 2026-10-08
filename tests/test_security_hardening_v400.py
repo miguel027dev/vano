@@ -8,7 +8,7 @@ def read(path):
 
 
 def test_password_hashing_uses_argon2id_with_legacy_compatibility():
-    requirements = read("requirements.txt")
+    requirements = read("requirements.lock")
     database = read("vano/infrastructure/database.py")
     auth_routes = read("vano/routes/auth.py")
 
@@ -31,8 +31,8 @@ def test_sensitive_rate_limits_bind_ip_and_identity():
     community = read("vano/routes/community.py")
 
     assert "def rate_limit(key, limit=20, window=60, *, identity=None, include_ip=True, shared=False)" in auth
-    assert "fcntl.LOCK_EX" in auth
-    assert "VANO_RATE_LIMIT_FILE" in auth
+    assert "pg_advisory_xact_lock" in auth
+    assert "security_rate_events" in auth
     assert '"login-account"' in login
     assert '"register-account"' in login
     assert 'shared=True' in routing

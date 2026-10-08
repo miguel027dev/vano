@@ -40,6 +40,8 @@ from flask import (
     flash, jsonify, g, abort, has_request_context, has_app_context
 )
 from vano.bootstrap import install as _vano_install
+from vano.security.route_integrity import attest_route, valid_attestation, valid_geometry, valid_metrics
+from vano.security.redaction import redact_path
 
 _vano_install(globals(), "vano.config")
 _vano_install(globals(), "vano.services.nodes")
@@ -102,6 +104,30 @@ _vano_install(globals(), "vano.routes.public")
 _vano_install(globals(), "vano.routes.admin")
 _vano_install(globals(), "vano.routes.api")
 _vano_install(globals(), "vano.routes.routing")
+
+
+@app.after_request
+def authenticate_route_responses(response):
+    if response.status_code != 200 or not response.is_json or request.path not in {
+        "/api/route", "/api/benchmark/v1/route", "/api/traffic-recommendation",
+    }:
+        return response
+    payload = response.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return response
+    candidates = list(payload.get("routes") or [])
+    suggestion = payload.get("suggestion")
+    if isinstance(suggestion, dict) and isinstance(suggestion.get("route"), dict):
+        candidates.append(suggestion["route"])
+    for route in candidates:
+        if isinstance(route, dict) and valid_geometry(route.get("geometry")):
+            try:
+                route["shared_mode"] = payload.get("mode") or request.args.get("mode") or (request.get_json(silent=True) or {}).get("route_mode") or "safest"
+                route["attestation"] = attest_route(route, SECRET_KEY)
+            except (TypeError, ValueError, OverflowError):
+                app.logger.warning("Route could not be authenticated: invalid metrics")
+    response.set_data(app.json.dumps(payload))
+    return response
 from vano.services.indexnow import start_indexnow_submitter as _start_indexnow_submitter
 
 def _error_response(code, title, message, error_code):
@@ -139,6 +165,11 @@ def too_many_requests(_e):
     response = app.make_response(payload)
     response.headers.setdefault("Retry-After", "60")
     return response
+
+
+@app.errorhandler(410)
+def gone(_e):
+    return _error_response(410, "Link de rota desatualizado", "Esta rota foi criada antes da atualização de segurança. Peça um novo link ao responsável.", "share_needs_refresh")
 
 
 @app.errorhandler(500)

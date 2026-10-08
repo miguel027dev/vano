@@ -20,58 +20,27 @@ def _rate_bucket_key(key, identity=None, include_ip=True):
 
 
 def _shared_rate_limit(bucket_key, limit, window):
-    """Best-effort limiter shared by Gunicorn workers on the same instance."""
-    path = str(os.environ.get("VANO_RATE_LIMIT_FILE") or "/tmp/security-rate-buckets.json").strip()
+    """An atomic sliding window shared by all workers and service instances."""
     now = time.time()
+    db = None
     try:
-        import fcntl
-        with open(path, "a+", encoding="utf-8") as fh:
-            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-            fh.seek(0)
-            try:
-                payload = json.load(fh) or {}
-            except Exception:
-                payload = {}
-            buckets = payload.get("buckets") if isinstance(payload, dict) else None
-            if not isinstance(buckets, dict):
-                buckets = {}
-            if len(buckets) > 5000:
-                cutoff = now - 86400
-                buckets = {
-                    k: v for k, v in buckets.items()
-                    if isinstance(v, dict) and float(v.get("touched") or 0) >= cutoff
-                }
-                if len(buckets) > 5000:
-                    newest = sorted(
-                        buckets.items(),
-                        key=lambda item: float((item[1] or {}).get("touched") or 0),
-                        reverse=True,
-                    )[:4000]
-                    buckets = dict(newest)
-            row = buckets.get(bucket_key) or {}
-            values = row.get("values") if isinstance(row, dict) else []
-            if not isinstance(values, list):
-                values = []
-            clean = []
-            for x in values:
-                try:
-                    x = float(x)
-                except (TypeError, ValueError):
-                    continue
-                if now - x < window:
-                    clean.append(x)
-            allowed = len(clean) < limit
-            if allowed:
-                clean.append(now)
-            buckets[bucket_key] = {"values": clean, "touched": now, "window": int(window)}
-            fh.seek(0)
-            fh.truncate()
-            json.dump({"buckets": buckets}, fh, separators=(",", ":"))
-            fh.flush()
-            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
-            return allowed
+        db = get_db()
+        lock_id = int(bucket_key[:16], 16) % (2**63)
+        db.execute("SELECT pg_advisory_xact_lock(?)", (lock_id,))
+        db.execute("DELETE FROM security_rate_events WHERE bucket_key=? AND expires_at<=?", (bucket_key, now))
+        count = db.execute("SELECT COUNT(*) c FROM security_rate_events WHERE bucket_key=? AND created_at>?", (bucket_key, now-window)).fetchone()["c"]
+        allowed = int(count) < limit
+        if allowed:
+            db.execute("INSERT INTO security_rate_events(bucket_key,created_at,expires_at) VALUES(?,?,?)", (bucket_key, now, now+window))
+        # Expired buckets are bounded and cleaned without retaining raw IPs.
+        db.execute("DELETE FROM security_rate_events WHERE ctid IN (SELECT ctid FROM security_rate_events WHERE expires_at<=? LIMIT 1000 FOR UPDATE SKIP LOCKED)", (now,))
+        db.commit()
+        return allowed
     except Exception:
-        return True
+        if db is not None:
+            db.rollback()
+        app.logger.exception("Shared security rate limiter unavailable")
+        return False
 
 
 def rate_limit(key, limit=20, window=60, *, identity=None, include_ip=True, shared=False):
@@ -130,7 +99,7 @@ def _remember_cookie_token():
 def issue_persistent_login(user_id):
     """Create a revocable, server-side remembered-login token.
 
-    Only a SHA-256 hash is stored in SQLite. The random token itself exists
+    Only a SHA-256 hash is stored in PostgreSQL. The random token itself exists
     solely in the browser cookie. A fresh token is issued on every successful
     login/register/OAuth completion and can be revoked explicitly on logout.
     """
@@ -153,6 +122,7 @@ def issue_persistent_login(user_id):
         db.executemany("UPDATE auth_sessions SET revoked_at=? WHERE id=?", [(now.isoformat(), row["id"]) for row in stale])
     db.commit()
     g.vano_remember_set = raw
+    session["auth_session_hash"] = _remember_token_hash(raw)
     g.vano_remember_expires = expires
     return raw
 
@@ -160,18 +130,24 @@ def issue_persistent_login(user_id):
 def revoke_current_persistent_login():
     # Revoke every visible remembered-login cookie. This fixes a logout edge
     # case where the top-level and partitioned cookies held different tokens.
-    raws = _remember_cookie_tokens()
-    if raws:
+    hashes = {_remember_token_hash(raw) for raw in _remember_cookie_tokens()}
+    if session.get("auth_session_hash"):
+        hashes.add(session["auth_session_hash"])
+    if hashes:
+        db = None
         try:
             db = get_db()
             now = utcnow_iso()
             db.executemany(
                 "UPDATE auth_sessions SET revoked_at=? WHERE token_hash=? AND revoked_at IS NULL",
-                [(now, _remember_token_hash(raw)) for raw in raws],
+                [(now, token_hash) for token_hash in hashes],
             )
             db.commit()
         except Exception:
+            if db is not None:
+                db.rollback()
             app.logger.exception("Could not revoke remembered login during logout")
+            abort(503)
     g.vano_remember_clear = True
 
 
@@ -182,8 +158,22 @@ def restore_persistent_login():
     This runs only when the signed Flask session cookie is absent. It does not
     bypass account state: inactive users and revoked/expired tokens are ignored.
     """
-    if session.get("user_id"):
+    if request.endpoint in {"static", "healthz"}:
         return
+    if session.get("user_id"):
+        bound = session.get("auth_session_hash")
+        valid = get_db().execute(
+            """SELECT a.id FROM auth_sessions a JOIN users u ON u.id=a.user_id
+               WHERE a.token_hash=? AND a.user_id=? AND a.revoked_at IS NULL
+               AND a.expires_at>? AND u.is_active=1""",
+            (bound or "", session["user_id"], utcnow_iso()),
+        ).fetchone()
+        if valid:
+            g.vano_auth_session_valid = True
+            return
+        # Legacy signed cookies alone are never credentials. A valid remember
+        # token can migrate an existing device into the revocable session model.
+        session.clear()
     raw = _remember_cookie_token()
     if not raw:
         return
@@ -201,6 +191,8 @@ def restore_persistent_login():
         g.vano_remember_clear = True
         return
     session["user_id"] = int(row["user_id"])
+    session["auth_session_hash"] = _remember_token_hash(raw)
+    g.vano_auth_session_valid = True
     session["csrf_token"] = secrets.token_urlsafe(32)
     session.permanent = True
     # Sliding lifetime: active devices remain signed in. Rotation every 30 days
@@ -299,6 +291,17 @@ def current_user():
     except (TypeError, ValueError):
         return None
 
+    if not getattr(g, "vano_auth_session_valid", False):
+        valid = get_db().execute(
+            """SELECT id FROM auth_sessions WHERE token_hash=? AND user_id=?
+               AND revoked_at IS NULL AND expires_at>?""",
+            (session.get("auth_session_hash") or "", uid, utcnow_iso()),
+        ).fetchone()
+        if not valid:
+            session.clear()
+            return None
+        g.vano_auth_session_valid = True
+
     if getattr(g, "vano_current_user_loaded", False) and getattr(g, "vano_current_user_uid", None) == uid:
         return getattr(g, "vano_current_user_value", None)
 
@@ -309,8 +312,8 @@ def current_user():
     ).fetchone()
     g.vano_current_user_loaded = True
     g.vano_current_user_uid = uid
-    g.vano_current_user_value = row
-    return row
+    g.vano_current_user_value = row if row and row["is_active"] else None
+    return g.vano_current_user_value
 
 
 def invalidate_current_user_cache():
@@ -341,6 +344,9 @@ def enforce_profile_onboarding():
         "onboarding", "logout", "google_login", "google_callback", "login", "register",
         "healthz", "static", "frame_test", "embed",
         "mobile_bootstrap", "mobile_navigation_config", "mobile_navigation_batch", "mobile_health",
+        "privacy_policy", "terms_of_use", "help_page", "about", "sobre",
+        "account_delete_page", "account_delete", "privacy_request_create",
+        "forgot_password", "reset_password", "google_link", "shared_route_view",
     }
     if endpoint in allowed or endpoint.startswith("static"):
         return
@@ -367,10 +373,20 @@ def login_required(view):
         user = current_user()
         if not user or not user["is_active"]:
             session.clear()
+            if request.path.startswith(("/api/", "/mobile/")):
+                return jsonify({"ok": False, "error": "unauthorized", "code": "session_expired", "login_url": url_for("login")}), 401
             flash("Entre na sua conta para continuar.", "warning")
             return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)
     return wrapped
+
+
+def recently_authenticated(max_age=300):
+    try:
+        age = time.time() - float(session.get("reauthenticated_at", 0))
+        return 0 <= age <= max_age
+    except (TypeError, ValueError):
+        return False
 
 
 def admin_required(view):
@@ -400,7 +416,7 @@ def audit(action, metadata=None, user_id=None):
     try:
         db = get_db()
         safe_meta = _safe_activity_metadata(metadata or {})
-        safe_meta.update({"ip": client_ip(), "path": request.path[:300], "method": request.method[:12]})
+        safe_meta.update({"ip": client_ip(), "path": redact_path(request.path)[:300], "method": request.method[:12]})
         db.execute(
             "INSERT INTO audit_logs(user_id,action,metadata,created_at) VALUES(?,?,?,?)",
             (user_id or session.get("user_id"), action, json.dumps(safe_meta, ensure_ascii=False), utcnow_iso()),

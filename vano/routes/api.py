@@ -46,20 +46,29 @@ def api_nearby_drivers():
         lat, lon = float(request.args.get("lat")), float(request.args.get("lon"))
     except (TypeError, ValueError):
         return jsonify({"drivers": []})
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return jsonify({"drivers": [], "error": "invalid_coordinates"}), 400
+    if not rate_limit("nearby-drivers", 30, 60, identity=viewer["id"], include_ip=False, shared=True):
+        return jsonify({"drivers": [], "error": "rate_limited"}), 429
+    lat_delta = 1650 / 111320
+    lon_delta = min(180, lat_delta / max(.01, math.cos(math.radians(lat))))
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat()
     db = get_db()
     rows = db.execute(
         """SELECT p.user_id,p.cell_lat,p.cell_lon,p.updated_at
            FROM nearby_presence p JOIN users u ON u.id=p.user_id
            WHERE p.updated_at>=? AND u.is_active=1 AND u.is_app_driver=1 AND u.presence_visible=1 AND u.presence_terms_accepted_at IS NOT NULL AND u.id<>?
-           LIMIT 120""",
-        (cutoff, viewer["id"]),
+           AND p.cell_lat BETWEEN ? AND ?
+           AND (ABS(p.cell_lon-?)<=? OR ABS(p.cell_lon-?)>=?)
+           ORDER BY p.updated_at DESC LIMIT 120""",
+        (cutoff, viewer["id"], lat-lat_delta, lat+lat_delta, lon, lon_delta, lon, 360-lon_delta),
     ).fetchall()
     out = []
     for row in rows:
         d = haversine_m(lat, lon, float(row["cell_lat"]), float(row["cell_lon"]))
         if d <= 1500:
-            out.append({"id": f"driver-{row['user_id']}", "lat": row["cell_lat"], "lon": row["cell_lon"], "distance_m": round(d), "label": "Motorista próximo"})
+            rotating_id = hmac.new(SECRET_KEY.encode(), f"presence:{row['user_id']}:{int(time.time()//300)}".encode(), hashlib.sha256).hexdigest()[:20]
+            out.append({"id": rotating_id, "lat": row["cell_lat"], "lon": row["cell_lon"], "distance_m": round(d), "label": "Motorista próximo"})
     out.sort(key=lambda x: x["distance_m"])
     return jsonify({"drivers": out[:40], "privacy": "Posições aproximadas; somente motoristas adultos que ativaram presença."})
 
@@ -78,6 +87,10 @@ def api_nearby_users_summary():
         return jsonify({"count": 0})
     if not (-90 <= lat <= 90 and -180 <= lon <= 180):
         return jsonify({"count": 0})
+    if not rate_limit("nearby-summary", 60, 60):
+        return jsonify({"count": 0, "error": "rate_limited"}), 429
+    lat_delta = 1650 / 111320
+    lon_delta = min(180, lat_delta / max(.01, math.cos(math.radians(lat))))
 
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=3)).isoformat()
     viewer = current_user()
@@ -86,6 +99,7 @@ def api_nearby_users_summary():
     if viewer:
         exclude_sql = " AND u.id<>?"
         params.append(viewer["id"])
+    params.extend((lat-lat_delta, lat+lat_delta, lon, lon_delta, lon, 360-lon_delta))
 
     rows = get_db().execute(
         f"""SELECT p.cell_lat,p.cell_lon
@@ -93,7 +107,9 @@ def api_nearby_users_summary():
             WHERE p.updated_at>=? AND u.is_active=1 AND u.is_app_driver=1
               AND u.presence_visible=1 AND u.presence_terms_accepted_at IS NOT NULL
               {exclude_sql}
-            LIMIT 160""",
+              AND p.cell_lat BETWEEN ? AND ?
+              AND (ABS(p.cell_lon-?)<=? OR ABS(p.cell_lon-?)>=?)
+            ORDER BY p.updated_at DESC LIMIT 160""",
         tuple(params),
     ).fetchall()
     count = sum(
@@ -734,14 +750,23 @@ def api_support_points():
 
 
 @app.route("/api/share-route", methods=["POST"])
+@login_required
 def create_shared_route():
     if not rate_limit("share_route", 18, 60):
         return jsonify({"error": "Muitos links criados. Aguarde um instante."}), 429
     if not validate_csrf():
         abort(400)
-    payload = request.get_json(silent=True) or {}
-    route = payload.get("route") or {}
-    geometry = route.get("geometry") or {}
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or not isinstance(payload.get("route"), dict):
+        return jsonify({"error": "Rota inválida para compartilhamento."}), 400
+    route = payload["route"]
+    geometry = route.get("geometry")
+    if not valid_geometry(geometry):
+        return jsonify({"error": "Geometria inválida para compartilhamento."}), 400
+    if not valid_attestation(route, SECRET_KEY):
+        return jsonify({"error": "Recalcule a rota antes de compartilhar. Os dados precisam ser verificados pelo VANO."}), 400
+    if not valid_metrics(route):
+        return jsonify({"error": "Métricas inválidas para compartilhamento."}), 400
     coords = geometry.get("coordinates") or []
     if geometry.get("type") != "LineString" or len(coords) < 2 or len(coords) > 30000:
         return jsonify({"error": "Rota inválida para compartilhamento."}), 400
@@ -753,10 +778,15 @@ def create_shared_route():
         return jsonify({"error": "Origem ou destino inválidos."}), 400
     if not (-90 <= olat <= 90 and -90 <= dlat <= 90 and -180 <= olon <= 180 and -180 <= dlon <= 180):
         return jsonify({"error": "Coordenadas inválidas."}), 400
+    if (haversine_m(olat, olon, coords[0][1], coords[0][0]) > 1000
+            or haversine_m(dlat, dlon, coords[-1][1], coords[-1][0]) > 1000):
+        return jsonify({"error": "Origem ou destino não correspondem à rota calculada."}), 400
     profile = str(payload.get("profile") or route.get("profile") or "walking")[:20]
     if profile not in {"walking", "cycling", "driving", "motorcycle"}: profile = "walking"
     mode = str(payload.get("mode") or "safest")[:20]
     if mode not in {"safest", "fastest", "quietest", "smart"}: mode = "safest"
+    if profile != route.get("profile") or mode != route.get("shared_mode"):
+        return jsonify({"error": "Recalcule a rota com o modo e veículo selecionados antes de compartilhar."}), 400
     # Mantém somente campos necessários para exibir e reutilizar a rota.
     safe_route = {
         "id": 0,
@@ -781,9 +811,16 @@ def create_shared_route():
         "routing_provider": str(route.get("routing_provider") or "")[:80],
         "shared": True,
     }
+    safe_route["server_verified"] = True
     token = secrets.token_urlsafe(22)
     now = datetime.now(timezone.utc)
-    expires = (now + timedelta(days=30)).replace(microsecond=0).isoformat()
+    try:
+        validity_hours = int(payload.get("validity_hours", 24))
+        if not 1 <= validity_hours <= 168:
+            raise ValueError()
+    except (ValueError, TypeError):
+        return jsonify({"error": "Validade deve ficar entre 1 e 168 horas."}), 400
+    expires = (now + timedelta(hours=validity_hours)).replace(microsecond=0).isoformat()
     db = get_db()
     db.execute("""
         INSERT INTO shared_routes(token,creator_user_id,origin_label,destination_label,origin_lat,origin_lon,destination_lat,destination_lon,profile,mode,route_json,created_at,expires_at)
@@ -794,7 +831,7 @@ def create_shared_route():
     return jsonify({"url": url, "token": token, "expires_at": expires})
 
 
-def get_shared_route_or_404(token):
+def get_shared_route_or_404(token, *, allow_legacy=False):
     if not re.fullmatch(r"[A-Za-z0-9_-]{20,64}", token or ""):
         abort(404)
     row = get_db().execute("SELECT * FROM shared_routes WHERE token=?", (token,)).fetchone()
@@ -806,7 +843,39 @@ def get_shared_route_or_404(token):
         if expires < datetime.now(timezone.utc): abort(404)
     except ValueError:
         abort(404)
+    try:
+        stored = json.loads(row["route_json"])
+        if not allow_legacy and not stored.get("server_verified"):
+            abort(410)
+    except (TypeError, ValueError, AttributeError):
+        abort(404)
     return row
+
+
+@app.route("/api/shared-routes")
+@login_required
+def own_shared_routes():
+    rows = get_db().execute(
+        """SELECT token,destination_label,expires_at FROM shared_routes
+           WHERE creator_user_id=? AND expires_at>? ORDER BY created_at DESC LIMIT 50""",
+        (current_user()["id"], utcnow_iso()),
+    ).fetchall()
+    return jsonify({"routes": [dict(row) for row in rows]})
+
+
+@app.route("/api/shared-route/<token>/revoke", methods=["POST"])
+@login_required
+def revoke_shared_route(token):
+    if not validate_csrf():
+        abort(400)
+    row = get_shared_route_or_404(token, allow_legacy=True)
+    if row["creator_user_id"] != current_user()["id"]:
+        abort(403)
+    db = get_db()
+    db.execute("UPDATE shared_routes SET expires_at=? WHERE token=? AND creator_user_id=?",
+               ((datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat(), token, current_user()["id"]))
+    db.commit()
+    return jsonify({"ok": True})
 
 
 @app.route("/route/share/<token>")
@@ -1314,10 +1383,13 @@ def stop_live_trip(token):
 @app.route("/api/live-trip/<token>")
 def live_trip_api(token):
     row = get_live_trip_or_404(token)
+    updated = parse_iso(row["updated_at"])
+    fresh = bool(updated and (datetime.now(timezone.utc) - updated).total_seconds() <= 120)
+    public_position = bool(row["active"] and fresh)
     response = jsonify({
-        "active": bool(row["active"]), "destination_label": row["destination_label"],
-        "lat": row["last_lat"], "lon": row["last_lon"], "accuracy": row["last_accuracy"],
-        "speed": row["last_speed"], "heading": row["last_heading"], "progress": row["route_progress"],
+        "active": bool(row["active"]), "position_fresh": public_position, "destination_label": row["destination_label"],
+        "lat": row["last_lat"] if public_position else None, "lon": row["last_lon"] if public_position else None, "accuracy": row["last_accuracy"] if public_position else None,
+        "speed": row["last_speed"] if public_position else None, "heading": row["last_heading"] if public_position else None, "progress": row["route_progress"],
         "safety_level": row["safety_level"], "updated_at": row["updated_at"], "expires_at": row["expires_at"],
     })
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"

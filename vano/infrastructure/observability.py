@@ -70,7 +70,7 @@ _SENSITIVE_PATH_TOKEN_RE = re.compile(
 def _safe_activity_path(value):
     """Redact capability/invite tokens that are carried in URL path segments."""
     text = str(value or "")[:1000]
-    return _SENSITIVE_PATH_TOKEN_RE.sub(r"\1[redacted]", text)[:500]
+    return redact_path(text)[:500]
 
 
 def _safe_activity_metadata(value, depth=0):

@@ -159,6 +159,14 @@ def init_db():
                 used_at TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS security_rate_events (
+                bucket_key TEXT NOT NULL,
+                created_at DOUBLE PRECISION NOT NULL,
+                expires_at DOUBLE PRECISION NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_security_rate_bucket ON security_rate_events(bucket_key, created_at);
+            CREATE INDEX IF NOT EXISTS idx_security_rate_expiry ON security_rate_events(expires_at);
+
             CREATE TABLE IF NOT EXISTS user_access_log (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -433,6 +441,7 @@ def init_db():
                 cell_lon REAL NOT NULL,
                 updated_at TEXT NOT NULL
             );
+            CREATE INDEX IF NOT EXISTS idx_presence_geo ON nearby_presence(cell_lat,cell_lon,updated_at);
 
             CREATE TABLE IF NOT EXISTS trusted_links (
                 id SERIAL PRIMARY KEY,
@@ -709,9 +718,8 @@ def init_db():
         # the designated VANO owner is demoted. Environment variables can no longer
         # promote a second admin account.
         db.execute("UPDATE users SET role='user' WHERE role='admin' AND LOWER(email) <> ?", (PRIMARY_ADMIN_EMAIL,))
-        owner = db.execute("SELECT id FROM users WHERE LOWER(email)=?", (PRIMARY_ADMIN_EMAIL,)).fetchone()
-        if owner:
-            db.execute("UPDATE users SET role='admin', is_active=1 WHERE id=?", (owner["id"],))
+        # Never promote or reactivate an account merely because an unverified
+        # registration used the owner's address. Existing ownership is kept.
         db.commit()
     except Exception:
         db.rollback()

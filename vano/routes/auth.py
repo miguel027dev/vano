@@ -41,6 +41,7 @@ def login():
 
         session.clear()
         session["user_id"] = user["id"]
+        session["reauthenticated_at"] = time.time()
         session["csrf_token"] = secrets.token_urlsafe(32)
         session.permanent = True
         issue_persistent_login(user["id"])
@@ -48,7 +49,8 @@ def login():
         db.execute("UPDATE users SET last_login_at=? WHERE id=?", (utcnow_iso(), user["id"]))
         db.commit()
         audit("login_success", {}, user["id"])
-        flash(f"Bem-vindo, {user['name'].split()[0]}!", "success")
+        first_name = (str(user["name"] or "").split() or ["ao VANO"])[0]
+        flash(f"Bem-vindo, {first_name}!", "success")
         refreshed = current_user()
         if onboarding_needed(refreshed):
             return redirect(url_for("onboarding", next=safe_next_url(request.args.get("next")) or url_for("map_page")))
@@ -78,6 +80,8 @@ def register():
         errors = []
         if not EMAIL_RE.match(email) or len(email) > 180:
             errors.append("Informe um e-mail válido.")
+        if is_admin_email(email):
+            errors.append("Este e-mail usa acesso verificado. Entre com Google ou recupere sua conta existente.")
         valid_password, password_error = validate_password_strength(password)
         if not valid_password:
             errors.append(password_error)
@@ -101,6 +105,7 @@ def register():
 
         session.clear()
         session["user_id"] = cur.lastrowid
+        session["reauthenticated_at"] = time.time()
         session["csrf_token"] = secrets.token_urlsafe(32)
         session.permanent = True
         issue_persistent_login(cur.lastrowid)
@@ -174,6 +179,18 @@ def google_login():
     return response
 
 
+@app.route("/auth/google/link", methods=["POST"])
+@login_required
+def google_link():
+    if not validate_csrf():
+        abort(400)
+    if not recently_authenticated():
+        flash("Entre novamente para vincular uma conta Google com segurança.", "warning")
+        return redirect(url_for("login", next=url_for("profile")))
+    session["google_link_user_id"] = current_user()["id"]
+    return google_login()
+
+
 @app.route("/auth/google/callback")
 @app.route("/login/google/callback")
 def google_callback():
@@ -186,6 +203,7 @@ def google_callback():
 
     returned_state = request.args.get("state", "")
     expected_state = session.pop("google_oauth_state", "")
+    link_user_id = session.pop("google_link_user_id", None)
     session.pop("google_oauth_nonce", None)
 
     # First validate the normal same-session flow. Independently consume the
@@ -278,13 +296,21 @@ def google_callback():
         return redirect(url_for("login"))
 
     created_new = False
+    # A provider-verified address does not prove possession of an existing
+    # local password. Linking must be explicit and recently authenticated.
+    if user and not user["google_sub"]:
+        if not (session_state_ok and link_user_id == user["id"]
+                and session.get("user_id") == user["id"] and recently_authenticated()):
+            audit("google_link_requires_reauthentication", {}, user["id"])
+            flash("Já existe uma conta por senha. Recupere ou entre nessa conta e vincule o Google pelo Perfil.", "warning")
+            return redirect(url_for("login"))
     try:
         if user:
             existing_sub = user["google_sub"]
             if existing_sub and existing_sub != sub:
                 raise RuntimeError("Conta Google divergente")
             provider = "google" if user["auth_provider"] == "google" else "hybrid"
-            role = role_for_email(email)
+            role = user["role"]
             db.execute(
                 "UPDATE users SET google_sub=?, avatar_url=?, auth_provider=?, last_login_at=?, role=? WHERE id=?",
                 (sub, avatar, provider, utcnow_iso(), role, user["id"]),
@@ -306,12 +332,13 @@ def google_callback():
 
     session.clear()
     session["user_id"] = user_id
+    session["reauthenticated_at"] = time.time()
     session["csrf_token"] = secrets.token_urlsafe(32)
     session.permanent = True
     issue_persistent_login(user_id)
     record_user_access(user_id, force=True)
     audit("google_login_success", {}, user_id)
-    flash(f"Bem-vindo, {name.split()[0]}!", "success")
+    flash(f"Bem-vindo, {(name.split() or ['ao VANO'])[0]}!", "success")
     refreshed = current_user()
     if created_new or onboarding_needed(refreshed):
         return redirect(url_for("onboarding", next=safe_next_url(next_url) or url_for("index")))

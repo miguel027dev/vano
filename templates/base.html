@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="{{ active_locale }}">
 <head>
+  <style>@layer vanoFoundation, vanoLegacy;</style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
@@ -53,8 +54,9 @@
   <title>{% block title %}VANO MAPS{% endblock %}</title>
   {% block legacy_map_assets %}{% endblock %}
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-  <style>
+  <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
+  <style>@layer vanoLegacy {
+
     :root{
       --bg:#0d0e10;--surface:#14161a;--surface-2:#1b1e23;--surface-3:#23272e;
       --text:#f7f7f8;--muted:#9ca3af;--muted-2:#737b88;--line:#292d34;
@@ -119,7 +121,8 @@
     .btn:focus-visible,.navlinks a:focus-visible,.navlinks button:focus-visible{outline:2px solid rgba(255,195,155,.92);outline-offset:2px}
     footer a{text-underline-offset:3px}footer a:hover{text-decoration:underline}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}}
-</style>
+
+}</style>
   {% set vano_endpoint = request.endpoint or 'page' %}
   {% set vano_map_surface = vano_endpoint in ['index', 'map_page', 'embed_entry'] %}
   {% set vano_admin_surface = vano_endpoint == 'admin_dashboard' or vano_endpoint.startswith('admin_') %}
@@ -149,6 +152,7 @@
     }
   }catch(_){}</script>
   {% endif %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
 </head>
 <body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
 {% if vano_endpoint != 'onboarding' %}
@@ -163,7 +167,7 @@
         <a class="vano-nav-item {% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round" width="16"></i><span>Perfil</span></a>
         {% if current_user['role']=='admin' %}<a class="vano-nav-item {% if vano_endpoint.startswith('admin_') %}active{% endif %}" {% if vano_endpoint.startswith('admin_') %}aria-current="page"{% endif %} href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check" width="16"></i><span>Admin</span></a>{% endif %}
       {% else %}
-        <a href="{{ url_for('about') }}">Como funciona</a><a href="#recursos">Recursos</a><a href="{{ url_for('help_page') }}">Ajuda</a>
+        <a href="{{ url_for('about') }}">Como funciona</a><a href="{{ url_for('help_page') }}">Recursos</a><a href="{{ url_for('help_page') }}">Ajuda</a>
       {% endif %}
     </div>
     <div class="nav-actions">
@@ -171,7 +175,7 @@
       {% if current_user %}
         <a class="vano-nav-account" href="{{ url_for('profile') }}" aria-label="Abrir meu perfil">
           {% if current_user['avatar_url'] %}<img class="vano-nav-avatar" src="{{ current_user['avatar_url'] }}" alt="">{% else %}<span class="vano-nav-avatar vano-nav-avatar-fallback">{{ current_user['name'][:1]|upper }}</span>{% endif %}
-          <span class="vano-nav-account-copy hide-mobile"><b>{{ current_user['name'].split()[0] }}</b><small>Minha conta</small></span>
+          <span class="vano-nav-account-copy hide-mobile"><b>{{ (current_user['name'].split() or ['Minha conta'])[0] }}</b><small>Minha conta</small></span>
           <i class="hide-mobile" data-lucide="chevron-right" width="14"></i>
         </a>
       {% else %}

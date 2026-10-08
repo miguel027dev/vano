@@ -190,6 +190,10 @@
           </div>
         </form>
 
+        <section class="profile350-section" aria-labelledby="sharedLinksTitle">
+          <header class="profile350-section-head"><div><h2 id="sharedLinksTitle">Links compartilhados</h2><p>Encerre o acesso à rota quando precisar. Os links novos expiram em 24 horas por padrão.</p></div></header>
+          <div data-shared-links aria-live="polite">Carregando seus links…</div>
+        </section>
         <section class="profile350-section profile350-reveal" id="account" data-profile-section>
           <header class="profile350-section-head">
             <div class="profile350-section-icon"><i data-lucide="circle-user-round" width="20"></i></div>
@@ -201,6 +205,7 @@
             <div class="profile350-account-row"><span><i data-lucide="shield-check" width="17"></i></span><div><small>Nível da conta</small><b>{{ 'Administrador' if current_user['role']=='admin' else 'Usuário VANO' }}</b></div><em>Protegida</em></div>
           </div>
           <div class="profile350-action-links">
+            {% if not current_user['google_sub'] %}<form method="post" action="{{ url_for('google_link') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost" type="submit">Vincular Google à minha conta</button><p class="tiny">Requer login recente e confirmação da mesma conta no Google.</p></form>{% endif %}
             <a href="{{ url_for('notifications_page') }}"><span><i data-lucide="bell" width="17"></i></span><div><b>Notificações</b><small>Alertas e avisos da conta</small></div><i data-lucide="chevron-right" width="17"></i></a>
             <a href="{{ url_for('help_page') }}"><span><i data-lucide="circle-help" width="17"></i></span><div><b>Ajuda e FAQ</b><small>Suporte e dúvidas frequentes</small></div><i data-lucide="chevron-right" width="17"></i></a>
             <a href="{{ url_for('privacy_policy') }}"><span><i data-lucide="lock-keyhole" width="17"></i></span><div><b>Privacidade</b><small>Dados, permissões e política</small></div><i data-lucide="chevron-right" width="17"></i></a>
@@ -223,4 +228,4 @@
   </div>
 </main>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='vano-profile.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='vano-profile.js') }}?v={{ vano_build_id }}"></script><script defer src="{{ url_for('static', filename='vano-shared-links.js') }}?v={{ vano_build_id }}"></script>{% endblock %}

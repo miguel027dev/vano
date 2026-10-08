@@ -106,6 +106,6 @@ def test_literal_static_references_exist():
 
 
 
-def test_single_canonical_stylesheet_only():
+def test_controlled_stylesheet_layers_only():
     css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
-    assert css_files == ["vano.css"]
+    assert css_files == ["vano-foundation.css", "vano.css"]

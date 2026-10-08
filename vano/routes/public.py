@@ -280,6 +280,9 @@ def account_delete():
     if confirmation != "EXCLUIR":
         flash("Digite EXCLUIR para confirmar a exclusão permanente.", "danger")
         return redirect(url_for("profile") + "#accountDanger")
+    if str(user["auth_provider"] or "password") == "google" and not recently_authenticated():
+        flash("Entre novamente com Google antes de excluir sua conta. A confirmação vale por cinco minutos.", "warning")
+        return redirect(url_for("google_login", next=url_for("profile") + "#accountDanger"))
     if str(user["auth_provider"] or "password") != "google" and not verify_password(user["password_hash"], password):
         flash("Senha atual incorreta.", "danger")
         return redirect(url_for("profile") + "#accountDanger")
@@ -315,7 +318,6 @@ PRIVACY_REQUEST_TYPES = {
 
 
 @app.route("/privacy/request", methods=["POST"])
-@login_required
 def privacy_request_create():
     if not validate_csrf():
         abort(400)
@@ -323,6 +325,15 @@ def privacy_request_create():
         flash("Muitos pedidos em pouco tempo. Aguarde antes de enviar novamente.", "danger")
         return redirect(url_for("privacy_policy"))
     user = current_user()
+    email = str(user["email"] if user else request.form.get("email") or "").strip().lower()
+    if not EMAIL_RE.match(email) or len(email) > 180:
+        flash("Informe um e-mail válido para receber a resposta ao seu pedido.", "danger")
+        return redirect(url_for("privacy_policy") + "#direitos")
+    # Public intake never discloses whether an account exists and never acts
+    # on the account. A human must verify identity before releasing/deleting data.
+    if not user and not rate_limit("privacy-email", 3, 86400, identity=email, include_ip=False, shared=True):
+        flash("Aguarde antes de enviar outro pedido para esse e-mail.", "warning")
+        return redirect(url_for("privacy_policy") + "#direitos")
     request_type = str(request.form.get("request_type") or "other").strip().lower()
     if request_type not in PRIVACY_REQUEST_TYPES:
         request_type = "other"
@@ -337,7 +348,7 @@ def privacy_request_create():
             db.execute(
                 """INSERT INTO privacy_requests(protocol,user_id,email,request_type,message,status,created_at,updated_at)
                    VALUES(?,?,?,?,?,'pending',?,?)""",
-                (protocol, user["id"], str(user["email"] or "")[:220], request_type, message, now, now),
+                (protocol, user["id"] if user else None, email, request_type, message, now, now),
             )
             db.commit()
             break

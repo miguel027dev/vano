@@ -1,0 +1,87 @@
+/* Shared tokens and components. New UI belongs here; legacy rules are isolated. */
+@layer vanoFoundation {
+  :root {
+    --ui-brand:#f59a62;--ui-bg:#fff8f2;--ui-surface:#fff;--ui-raised:#fff3e8;
+    --ui-ink:#27231f;--ui-muted:#665d55;--ui-line:#decfc3;--ui-focus:#a34412;
+    --ui-radius:20px;--ui-space:16px;--ui-shadow:0 12px 32px #27231f0b;
+  }
+  html[data-vano-theme="black"] {
+    --ui-bg:#171513;--ui-surface:#24211e;--ui-raised:#302a25;
+    --ui-ink:#fff6ee;--ui-muted:#d1c2b5;--ui-line:#65574c;--ui-focus:#ffc197;
+  }
+  body.vano-page-surface {
+    --bg:var(--ui-bg)!important;--surface:var(--ui-surface)!important;
+    --surface-2:var(--ui-raised)!important;--surface-3:var(--ui-raised)!important;
+    --text:var(--ui-ink)!important;--muted:var(--ui-muted)!important;--line:var(--ui-line)!important;
+    --a-bg:var(--ui-bg)!important;--a-card:var(--ui-surface)!important;
+    --a-surface:var(--ui-surface)!important;--a-panel:var(--ui-surface)!important;
+    --a-ink:var(--ui-ink)!important;--a-text:var(--ui-ink)!important;
+    --a-muted:var(--ui-muted)!important;--a-line:var(--ui-line)!important;
+    background:var(--ui-bg)!important;color:var(--ui-ink)!important;
+    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+    font-size:16px!important;line-height:1.55!important;
+    overflow-x:clip!important;overflow-y:auto!important;
+  }
+  body.vano-page-surface::before { display:none!important; }
+  body.vano-page-surface .topbar { background:var(--ui-surface)!important;border-color:var(--ui-line)!important; }
+  body.vano-page-surface .nav { min-height:64px!important;gap:14px!important; }
+  body.vano-page-surface .navlinks a { color:var(--ui-muted)!important;min-height:44px!important;display:inline-flex!important;align-items:center!important; }
+  body.vano-page-surface .vano-nav-brand { display:inline-flex!important;visibility:visible!important;opacity:1!important;width:154px!important;flex:none!important; }
+  body.vano-page-surface .vano-nav-brand::before { display:none!important; }
+  body.vano-page-surface .vano-nav-brand-images { display:block!important;position:relative!important;width:154px!important;height:38px!important;overflow:visible!important; }
+  body.vano-page-surface .vano-nav-brand-images img { width:154px!important;height:38px!important;max-width:100%!important;object-fit:contain!important;position:static!important;opacity:1!important;visibility:visible!important; }
+  html[data-vano-theme="light"] body.vano-page-surface .vano-brand-img-dark { display:none!important; }
+  html[data-vano-theme="light"] body.vano-page-surface .vano-brand-img-light { display:block!important; }
+  html[data-vano-theme="black"] body.vano-page-surface .vano-brand-img-light { display:none!important; }
+  html[data-vano-theme="black"] body.vano-page-surface .vano-brand-img-dark { display:block!important; }
+  body.vano-page-surface :where(h1,h2,h3,h4) { color:var(--ui-ink)!important; }
+  body.vano-page-surface :where(.page-title,.legal-hero h1,.auth-card h1,.help-hero h1) { font-size:clamp(28px,3.5vw,40px)!important;line-height:1.16!important;letter-spacing:-.035em!important; }
+  body.vano-page-surface :where(.page-subtitle,.subtitle,.muted,.tiny,.eyebrow,.alert-meta,.empty) { color:var(--ui-muted)!important; }
+  body.vano-page-surface :where(.tiny,.eyebrow,.badge,.alert-meta,small) { font-size:12px!important;line-height:1.5!important; }
+  body.vano-page-surface :where(.btn,.vano-theme-toggle) { min-height:44px!important; }
+  body.vano-page-surface .btn { border-color:var(--ui-line)!important;border-radius:12px!important;color:var(--ui-ink)!important;background:var(--ui-surface)!important; }
+  body.vano-page-surface .btn-primary { background:var(--ui-brand)!important;color:#27231f!important;border-color:#e38b51!important; }
+  body.vano-page-surface :where(.input,.select,.textarea) { font:inherit!important;background:var(--ui-surface)!important;color:var(--ui-ink)!important;border:1px solid var(--ui-line)!important;border-radius:12px!important;min-height:46px!important; }
+  body.vano-page-surface :where(.input,.textarea)::placeholder { color:var(--ui-muted)!important;opacity:1!important; }
+  body.vano-page-surface :where(.panel,.card,.kpi,.alert-card,.auth-card,.legal-card,.legal-hero) { background:var(--ui-surface)!important;border:1px solid var(--ui-line)!important;border-radius:var(--ui-radius)!important;box-shadow:var(--ui-shadow)!important;color:var(--ui-ink)!important; }
+  body.vano-page-surface .flash { background:var(--ui-surface)!important;color:var(--ui-ink)!important;border-color:var(--ui-line)!important; }
+  body.vano-page-surface .table :where(th,td) { color:var(--ui-ink)!important;font-size:14px!important;border-color:var(--ui-line)!important; }
+  body.vano-page-surface .table th { color:var(--ui-muted)!important; }
+  body.vano-page-surface .legal-shell { width:min(1120px,100%)!important;margin:auto!important; }
+  body.vano-page-surface .legal-layout { display:grid!important;grid-template-columns:minmax(0,1fr) 250px!important;gap:24px!important;align-items:start!important; }
+  body.vano-page-surface :where(.legal-hero,.legal-card) { padding:28px!important; }
+  body.vano-page-surface .legal-copy { font-size:16px!important;line-height:1.75!important; }
+  body.vano-page-surface .legal-copy :where(p,li) { font-size:16px!important;color:var(--ui-ink)!important; }
+  body.vano-page-surface .legal-copy h2 { font-size:22px!important;line-height:1.3!important; }
+  body.vano-page-surface .legal-toc { background:var(--ui-raised)!important;color:var(--ui-ink)!important;border:1px solid var(--ui-line)!important;border-radius:16px!important;padding:20px!important; }
+  body.vano-page-surface .legal-toc :where(b,a) { color:var(--ui-ink)!important;font-size:14px!important;line-height:1.5!important; }
+  body.vano-page-surface .legal-toc a { display:flex!important;align-items:center!important;min-height:44px!important; }
+  body.vano-page-surface :where(.legal-summary__item,.legal-contact,.legal-callout,.legal-updated) { background:var(--ui-raised)!important;color:var(--ui-ink)!important;border-color:var(--ui-line)!important; }
+  body.vano-page-surface :where(.legal-summary__item span,.legal-contact small,.legal-callout span,.legal-updated) { color:var(--ui-muted)!important;font-size:14px!important;line-height:1.6!important; }
+  body.vano-page-surface .legal-hero p { color:var(--ui-muted)!important; }
+  body.vano-page-surface :where(.legal-copy a,.legal-contact a) { color:var(--ui-focus)!important;text-decoration:underline!important;text-underline-offset:3px!important; }
+  body.vano-page-surface .auth-wrap { padding:40px 20px!important;min-height:calc(100dvh - 64px)!important; }
+  body.vano-page-surface .auth-card { width:min(520px,100%)!important;padding:32px!important; }
+  body.vano-page-surface :where(.vano-auth-banner-link,.vano-auth-banner-frame) { display:block!important;width:154px!important;height:48px!important;max-width:100%!important;margin:0!important; }
+  body.vano-page-surface .vano-auth-banner { width:154px!important;height:48px!important;max-width:100%!important;object-fit:contain!important; }
+  body.vano-page-surface .legal-request { margin-top:24px!important; }
+  body.vano-page-surface .shared-link-row { display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px;border-bottom:1px solid var(--ui-line); }
+  body.vano-page-surface .shared-link-row span { overflow-wrap:anywhere; }
+  body.vano-page-surface .shared-link-row button { min-height:44px;flex:none; }
+  :where(a,button,input,textarea,select,summary):focus-visible { outline:3px solid var(--ui-focus)!important;outline-offset:3px!important; }
+  :where(section[id],article[id]) { scroll-margin-top:88px; }
+  @media(max-width:800px) {
+    body.vano-page-surface .legal-layout { grid-template-columns:1fr!important; }
+    body.vano-page-surface .legal-toc { position:static!important; }
+    body.vano-page-surface :where(.legal-hero,.legal-card,.auth-card) { padding:22px!important; }
+    body.vano-page-surface .legal-hero__top { display:block!important; }
+    body.vano-page-surface .legal-updated { display:inline-flex!important;margin-top:16px!important; }
+    body.vano-page-surface .legal-summary { grid-template-columns:1fr!important; }
+    body.vano-page-surface .nav { gap:8px!important; }
+    body.vano-page-surface .navlinks { display:none!important; }
+    body.vano-page-surface .vano-nav-brand,body.vano-page-surface .vano-nav-brand-images,body.vano-page-surface .vano-nav-brand-images img { width:116px!important; }
+    body.vano-page-surface .nav-actions { margin-left:auto!important;gap:6px!important; }
+    body.vano-page-surface .nav-actions .btn { padding:9px 10px!important;font-size:13px!important; }
+  }
+  @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition-duration:.01ms!important;animation-duration:.01ms!important; } }
+}

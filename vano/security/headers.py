@@ -62,11 +62,19 @@ def security_headers(response):
         "/api/live-trip/", "/live/", "/profile", "/notifications",
         "/login", "/register", "/auth/", "/onboarding", "/logout",
         "/forgot-password", "/reset-password/", "/account/delete",
+        "/api/saved-places", "/api/weekly-routine", "/api/notifications/",
+        "/api/shared-route", "/api/shared-routes", "/route/share/", "/family/",
     )
     if request.path.startswith(sensitive_prefixes):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
+    if session.get("user_id") or request.path in {"/privacy", "/politica-de-privacidade", "/privacy/request"}:
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.vary.add("Cookie")
+    if request.path.startswith(("/route/share/", "/live/", "/family/")):
+        response.headers["Referrer-Policy"] = "no-referrer"
 
     if request.path.startswith("/admin") or request.path.startswith("/api/admin"):
         response.headers["Cache-Control"] = "no-store, max-age=0"
@@ -85,7 +93,7 @@ def security_headers(response):
         # immutable for 30 days caused some regions/devices to retain a broken
         # map core after a hotfix. Other fingerprinted/static assets stay cheap.
         static_name = request.path.rsplit("/", 1)[-1].lower()
-        if static_name.startswith(("vano-map-", "vano-runtime-", "vano-telemetry-", "vano-theme-", "vano-benchmark-", "vano-app-")):
+        if static_name.startswith(("vano-map", "vano-runtime", "vano-telemetry", "vano-theme", "vano-benchmark", "vano-app")):
             response.headers["Cache-Control"] = "public, max-age=0, must-revalidate"
         else:
             response.headers["Cache-Control"] = "public, max-age=2592000, immutable"

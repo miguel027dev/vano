@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="{{ active_locale }}" data-vano-auth="startup">
 <head>
+  <style>@layer vanoFoundation, vanoLegacy;</style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#F4F5F8">
@@ -18,6 +19,7 @@
   
   <script defer src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='vano.css') }}?v={{ vano_build_id }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
 </head>
 <body class="vano-auth-startup">
   <div class="startup-ambient" aria-hidden="true">

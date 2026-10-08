@@ -29,7 +29,7 @@
           <p>O controlador responsável pelo VANO MAPS é <strong>{{ legal_name }}</strong>{% if legal_cnpj %}, CNPJ {{ legal_cnpj }}{% endif %}. Esta política se aplica ao site, PWA, páginas de conta, recursos de navegação e APIs operadas pelo VANO MAPS.</p>
           <div class="legal-contact-grid">
             <div class="legal-contact"><small>Controlador</small><b>{{ legal_name }}</b></div>
-            <div class="legal-contact"><small>Canal de privacidade</small><b>{% if privacy_email %}<a href="mailto:{{ privacy_email }}">{{ privacy_email }}</a>{% else %}Solicitação autenticada nesta página{% endif %}</b></div>
+            <div class="legal-contact"><small>Canal de privacidade</small><b>{% if privacy_email %}<a href="mailto:{{ privacy_email }}">{{ privacy_email }}</a>{% else %}<a href="#direitos">Enviar solicitação nesta página</a>{% endif %}</b></div>
           </div>
         </section>
 
@@ -114,13 +114,13 @@
       </aside>
     </div>
 
-    {% if current_user %}
     <section class="legal-request" id="direitos">
       <div class="panel">
-        <div class="panel-head"><div><p class="eyebrow">SEUS DADOS</p><h2 style="margin:4px 0 0">Solicitação de privacidade</h2></div><span class="badge">Conta autenticada</span></div>
+        <div class="panel-head"><div><p class="eyebrow">SEUS DADOS</p><h2 style="margin:4px 0 0">Solicitação de privacidade</h2></div><span class="badge">{{ 'Conta autenticada' if current_user else 'Canal público' }}</span></div>
         <div class="panel-body">
           <form action="{{ url_for('privacy_request_create') }}" method="post" class="form-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if not current_user %}<label class="field full"><span>E-mail para resposta</span><input class="input" type="email" name="email" autocomplete="email" maxlength="180" required><small>Você pode pedir exclusão ou ajuda sem entrar ou reinstalar o aplicativo. Confirmaremos sua identidade antes de executar qualquer ação. Não envie senhas ou documentos.</small></label>{% endif %}
             <label class="field"><span>Tipo de solicitação</span><select class="select" name="request_type" required>{% for key,label in privacy_request_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
             <label class="field full"><span>Detalhes <small class="muted">(opcional)</small></span><textarea class="textarea" name="message" rows="4" maxlength="1200" placeholder="Explique o que você precisa. Não envie senhas, documentos completos ou dados bancários."></textarea></label>
             <div class="field full"><button class="btn btn-primary" type="submit"><i data-lucide="send" width="16"></i>Enviar solicitação</button> <a class="btn btn-ghost" href="{{ url_for('account_delete_page') }}"><i data-lucide="trash-2" width="16"></i>Excluir conta</a></div>
@@ -129,7 +129,6 @@
         </div>
       </div>
     </section>
-    {% endif %}
   </div>
 </main>
 {% endblock %}
