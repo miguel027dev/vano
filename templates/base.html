@@ -193,7 +193,7 @@
 {% if vano_endpoint != 'onboarding' %}
 <header class="topbar">
   <nav class="nav">
-    <a class="brand vano-nav-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS"><span class="vano-adaptive-brand vano-nav-brand-images"><img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span></a>
+    <a class="brand vano-nav-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS">{% if vano_map_surface %}<span class="vano-adaptive-brand vano-nav-brand-images"><img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span>{% else %}<span class="vano-nav-brand-lite"><img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}?v={{ vano_build_id }}" width="34" height="34" decoding="async" alt=""><span><b>VANO</b><small>MAPS</small></span></span>{% endif %}</a>
     <div class="navlinks">
       {% if current_user %}
         <a class="vano-nav-item {% if vano_endpoint in ['index','map_page'] %}active{% endif %}" {% if vano_endpoint in ['index','map_page'] %}aria-current="page"{% endif %} href="{{ url_for('map_page') }}"><i data-lucide="navigation" width="16"></i><span>Rotas</span></a>
