@@ -152,13 +152,15 @@
   {% set vano_endpoint = request.endpoint or 'page' %}
   {% set vano_map_surface = vano_endpoint in ['index', 'map_page', 'embed_entry'] %}
   {% set vano_admin_surface = vano_endpoint == 'admin_dashboard' or vano_endpoint.startswith('admin_') %}
-  {# Pure reading pages have all of their styling in base + foundation.
+  {# SEO/legal/help only: the interactive benchmark, map and authentication
+     retain their component styles from the legacy sheet.
+     Pure reading pages have all of their styling in base + foundation.
      Do not download the 2.34 MB map/onboarding/profile legacy CSS here. #}
   {% set vano_light_public_surface = vano_endpoint in [
     'what_is_vano', 'seo_waze_alternative', 'seo_google_maps_alternative',
     'seo_avoid_traffic', 'seo_fastest_route', 'seo_motorcycle_gps',
     'privacy_policy', 'terms_of_use', 'about', 'sobre',
-    'account_delete_page', 'help_page', 'route_benchmark_page'
+    'account_delete_page', 'help_page'
   ] %}
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
