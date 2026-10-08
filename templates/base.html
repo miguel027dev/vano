@@ -51,6 +51,32 @@
     "inLanguage": active_locale,
     "description": "GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto."
   } | tojson }}</script>
+  {# Breadcrumb schema follows the visible public-page trail; private pages remain noindex. #}
+  {% set vano_public_breadcrumb_names = {
+    'what_is_vano':'O que é o VANO',
+    'seo_waze_alternative':'Alternativa ao Waze',
+    'seo_google_maps_alternative':'Alternativa ao Google Maps',
+    'seo_avoid_traffic':'Como evitar trânsito',
+    'seo_fastest_route':'Rota mais rápida',
+    'seo_motorcycle_gps':'GPS para moto',
+    'privacy_policy':'Política de Privacidade',
+    'terms_of_use':'Termos de Uso',
+    'about':'Como funciona',
+    'sobre':'Sobre o VANO',
+    'account_delete_page':'Excluir conta',
+    'help_page':'Central de ajuda',
+    'route_benchmark_page':'Benchmark de rotas'
+  } %}
+  {% if seo_indexable and request.endpoint in vano_public_breadcrumb_names %}
+  <script type="application/ld+json">{{ {
+    '@context':'https://schema.org',
+    '@type':'BreadcrumbList',
+    'itemListElement':[
+      {'@type':'ListItem','position':1,'name':'Início','item':public_site_url ~ '/'},
+      {'@type':'ListItem','position':2,'name':vano_public_breadcrumb_names[request.endpoint],'item':seo_canonical_url}
+    ]
+  } | tojson }}</script>
+  {% endif %}
   <title>{% block title %}VANO MAPS{% endblock %}</title>
   {% block legacy_map_assets %}{% endblock %}
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
