@@ -36,3 +36,18 @@ def test_route_selection_has_explicit_use_route_ctas():
     assert "VANO ROUTE CTA RESTORE V510" in css
     assert ".route-variant-use" in css
     assert "#routeState .start-trip-cta" in css
+
+
+def test_search_result_preview_restores_use_destination_button():
+    # Regression: a legacy selector hid the entire action row inside Mapbox popups.
+    legacy = read("static/vano.css")
+    foundation = read("static/vano-foundation.css")
+    js = read("static/vano-map.js")
+    assert ".place-popup-actions" in legacy
+    assert "VANO destination preview hotfix" in foundation
+    assert ".mapboxgl-popup .place-popup-actions" in foundation
+    assert "display:flex!important" in foundation
+    assert ".mapboxgl-popup .place-popup-use" in foundation
+    assert "popup.getElement?.()" in js
+    assert "querySelector('#usePreviewPlaceBtn')?.addEventListener('click'" in js
+    assert "searchRequestId++;clearTimeout(searchTimer)" in js
