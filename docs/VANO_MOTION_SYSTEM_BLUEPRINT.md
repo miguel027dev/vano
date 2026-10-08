@@ -132,3 +132,11 @@ Numbers below are **starting tuning candidates**, not measured optimal values.
 - Real Android profile of frame times, battery impact, occlusion rendering and readability, followed by production Play-signing release gate.
 
 **Rollout:** Current changes belong to server-rendered map resources and Android-only styling. Updating the server deploy changes the Android WebView client without requiring a new installed package. Isolated test APK remains a separate product ID.
+
+## Motion System R2 — implemented on staging branch (2026-10-08)
+- Introduce `navMotionSessionEpoch` to prevent an in-flight reroute from modifying HUD/camera after the user ends a trip.
+- Switch live navigation launch and in-route recenter away from independent Mapbox `easeTo` calls to the existing single tracking camera writer (`cameraMotionTick`). Mapbox easing still applies outside active navigation.
+- Clamp frame-to-frame camera bearing change to a speed/maneuver-aware bound, including wraparound at 360 degrees.
+- Hysteresis (~420ms) around impending maneuver state to reduce camera oscillation on noisy route progress; invalidate memory for every adopted/recalculated/new route.
+- Unit/contract checks in `tests/test_vano_motion_system_r2.py`, including Node numerical checks for shortest-arc rotation and maneuver focus lifetime.
+- **Unverified:** physical Android FPS, tunnel/viaduct height, battery/thermal effects; not a claim of Apple Maps/Waze parity.
