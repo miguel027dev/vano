@@ -144,3 +144,38 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
   backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
 }
 }
+
+/* VANO destination preview hotfix (2026-10-08).
+   Legacy V39 hid the entire Mapbox place-popup-actions row with !important.
+   Restore the search-result decision controls at the higher-priority foundation
+   layer, including Android WebView and small mobile screens. */
+@layer vanoFoundation {
+  body.vano-map-surface .ws-app .mapboxgl-popup .place-popup-actions {
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:stretch!important;
+    gap:8px!important;
+    visibility:visible!important;
+    opacity:1!important;
+    pointer-events:auto!important;
+  }
+  body.vano-map-surface .ws-app .mapboxgl-popup :is(.place-popup-use,.place-popup-save) {
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    flex:1 1 100px!important;
+    min-height:44px!important;
+    min-width:0!important;
+    padding:9px 12px!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+    touch-action:manipulation!important;
+    font-size:12px!important;
+    font-weight:750!important;
+    white-space:normal!important;
+  }
+  body.vano-map-surface .ws-app .mapboxgl-popup .place-popup-use {
+    background:#F59A62!important;
+    color:#27231f!important;
+  }
+}
