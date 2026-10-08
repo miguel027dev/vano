@@ -73,3 +73,6 @@ O serviço existente selecionava Python 3.14.3 por padrão; o primeiro build com
 UX-01 (P1): cenário padrão e presets do benchmark descartavam coordenadas conhecidas e repetiam geocodificação; a Av. Paulista foi resolvida para Pereira Barreto, causando 422 por distância. Corrigido reaproveitamento das coordenadas do cenário e inicialização do preset padrão. Resultado 0/N deixa de receber aparência de sucesso. Validar cenário no navegador sem WebGL.
 
 ANDROID-BUILD-01 (P0 para esses protótipos): bibliotecas do baseline exigiam SDK 37 e AGP 9.1, incompatíveis com SDK 36/AGP 8.13.2. Em revisão, alinhar versões compatíveis e compilar antes de incorporar. Não há evidência de que este protótipo seja o AAB final da Play Store.
+
+UX-02 (P1): inicialização do mapa sem WebGL abortava scripts e oferecia apenas uma mensagem de conexão, com controles inertes. Adicionada detecção antecipada, causa explícita e acessos funcionais a conta/ajuda/benchmark. Sem GPU, o mapa 3D permanece indisponível; não se altera autenticação para facilitar auditoria.
+UI-01 (P3): ícone cloud-check inexistente na versão Lucide fixada substituído por cloud-upload.

@@ -195,7 +195,7 @@
         <div class="guest-drawer-benefits">
           <span><i data-lucide="route" width="15"></i>Rotas adaptativas</span>
           <span><i data-lucide="bookmark" width="15"></i>Destinos salvos</span>
-          <span><i data-lucide="cloud-check" width="15"></i>Preferências sincronizadas</span>
+          <span><i data-lucide="cloud-upload" width="15"></i>Preferências sincronizadas</span>
         </div>
         <button class="guest-theme-toggle" type="button" data-vano-theme-toggle><i data-lucide="moon-star" width="15"></i><span>Alternar tema do mapa</span></button>
         <div class="guest-drawer-actions">
@@ -467,11 +467,22 @@
     el.onload=()=>finish(true);el.onerror=()=>finish(false,new Error('script-load-failed'));
     document.body.appendChild(el);
   });
-  const showMapBootError=()=>{
+  const showMapBootError=(reason='connection')=>{
     const host=document.getElementById('map');if(!host)return;
+    const unsupported=reason==='webgl';
     host.classList.add('map-boot-failed');
+    document.body.classList.toggle('vano-webgl-unavailable',unsupported);
     let box=document.getElementById('mapBootRecovery');
-    if(!box){box=document.createElement('div');box.id='mapBootRecovery';box.className='map-boot-recovery';box.innerHTML='<b>Não foi possível carregar o mapa.</b><span>Verifique sua conexão e tente novamente.</span><button type="button">Tentar novamente</button>';host.appendChild(box);box.querySelector('button')?.addEventListener('click',()=>{box.remove();host.classList.remove('map-boot-failed');fallbackStarted=false;boot()})}
+    if(!box){
+      box=document.createElement('section');box.id='mapBootRecovery';box.className='map-boot-recovery';box.setAttribute('role','status');
+      const title=document.createElement('b');title.textContent=unsupported?'Mapa 3D indisponível neste dispositivo':'Não foi possível carregar o mapa';
+      const message=document.createElement('span');message.textContent=unsupported?'O navegador não disponibilizou WebGL. Você pode acessar sua conta, a ajuda e o benchmark de rotas.':'A conexão ou o serviço de mapas pode estar indisponível. Tente novamente ou acesse a ajuda.';
+      const retry=document.createElement('button');retry.type='button';retry.textContent='Tentar novamente';retry.addEventListener('click',()=>{box.remove();host.classList.remove('map-boot-failed');document.body.classList.remove('vano-webgl-unavailable');fallbackStarted=false;boot()});
+      const links=document.createElement('nav');links.setAttribute('aria-label','Acessos disponíveis');
+      const choices=[{% if current_user %}['Minha conta',{{ url_for('profile')|tojson }}]{% else %}['Entrar',{{ url_for('login')|tojson }}],['Criar conta',{{ url_for('register')|tojson }}]{% endif %},['Ajuda',{{ url_for('help_page')|tojson }}],['Testar rotas',{{ url_for('route_benchmark_page')|tojson }}]];
+      for(const [label,url] of choices){const link=document.createElement('a');link.textContent=label;link.href=url;links.appendChild(link)}
+      box.append(title,message,retry,links);document.body.appendChild(box);
+    }
   };
   async function ensureMapbox(){
     if(window.mapboxgl?.Map)return true;
@@ -488,12 +499,14 @@
   async function boot(){
     if(!window.VANO_BOOT?.token)return;
     if(!await ensureMapbox()){showMapBootError();return}
+    try{if(typeof mapboxgl.supported==='function'&&!mapboxgl.supported()){report('webgl-unavailable');showMapBootError('webgl');return}}catch{}
     let runtimeError='';
     const onError=(e)=>{if(!window.__VANO_MAP_INSTANCE_READY)runtimeError=String(e?.message||'runtime-error').slice(0,70)};
     window.addEventListener('error',onError);
     try{await loadScript(MAIN,'vanoMapMain',5200)}catch{window.removeEventListener('error',onError);await loadFallback('main-load-error');return}
     window.removeEventListener('error',onError);
     if(window.__VANO_MAP_INSTANCE_READY){report('main-ready:'+bootMs()+'ms');return}
+    if(/webgl/i.test(runtimeError)){showMapBootError('webgl');return}
     await loadFallback(runtimeError||window.__VANO_MAP_BOOT_STAGE||'main-not-ready');
   }
   window.__VANO_SHOW_MAP_BOOT_ERROR=showMapBootError;

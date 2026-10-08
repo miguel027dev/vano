@@ -109,3 +109,14 @@ def test_literal_static_references_exist():
 def test_controlled_stylesheet_layers_only():
     css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
     assert css_files == ["vano-foundation.css", "vano.css"]
+
+
+def test_literal_template_endpoints_are_registered():
+    import app as runtime
+    registered = set(runtime.app.view_functions)
+    missing = []
+    for page in (ROOT / "templates").glob("*.html"):
+        for endpoint in re.findall(r"url_for\(['\"]([^'\"]+)['\"]", page.read_text()):
+            if endpoint not in registered:
+                missing.append((page.name, endpoint))
+    assert missing == []
