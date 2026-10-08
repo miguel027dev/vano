@@ -113,7 +113,7 @@ let puckFrame=null,puckDisplayPos=null,puckTargetPos=null,puckTargetUpdatedAt=0,
 let puckRouteAlong=null,puckRouteVelocity=0,puckRouteTargetAlong=null,puckRouteTargetSpeed=0,puckRouteFixAt=0;
 let markerHeadingVisual=0,markerHeadingReady=false,markerHeadingUpdatedAt=0;
 let cameraMotionFrame=null,cameraTargetContext=null,cameraVisualState=null,cameraLastPaintAt=0,internalCameraMoveUntil=0,driveCameraMood='',navStartupBearing=null,navStartupBearingUntil=0,cameraCalibrationUntil=0,cameraCalibrationStartedAt=0,cameraCalibrationTimer=null,navLaunchAnimationUntil=0,navLaunchResumeTimer=null,cameraIntent='',cameraIntentUntil=0,cameraTargetBearing=null,cameraTargetBearingAt=0;
-let cameraUrbanDensity=0,cameraUrbanSampleAt=0,cameraUrbanLastCount=0,cameraUrbanFocus=false;
+let cameraUrbanDensity=0,cameraUrbanSampleAt=0,cameraUrbanLastCount=0,cameraUrbanFocus=false,cameraUrbanOcclusion=0,cameraUrbanOccluded=false;
 let cameraKinematicSpeed=0,cameraKinematicAccel=0,cameraKinematicTs=0,cameraKinematicPhase='steady';
 const NAV_CAMERA_STATES=Object.freeze({FOLLOWING:'FOLLOWING',OVERVIEW:'OVERVIEW',FREE_LOOK:'FREE_LOOK',RECENTERING:'RECENTERING',MANEUVER_FOCUS:'MANEUVER_FOCUS',REROUTING:'REROUTING',ARRIVAL:'ARRIVAL'});
 let navCameraState=NAV_CAMERA_STATES.FOLLOWING;
@@ -549,26 +549,73 @@ function upcomingTurn(m,speed){const tune=cameraVehicleTuning(),d=m?.distanceAlo
 function cameraLookAhead(speed,m,motion=null){const tune=cameraVehicleTuning();let base=Math.max(tune.lookMin,Math.min(tune.lookMax,tune.lookBase+speed*tune.lookPerSpeed));const turn=upcomingTurn(m,speed);if(turn.angle>58)base*=tune.sharpLook;else if(turn.angle>34)base*=tune.turnLook;const step=currentStep(m?.distanceAlong||0),rem=(step.remainingInStep??9999);if(rem<140)base*=profile==='motorcycle'?.76:.78;if(motion?.phase==='accelerating')base*=profile==='motorcycle'?1.10:1.05;else if(motion?.phase==='braking')base*=profile==='motorcycle'?.82:.88;else if(motion?.phase==='crawl')base*=.80;return Math.max(tune.lookMin,base)}
 function roadControlAhead(type,along,maxAhead=90){let best=null;for(const x of roadAwareness||[]){if(type&&String(x.type||'')!==type)continue;if(!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon))continue;const m=nearestProgress({lat:+x.lat,lon:+x.lon}),ahead=m.distanceAlong-along;if(m.offRoute<=80&&ahead>=-10&&ahead<=maxAhead&&(!best||ahead<best.ahead))best={...x,ahead}}return best}
 function cameraJunctionContext(m,step,turn){const tune=cameraVehicleTuning(),rem=Math.max(0,+step?.remainingInStep||9999),type=String(step?.type||'').toLowerCase(),roundabout=type.includes('roundabout')||type.includes('rotary'),decision=rem<tune.decisionDistance&&(turn.angle>20||type==='fork'||type==='merge'||type==='end of road'||roundabout),large=decision&&(turn.angle>tune.largeAngle||type==='fork'||type==='merge'||roundabout);return{rem,roundabout,decision,large}}
+// Screen-distance heuristic: rendered building footprints near the next road
+// can obstruct a pitched map. It is NOT a measurement of real-world building
+// clearance or height unless Mapbox explicitly provides those attributes.
+function screenDistanceToSegment(px,py,ax,ay,bx,by){
+  const dx=bx-ax,dy=by-ay,d2=dx*dx+dy*dy;
+  const t=d2>1e-3?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/d2)):0;
+  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+}
 function cameraUrbanContext(p,ts){
-  if(!isMotorizedProfile()){cameraUrbanDensity=0;cameraUrbanLastCount=0;cameraUrbanFocus=false;return{density:0,count:0,close:false}}
-  if(!map?.loaded?.()||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat)||map.getZoom()<14.2)return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus};
-  const gap=performanceTier==='eco'?2100:performanceTier==='normal'?1450:1050;
-  if(ts-cameraUrbanSampleAt<gap)return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus};
+  if(!isMotorizedProfile()){
+    cameraUrbanDensity=0;cameraUrbanLastCount=0;cameraUrbanFocus=false;
+    cameraUrbanOcclusion=0;cameraUrbanOccluded=false;
+    return{density:0,count:0,close:false,occlusion:0,occluded:false};
+  }
+  if(!map?.loaded?.()||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat)||map.getZoom()<14.2)
+    return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus,occlusion:cameraUrbanOcclusion,occluded:cameraUrbanOccluded};
+  const gap=performanceTier==='eco'?2400:performanceTier==='normal'?1500:1050;
+  if(ts-cameraUrbanSampleAt<gap)
+    return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus,occlusion:cameraUrbanOcclusion,occluded:cameraUrbanOccluded};
   cameraUrbanSampleAt=ts;
-  let count=0;
+  let count=0,occlusion=0;
   try{
-    const pt=map.project([+p.lon,+p.lat]),r=Math.max(54,Math.min(92,(window.innerWidth||390)*.16)),features=map.queryRenderedFeatures([[pt.x-r,pt.y-r],[pt.x+r,pt.y+r]])||[],seen=new Set();
+    const pt=map.project([+p.lon,+p.lat]),r=Math.max(54,Math.min(92,(window.innerWidth||390)*.16));
+    const features=map.queryRenderedFeatures([[pt.x-r,pt.y-r],[pt.x+r,pt.y+r]])||[],seen=new Set();
+    // A screen-space corridor along the upcoming selected road, not all nearby
+    // buildings. Query runs at most once per sampling interval, never per frame.
+    const progress=selectedRoute&&routeCumulative.length?nearestProgress(p):null;
+    const ahead=progress?routePointAtDistance(Math.min(routeTotalGeometry-1,Math.max(0,progress.distanceAlong)+95)):null;
+    const roadEnd=ahead?map.project(ahead):null,canAssess=!!roadEnd&&performanceTier!=='eco'&&
+      document.documentElement.classList.contains('vano-android-shell');
     for(const f of features){
-      const layer=f?.layer||{},id=String(layer.id||''),type=String(layer.type||''),geom=String(f?.geometry?.type||''),props=f?.properties||{},looksBuilding=type==='fill-extrusion'||/building|structure|landmark|3d-object/i.test(id)||/building/i.test(String(props.class||props.type||props.feature_type||''));
+      const layer=f?.layer||{},id=String(layer.id||''),type=String(layer.type||''),geom=String(f?.geometry?.type||''),props=f?.properties||{};
+      const looksBuilding=type==='fill-extrusion'||/building|structure|landmark|3d-object/i.test(id)||/building/i.test(String(props.class||props.type||props.feature_type||''));
       if(!looksBuilding||(!geom.includes('Polygon')&&type!=='fill-extrusion'))continue;
-      const key=String(f.id??`${id}:${props.id??props.osm_id??count}`);if(seen.has(key))continue;seen.add(key);count++;if(count>=48)break;
+      const key=String(f.id??`${id}:${props.id??props.osm_id??count}`);if(seen.has(key))continue;seen.add(key);count++;
+      if(canAssess&&geom.includes('Polygon')){
+        const ring=geom==='MultiPolygon'?f.geometry?.coordinates?.[0]?.[0]:f.geometry?.coordinates?.[0];
+        if(Array.isArray(ring)&&ring.length){
+          let sx=0,sy=0,valid=0;
+          const stride=Math.max(1,Math.ceil(ring.length/10));
+          for(let i=0;i<ring.length;i+=stride){
+            const c=ring[i];if(!Array.isArray(c)||!Number.isFinite(+c[0])||!Number.isFinite(+c[1]))continue;
+            const q=map.project([+c[0],+c[1]]);if(!Number.isFinite(q?.x)||!Number.isFinite(q?.y))continue;
+            sx+=q.x;sy+=q.y;valid++;
+          }
+          if(valid){
+            const distance=screenDistanceToSegment(sx/valid,sy/valid,pt.x,pt.y,roadEnd.x,roadEnd.y);
+            const height=Number(props.height??props.render_height??props.building_height);
+            // Without trusted heights, only apply a minor building-density
+            // response; do not pretend to know a 3D obstruction.
+            const weight=Number.isFinite(height)&&height>12?Math.min(1,(height-10)/45):
+              type==='fill-extrusion'?.32:0;
+            if(distance<64&&weight>0)occlusion=Math.max(occlusion,Math.max(0,1-distance/64)*weight);
+          }
+        }
+      }
+      if(count>=48)break;
     }
-  }catch{}
+  }catch(e){/* Style changes can invalidate rendered-feature queries temporarily. */}
   cameraUrbanLastCount=count;
-  const raw=count>=32?1:count>=22?.82:count>=14?.58:count>=8?.34:count>=4?.14:0,alpha=raw>cameraUrbanDensity?.42:.22;
-  cameraUrbanDensity=cameraUrbanDensity+(raw-cameraUrbanDensity)*alpha;
-  const was=cameraUrbanFocus;cameraUrbanFocus=was?cameraUrbanDensity>.18:cameraUrbanDensity>.34;
-  return{density:cameraUrbanDensity,count,close:cameraUrbanFocus};
+  const raw=count>=32?1:count>=22?.82:count>=14?.58:count>=8?.34:count>=4?.14:0;
+  cameraUrbanDensity+=(raw-cameraUrbanDensity)*(raw>cameraUrbanDensity?.42:.22);
+  cameraUrbanOcclusion+=(occlusion-cameraUrbanOcclusion)*(occlusion>cameraUrbanOcclusion?.45:.20);
+  cameraUrbanFocus=cameraUrbanFocus?cameraUrbanDensity>.18:cameraUrbanDensity>.34;
+  // Hysteresis avoids one-frame swings as a building enters/leaves tiles.
+  cameraUrbanOccluded=cameraUrbanOccluded?cameraUrbanOcclusion>.16:cameraUrbanOcclusion>.35;
+  return{density:cameraUrbanDensity,count,close:cameraUrbanFocus,occlusion:cameraUrbanOcclusion,occluded:cameraUrbanOccluded};
 }
 function cameraDynamicProgress(ctx,ts){
   const base=ctx?.progressInfo||nearestProgress(ctx.p),speed=Math.max(0,+ctx?.p?.speed||0),visualAlong=Number.isFinite(puckRouteAlong)&&Number.isFinite(+puckTargetPos?._distanceAlong)&&ts-puckRouteFixAt<2600?puckRouteAlong:null,elapsed=Math.max(0,Math.min(profile==='motorcycle'?2.05:1.8,(ts-(ctx?.updatedAt||ts))/1000)),lead=Math.min(profile==='motorcycle'?36:25,speed*elapsed*(profile==='motorcycle'?1.04:.90)),along=Math.min(routeTotalGeometry-1,Math.max(0,visualAlong??((+base.distanceAlong||0)+lead)));
@@ -620,9 +667,28 @@ function buildCameraTarget(ctx,ts){
     zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-turnOpen-accelOpen+brakeClose+arrivalClose;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
     pitch=calibrating?NAV_CAMERA_HOME.pitch:(junction.roundabout?tune.pitchRound:junction.large?tune.pitchLarge:(junction.decision||turn.angle>48?tune.pitchTurn:tune.pitchCruise));if(motion.phase==='accelerating'&&!junction.decision)pitch=Math.min(56,pitch+(profile==='motorcycle'?2:1));if(motion.phase==='braking')pitch=Math.max(42,pitch-(profile==='motorcycle'?2:1));if(arrivalApproach)pitch=Math.min(pitch,46);
     if(urban.close&&!calibrating&&!junction.large){const crowd=Math.max(0,Math.min(1,urban.density)),speedGuard=1-Math.min(.32,speed/55),urbanFocus=crowd*speedGuard;zoom+=urbanFocus*(profile==='motorcycle'?.24:.28);pitch-=urbanFocus*(profile==='motorcycle'?4.2:5.6)}
+    // Lower the pitch gently when nearby rendered buildings may hide the
+    // approaching road; retain the selected route and visible maneuver.
+    if(urban.occluded&&!calibrating&&!junction.large&&performanceTier!=='eco'){
+      const strength=Math.max(0,Math.min(1,+urban.occlusion||0));
+      pitch=Math.max(34,pitch-strength*9);
+      zoom=Math.max(tune.zoomMin,zoom-strength*.10);
+    }
     const frozen=!calibrating&&(nearlyStopped||stoppedAtSignal);bearing=frozen&&Number.isFinite(lastCameraBearing)?lastCameraBearing:rawTarget;
     const bottomBase=calibrating?NAV_CAMERA_HOME.bottomRatio:(profile==='motorcycle'?(junction.large?(document.documentElement.classList.contains('vano-android-shell')?.25:.285):(document.documentElement.classList.contains('vano-android-shell')?.275:.305)):(junction.large?(document.documentElement.classList.contains('vano-android-shell')?.26:.30):(document.documentElement.classList.contains('vano-android-shell')?.285:.33))),topBase=calibrating?NAV_CAMERA_HOME.topRatio:(junction.large?.075:.055);
     padding=landscape?{top:Math.round(Math.max(22,vh*.055)),bottom:Math.round(Math.max(42,vh*.12)+SAFE_AREA_BOTTOM),left:Math.round(Math.max(210,Math.min(330,vw*.30))),right:Math.round(Math.max(42,vw*.055))}:{top:Math.round(Math.min(82,Math.max(24,vh*topBase))),bottom:Math.round(Math.min(340,Math.max(profile==='motorcycle'?158:170,vh*bottomBase))+SAFE_AREA_BOTTOM),left:Math.round(Math.min(48,Math.max(10,vw*.026))),right:Math.round(Math.min(32,Math.max(8,vw*.016)))};
+    // Native shell provides measured HUD geometry via ResizeObserver.
+    // No DOM reads or style recalculation in this per-frame camera path.
+    const safe=window.__VANO_NAV_SAFE_VIEWPORT;
+    if(!landscape&&document.documentElement.classList.contains('vano-android-shell')&&
+      safe&&ts-(+safe.measuredAt||0)<12000){
+      const top=Math.min(vh*.28,Math.max(32,(+safe.top||0)+7));
+      const bottom=Math.min(vh*.45,Math.max(142,(+safe.bottom||0)+12));
+      if(top+bottom<vh-180){
+        padding.top=Math.round(top);
+        padding.bottom=Math.round(bottom);
+      }
+    }
   }
   const accuracy=Math.max(0,+p.accuracy||0),gpsWeak=accuracy>70,gpsPoor=accuracy>110;
   if(gpsWeak){
@@ -631,7 +697,13 @@ function buildCameraTarget(ctx,ts){
     if(Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,gpsPoor?(profile==='motorcycle'?.10:.08):(profile==='motorcycle'?.18:.13));
   }
   if((nearlyStopped||motion.phase==='crawl')&&!junction.decision&&Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,.035);
-  if(isMotorizedProfile())zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(profile==='motorcycle'?17.48:17.58,zoom));
+  if(isMotorizedProfile()){
+    // Match the actual Android vehicle tuning range rather than overriding
+    // its zoomMax (motorcycle: 17.72); preserve website framing unchanged.
+    const installedAndroid=document.documentElement.classList.contains('vano-android-shell');
+    const maxZoom=installedAndroid?(profile==='motorcycle'?17.72:17.60):(profile==='motorcycle'?17.48:17.58);
+    zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(maxZoom,zoom));
+  }
   if(Number.isFinite(navLastCameraZoom)&&Math.abs(zoom-navLastCameraZoom)<.018)zoom=navLastCameraZoom;
   return{center,zoom,pitch,bearing,padding,rawTarget,stopped:nearlyStopped||stoppedAtSignal,junction,instant:!!ctx.instant,arrivalApproach,speed,nearlyStopped,previewing:!!previewing,motion,gpsWeak,gpsPoor,urbanClose:!!urban.close,urbanDensity:+urban.density||0}
 }
