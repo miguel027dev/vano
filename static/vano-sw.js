@@ -83,7 +83,7 @@ self.addEventListener('fetch',event=>{
       const cache=await caches.open(CACHE);
       // The ?v= fingerprint changes on every deployment. A cached matching
       // URL is safe and avoids waiting for a 5s network timeout on every page.
-      const versioned=Boolean(url.searchParams.get('v'));
+      const versioned=/^[a-f0-9]{7,40}$/i.test(url.searchParams.get('v')||'');
       if(versioned){
         const hit=await cache.match(req);
         if(hit)return hit;
