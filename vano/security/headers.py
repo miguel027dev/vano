@@ -89,14 +89,21 @@ def security_headers(response):
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
         response.headers["X-VANO-Benchmark-Protocol"] = "1.0"
     elif request.path.startswith("/static/"):
-        # Critical map/runtime bundles must be revalidated. Keeping them
-        # immutable for 30 days caused some regions/devices to retain a broken
-        # map core after a hotfix. Other fingerprinted/static assets stay cheap.
+        # Assets whose ?v= matches the current deploy are content-addressed
+        # at the URL level: subsequent visits should not re-download them.
+        # Unversioned or stale-version critical runtime/map assets still revalidate
+        # to preserve hotfix behavior and compatibility with older clients.
         static_name = request.path.rsplit("/", 1)[-1].lower()
-        if static_name.startswith(("vano-map", "vano-runtime", "vano-telemetry", "vano-theme", "vano-benchmark", "vano-app")):
+        current_build = str(VANO_BUILD_ID or "")
+        requested_build = str(request.args.get("v", ""))
+        fingerprinted = bool(current_build and requested_build and requested_build == current_build)
+        critical = static_name.startswith(("vano-map", "vano-runtime", "vano-telemetry", "vano-theme", "vano-benchmark", "vano-app"))
+        if fingerprinted:
+            response.headers["Cache-Control"] = "public, max-age=2592000, immutable"
+        elif critical:
             response.headers["Cache-Control"] = "public, max-age=0, must-revalidate"
         else:
-            response.headers["Cache-Control"] = "public, max-age=2592000, immutable"
+            response.headers["Cache-Control"] = "public, max-age=86400"
     elif request.path in {"/embed", "/frame-test"}:
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
 
