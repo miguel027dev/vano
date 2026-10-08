@@ -22,6 +22,6 @@ if [ ! -f build/candidate.keystore ]; then
   java sun.security.tools.keytool.Main -genkeypair -keystore build/candidate.keystore -alias candidate -keyalg RSA -keysize 3072 -validity 3650 -dname 'CN=VANO Fluidez Candidate' -storepass:file build/signing-password -keypass:file build/signing-password
   chmod 600 build/candidate.keystore
 fi
-"$bt/apksigner" sign --ks build/candidate.keystore --ks-key-alias candidate --ks-pass file:build/signing-password --out build/VANO-Fluidez-2.7.0-rc1.apk build/aligned.apk
-"$bt/apksigner" verify --verbose build/VANO-Fluidez-2.7.0-rc1.apk
-"$bt/aapt2" dump badging build/VANO-Fluidez-2.7.0-rc1.apk
+"$bt/apksigner" sign --ks build/candidate.keystore --ks-key-alias candidate --ks-pass file:build/signing-password --out build/VANO-Fluidez-2.7.1-navfix-rc2.apk build/aligned.apk
+"$bt/apksigner" verify --verbose build/VANO-Fluidez-2.7.1-navfix-rc2.apk
+"$bt/aapt2" dump badging build/VANO-Fluidez-2.7.1-navfix-rc2.apk
