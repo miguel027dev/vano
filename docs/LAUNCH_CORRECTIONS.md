@@ -66,3 +66,10 @@ Cookies autenticados legados sem vínculo revogável poderão exigir novo login.
 ## Ajuste encontrado durante o deploy
 
 O serviço existente selecionava Python 3.14.3 por padrão; o primeiro build com lock recusou backports-zstd, cuja versão fixada exige Python < 3.14. Adicionado `.python-version` com 3.13, alinhado ao CI aprovado e usando o patch suportado mais recente. O build com falha não substituiu a versão previamente live. Referência operacional: https://render.com/docs/python-version.
+
+
+## Nova auditoria UX/UI iniciada em produção
+
+UX-01 (P1): cenário padrão e presets do benchmark descartavam coordenadas conhecidas e repetiam geocodificação; a Av. Paulista foi resolvida para Pereira Barreto, causando 422 por distância. Corrigido reaproveitamento das coordenadas do cenário e inicialização do preset padrão. Resultado 0/N deixa de receber aparência de sucesso. Validar cenário no navegador sem WebGL.
+
+ANDROID-BUILD-01 (P0 para esses protótipos): bibliotecas do baseline exigiam SDK 37 e AGP 9.1, incompatíveis com SDK 36/AGP 8.13.2. Em revisão, alinhar versões compatíveis e compilar antes de incorporar. Não há evidência de que este protótipo seja o AAB final da Play Store.
