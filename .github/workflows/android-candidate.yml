@@ -1,0 +1,44 @@
+name: Android navigation candidate APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-webview/**'
+      - 'static/vano-map.js'
+      - 'static/vano-foundation.css'
+      - 'static/vano-android-nav-layout.js'
+      - 'templates/index.html'
+      - '.github/workflows/android-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-navfix-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android API 36
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Build and verify isolated Android WebView
+        run: |
+          chmod +x android-webview/build.sh
+          cd android-webview
+          ./build.sh
+      - name: Publish test APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VANO-Fluidez-2.7.1-navfix-rc2-APK
+          path: android-webview/build/VANO-Fluidez-2.7.1-navfix-rc2.apk
+          if-no-files-found: error
+          retention-days: 14
