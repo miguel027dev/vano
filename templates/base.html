@@ -153,6 +153,7 @@
   }catch(_){}</script>
   {% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
+  {% if not vano_map_surface and not vano_admin_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-public-refresh.css') }}?v={{ vano_build_id }}">{% endif %}
 </head>
 <body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
 {% if not vano_map_surface %}<a class="vano-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>{% endif %}
