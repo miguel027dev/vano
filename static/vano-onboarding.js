@@ -19,6 +19,8 @@
   const avoidInputs=$$('input[name="avoid_tolls"],input[name="avoid_unpaved"],input[name="avoid_ferries"]',form);
   const label=$('#obStepLabel');
   const bar=$('#obProgressBar');
+  const progressTrack=$('.ob500-progress');
+  const stepAnnouncement=$('#obStepAnnouncement');
   const spark=$('#ob500ProgressSpark');
   const xp=$('#ob500Xp');
   const previewMeter=$('#obPreviewMeter');
@@ -110,13 +112,16 @@
   }
 
   function clearErrors(){
-    $$('.ob-invalid-v340',form).forEach(x=>x.classList.remove('ob-invalid-v340'));
+    $('.ob-invalid-v340',form).forEach(x=>x.classList.remove('ob-invalid-v340'));
+    $('[aria-invalid="true"]',form).forEach(x=>x.removeAttribute('aria-invalid'));
     $$('.ob-inline-error-v340',form).forEach(x=>x.remove());
   }
 
   function invalidate(target,msg){
     const field=target?.closest?.('.ob500-field,.ob500-section-card,.ob-card-v340')||target;
     field?.classList.add('ob-invalid-v340');
+    const editable=target?.matches?.('input,select,textarea')?target:target?.querySelector?.('input:checked,input,select,textarea');
+    editable?.setAttribute('aria-invalid','true');
     const host=field||target?.parentElement;
     if(host&&!$('.ob-inline-error-v340',host)){
       const e=document.createElement('div');
@@ -267,6 +272,8 @@
     });
     if(label)label.textContent=`${current} de 3`;
     if(bar)bar.style.width=`${pct}%`;
+    progressTrack?.setAttribute('aria-valuenow',String(Math.round(pct)));
+    if(stepAnnouncement)stepAnnouncement.textContent=`Etapa ${current} de 3: ${['Perfil','Preferências','Revisão'][current-1]}`;
     if(spark)spark.style.left=current===3?'calc(100% - 4px)':`${pct}%`;
     if(xp)xp.textContent=`${Math.round(pct)}%`;
     if(previewMeter)previewMeter.style.width=`${pct}%`;
@@ -295,12 +302,17 @@
     if(current===3)updateSummary();
     if(current!==prev){
       vibrate(7);
-      if(scroll)requestAnimationFrame(scrollStepTop);
+      if(scroll)requestAnimationFrame(()=>{
+        scrollStepTop();
+        const heading=steps.find(step=>Number(step.dataset.obStep)===current)?.querySelector('h1');
+        try{heading?.focus({preventScroll:true})}catch(_){heading?.focus()}
+      });
     }
   }
 
   function removeErrorNear(target){
     target?.closest?.('.ob-invalid-v340')?.classList.remove('ob-invalid-v340');
+    target?.removeAttribute?.('aria-invalid');
     target?.closest?.('.ob500-field,.ob500-section-card,.ob-card-v340')?.querySelectorAll?.('.ob-inline-error-v340')?.forEach?.(x=>x.remove());
   }
 
