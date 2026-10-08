@@ -889,33 +889,3 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
     }
   }
 }
-
-/* VANO MOTION SYSTEM R1 — composited, Android-only HUD choreography.
-   The camera and HUD share measured safe insets; UI motion never moves the map. */
-@layer vanoFoundation {
-  @keyframes vano-motion-enter-r1 {
-    from {opacity:.25;transform:translate3d(0,8px,0);}
-    to {opacity:1;transform:translate3d(0,0,0);}
-  }
-  @keyframes vano-motion-sheet-r1 {
-    from {opacity:.7;transform:translate3d(0,24px,0);}
-    to {opacity:1;transform:translate3d(0,0,0);}
-  }
-  html.vano-android-shell body.vano-map-surface.body-nav #trafficRadar.show {
-    animation:vano-motion-enter-r1 210ms cubic-bezier(.2,.8,.2,1) both;
-  }
-  html.vano-android-shell body.vano-map-surface.body-nav #activeNav.nav-panel.nav-minimal.show {
-    animation:vano-motion-enter-r1 260ms cubic-bezier(.2,.8,.2,1) both;
-  }
-  html.vano-android-shell body.vano-map-surface.body-nav #activeNav .traffic-suggestion.show {
-    animation:vano-motion-enter-r1 190ms cubic-bezier(.2,.8,.2,1) both;
-  }
-  html.vano-android-shell body.vano-map-surface #quickAlertSheet.show .quick-alert-card {
-    animation:vano-motion-sheet-r1 250ms cubic-bezier(.22,.82,.25,1) both;
-  }
-  @media(prefers-reduced-motion:reduce) {
-    html.vano-android-shell body.vano-map-surface :is(#trafficRadar.show,#activeNav.nav-panel.nav-minimal.show,#quickAlertSheet.show .quick-alert-card,#activeNav .traffic-suggestion.show) {
-      animation:none!important;transition:none!important;
-    }
-  }
-}

@@ -18,10 +18,7 @@
   };
   function sync(){
     frame=0;
-    if(!document.body?.classList.contains('body-nav')){
-      window.__VANO_NAV_SAFE_VIEWPORT=null;
-      return;
-    }
+    if(!document.body?.classList.contains('body-nav'))return;
     const vh=Math.max(260,window.visualViewport?.height||window.innerHeight||600);
     const nav=byId('activeNav'),radar=byId('trafficRadar'),ctx=byId('navContextAlert');
     let headerBottom=12;
@@ -34,17 +31,7 @@
     }
     // Android devices may have a 2-line maneuver: never assume a 76px header.
     headerBottom=Math.min(vh*.53,Math.max(72,headerBottom));
-    const navRect=shown(nav,'show')?nav.getBoundingClientRect():null;
-    const navTop=navRect?navRect.top:vh-155;
-    // One measured viewport model for HUD and camera: no per-frame DOM reads
-    // in the Mapbox motion loop, and no fixed dock height guesses.
-    const measuredDock=Math.max(0,navRect?.height||0);
-    window.__VANO_NAV_SAFE_VIEWPORT={
-      top:Math.max(0,Math.round(headerBottom)),
-      bottom:Math.max(0,Math.round(measuredDock)),
-      width:Math.round(window.innerWidth||0),height:Math.round(vh),
-      measuredAt:performance.now()
-    };
+    const navTop=shown(nav,'show')?nav.getBoundingClientRect().top:vh-155;
     const free=Math.max(70,navTop-headerBottom-12);
     const ctxShowing=shown(ctx)&&ctx.getAttribute('hidden')===null;
     const reserveContext=ctxShowing?Math.min(76,Math.max(48,free*.43)):0;

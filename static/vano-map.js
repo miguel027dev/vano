@@ -112,26 +112,9 @@ let searchInteractionActive=false,searchComposing=false,searchInteractionTimer=n
 let puckFrame=null,puckDisplayPos=null,puckTargetPos=null,puckTargetUpdatedAt=0,puckLastPaintAt=0,puckLastFixAt=0,puckMotionLastTs=0;
 let puckRouteAlong=null,puckRouteVelocity=0,puckRouteTargetAlong=null,puckRouteTargetSpeed=0,puckRouteFixAt=0;
 let markerHeadingVisual=0,markerHeadingReady=false,markerHeadingUpdatedAt=0;
-let cameraMotionFrame=null,cameraTargetContext=null,cameraVisualState=null,navCameraLaunchSequence=0,cameraLastPaintAt=0,internalCameraMoveUntil=0,driveCameraMood='',navStartupBearing=null,navStartupBearingUntil=0,cameraCalibrationUntil=0,cameraCalibrationStartedAt=0,cameraCalibrationTimer=null,navLaunchAnimationUntil=0,navLaunchResumeTimer=null,cameraIntent='',cameraIntentUntil=0,cameraTargetBearing=null,cameraTargetBearingAt=0;
-let cameraUrbanDensity=0,cameraUrbanSampleAt=0,cameraUrbanLastCount=0,cameraUrbanFocus=false,cameraUrbanOcclusion=0,cameraUrbanOccluded=false;
+let cameraMotionFrame=null,cameraTargetContext=null,cameraVisualState=null,cameraLastPaintAt=0,internalCameraMoveUntil=0,driveCameraMood='',navStartupBearing=null,navStartupBearingUntil=0,cameraCalibrationUntil=0,cameraCalibrationStartedAt=0,cameraCalibrationTimer=null,navLaunchAnimationUntil=0,navLaunchResumeTimer=null,cameraIntent='',cameraIntentUntil=0,cameraTargetBearing=null,cameraTargetBearingAt=0;
+let cameraUrbanDensity=0,cameraUrbanSampleAt=0,cameraUrbanLastCount=0,cameraUrbanFocus=false;
 let cameraKinematicSpeed=0,cameraKinematicAccel=0,cameraKinematicTs=0,cameraKinematicPhase='steady';
-let cameraMotionRouteEpoch=0,navMotionSessionEpoch=0;
-let cameraJunctionMemory={epoch:0,decision:false,large:false,roundabout:false,until:0};
-function invalidateCameraManeuverContext(){
-  cameraMotionRouteEpoch++;
-  cameraJunctionMemory={epoch:cameraMotionRouteEpoch,decision:false,large:false,roundabout:false,until:0};
-}
-/* A tracking camera is always driven by cameraMotionTick. Never schedule a
-   second Mapbox easeTo for a live route transition. */
-function boundCameraBearing(previous,next,dt,speed=0,junction=null){
-  if(!Number.isFinite(previous)||!Number.isFinite(next))return next;
-  const turn=!!junction?.decision;
-  const rate=turn?(profile==='motorcycle'?295:250):(profile==='motorcycle'?205:170);
-  const max=Math.max(1.25,Math.min(22,rate*Math.max(8,Math.min(90,dt))/1000));
-  const delta=((next-previous+540)%360)-180;
-  return(previous+Math.max(-max,Math.min(max,delta))+360)%360;
-}
-
 const NAV_CAMERA_STATES=Object.freeze({FOLLOWING:'FOLLOWING',OVERVIEW:'OVERVIEW',FREE_LOOK:'FREE_LOOK',RECENTERING:'RECENTERING',MANEUVER_FOCUS:'MANEUVER_FOCUS',REROUTING:'REROUTING',ARRIVAL:'ARRIVAL'});
 let navCameraState=NAV_CAMERA_STATES.FOLLOWING;
 function setNavCameraState(next){if(!Object.values(NAV_CAMERA_STATES).includes(next))return;const changed=navCameraState!==next;navCameraState=next;document.body?.setAttribute?.('data-nav-camera-state',next);if(changed&&activeNav?.classList?.contains('show'))syncNavigationTripHud()}
@@ -525,7 +508,7 @@ function acceptNavigationAlternative(){if(!navAlternativePrimary||!lastNavPositi
 function dismissNavigationAlternative(){if(navAlternativePrimary){navAlternativeDismissedKey=routeClientKey(navAlternativePrimary);navAlternativeDismissUntil=Date.now()+180000}const box=$('navAltHint');box?.classList.remove('show');document.body.classList.remove('nav-alt-visible');productTelemetry('route','alternative-dismissed','navigation');showToast('Mantendo a rota atual.')}
 function mergeNavigationAlternative(route){if(!route?.geometry?.coordinates?.length)return;const key=routeClientKey(route);if((routes||[]).some(r=>routeClientKey(r)===key))return;routes=[...(routes||[]),route];refreshNavigationAlternatives(true)}
 function adoptNavigationAlternative(route,p,match=null,{automatic=false,reason='alternative'}={}){
-  if(!route||route===selectedRoute)return false;const old=selectedRoute,saving=Math.max(0,(+old?.duration||0)-(+route.duration||0));if(automatic&&routeSwitchBlocked(route,saving))return false;const oldKey=routeClientKey(old);if(oldKey)navSuppressedRouteKeys.add(oldKey);rememberRouteSwitch(old,route,saving);selectedRoute=route;vanoSyncNativeMapRoute(p);navAlternativeDismissedKey='';navAlternativeDismissUntil=0;origin={lat:+p.lat,lon:+p.lon,label:'Minha localização',is_gps:true};buildMetrics();invalidateCameraManeuverContext();const m=match||nearestProgress(p),switchP={...p,_distanceAlong:m.distanceAlong,_routeSnapped:m.offRoute<=Math.max(30,(+p.accuracy||35)*1.35)};navLastAlong=Math.max(0,m.distanceAlong||0);navLastPaintAlong=navLastAlong;navLastRawPosition=null;lastNavRoutePaintAt=0;resetOffRouteTracker();resetMapMatchHysteresis();navAlternativeHitKey='';navAlternativeHitCount=0;setNavRouteData(navLastAlong);refreshNavigationAlternatives(true);updateRoadLayer();const step=currentStep(m.distanceAlong);motionSwapText($('nextStreet'),stepStreet(step));motionSwapText($('nextInstruction'),maneuverLabel(step));$('maneuverGlyph').textContent=maneuverGlyph(step);updateNavSummary(Math.max(0,(+selectedRoute.duration||0)*(1-m.progress)),m.remaining,step,m);markCameraIntent('reroute',760);/* Keep cameraVisualState on alternative switch: interpolate from previous pose. */resetPuckMotionModel();lastNavPosition=switchP;updateUserMarker(switchP,{instant:true});scheduleCamera(switchP,true,m);haptic(automatic?8:14);productTelemetry('route',`${automatic?'alternative-auto':'alternative-manual'}:${reason}:${Math.max(0,Math.round(saving/60))}m`,'navigation');showToast(saving>=60?`Nova rota ativa · ${Math.round(saving/60)} min mais rápida.`:(route.micro_route?'Micro-rota ativada.':'Rota alternativa ativada.'));return true
+  if(!route||route===selectedRoute)return false;const old=selectedRoute,saving=Math.max(0,(+old?.duration||0)-(+route.duration||0));if(automatic&&routeSwitchBlocked(route,saving))return false;const oldKey=routeClientKey(old);if(oldKey)navSuppressedRouteKeys.add(oldKey);rememberRouteSwitch(old,route,saving);selectedRoute=route;vanoSyncNativeMapRoute(p);navAlternativeDismissedKey='';navAlternativeDismissUntil=0;origin={lat:+p.lat,lon:+p.lon,label:'Minha localização',is_gps:true};buildMetrics();const m=match||nearestProgress(p),switchP={...p,_distanceAlong:m.distanceAlong,_routeSnapped:m.offRoute<=Math.max(30,(+p.accuracy||35)*1.35)};navLastAlong=Math.max(0,m.distanceAlong||0);navLastPaintAlong=navLastAlong;navLastRawPosition=null;lastNavRoutePaintAt=0;resetOffRouteTracker();resetMapMatchHysteresis();navAlternativeHitKey='';navAlternativeHitCount=0;setNavRouteData(navLastAlong);refreshNavigationAlternatives(true);updateRoadLayer();const step=currentStep(m.distanceAlong);motionSwapText($('nextStreet'),stepStreet(step));motionSwapText($('nextInstruction'),maneuverLabel(step));$('maneuverGlyph').textContent=maneuverGlyph(step);updateNavSummary(Math.max(0,(+selectedRoute.duration||0)*(1-m.progress)),m.remaining,step,m);markCameraIntent('reroute',760);cameraVisualState=null;resetPuckMotionModel();lastNavPosition=switchP;updateUserMarker(switchP,{instant:true});scheduleCamera(switchP,true,m);haptic(automatic?8:14);productTelemetry('route',`${automatic?'alternative-auto':'alternative-manual'}:${reason}:${Math.max(0,Math.round(saving/60))}m`,'navigation');showToast(saving>=60?`Nova rota ativa · ${Math.round(saving/60)} min mais rápida.`:(route.micro_route?'Micro-rota ativada.':'Rota alternativa ativada.'));return true
 }
 function maybeAdoptNavigationAlternative(raw,p){
   if(!isMotorizedProfile()||!activeNav?.classList.contains('show')||!selectedRoute||navLastAlong<45||!offRouteEligibleForReroute())return false;const list=navigationAlternativeRoutes();if(!list.length)return false;const acc=Math.max(4,+raw?.accuracy||35),current=nearestProgressOnRoute(raw,selectedRoute),speed=Math.max(0,+raw?.speed||0);let best=null,bestScore=Infinity,bestMatch=null;
@@ -565,92 +548,27 @@ function cameraKinematics(speed,ts){
 function upcomingTurn(m,speed){const tune=cameraVehicleTuning(),d=m?.distanceAlong||0,b0=routeBearingAtDistance(d,profile==='motorcycle'?24:28),look=isMotorizedProfile()?Math.max(tune.lookMin,Math.min(profile==='motorcycle'?285:250,tune.lookBase-18+speed*(profile==='motorcycle'?5.8:4.8))):42,b1=routeBearingAtDistance(d+look,profile==='motorcycle'?30:34);return{angle:Number.isFinite(b0)&&Number.isFinite(b1)?bearingDelta(b0,b1):0,distance:look}}
 function cameraLookAhead(speed,m,motion=null){const tune=cameraVehicleTuning();let base=Math.max(tune.lookMin,Math.min(tune.lookMax,tune.lookBase+speed*tune.lookPerSpeed));const turn=upcomingTurn(m,speed);if(turn.angle>58)base*=tune.sharpLook;else if(turn.angle>34)base*=tune.turnLook;const step=currentStep(m?.distanceAlong||0),rem=(step.remainingInStep??9999);if(rem<140)base*=profile==='motorcycle'?.76:.78;if(motion?.phase==='accelerating')base*=profile==='motorcycle'?1.10:1.05;else if(motion?.phase==='braking')base*=profile==='motorcycle'?.82:.88;else if(motion?.phase==='crawl')base*=.80;return Math.max(tune.lookMin,base)}
 function roadControlAhead(type,along,maxAhead=90){let best=null;for(const x of roadAwareness||[]){if(type&&String(x.type||'')!==type)continue;if(!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon))continue;const m=nearestProgress({lat:+x.lat,lon:+x.lon}),ahead=m.distanceAlong-along;if(m.offRoute<=80&&ahead>=-10&&ahead<=maxAhead&&(!best||ahead<best.ahead))best={...x,ahead}}return best}
-function cameraJunctionContext(m,step,turn){
-  const tune=cameraVehicleTuning(),rem=Math.max(0,+step?.remainingInStep||9999),
-    type=String(step?.type||'').toLowerCase(),
-    rawRoundabout=type.includes('roundabout')||type.includes('rotary'),
-    rawDecision=rem<tune.decisionDistance&&(turn.angle>20||type==='fork'||type==='merge'||type==='end of road'||rawRoundabout),
-    rawLarge=rawDecision&&(turn.angle>tune.largeAngle||type==='fork'||type==='merge'||rawRoundabout);
-  const now=performance.now(),memory=cameraJunctionMemory;
-  if(rawDecision){
-    cameraJunctionMemory={epoch:cameraMotionRouteEpoch,decision:true,large:rawLarge,
-      roundabout:rawRoundabout,until:now+420};
-    return{rem,roundabout:rawRoundabout,decision:true,large:rawLarge};
-  }
-  // A transient GPS step-index change must not make the camera flicker between
-  // regular follow and junction focus. Never carry the state across routes.
-  if(memory.epoch===cameraMotionRouteEpoch&&memory.decision&&now<memory.until&&
-    rem<tune.decisionDistance*1.15)
-    return{rem,roundabout:memory.roundabout,decision:true,large:memory.large};
-  return{rem,roundabout:false,decision:false,large:false};
-}
-// Screen-distance heuristic: rendered building footprints near the next road
-// can obstruct a pitched map. It is NOT a measurement of real-world building
-// clearance or height unless Mapbox explicitly provides those attributes.
-function screenDistanceToSegment(px,py,ax,ay,bx,by){
-  const dx=bx-ax,dy=by-ay,d2=dx*dx+dy*dy;
-  const t=d2>1e-3?Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/d2)):0;
-  return Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
-}
+function cameraJunctionContext(m,step,turn){const tune=cameraVehicleTuning(),rem=Math.max(0,+step?.remainingInStep||9999),type=String(step?.type||'').toLowerCase(),roundabout=type.includes('roundabout')||type.includes('rotary'),decision=rem<tune.decisionDistance&&(turn.angle>20||type==='fork'||type==='merge'||type==='end of road'||roundabout),large=decision&&(turn.angle>tune.largeAngle||type==='fork'||type==='merge'||roundabout);return{rem,roundabout,decision,large}}
 function cameraUrbanContext(p,ts){
-  if(!isMotorizedProfile()){
-    cameraUrbanDensity=0;cameraUrbanLastCount=0;cameraUrbanFocus=false;
-    cameraUrbanOcclusion=0;cameraUrbanOccluded=false;
-    return{density:0,count:0,close:false,occlusion:0,occluded:false};
-  }
-  if(!map?.loaded?.()||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat)||map.getZoom()<14.2)
-    return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus,occlusion:cameraUrbanOcclusion,occluded:cameraUrbanOccluded};
-  const gap=performanceTier==='eco'?2400:performanceTier==='normal'?1500:1050;
-  if(ts-cameraUrbanSampleAt<gap)
-    return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus,occlusion:cameraUrbanOcclusion,occluded:cameraUrbanOccluded};
+  if(!isMotorizedProfile()){cameraUrbanDensity=0;cameraUrbanLastCount=0;cameraUrbanFocus=false;return{density:0,count:0,close:false}}
+  if(!map?.loaded?.()||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat)||map.getZoom()<14.2)return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus};
+  const gap=performanceTier==='eco'?2100:performanceTier==='normal'?1450:1050;
+  if(ts-cameraUrbanSampleAt<gap)return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus};
   cameraUrbanSampleAt=ts;
-  let count=0,occlusion=0;
+  let count=0;
   try{
-    const pt=map.project([+p.lon,+p.lat]),r=Math.max(54,Math.min(92,(window.innerWidth||390)*.16));
-    const features=map.queryRenderedFeatures([[pt.x-r,pt.y-r],[pt.x+r,pt.y+r]])||[],seen=new Set();
-    // A screen-space corridor along the upcoming selected road, not all nearby
-    // buildings. Query runs at most once per sampling interval, never per frame.
-    const progress=selectedRoute&&routeCumulative.length?nearestProgress(p):null;
-    const ahead=progress?routePointAtDistance(Math.min(routeTotalGeometry-1,Math.max(0,progress.distanceAlong)+95)):null;
-    const roadEnd=ahead?map.project(ahead):null,canAssess=!!roadEnd&&performanceTier!=='eco'&&
-      document.documentElement.classList.contains('vano-android-shell');
+    const pt=map.project([+p.lon,+p.lat]),r=Math.max(54,Math.min(92,(window.innerWidth||390)*.16)),features=map.queryRenderedFeatures([[pt.x-r,pt.y-r],[pt.x+r,pt.y+r]])||[],seen=new Set();
     for(const f of features){
-      const layer=f?.layer||{},id=String(layer.id||''),type=String(layer.type||''),geom=String(f?.geometry?.type||''),props=f?.properties||{};
-      const looksBuilding=type==='fill-extrusion'||/building|structure|landmark|3d-object/i.test(id)||/building/i.test(String(props.class||props.type||props.feature_type||''));
+      const layer=f?.layer||{},id=String(layer.id||''),type=String(layer.type||''),geom=String(f?.geometry?.type||''),props=f?.properties||{},looksBuilding=type==='fill-extrusion'||/building|structure|landmark|3d-object/i.test(id)||/building/i.test(String(props.class||props.type||props.feature_type||''));
       if(!looksBuilding||(!geom.includes('Polygon')&&type!=='fill-extrusion'))continue;
-      const key=String(f.id??`${id}:${props.id??props.osm_id??count}`);if(seen.has(key))continue;seen.add(key);count++;
-      if(canAssess&&geom.includes('Polygon')){
-        const ring=geom==='MultiPolygon'?f.geometry?.coordinates?.[0]?.[0]:f.geometry?.coordinates?.[0];
-        if(Array.isArray(ring)&&ring.length){
-          let sx=0,sy=0,valid=0;
-          const stride=Math.max(1,Math.ceil(ring.length/10));
-          for(let i=0;i<ring.length;i+=stride){
-            const c=ring[i];if(!Array.isArray(c)||!Number.isFinite(+c[0])||!Number.isFinite(+c[1]))continue;
-            const q=map.project([+c[0],+c[1]]);if(!Number.isFinite(q?.x)||!Number.isFinite(q?.y))continue;
-            sx+=q.x;sy+=q.y;valid++;
-          }
-          if(valid){
-            const distance=screenDistanceToSegment(sx/valid,sy/valid,pt.x,pt.y,roadEnd.x,roadEnd.y);
-            const height=Number(props.height??props.render_height??props.building_height);
-            // Without trusted heights, only apply a minor building-density
-            // response; do not pretend to know a 3D obstruction.
-            const weight=Number.isFinite(height)&&height>12?Math.min(1,(height-10)/45):
-              type==='fill-extrusion'?.32:0;
-            if(distance<64&&weight>0)occlusion=Math.max(occlusion,Math.max(0,1-distance/64)*weight);
-          }
-        }
-      }
-      if(count>=48)break;
+      const key=String(f.id??`${id}:${props.id??props.osm_id??count}`);if(seen.has(key))continue;seen.add(key);count++;if(count>=48)break;
     }
-  }catch(e){/* Style changes can invalidate rendered-feature queries temporarily. */}
+  }catch{}
   cameraUrbanLastCount=count;
-  const raw=count>=32?1:count>=22?.82:count>=14?.58:count>=8?.34:count>=4?.14:0;
-  cameraUrbanDensity+=(raw-cameraUrbanDensity)*(raw>cameraUrbanDensity?.42:.22);
-  cameraUrbanOcclusion+=(occlusion-cameraUrbanOcclusion)*(occlusion>cameraUrbanOcclusion?.45:.20);
-  cameraUrbanFocus=cameraUrbanFocus?cameraUrbanDensity>.18:cameraUrbanDensity>.34;
-  // Hysteresis avoids one-frame swings as a building enters/leaves tiles.
-  cameraUrbanOccluded=cameraUrbanOccluded?cameraUrbanOcclusion>.16:cameraUrbanOcclusion>.35;
-  return{density:cameraUrbanDensity,count,close:cameraUrbanFocus,occlusion:cameraUrbanOcclusion,occluded:cameraUrbanOccluded};
+  const raw=count>=32?1:count>=22?.82:count>=14?.58:count>=8?.34:count>=4?.14:0,alpha=raw>cameraUrbanDensity?.42:.22;
+  cameraUrbanDensity=cameraUrbanDensity+(raw-cameraUrbanDensity)*alpha;
+  const was=cameraUrbanFocus;cameraUrbanFocus=was?cameraUrbanDensity>.18:cameraUrbanDensity>.34;
+  return{density:cameraUrbanDensity,count,close:cameraUrbanFocus};
 }
 function cameraDynamicProgress(ctx,ts){
   const base=ctx?.progressInfo||nearestProgress(ctx.p),speed=Math.max(0,+ctx?.p?.speed||0),visualAlong=Number.isFinite(puckRouteAlong)&&Number.isFinite(+puckTargetPos?._distanceAlong)&&ts-puckRouteFixAt<2600?puckRouteAlong:null,elapsed=Math.max(0,Math.min(profile==='motorcycle'?2.05:1.8,(ts-(ctx?.updatedAt||ts))/1000)),lead=Math.min(profile==='motorcycle'?36:25,speed*elapsed*(profile==='motorcycle'?1.04:.90)),along=Math.min(routeTotalGeometry-1,Math.max(0,visualAlong??((+base.distanceAlong||0)+lead)));
@@ -702,28 +620,9 @@ function buildCameraTarget(ctx,ts){
     zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-turnOpen-accelOpen+brakeClose+arrivalClose;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
     pitch=calibrating?NAV_CAMERA_HOME.pitch:(junction.roundabout?tune.pitchRound:junction.large?tune.pitchLarge:(junction.decision||turn.angle>48?tune.pitchTurn:tune.pitchCruise));if(motion.phase==='accelerating'&&!junction.decision)pitch=Math.min(56,pitch+(profile==='motorcycle'?2:1));if(motion.phase==='braking')pitch=Math.max(42,pitch-(profile==='motorcycle'?2:1));if(arrivalApproach)pitch=Math.min(pitch,46);
     if(urban.close&&!calibrating&&!junction.large){const crowd=Math.max(0,Math.min(1,urban.density)),speedGuard=1-Math.min(.32,speed/55),urbanFocus=crowd*speedGuard;zoom+=urbanFocus*(profile==='motorcycle'?.24:.28);pitch-=urbanFocus*(profile==='motorcycle'?4.2:5.6)}
-    // Lower the pitch gently when nearby rendered buildings may hide the
-    // approaching road; retain the selected route and visible maneuver.
-    if(urban.occluded&&!calibrating&&!junction.large&&performanceTier!=='eco'){
-      const strength=Math.max(0,Math.min(1,+urban.occlusion||0));
-      pitch=Math.max(34,pitch-strength*9);
-      zoom=Math.max(tune.zoomMin,zoom-strength*.10);
-    }
     const frozen=!calibrating&&(nearlyStopped||stoppedAtSignal);bearing=frozen&&Number.isFinite(lastCameraBearing)?lastCameraBearing:rawTarget;
     const bottomBase=calibrating?NAV_CAMERA_HOME.bottomRatio:(profile==='motorcycle'?(junction.large?(document.documentElement.classList.contains('vano-android-shell')?.25:.285):(document.documentElement.classList.contains('vano-android-shell')?.275:.305)):(junction.large?(document.documentElement.classList.contains('vano-android-shell')?.26:.30):(document.documentElement.classList.contains('vano-android-shell')?.285:.33))),topBase=calibrating?NAV_CAMERA_HOME.topRatio:(junction.large?.075:.055);
     padding=landscape?{top:Math.round(Math.max(22,vh*.055)),bottom:Math.round(Math.max(42,vh*.12)+SAFE_AREA_BOTTOM),left:Math.round(Math.max(210,Math.min(330,vw*.30))),right:Math.round(Math.max(42,vw*.055))}:{top:Math.round(Math.min(82,Math.max(24,vh*topBase))),bottom:Math.round(Math.min(340,Math.max(profile==='motorcycle'?158:170,vh*bottomBase))+SAFE_AREA_BOTTOM),left:Math.round(Math.min(48,Math.max(10,vw*.026))),right:Math.round(Math.min(32,Math.max(8,vw*.016)))};
-    // Native shell provides measured HUD geometry via ResizeObserver.
-    // No DOM reads or style recalculation in this per-frame camera path.
-    const safe=window.__VANO_NAV_SAFE_VIEWPORT;
-    if(!landscape&&document.documentElement.classList.contains('vano-android-shell')&&
-      safe&&ts-(+safe.measuredAt||0)<12000){
-      const top=Math.min(vh*.28,Math.max(32,(+safe.top||0)+7));
-      const bottom=Math.min(vh*.45,Math.max(142,(+safe.bottom||0)+12));
-      if(top+bottom<vh-180){
-        padding.top=Math.round(top);
-        padding.bottom=Math.round(bottom);
-      }
-    }
   }
   const accuracy=Math.max(0,+p.accuracy||0),gpsWeak=accuracy>70,gpsPoor=accuracy>110;
   if(gpsWeak){
@@ -732,38 +631,14 @@ function buildCameraTarget(ctx,ts){
     if(Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,gpsPoor?(profile==='motorcycle'?.10:.08):(profile==='motorcycle'?.18:.13));
   }
   if((nearlyStopped||motion.phase==='crawl')&&!junction.decision&&Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,.035);
-  if(isMotorizedProfile()){
-    // Match the actual Android vehicle tuning range rather than overriding
-    // its zoomMax (motorcycle: 17.72); preserve website framing unchanged.
-    const installedAndroid=document.documentElement.classList.contains('vano-android-shell');
-    const maxZoom=installedAndroid?(profile==='motorcycle'?17.72:17.60):(profile==='motorcycle'?17.48:17.58);
-    zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(maxZoom,zoom));
-  }
+  if(isMotorizedProfile())zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(profile==='motorcycle'?17.48:17.58,zoom));
   if(Number.isFinite(navLastCameraZoom)&&Math.abs(zoom-navLastCameraZoom)<.018)zoom=navLastCameraZoom;
   return{center,zoom,pitch,bearing,padding,rawTarget,stopped:nearlyStopped||stoppedAtSignal,junction,instant:!!ctx.instant,arrivalApproach,speed,nearlyStopped,previewing:!!previewing,motion,gpsWeak,gpsPoor,urbanClose:!!urban.close,urbanDensity:+urban.density||0}
 }
 function primeNavigationCamera(p,m){
   if(!map||!p||!m)return;setNavCameraState(NAV_CAMERA_STATES.RECENTERING);navCameraMode='perspective';navExperienceMode='immersive';const ts=performance.now(),locked=startupRouteBearing(m,p);markCameraIntent('launch',920);if(Number.isFinite(locked)){navStartupBearing=locked;navStartupBearingUntil=ts+2800;lastCameraBearing=locked;lastRoutePuckBearing=locked}
-  const target=buildCameraTarget({p:{...p},progressInfo:{...m},instant:true,updatedAt:ts},ts);
-  if(Number.isFinite(navStartupBearing))target.bearing=navStartupBearing;
-  lastCameraBearing=target.bearing;
-  const launchMs=profile==='motorcycle'?690:820,launchSequence=++navCameraLaunchSequence;
-  navLaunchAnimationUntil=0;document.body.classList.add('nav-launching');
-  try{
-    // Single writer: read the current Mapbox pose once, then let the tracking
-    // frame loop interpolate it. An independent easeTo used to fight jumpTo.
-    map.stop?.();
-    const c=map.getCenter(),pad=map.getPadding?.()||{};
-    cameraVisualState={center:[c.lng,c.lat],zoom:map.getZoom(),pitch:map.getPitch(),
-      bearing:map.getBearing(),padding:{top:+pad.top||0,bottom:+pad.bottom||0,
-        left:+pad.left||0,right:+pad.right||0}};
-    scheduleCamera(p,false,m);
-    setTimeout(()=>{
-      if(launchSequence!==navCameraLaunchSequence||!activeNav?.classList.contains('show'))return;
-      document.body.classList.remove('nav-launching');
-    },REDUCED_MOTION?30:launchMs);
-  }catch(e){console.debug('[VANO MAPS:camera-prime]',e)}
-  updateMarkerHeading(Number.isFinite(navStartupBearing)?navStartupBearing:target.rawTarget)
+  const target=buildCameraTarget({p:{...p},progressInfo:{...m},instant:true,updatedAt:ts},ts);if(Number.isFinite(navStartupBearing))target.bearing=navStartupBearing;lastCameraBearing=target.bearing;const launchMs=profile==='motorcycle'?690:820;navLaunchAnimationUntil=ts+launchMs+40;document.body.classList.add('nav-launching');
+  try{const c=map.getCenter(),pad=map.getPadding?.()||{};cameraVisualState={center:[c.lng,c.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing(),padding:{top:+pad.top||0,bottom:+pad.bottom||0,left:+pad.left||0,right:+pad.right||0}};map.stop?.();internalCameraMoveUntil=ts+1100;map.easeTo({center:target.center,zoom:target.zoom,pitch:target.pitch,bearing:target.bearing,padding:target.padding,retainPadding:false,duration:launchMs,essential:!REDUCED_MOTION,easing:t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2});setTimeout(()=>{document.body.classList.remove('nav-launching');cameraVisualState={center:[...target.center],zoom:target.zoom,pitch:target.pitch,bearing:target.bearing,padding:{...target.padding}}},launchMs)}catch(e){console.debug('[VANO MAPS:camera-prime]',e)}updateMarkerHeading(Number.isFinite(navStartupBearing)?navStartupBearing:target.rawTarget)
 }
 function blendNumber(a,b,alpha){return Number.isFinite(+a)?(+a+(+b-+a)*alpha):+b}
 function blendPadding(a={},b={},alpha){return{top:blendNumber(a.top||0,b.top||0,alpha),bottom:blendNumber(a.bottom||0,b.bottom||0,alpha),left:blendNumber(a.left||0,b.left||0,alpha),right:blendNumber(a.right||0,b.right||0,alpha)}}
@@ -797,14 +672,14 @@ function cameraMotionTick(ts){
   cameraMotionFrame=null;if(!cameraTargetContext||!map||!followMode||searchInteractionActive||document.visibilityState==='hidden'){cameraVisualState=null;return}if(ts-cameraLastPaintAt<visualFrameGap()){cameraMotionFrame=requestAnimationFrame(cameraMotionTick);return}const target=buildCameraTarget(cameraTargetContext,ts),dt=cameraLastPaintAt?Math.max(8,Math.min(90,ts-cameraLastPaintAt)):visualFrameGap();cameraLastPaintAt=ts;
   if(!cameraVisualState){const c=map.getCenter(),pad=map.getPadding?.()||{};cameraVisualState={center:[c.lng,c.lat],zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing(),padding:{top:+pad.top||0,bottom:+pad.bottom||0,left:+pad.left||0,right:+pad.right||0}}}
   const profile=cameraMotionProfile(target,ts,dt),ap=1-Math.exp(-dt/profile.posTau),av=1-Math.exp(-dt/profile.viewTau),ab=1-Math.exp(-dt/profile.bearingTau);
-  cameraVisualState.center=[blendNumber(cameraVisualState.center[0],target.center[0],ap),blendNumber(cameraVisualState.center[1],target.center[1],ap)];cameraVisualState.zoom=blendNumber(cameraVisualState.zoom,target.zoom,av);cameraVisualState.pitch=blendNumber(cameraVisualState.pitch,target.pitch,av);cameraVisualState.bearing=boundCameraBearing(cameraVisualState.bearing,blendBearing(cameraVisualState.bearing,target.bearing,ab),dt,target.speed,target.junction);cameraVisualState.padding=blendPadding(cameraVisualState.padding,target.padding,av);lastCameraBearing=cameraVisualState.bearing;navLastCameraZoom=cameraVisualState.zoom;
+  cameraVisualState.center=[blendNumber(cameraVisualState.center[0],target.center[0],ap),blendNumber(cameraVisualState.center[1],target.center[1],ap)];cameraVisualState.zoom=blendNumber(cameraVisualState.zoom,target.zoom,av);cameraVisualState.pitch=blendNumber(cameraVisualState.pitch,target.pitch,av);cameraVisualState.bearing=blendBearing(cameraVisualState.bearing,target.bearing,ab);cameraVisualState.padding=blendPadding(cameraVisualState.padding,target.padding,av);lastCameraBearing=cameraVisualState.bearing;navLastCameraZoom=cameraVisualState.zoom;
   internalCameraMoveUntil=performance.now()+120;try{map.jumpTo({center:cameraVisualState.center,zoom:cameraVisualState.zoom,pitch:cameraVisualState.pitch,bearing:cameraVisualState.bearing,padding:cameraVisualState.padding,retainPadding:false})}catch(e){console.debug('[VANO MAPS:camera-motion]',e)}updateMarkerHeading(target.rawTarget,{speed:target.speed,accuracy:cameraTargetContext?.p?.accuracy});
   const centerGap=hav(cameraVisualState.center,target.center),zoomGap=Math.abs(cameraVisualState.zoom-target.zoom),bearingGap=bearingDelta(cameraVisualState.bearing,target.bearing),accuracy=Math.max(0,+cameraTargetContext?.p?.accuracy||0),settleMeters=Math.max(profile.centerEps,Math.min(1.8,.28+accuracy*.018+target.speed*.025)),predicting=(puckRouteVelocity>.08&&ts-puckRouteFixAt<2200)||(Math.max(0,+cameraTargetContext.p?.speed||0)>.75&&ts-(cameraTargetContext.updatedAt||ts)<1400),intentAlive=!!activeCameraIntent(ts);
   if(centerGap>settleMeters||zoomGap>profile.zoomEps||bearingGap>profile.bearingEps||predicting||intentAlive)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
 }
-function stopCameraMotion(){navCameraLaunchSequence++;if(cameraMotionFrame!==null){cancelAnimationFrame(cameraMotionFrame);cameraMotionFrame=null}if(navLaunchResumeTimer){clearTimeout(navLaunchResumeTimer);navLaunchResumeTimer=null}cameraTargetContext=null;cameraVisualState=null;cameraLastPaintAt=0;cameraTargetBearing=null;cameraTargetBearingAt=0;resetCameraKinematics()}
+function stopCameraMotion(){if(cameraMotionFrame!==null){cancelAnimationFrame(cameraMotionFrame);cameraMotionFrame=null}if(navLaunchResumeTimer){clearTimeout(navLaunchResumeTimer);navLaunchResumeTimer=null}cameraTargetContext=null;cameraVisualState=null;cameraLastPaintAt=0;cameraTargetBearing=null;cameraTargetBearingAt=0;resetCameraKinematics()}
 function scheduleCamera(p,instant=false,progressInfo=null){if(followMode&&navCameraState===NAV_CAMERA_STATES.RECENTERING&&performance.now()>cameraCalibrationUntil&&activeCameraIntent()!=='recenter')setNavCameraState(NAV_CAMERA_STATES.FOLLOWING);if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;
-  if(!p||!map||!selectedRoute||!followMode||searchInteractionActive)return;const now=performance.now(),accuracy=Math.max(0,+p.accuracy||0);if(accuracy>145&&cameraVisualState&&!instant)return;lastCameraUpdateAt=now;cameraTargetContext={p:{...p},progressInfo:progressInfo?{...progressInfo}:nearestProgress(p),instant:!!instant,updatedAt:now};if(now<navLaunchAnimationUntil){if(navLaunchResumeTimer===null)navLaunchResumeTimer=setTimeout(()=>{navLaunchResumeTimer=null;if(cameraTargetContext&&cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)},Math.max(30,navLaunchAnimationUntil-now+20));return}const intent=activeCameraIntent(now);if(instant&&(['recenter','follow','launch'].includes(intent)||(intent!=='reroute'&&now-(cameraLastPaintAt||0)>1200)))cameraVisualState=null;if(cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
+  if(!p||!map||!selectedRoute||!followMode||searchInteractionActive)return;const now=performance.now(),accuracy=Math.max(0,+p.accuracy||0);if(accuracy>145&&cameraVisualState&&!instant)return;lastCameraUpdateAt=now;cameraTargetContext={p:{...p},progressInfo:progressInfo?{...progressInfo}:nearestProgress(p),instant:!!instant,updatedAt:now};if(now<navLaunchAnimationUntil){if(navLaunchResumeTimer===null)navLaunchResumeTimer=setTimeout(()=>{navLaunchResumeTimer=null;if(cameraTargetContext&&cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)},Math.max(30,navLaunchAnimationUntil-now+20));return}const intent=activeCameraIntent(now);if(instant&&(['recenter','follow','launch'].includes(intent)||now-(cameraLastPaintAt||0)>1200))cameraVisualState=null;if(cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
 }
 function markerEl(kind){
   const el=document.createElement('div');
@@ -1211,25 +1086,15 @@ async function calibrateNavigation(){
 
   const now=performance.now(),m=nearestProgress(pos);cameraCalibrationStartedAt=now;cameraCalibrationUntil=now+900;markCameraIntent('recenter',1250);navStartupBearing=null;navStartupBearingUntil=0;
   const routeHome=routeBearingAtDistance(Math.max(0,(+m.distanceAlong||0)-1.5),64);
+  if(Number.isFinite(routeHome)){lastCameraBearing=routeHome;lastRoutePuckBearing=routeHome;cameraTargetBearing=routeHome;cameraTargetBearingAt=now}
   stopCameraMotion();
-  if(Number.isFinite(routeHome)){
-    lastCameraBearing=routeHome;lastRoutePuckBearing=routeHome;
-    cameraTargetBearing=routeHome;cameraTargetBearingAt=now;
-  }
   try{
-    map?.stop?.();
-    const c=map.getCenter(),pad=map.getPadding?.()||{};
-    cameraVisualState={center:[c.lng,c.lat],zoom:map.getZoom(),pitch:map.getPitch(),
-      bearing:map.getBearing(),padding:{top:+pad.top||0,bottom:+pad.bottom||0,
-        left:+pad.left||0,right:+pad.right||0}};
-    navLaunchAnimationUntil=0;
-    // Recenter uses the very same interpolating camera loop as navigation.
-    scheduleCamera(pos,false,m);
+    const target=buildCameraTarget({p:{...pos},progressInfo:{...m},instant:true,updatedAt:now},now);
+    map?.stop?.();navLaunchAnimationUntil=Math.max(navLaunchAnimationUntil,now+500);internalCameraMoveUntil=now+620;
+    map?.easeTo?.({center:target.center,zoom:target.zoom,pitch:target.pitch,bearing:target.bearing,padding:target.padding,retainPadding:false,duration:mapMotionDuration(480),essential:!REDUCED_MOTION,easing:t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2});
+    cameraVisualState={center:[...target.center],zoom:target.zoom,pitch:target.pitch,bearing:target.bearing,padding:{...target.padding}};
   }catch(e){console.debug('[VANO MAPS:recalibrate]',e);cameraVisualState=null}
-  setTimeout(()=>{if(activeNav?.classList.contains('show')&&followMode){
-    if(lastNavPosition)scheduleCamera(lastNavPosition,false,nearestProgress(lastNavPosition));
-    setNavCameraState(NAV_CAMERA_STATES.FOLLOWING);
-  }},520);
+  setTimeout(()=>{if(activeNav?.classList.contains('show')&&followMode){scheduleCamera(lastNavPosition||pos,true,nearestProgress(lastNavPosition||pos));setNavCameraState(NAV_CAMERA_STATES.FOLLOWING)}},520);
   haptic(8);setTimeout(()=>haptic(4),120);showToast('Câmera recalibrada.');return true;
 }
 function syncSoundButton(){const b=$('soundBtn');if(!b)return;b.classList.toggle('active',!!soundEnabled);b.setAttribute('aria-label',soundEnabled?'Desativar orientações por voz':'Ativar orientações por voz');b.title=soundEnabled?'Áudio ligado · segure para trocar a voz':'Áudio desligado · segure para trocar a voz';b.innerHTML=soundEnabled?'<i data-lucide="volume-2" width="19"></i>':'<i data-lucide="volume-x" width="19"></i>';if(window.lucide)lucide.createIcons()}
@@ -1798,8 +1663,8 @@ async function checkLiveTraffic(force=false){
 
 async function performNavReroute(position,{manual=false}={}){
   if(rerouting||!destination||!selectedRoute)return;const p=position||lastNavPosition||userLocation;if(!p)return;if(navigator.onLine===false){showToast('Sem internet · mantendo a rota já carregada.');productTelemetry('connectivity','reroute-deferred-offline','navigation');return}if(manual)haptic(10);
-  const rerouteSession=navMotionSessionEpoch,previousRouteKey=routeClientKey(selectedRoute);rerouting=true;hideTrafficSuggestion();setNavMotionIntent('reroute');setNavCameraState(NAV_CAMERA_STATES.REROUTING);lastRerouteAt=Date.now();productTelemetry('route',manual?'reroute-manual':'reroute-auto','navigation');resetOffRouteTracker();const notice=$('rerouteNotice'),btn=$('navRecalculateBtn'),noticeCopy=notice?.querySelector('span:last-child');notice?.classList.remove('is-success','is-error');notice?.classList.add('show');notice?.setAttribute('aria-busy','true');btn?.classList.add('recalculating');motionSwapText(noticeCopy,manual?'Recalculando rota…':'Ajustando ao seu trajeto…');
-  try{if(manual)routeResponseCache.clear();const start={lat:+p.lat,lon:+p.lon,label:'Minha localização',is_gps:true,is_reroute:true,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?Math.max(0,+p.speed):null,accuracy:Number.isFinite(+p.accuracy)?+p.accuracy:null};await fetchRoutes(start,true);if(rerouteSession!==navMotionSessionEpoch||!activeNav?.classList.contains('show'))return;const nextRouteKey=routeClientKey(selectedRoute);if(!manual&&previousRouteKey&&nextRouteKey===previousRouteKey)productTelemetry('route','reroute-same-corridor','navigation');origin=start;navSuppressedRouteKeys.clear();navAlternativeHitKey='';navAlternativeHitCount=0;buildMetrics();invalidateCameraManeuverContext();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;lastNavRoutePaintAt=0;const liveP=(lastNavPosition&&Number.isFinite(+lastNavPosition.lat)&&Number.isFinite(+lastNavPosition.lon))?lastNavPosition:p,m=nearestProgress(liveP),step=currentStep(m.distanceAlong),rerouteP={...liveP,_distanceAlong:m.distanceAlong,_routeSnapped:m.offRoute<=Math.max(30,(+liveP.accuracy||35)*1.35)};navLastAlong=Math.max(0,m.distanceAlong);setNavigationRouteFocus(true);setNavRouteData(navLastAlong);refreshNavigationAlternatives(true);updateRoadLayer();motionSwapText($('nextStreet'),stepStreet(step));motionSwapText($('nextInstruction'),maneuverLabel(step));updateNavSummary(selectedRoute.duration||0,m.remaining,step,m);markCameraIntent('reroute',900);/* Hold camera pose across completed reroute; interpolate toward new geometry. */resetPuckMotionModel();lastNavPosition=rerouteP;userLocation={lat:rerouteP.lat,lon:rerouteP.lon};updateUserMarker(rerouteP,{instant:true});scheduleCamera(rerouteP,true,m);tripRerouteCount++;notice?.classList.add('is-success');notice?.setAttribute('aria-busy','false');motionSwapText(noticeCopy,manual?'Rota recalculada':'Rota ajustada');showToast(manual?'Rota recalculada.':'Rota ajustada ao seu trajeto.')}
+  const previousRouteKey=routeClientKey(selectedRoute);rerouting=true;hideTrafficSuggestion();setNavMotionIntent('reroute');setNavCameraState(NAV_CAMERA_STATES.REROUTING);lastRerouteAt=Date.now();productTelemetry('route',manual?'reroute-manual':'reroute-auto','navigation');resetOffRouteTracker();const notice=$('rerouteNotice'),btn=$('navRecalculateBtn'),noticeCopy=notice?.querySelector('span:last-child');notice?.classList.remove('is-success','is-error');notice?.classList.add('show');notice?.setAttribute('aria-busy','true');btn?.classList.add('recalculating');motionSwapText(noticeCopy,manual?'Recalculando rota…':'Ajustando ao seu trajeto…');
+  try{if(manual)routeResponseCache.clear();const start={lat:+p.lat,lon:+p.lon,label:'Minha localização',is_gps:true,is_reroute:true,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?Math.max(0,+p.speed):null,accuracy:Number.isFinite(+p.accuracy)?+p.accuracy:null};await fetchRoutes(start,true);const nextRouteKey=routeClientKey(selectedRoute);if(!manual&&previousRouteKey&&nextRouteKey===previousRouteKey)productTelemetry('route','reroute-same-corridor','navigation');origin=start;navSuppressedRouteKeys.clear();navAlternativeHitKey='';navAlternativeHitCount=0;buildMetrics();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;lastNavRoutePaintAt=0;const liveP=(lastNavPosition&&Number.isFinite(+lastNavPosition.lat)&&Number.isFinite(+lastNavPosition.lon))?lastNavPosition:p,m=nearestProgress(liveP),step=currentStep(m.distanceAlong),rerouteP={...liveP,_distanceAlong:m.distanceAlong,_routeSnapped:m.offRoute<=Math.max(30,(+liveP.accuracy||35)*1.35)};navLastAlong=Math.max(0,m.distanceAlong);setNavigationRouteFocus(true);setNavRouteData(navLastAlong);refreshNavigationAlternatives(true);updateRoadLayer();motionSwapText($('nextStreet'),stepStreet(step));motionSwapText($('nextInstruction'),maneuverLabel(step));updateNavSummary(selectedRoute.duration||0,m.remaining,step,m);markCameraIntent('reroute',900);cameraVisualState=null;resetPuckMotionModel();lastNavPosition=rerouteP;userLocation={lat:rerouteP.lat,lon:rerouteP.lon};updateUserMarker(rerouteP,{instant:true});scheduleCamera(rerouteP,true,m);tripRerouteCount++;notice?.classList.add('is-success');notice?.setAttribute('aria-busy','false');motionSwapText(noticeCopy,manual?'Rota recalculada':'Rota ajustada');showToast(manual?'Rota recalculada.':'Rota ajustada ao seu trajeto.')}
   catch(e){if(e?.name!=='AbortError'){notice?.classList.add('is-error');notice?.setAttribute('aria-busy','false');motionSwapText(noticeCopy,'Não foi possível atualizar');showToast(e?.message||'Não foi possível recalcular a rota.')}}
   finally{rerouting=false;if(activeNav?.classList.contains('show'))setNavCameraState(followMode?NAV_CAMERA_STATES.FOLLOWING:NAV_CAMERA_STATES.FREE_LOOK);btn?.classList.remove('recalculating');setTimeout(()=>{notice?.classList.remove('show','is-success','is-error');notice?.setAttribute('aria-busy','false');clearNavMotionIntent('reroute')},REDUCED_MOTION?50:280)}
 }
@@ -1832,12 +1697,11 @@ function stopRoutePreview(restore=true){if(previewFrame)cancelAnimationFrame(pre
 function previewRoute(){if(!selectedRoute)return;if(previewing){stopRoutePreview(true);return}buildMetrics();if(routeTotalGeometry<8)return;previewing=true;followMode=true;markCameraIntent('preview',1400);setPreviewUi(true);showToast('Prévia 3D do percurso completo. Toque no X para cancelar.');const start=performance.now(),distanceKm=routeTotalGeometry/1000,duration=Math.max(26000,Math.min(65000,26000+distanceKm*1700)),travel=Math.max(1,routeTotalGeometry-1);previewStartedAt=start;function frame(now){if(!previewing)return;const raw=Math.min(1,(now-start)/duration),t=raw<.5?2*raw*raw:1-Math.pow(-2*raw+2,2)/2,d=Math.min(routeTotalGeometry-1,travel*t),pt=routePointAtDistance(d);if(pt){const p={lon:pt[0],lat:pt[1],accuracy:5,speed:profile==='motorcycle'?9.5:profile==='driving'?10.5:1.2,heading:routeBearingAtDistance(d,30)};updateUserMarker(p);const m=nearestProgress(p);scheduleCamera(p,raw<.015,m)}if(raw<1)previewFrame=requestAnimationFrame(frame);else{previewFrame=null;previewing=false;setPreviewUi(false);followMode=false;drawRoute();if(userLocation)updateUserMarker({...userLocation,accuracy:0,heading:null,speed:0});showToast('Prévia concluída.')}}previewFrame=requestAnimationFrame(frame)}
 function nonFatal(label,fn){try{const out=fn();if(out&&typeof out.catch==='function')out.catch(err=>console.warn(`[VANO MAPS:${label}]`,err));return out}catch(err){console.warn(`[VANO MAPS:${label}]`,err);return null}}
 async function activateNavigationAt(p,{simulated=false}={}){
-  navMotionSessionEpoch++;
   setNavCameraState(NAV_CAMERA_STATES.FOLLOWING);arrivalTelemetrySent=false;arrivalPresented=false;trafficTrendSnapshot=null;lastRouteSwitchAt=0;lastEtaMetricAt=0;lastEtaMetricValue=null;routeSwitchCooldown.clear();$('arrivalExperience')?.classList.remove('show');document.body.classList.remove('nav-arrived');
   if(!selectedRoute?.geometry?.coordinates?.length)throw new Error('A rota selecionada não possui geometria válida. Recalcule a rota.');
   rememberLocalDestination(destination);
   hidePermission();haptic(18);userLocation={lat:+p.lat,lon:+p.lon};lastNavPosition={...p,speed:0};lastGps={...p};gpsDistance=0;navStartedAt=Date.now();tripStartRouteDistance=Math.max(0,+selectedRoute.distance||0);tripStartRouteEta=Math.max(0,+selectedRoute.duration||(+selectedRoute.duration_min||0)*60);tripRerouteCount=0;tripStartMode=routeModeLabel();tripStartSafetyScore=routeSafetyScore(selectedRoute);osintRouteSessionId=makeOsintRouteSessionId();followMode=true;resetOffRouteTracker();resetMapMatchHysteresis();stopCameraMotion();lastCameraBearing=null;navStartupBearing=null;navStartupBearingUntil=0;spokenMilestones=new Set();lastSpokenInstruction='';roadAwareness=[];lastNavUiAt=0;lastCameraUpdateAt=0;lastProgressPaintAt=0;navSpeedFix=null;stableNavSpeedKmh=0;lastSpeedMotionAt=0;lastDisplayedSpeedKmh=0;resetCameraKinematics();
-  buildMetrics();invalidateCameraManeuverContext();resetPuckMotionModel();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;navLastCameraZoom=null;navCameraStartUntil=performance.now()+4200;lastNavRoutePaintAt=0;navAlternativeHitKey='';navAlternativeHitCount=0;navSuppressedRouteKeys.clear();navCameraMode='perspective';navExperienceMode='immersive';followMode=true;lastRoutePuckBearing=null;syncNavCameraButton();syncFollowButton();syncImmersiveButton();
+  buildMetrics();resetPuckMotionModel();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;navLastCameraZoom=null;navCameraStartUntil=performance.now()+4200;lastNavRoutePaintAt=0;navAlternativeHitKey='';navAlternativeHitCount=0;navSuppressedRouteKeys.clear();navCameraMode='perspective';navExperienceMode='immersive';followMode=true;lastRoutePuckBearing=null;syncNavCameraButton();syncFollowButton();syncImmersiveButton();
   window.__vanoRouteMore?.close?.();planSheet.classList.remove('sheet-collapsed','sheet-dragging');planSheet.style.transform='';planSheet.classList.add('hidden');document.body.classList.add('body-nav');document.body.classList.remove('nav-map-free');setNavControlDrawer(false);try{map?.dragPan?.enable?.();map?.dragRotate?.enable?.();map?.scrollZoom?.enable?.();map?.doubleClickZoom?.enable?.();map?.touchZoomRotate?.enable?.();map?.touchPitch?.enable?.();map?.keyboard?.enable?.()}catch{}requestAnimationFrame(syncFloatingLocate);activeNav.classList.add('show');requestAnimationFrame(syncNavigationHudGeometry);setTimeout(syncNavigationHudGeometry,360);syncImmersiveButton();setNavigationRouteFocus(true);setNavRouteData();refreshNavigationAlternatives(true);
   nonFatal('marker',()=>updateUserMarker(p));
   const routeSeconds=Math.max(0,+selectedRoute.duration||(+selectedRoute.duration_min||0)*60),m=nearestProgress(p),firstStep=currentStep(m.distanceAlong);
@@ -1931,7 +1795,7 @@ function updateNavigation(g,simulated=false){
 function showArrivalExperience(m){if(arrivalPresented)return;arrivalPresented=true;hideTrafficSuggestion();openQuickAlert(false);stopCameraMotion();setNavMotionIntent('arrival');setNavCameraState(NAV_CAMERA_STATES.ARRIVAL);document.body.classList.add('nav-arrived');const box=$('arrivalExperience'),name=$('arrivalDestinationName'),meta=$('arrivalDestinationMeta');if(name)name.textContent=destination?.name||destination?.label||'Destino';const planned=Math.max(0,tripStartRouteEta),actual=tripElapsedSeconds(),deltaMin=planned?Math.round((actual-planned)/60):0,safety=tripStartSafetyScore!=null?Math.round(tripStartSafetyScore):null;if(meta)meta.textContent=`Rota concluída${deltaMin<0?` · ${Math.abs(deltaMin)} min antes do previsto`:deltaMin>1?` · ${deltaMin} min além da previsão`:''}${safety!=null?` · segurança ${safety}/100`:''}.`;syncArrivalMetrics();box?.classList.add('show');box?.setAttribute('aria-hidden','false');setNavControlDrawer(false);haptic(20);setTimeout(()=>haptic(8),140);try{const xy=destination&&Number.isFinite(+destination.lon)&&Number.isFinite(+destination.lat)?[+destination.lon,+destination.lat]:routePointAtDistance(Math.max(0,(m?.distanceAlong||routeTotalGeometry)-2));if(xy)map?.easeTo?.({center:xy,zoom:18.05,pitch:38,bearing:Number.isFinite(lastCameraBearing)?lastCameraBearing:map.getBearing(),padding:{top:70,bottom:290,left:24,right:24},duration:mapMotionDuration(620),essential:!REDUCED_MOTION,easing:t=>1-Math.pow(1-t,3)})}catch{}if(window.lucide)lucide.createIcons()}
 function hideArrivalExperience(){arrivalPresented=false;document.body.classList.remove('nav-arrived');const box=$('arrivalExperience');box?.classList.remove('show');box?.setAttribute('aria-hidden','true');clearNavMotionIntent('arrival')}
 async function openArrivalParking(){const q='estacionamento';await finishTrip(false);planSheet.classList.remove('hidden','sheet-collapsed');welcomeState.style.display='';routeState.style.display='none';destinationInput.value=q;activeSearchKind='destination';setTimeout(()=>searchPlaces(q,'destination'),120)}
-async function finishTrip(redraw=true){navMotionSessionEpoch++;setNavCameraState(NAV_CAMERA_STATES.OVERVIEW);vanoClearNativeMapSync();vanoStopNativeMap();window.__vanoNativeMapActive=false;document.documentElement.classList.remove('vano-native-map-active');const osintWasArrived=!!arrivalPresented||(routeTotalGeometry>1&&navLastAlong>=routeTotalGeometry-25);if(activeNav?.classList.contains('show')&&osintRouteSessionId)emitVanoOsint('route-finish',{status:osintWasArrived?'completed':'cancelled',vano_route_id:osintRouteSessionId});osintRouteSessionId='';clearSavedActiveTrip();stopAdminSimulation();stopCameraMotion();invalidateCameraManeuverContext();resetMapMatchHysteresis();hideTrafficSuggestion();trafficChecking=false;navSpeedFix=null;stableNavSpeedKmh=0;lastSpeedMotionAt=0;updateFloatingSpeedometer(0);$('trafficRadar')?.classList.remove('show','severe');if(watchId!==null){try{navigator.geolocation.clearWatch(watchId)}catch{}watchId=null}stopNavigationGpsHeartbeat();mapFollowMode=true;lastPassivePosition=lastNavPosition?{...lastNavPosition}:lastPassivePosition;await nonFatal('live-stop',()=>stopLiveShare());setNavControlDrawer(false);document.body.classList.remove('body-nav','nav-alt-visible','nav-map-free','nav-immersive','nav-arrived','nav-approaching-arrival','nav-launching','nav-drive-stopped','nav-drive-cruise','nav-drive-fast','nav-drive-turn','nav-drive-junction','nav-drive-roundabout');hideArrivalExperience();clearNavMotionIntent();driveCameraMood='';activeNav.classList.remove('show');$('navAltHint')?.classList.remove('show');toggleVoicePopover(false);try{map?.dragPan?.enable?.();map?.dragRotate?.enable?.();map?.scrollZoom?.enable?.();map?.doubleClickZoom?.enable?.();map?.touchZoomRotate?.enable?.();map?.keyboard?.enable?.()}catch{}resetPuckMotionModel();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;navLastCameraZoom=null;navCameraStartUntil=0;lastNavRoutePaintAt=0;navAlternativeHitKey='';navAlternativeHitCount=0;navSuppressedRouteKeys.clear();setNavigationRouteFocus(false);applyMapPrefs();planSheet.classList.remove('hidden');requestAnimationFrame(syncFloatingLocate);followMode=true;resetOffRouteTracker();roadAwareness=[];lastCameraBearing=null;lastMarkerHeading=null;lastRoutePuckBearing=null;updateRoadLayer();await nonFatal('wake-release',()=>releaseWake());try{window.speechSynthesis?.cancel()}catch{}stopVanoVoice();if(redraw&&selectedRoute)drawRoute();else map.easeTo({pitch:0,bearing:0,padding:{top:0,bottom:0,left:0,right:0},retainPadding:false,duration:mapMotionDuration(320)});setTimeout(startPassiveMapTracking,180);setTimeout(hydratePlannerSmartDestinations,220)}
+async function finishTrip(redraw=true){setNavCameraState(NAV_CAMERA_STATES.OVERVIEW);vanoClearNativeMapSync();vanoStopNativeMap();window.__vanoNativeMapActive=false;document.documentElement.classList.remove('vano-native-map-active');const osintWasArrived=!!arrivalPresented||(routeTotalGeometry>1&&navLastAlong>=routeTotalGeometry-25);if(activeNav?.classList.contains('show')&&osintRouteSessionId)emitVanoOsint('route-finish',{status:osintWasArrived?'completed':'cancelled',vano_route_id:osintRouteSessionId});osintRouteSessionId='';clearSavedActiveTrip();stopAdminSimulation();stopCameraMotion();resetMapMatchHysteresis();hideTrafficSuggestion();trafficChecking=false;navSpeedFix=null;stableNavSpeedKmh=0;lastSpeedMotionAt=0;updateFloatingSpeedometer(0);$('trafficRadar')?.classList.remove('show','severe');if(watchId!==null){try{navigator.geolocation.clearWatch(watchId)}catch{}watchId=null}stopNavigationGpsHeartbeat();mapFollowMode=true;lastPassivePosition=lastNavPosition?{...lastNavPosition}:lastPassivePosition;await nonFatal('live-stop',()=>stopLiveShare());setNavControlDrawer(false);document.body.classList.remove('body-nav','nav-alt-visible','nav-map-free','nav-immersive','nav-arrived','nav-approaching-arrival','nav-launching','nav-drive-stopped','nav-drive-cruise','nav-drive-fast','nav-drive-turn','nav-drive-junction','nav-drive-roundabout');hideArrivalExperience();clearNavMotionIntent();driveCameraMood='';activeNav.classList.remove('show');$('navAltHint')?.classList.remove('show');toggleVoicePopover(false);try{map?.dragPan?.enable?.();map?.dragRotate?.enable?.();map?.scrollZoom?.enable?.();map?.doubleClickZoom?.enable?.();map?.touchZoomRotate?.enable?.();map?.keyboard?.enable?.()}catch{}resetPuckMotionModel();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;navLastCameraZoom=null;navCameraStartUntil=0;lastNavRoutePaintAt=0;navAlternativeHitKey='';navAlternativeHitCount=0;navSuppressedRouteKeys.clear();setNavigationRouteFocus(false);applyMapPrefs();planSheet.classList.remove('hidden');requestAnimationFrame(syncFloatingLocate);followMode=true;resetOffRouteTracker();roadAwareness=[];lastCameraBearing=null;lastMarkerHeading=null;lastRoutePuckBearing=null;updateRoadLayer();await nonFatal('wake-release',()=>releaseWake());try{window.speechSynthesis?.cancel()}catch{}stopVanoVoice();if(redraw&&selectedRoute)drawRoute();else map.easeTo({pitch:0,bearing:0,padding:{top:0,bottom:0,left:0,right:0},retainPadding:false,duration:mapMotionDuration(320)});setTimeout(startPassiveMapTracking,180);setTimeout(hydratePlannerSmartDestinations,220)}
 async function copyText(value){if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);return}const ta=document.createElement('textarea');ta.value=value;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;left:-9999px;top:0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');ta.remove();if(!ok)throw new Error('Não foi possível copiar automaticamente.')}
 async function shareRoute(){if(!origin||!destination||!selectedRoute){showToast('Calcule uma rota primeiro.');return}const btn=$('shareRouteBtn'),old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="loading"></span>Preparando…';try{const r=await fetch('/api/share-route',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF},body:JSON.stringify({origin,destination,profile,mode:routeMode,route:selectedRoute})}),d=await r.json();if(!r.ok)throw new Error(d.error||'Não foi possível criar o link.');await copyText(d.url);showToast('Link copiado. Expira em 24 horas; gerencie os links no Perfil.');}catch(e){showToast(e.message||'Não foi possível copiar o link.')}finally{btn.disabled=false;btn.innerHTML=old;if(window.lucide)lucide.createIcons()}}
 function openQuickAlert(force=null){const sheet=$('quickAlertSheet');if(!sheet)return;const show=force===null?!sheet.classList.contains('show'):!!force;sheet.classList.toggle('show',show);sheet.setAttribute('aria-hidden',String(!show));if(show){hideTrafficSuggestion();openPrefsDrawer(false);openSafetyDrawer(false);setNavMotionIntent('report');const status=$('quickAlertStatus');if(status)status.textContent='';setNavControlDrawer(false);focusDialogOpen(sheet,'#quickAlertCloseBtn,button');haptic(5);if(window.lucide)lucide.createIcons()}else{clearNavMotionIntent('report');focusDialogClose(sheet)}}
