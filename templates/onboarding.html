@@ -30,13 +30,14 @@
         </div>
       </header>
 
-      <div class="ob500-progress" aria-hidden="true"><i id="obProgressBar"></i><span id="ob500ProgressSpark"></span></div>
+      <div class="ob500-progress" role="progressbar" aria-label="Progresso da personalização" aria-valuemin="0" aria-valuemax="100" aria-valuenow="33"><i id="obProgressBar"></i><span id="ob500ProgressSpark"></span></div>
       <div class="ob-journey-v402 ob500-journey" aria-label="Progresso da personalização">
         <span class="is-active" data-ob-progress-step="1"><i><b>01</b><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"></circle></svg></i><span><b>Perfil</b><small>O essencial</small></span></span>
         <span data-ob-progress-step="2"><i><b>02</b><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"></circle></svg></i><span><b>Preferências</b><small>Rotas e mapa</small></span></span>
         <span data-ob-progress-step="3"><i><b>03</b><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15"></circle></svg></i><span><b>Pronto</b><small>Revisar e entrar</small></span></span>
       </div>
 
+      <p class="ob-screenreader" id="obStepAnnouncement" role="status" aria-live="polite">Etapa 1 de 3: Perfil</p>
       <form method="post" id="onboardingForm" class="ob-form-v340 ob500-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -44,7 +45,7 @@
           <div class="ob500-step-grid">
             <div class="ob-step-heading-v340 ob500-heading">
               <span class="ob-eyebrow-v340 ob500-eyebrow"><i data-lucide="fingerprint" width="14"></i> PERSONALIZAÇÃO // 01</span>
-              <h1 id="obTitle1">Deixe o VANO<br><span>do seu jeito.</span></h1>
+              <h1 id="obTitle1" tabindex="-1">Deixe o VANO<br><span>do seu jeito.</span></h1>
               <p>Preencha o essencial e acompanhe cada etapa sem perder o contexto. Tudo aqui pode ser alterado depois.</p>
             </div>
             <div class="ob500-level-card" aria-hidden="true"><span>SEU PERFIL</span><b id="ob500ProfileLevel">0/3</b><em><i id="ob500ProfileMeter"></i></em><small>Três escolhas e você já continua</small></div>
@@ -100,7 +101,7 @@
           <div class="ob500-step-grid">
             <div class="ob-step-heading-v340 ob500-heading">
               <span class="ob-eyebrow-v340 ob500-eyebrow"><i data-lucide="route" width="14"></i> PREFERÊNCIAS // 02</span>
-              <h1 id="obTitle2">Rotas que começam<br><span>com suas escolhas.</span></h1>
+              <h1 id="obTitle2" tabindex="-1">Rotas que começam<br><span>com suas escolhas.</span></h1>
               <p>Defina prioridade de rota, proteção noturna e aparência do mapa. O VANO usa isso como ponto de partida para sua experiência.</p>
             </div>
             <div class="ob500-core-badge" id="ob500CoreBadge"><i data-lucide="cpu" width="17"></i><span><small>PERFIL DE ROTA</small><b>Equilibrado</b></span></div>
@@ -175,7 +176,7 @@
           <div class="ob500-step-grid">
             <div class="ob-step-heading-v340 ob500-heading">
               <span class="ob-eyebrow-v340 ob500-eyebrow"><i data-lucide="rocket" width="14"></i> FINALIZAÇÃO // 03</span>
-              <h1 id="obTitle3">Tudo pronto.<br><span>Seu mapa já pode começar.</span></h1>
+              <h1 id="obTitle3" tabindex="-1">Tudo pronto.<br><span>Seu mapa já pode começar.</span></h1>
               <p>Escolha o idioma principal e revise sua configuração antes de abrir o mapa.</p>
             </div>
             <div class="ob500-launch-orb" aria-hidden="true"><span><i data-lucide="navigation" width="21"></i></span><i></i><i></i></div>
@@ -215,6 +216,7 @@
             <button class="ob-finish-v340 ob500-primary ob500-launch" type="submit"><span>Abrir meu VANO</span><i data-lucide="navigation" width="19"></i><em aria-hidden="true"></em></button>
           </div>
         </section>
+        <p class="ob500-privacy-note"><i data-lucide="lock-keyhole" width="15" aria-hidden="true"></i> Suas preferências podem ser alteradas depois. A presença pública no mapa permanece desativada por padrão.</p>
       </form>
     </section>
 
@@ -225,7 +227,7 @@
         <div class="ob500-preview-brand"><img src="{{ url_for('static', filename='vano-maps-icon-192.png') }}" alt=""><span><small>VANO MAPS</small><b id="ob500PreviewState">PERSONALIZAÇÃO</b></span></div>
         <span class="ob500-signal"><i></i> LIVE</span>
       </div>
-      <div class="ob500-map-hud"><span>PRÉVIA</span><b id="ob500HudMode">SMART</b><small id="ob500HudCopy">Equilíbrio entre tempo e segurança</small></div>
+      <div class="ob500-map-hud"><span>PRÉVIA ILUSTRATIVA</span><b id="ob500HudMode">SMART</b><small id="ob500HudCopy">Equilíbrio entre tempo e segurança</small></div>
       <svg class="ob500-map-svg" viewBox="0 0 430 650" preserveAspectRatio="none">
         <g class="ob500-streets">
           <path d="M-30 88 C70 150 150 130 230 104 S355 90 470 154"/>
