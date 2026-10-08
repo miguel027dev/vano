@@ -4,6 +4,7 @@
 {% block tail_head %}{% endblock %}
 {% block content %}
 <main class="page" id="conteudo-principal" tabindex="-1"><div class="legal-shell">
+  <nav class="vano-public-breadcrumb" aria-label="Trilha de navegação"><a href="{{ url_for('index') }}">Início</a><span class="vano-breadcrumb-sep" aria-hidden="true">/</span><span aria-current="page">Excluir conta</span></nav>
   <section class="legal-hero"><div class="legal-hero__top"><div><p class="eyebrow">VANO MAPS · conta</p><h1>Excluir sua conta</h1><p>A exclusão é permanente. Antes de confirmar, veja o que acontece com sessões, preferências, histórico e registros operacionais.</p></div><span class="legal-updated"><i data-lucide="trash-2" width="14"></i>Ação irreversível</span></div></section>
   <p class="legal-contact">Não consegue entrar? <a href="{{ url_for('privacy_policy') }}#direitos">Solicite exclusão pelo canal público de privacidade</a>. Sua identidade será verificada antes da exclusão.</p>
   <div class="legal-layout"><article class="legal-card legal-copy">
