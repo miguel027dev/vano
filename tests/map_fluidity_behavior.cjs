@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');const vm=require('node:vm');
+const code=fs.readFileSync('static/vano-map.js','utf8');
+function declaration(name,next){return code.slice(code.indexOf(`function ${name}(`),code.indexOf(`function ${next}(`,code.indexOf(`function ${name}(`)));}
+let moving=true,refreshes=0,remembered=0,id=0;const timers=new Map();
+const c={document:{visibilityState:'visible'},map:{isMoving:()=>moving},trafficSnapshotTimer:null,performanceTier:'normal',trafficSnapshotNeedsRefresh:()=>true,refreshVisibleTraffic:()=>refreshes++,rememberTrafficSnapshot:()=>remembered++,setTimeout:fn=>{timers.set(++id,fn);return id},clearTimeout:n=>timers.delete(n)};
+vm.createContext(c);vm.runInContext(declaration('scheduleTrafficSnapshot','startTrafficPulse'),c);
+function runTimer(){let [n,f]=timers.entries().next().value;timers.delete(n);f()}
+c.scheduleTrafficSnapshot();for(let i=0;i<120;i++)c.scheduleTrafficSnapshot();assert.equal(timers.size,1);
+runTimer();assert.equal(refreshes,0);assert.equal(timers.size,1);
+moving=false;runTimer();assert.equal(refreshes,1);assert.equal(remembered,1);assert.equal(timers.size,0);
+c.document.visibilityState='hidden';c.scheduleTrafficSnapshot(true);assert.equal(timers.size,0);
+c.document.visibilityState='visible';c.scheduleTrafficSnapshot(true);c.document.visibilityState='hidden';runTimer();assert.equal(refreshes,1);
+const paints=[];const p={map:{loaded:()=>true,isMoving:()=>true,getLayer:()=>true,setPaintProperty:(...a)=>paints.push(a)},REDUCED_MOTION:false,document:{visibilityState:'visible',documentElement:{classList:{contains:()=>false}}},performance:{now:()=>10000},performanceTier:'high',lastRouteFlowPaintAt:0,LOW_POWER_DEVICE:false,animatedRouteFlowGradient:()=>[],VANO_ROUTE:'#f90',VANO_ROUTE_LIGHT:'#fff'};vm.createContext(p);vm.runInContext(declaration('updateAnimatedRoutePaint','routeFlowDelay'),p);p.updateAnimatedRoutePaint();assert.equal(paints.length,0);p.map.isMoving=()=>false;p.performanceTier='eco';p.updateAnimatedRoutePaint();assert.equal(paints.length,0);p.performanceTier='high';p.updateAnimatedRoutePaint();assert.ok(paints.length>0);
+let created=0,removed=0,repositioned=0;const markers=new Map();const markerContext={map:{isStyleLoaded:()=>true,getZoom:()=>15,getBounds:()=>({contains:xy=>xy[0]<10})},ALERT_DOM_MARKER_MIN_ZOOM:13.6,ALERT_DOM_MARKER_MAX:45,lastAlertRecords:[],alertDomMarkers:markers,setAlertVectorMarkerVisibility:()=>{},clearAlertDomMarkers:()=>{removed++;markers.clear()},alertPriorityScore:a=>a.severity||0,alertRecordSignature:a=>JSON.stringify(a),alertVisualKind:()=> 'traffic',createAlertDomMarker:a=>{created++;return {marker:{remove:()=>removed++,setLngLat:()=>repositioned++},el:{__vanoAlert:a,dataset:{kind:'traffic'},setAttribute:()=>{}},sig:JSON.stringify(a)}}};vm.createContext(markerContext);vm.runInContext(declaration('syncAlertDomMarkers','toggleSafetyPulse'),markerContext);
+const items=[{id:1,lat:0,lon:1},{id:2,lat:0,lon:20}];markerContext.syncAlertDomMarkers(items);assert.equal(created,1);markerContext.syncAlertDomMarkers(items);assert.equal(repositioned,0);markerContext.syncAlertDomMarkers([{id:1,lat:0,lon:2}]);assert.equal(repositioned,1);markerContext.map.isStyleLoaded=()=>false;markerContext.syncAlertDomMarkers(items);assert.equal(removed,0);
+console.log('PASS: traffic waits for gestures, requests coalesce, hidden work stops, decorative paints pause, visible markers stay stable.');

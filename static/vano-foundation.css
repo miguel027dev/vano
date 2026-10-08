@@ -136,3 +136,11 @@
   .bench261-run {color:#27231f!important;min-height:44px!important;}
   .bench261 :is(label,small,em,.bench261-resolved,.bench261-table th,.bench261-table td) {font-size:12px!important;}
 }
+
+@layer vanoFoundation {
+
+/* Android WebView: keep map gestures free of live backdrop sampling. */
+html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-maneuver-top,.nav-street-chip,.traffic-radar,.nav-voice-popover,.map-btn,.destination-confirm){
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+}

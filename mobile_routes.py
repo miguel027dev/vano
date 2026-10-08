@@ -35,6 +35,8 @@ def register_mobile_routes(app, core: dict) -> None:
     current_user = core["current_user"]
     onboarding_needed = core["onboarding_needed"]
     issue_persistent_login = core["issue_persistent_login"]
+    persist_mobile_code = core["persist_google_oauth_state"]
+    consume_mobile_code = core["consume_google_oauth_state"]
     get_db = core["get_db"]
     rate_limit = core["rate_limit"]
     remember_cookie_name = core["REMEMBER_COOKIE_NAME"]
@@ -268,11 +270,13 @@ def register_mobile_routes(app, core: dict) -> None:
         ):
             return mobile_error(400, "Login expirado", "Esse retorno de autenticação não é mais válido. Volte ao aplicativo e tente novamente.", "invalid_mobile_ticket")
 
+        nonce = secrets.token_urlsafe(24)
+        persist_mobile_code("mobile-code:" + nonce, "", None)
         code = code_serializer.dumps({
             "uid": int(user["id"]),
             "state": state,
             "challenge": challenge,
-            "nonce": secrets.token_urlsafe(24),
+            "nonce": nonce,
         })
 
         callback_url = f"{return_uri}?{urlencode({'code': code, 'state': state})}"
@@ -326,6 +330,11 @@ def register_mobile_routes(app, core: dict) -> None:
         ).fetchone()
         if not user or not user["is_active"]:
             return jsonify({"ok": False, "error": "user_unavailable"}), 403
+
+        # Consume atomically across workers before issuing a fresh login session.
+        nonce = str(payload.get("nonce") or "")
+        if not nonce or not consume_mobile_code("mobile-code:" + nonce):
+            return jsonify({"ok": False, "error": "mobile_code_reused"}), 400
 
         remember_token = issue_persistent_login(uid)
         max_age = remember_login_days * 24 * 60 * 60
