@@ -112,9 +112,9 @@
   }
 
   function clearErrors(){
-    $('.ob-invalid-v340',form).forEach(x=>x.classList.remove('ob-invalid-v340'));
-    $('[aria-invalid="true"]',form).forEach(x=>x.removeAttribute('aria-invalid'));
-    $('.ob-inline-error-v340',form).forEach(x=>x.remove());
+    $$('.ob-invalid-v340',form).forEach(x=>x.classList.remove('ob-invalid-v340'));
+    $$('[aria-invalid="true"]',form).forEach(x=>x.removeAttribute('aria-invalid'));
+    $$('.ob-inline-error-v340',form).forEach(x=>x.remove());
   }
 
   function invalidate(target,msg){
