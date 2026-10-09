@@ -233,7 +233,13 @@ function learnRouteChoice(mode){sparkPrefs.choices=(+sparkPrefs.choices||0)+1;if
 const emptyFC=()=>({type:'FeatureCollection',features:[]});
 const isMotorizedProfile=()=>profile==='driving'||profile==='motorcycle';
 const profileLabel=()=>profile==='driving'?'carro':profile==='motorcycle'?'moto':profile==='walking'?'a pé':'bike';
-function requireRouteAccount(){if(LOGGED_IN)return true;location.assign(LOGIN_URL);return false}
+function requireRouteAccount(){
+  // Route and transport choices are available during the ten-route guest trial.
+  // Keep the account requirement for actions that explicitly need an account.
+  if(LOGGED_IN||guestRoutesRemaining>0)return true;
+  showGuestLimit();
+  return false;
+}
 function syncRouteProfileUi(){}
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function updatePlannerOriginStatus(label=null){const el=$('plannerOriginStatus');if(!el)return;const base=String(label??origin?.label??'').trim();if(base){el.textContent=/^minha localiza[cç][aã]o$/i.test(base)?'Saindo da sua localização atual':base}else el.textContent=userLocation?'Usando sua localização atual':'Toque em “Meu GPS” para definir a saída';}
