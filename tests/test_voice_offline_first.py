@@ -135,6 +135,6 @@ def test_page_integrates_without_map_camera_changes():
     assert "vano-voice-companion.js" in base
     assert "body-nav .vano-voice-launch" in (ROOT/"static/vano-foundation.css").read_text()
     assert "window.speechSynthesis" in script
-    assert "function localResponse" in script
+    assert "const localResponse=" in script
     assert "nova busca" not in script.lower() or "internet" in script.lower()
     assert '"/api/voice/"' in headers
