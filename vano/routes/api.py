@@ -199,7 +199,8 @@ def api_geocode():
         providers = sorted({str(x.get("source") or "mapbox") for x in results})
         return jsonify({"results": results, "provider": "+".join(providers) or "search", "query": parse_brazil_location_query(q)})
     except Exception as exc:
-        return jsonify({"error": "Busca de endereço temporariamente indisponível.", "detail": str(exc)}), 502
+        app.logger.exception("Geocoding provider request failed")
+        return jsonify({"error": "Busca de endereço temporariamente indisponível.", "code": "geocode_unavailable"}), 502
 
 
 @app.route("/api/reverse")
@@ -215,7 +216,8 @@ def api_reverse():
     try:
         return jsonify({"label": mapbox_reverse_geocode(lon, lat), "provider": "mapbox"})
     except Exception as exc:
-        return jsonify({"label": f"{lat:.5f}, {lon:.5f}", "warning": str(exc)})
+        app.logger.exception("Reverse geocoding provider request failed")
+        return jsonify({"label": f"{lat:.5f}, {lon:.5f}", "warning": "Endereço indisponível; usando coordenadas aproximadas.", "code": "reverse_unavailable"})
 
 
 @app.route("/api/snap-road", methods=["POST"])
@@ -1105,7 +1107,8 @@ def traffic_recommendation():
                 "message": (f"Rota mais rápida encontrada: economiza cerca de {max(1,round(saving/60))} min." if recommend else ("Trânsito detectado; nenhuma alternativa ficou realmente mais rápida agora." if traffic_detected else "Fluxo sem ganho de ETA relevante em outra rota.")),
             })
         except Exception as exc:
-            return jsonify({"error": "Não foi possível atualizar a rota rápida agora.", "detail": str(exc)}), 502
+            app.logger.exception("Fast reroute provider request failed")
+            return jsonify({"error": "Não foi possível atualizar a rota rápida agora.", "code": "fast_reroute_unavailable"}), 502
 
     try:
         baseline = mapbox_routes_via(forced_points, "now", start_bearing=start_bearing, start_speed=start_speed, reroute=True) if len(forced_points) >= 2 else mapbox_routes(clon, clat, dlon, dlat, travel_profile, "now", alternatives=False, extra_excludes=route_extra_excludes, start_bearing=start_bearing, start_speed=start_speed, reroute=True)[0]
@@ -1171,7 +1174,8 @@ def traffic_recommendation():
             except Exception:
                 pass
     except Exception as exc:
-        return jsonify({"error": "Não foi possível atualizar o trânsito agora.", "detail": str(exc)}), 502
+        app.logger.exception("Traffic reroute provider request failed")
+        return jsonify({"error": "Não foi possível atualizar o trânsito agora.", "code": "traffic_reroute_unavailable"}), 502
 
     candidates_raw = [baseline] + alternatives[:11]
     all_coords = []
