@@ -56,7 +56,13 @@ def security_headers(response):
     response.headers["Content-Security-Policy"] = csp
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers["Permissions-Policy"] = VANO_PERMISSIONS_POLICY
+    # Voice search is only exposed on the main map. Permit the origin to ask
+    # the user for microphone access there; other pages remain microphone-off.
+    # An explicitly configured policy always takes precedence.
+    permissions_policy = VANO_PERMISSIONS_POLICY
+    if request.path == "/" and response.mimetype == "text/html" and not os.environ.get("VANO_PERMISSIONS_POLICY"):
+        permissions_policy = permissions_policy.replace("microphone=()", "microphone=(self)")
+    response.headers["Permissions-Policy"] = permissions_policy
     response.headers.setdefault("X-DNS-Prefetch-Control", "off")
 
     # Explicitly avoid cross-origin isolation policies that can interfere with
