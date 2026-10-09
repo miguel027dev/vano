@@ -89,6 +89,9 @@ def test_map_alone_can_request_microphone_in_default_policy(monkeypatch):
         assert "camera=()" in response.headers["Permissions-Policy"]
     with runtime.app.test_request_context("/login", base_url="https://localhost"):
         response = headers.security_headers(Response("<html>Login</html>", mimetype="text/html"))
+        assert "microphone=(self)" in response.headers["Permissions-Policy"]
+    with runtime.app.test_request_context("/admin", base_url="https://localhost"):
+        response = headers.security_headers(Response("<html>Admin</html>", mimetype="text/html"))
         assert "microphone=()" in response.headers["Permissions-Policy"]
     monkeypatch.setenv("VANO_PERMISSIONS_POLICY", "custom-explicit-policy")
     with runtime.app.test_request_context("/", base_url="https://localhost"):
