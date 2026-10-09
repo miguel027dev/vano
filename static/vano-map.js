@@ -97,7 +97,7 @@ function vanoNativeRouteKey(){return String(selectedRoute?.route_signature||sele
 function vanoEnsureNativeMapSync(){if(vanoNativeMapSyncTimer)return;vanoNativeMapLastKey=vanoNativeRouteKey();vanoNativeMapSyncTimer=setInterval(()=>{if(!activeNav?.classList.contains('show')||!window.__vanoNativeMapActive)return;const k=vanoNativeRouteKey();if(k&&k!==vanoNativeMapLastKey){vanoNativeMapLastKey=k;vanoSyncNativeMapRoute(lastNavPosition||userLocation)}},900)}
 function vanoClearNativeMapSync(){if(vanoNativeMapSyncTimer){clearInterval(vanoNativeMapSyncTimer);vanoNativeMapSyncTimer=null}vanoNativeMapLastKey=''}
 function vanoNativeMapRecenter(){const b=vanoNativeMapBridge();if(!b)return false;try{b.recenterNativeMap();return true}catch{return false}}
-const SEARCH_FAST_MIN=2,SEARCH_FAST_DELAY=70,SEARCH_REFINE_DELAY=140;
+const SEARCH_FAST_MIN=3,SEARCH_FAST_DELAY=210,SEARCH_REFINE_DELAY=140;
 let vanoStableViewportH=Math.round(window.innerHeight||document.documentElement.clientHeight||screen.height||0),vanoViewportTimer=null,vanoKeyboardOpen=false,vanoScrollLockTimer=null;
 const SEARCH_CLIENT_TTL=120000,searchClientCache=new Map();
 let routeController=null,routeRequestId=0,manualRouteSelection=false,lastRouteEngine='',routeResponseCache=new Map(),lastNavUiAt=0,lastCameraUpdateAt=0,lastProgressPaintAt=0,lastSignalFetchAt=0,signalController=null,adminSimLastUiAt=0,lastTrafficRadarAt=0,lastTrafficRadarKey='',lastTrafficRadarAlong=0,navLastAlong=0,lastNavRoutePaintAt=0,navLastPaintAlong=0,navLastRawPosition=null,navLastCameraZoom=null,navCameraStartUntil=0,navVoiceHoldTimer=null,navVoiceHoldOpened=false,lastMapPointerAt=0;
@@ -839,11 +839,20 @@ async function fastGlobalAddressSearch(q,bias,signal){
   const r=await fetch(`https://api.mapbox.com/search/geocode/v6/forward?${params.toString()}`,{signal,headers:{Accept:'application/json'}});if(!r.ok)throw new Error(`Mapbox ${r.status}`);const d=await r.json();return (d.features||[]).map(fastMapboxFeature).filter(Boolean).slice(0,8)
 }
 function queueSearch(input,kind){
-  clearTimeout(searchTimer);clearTimeout(searchRefineTimer);activeSearchKind=kind;invalidateSelectedPoint(kind,input);const q=input.value.trim();if(q.length<SEARCH_FAST_MIN){searchController?.abort();fastSearchController?.abort();hideResults();return}const intent=clientSearchIntent(q),delay=intent==='cep'?35:(q.length>=4?SEARCH_FAST_DELAY:110);searchTimer=setTimeout(()=>searchPlaces(q,kind),delay)
+  // Invalidate in-flight responses when the user TYPES, not after debounce.
+  // This prevents stale results from covering a newer search on slow networks.
+  clearTimeout(searchTimer);searchRequestId++;searchController?.abort();fastSearchController?.abort();
+  activeSearchKind=kind;invalidateSelectedPoint(kind,input);const q=input.value.trim();
+  if(q.length<SEARCH_FAST_MIN){hideResults();return}
+  // Do not make external requests for incomplete Brazilian postcodes.
+  const numericCep=/^(?:CEP\s*)?\d[\d.\-\s]*$/i.test(q),digits=q.replace(/\D/g,'');
+  if(numericCep&&digits.length<8){hideResults();return}
+  const intent=clientSearchIntent(q),delay=intent==='cep'?100:SEARCH_FAST_DELAY;
+  searchTimer=setTimeout(()=>searchPlaces(q,kind),delay)
 }
 async function searchPlaces(q,kind){
   q=String(q||'').trim();if(q.length<SEARCH_FAST_MIN){hideResults();return}
-  const searchStarted=performance.now(),requestId=++searchRequestId,bias=searchBias(kind),intent=clientSearchIntent(q),cached=getClientSearch(q,bias);searchController?.abort();fastSearchController?.abort();clearTimeout(searchRefineTimer);activeSearchKind=kind;setSearchOpen(true);results.classList.add('show');requestAnimationFrame(()=>syncSearchResultsPlacement(true));
+  const searchStarted=performance.now(),requestId=++searchRequestId,bias=searchBias(kind),intent=clientSearchIntent(q),cached=getClientSearch(q,bias);searchController?.abort();fastSearchController?.abort();activeSearchKind=kind;setSearchOpen(true);results.classList.add('show');requestAnimationFrame(()=>syncSearchResultsPlacement(true));
   if(cached){paintSearchList(kind,cached,'Melhores resultados');productTelemetry('search',`results:${intent}:${cached.length}:cache`,'search');productTelemetry('performance',`search-latency:${Math.round(performance.now()-searchStarted)}ms:cache`,'search');return}
   const loadingLabel=intent==='place'?'Buscando local…':intent==='cep'?'Consultando CEP…':'Buscando endereço…';
   results.innerHTML=`<div class="search-loading"><span class="search-loading-pin"></span><span><b>${loadingLabel}</b><small>Primeiro o lugar exato, depois opções relacionadas</small></span></div>`;
@@ -852,21 +861,26 @@ async function searchPlaces(q,kind){
   // CEP and named places wait for the intent-aware backend so an unrelated nearby
   // commerce/locality never flashes above the exact result.
   const allowFast=intent==='street'||intent==='address';
-  let fastList=[],fastError=null,fastTask=Promise.resolve([]);
-  if(allowFast){
+  let fastList=[],backendResolved=false;
+  if(allowFast&&q.length>=4){
     fastSearchController=new AbortController();
-    fastTask=fastGlobalAddressSearch(q,bias,fastSearchController.signal).then(list=>{if(requestId!==searchRequestId)return[];fastList=list;if(list.length)paintSearchList(kind,list,'Sugestões de endereço');return list}).catch(e=>{if(e?.name!=='AbortError')fastError=e;return[]});
+    fastGlobalAddressSearch(q,bias,fastSearchController.signal).then(list=>{
+      if(requestId!==searchRequestId)return;
+      fastList=list;
+      if(list.length&&!backendResolved)paintSearchList(kind,list,'Sugestões de endereço');
+    }).catch(e=>{if(e?.name!=='AbortError')console.debug('[VANO MAPS:search-fast]',e?.message||e)});
   }
-  if(q.length<3){await fastTask;if(requestId===searchRequestId&&!fastList.length&&fastError)results.innerHTML='<div class="search-message"><b>Continue digitando</b><span>Digite mais um caractere para refinar a busca.</span></div>';return}
-  await new Promise(resolve=>{searchRefineTimer=setTimeout(resolve,intent==='cep'?20:SEARCH_REFINE_DELAY)});if(requestId!==searchRequestId)return;
+  // The input already waited for debounce. Avoid an extra request delay, and
+  // never block backend results on a slower independent Mapbox client request.
+  if(requestId!==searchRequestId)return;
   searchController=new AbortController();const p=new URLSearchParams({q});if(bias){p.set('proximity_lat',bias.lat);p.set('proximity_lon',bias.lon)}
   try{
-    const {r,d}=await vanoFetchJSON('/api/geocode?'+p,{signal:searchController.signal,headers:{Accept:'application/json'}},12000);if(requestId!==searchRequestId)return;if(!r.ok)throw new Error(d.detail||d.error||'Falha na busca');await fastTask;
+    const {r,d}=await vanoFetchJSON('/api/geocode?'+p,{signal:searchController.signal,headers:{Accept:'application/json'}},12000);if(requestId!==searchRequestId)return;if(!r.ok)throw new Error(d.detail||d.error||'Falha na busca');backendResolved=true;
     const backend=(d.results||[]).slice(0,10),list=intent==='place'||intent==='cep'?backend:mergeSearchLists(backend,fastList);
     if(!list.length){productTelemetry('search',`no-results:${intent}`,'search');productTelemetry('performance',`search-latency:${Math.round(performance.now()-searchStarted)}ms:no-results`,'search');results.innerHTML='<div class="search-message"><b>Nenhum resultado encontrado</b><span>Tente CEP, rua + número ou o nome exato do local.</span></div>';return}
     setClientSearch(q,bias,list);paintSearchList(kind,list,'Melhores resultados');productTelemetry('search',`results:${intent}:${list.length}`,'search');productTelemetry('performance',`search-latency:${Math.round(performance.now()-searchStarted)}ms`,'search');
   }catch(e){
-    if(e?.name==='AbortError')return;if(requestId!==searchRequestId)return;await fastTask;if(fastList.length){setClientSearch(q,bias,fastList);paintSearchList(kind,fastList,'Sugestões de endereço');return}results.innerHTML=`<div class="search-message"><b>Busca indisponível agora</b><span>${esc(e.message)}</span></div>`
+    if(e?.name==='AbortError')return;if(requestId!==searchRequestId)return;if(fastList.length){setClientSearch(q,bias,fastList);paintSearchList(kind,fastList,'Sugestões de endereço');return}results.innerHTML=`<div class="search-message"><b>Busca indisponível agora</b><span>${esc(e.message)}</span></div>`
   }
 }
 
