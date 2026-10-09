@@ -10,6 +10,12 @@ on:
       - 'static/vano-android-nav-layout.js'
       - 'templates/index.html'
       - '.github/workflows/android-candidate.yml'
+  pull_request:
+    paths:
+      - 'android-webview/**'
+      - 'static/vano-voice-companion.js'
+      - 'static/vano-foundation.css'
+      - '.github/workflows/android-candidate.yml'
   workflow_dispatch:
 
 permissions:
