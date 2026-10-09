@@ -145,6 +145,7 @@
     if(window.VANO_NATIVE_SPEECH?.dictate){
       try{const result=window.VANO_NATIVE_SPEECH.dictate(locale(),!isOnline());if(result==='ok'){mic.disabled=true;status('Ouvindo pelo Android...');return;}}catch(_){}
     }
+    if(!isOnline()){status('Ditado offline requer o aplicativo Android com reconhecimento local instalado. Você pode digitar.');return;}
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){status('Ditado indisponível neste navegador. Você pode digitar.');return;}
     try{
