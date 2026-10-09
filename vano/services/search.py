@@ -1008,14 +1008,22 @@ def smart_location_search(query, proximity=None):
     kind = intent["kind"]
     if kind in {"cep", "cep_number", "address", "street"}:
         collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode")
-        # For a street/address query Search Box is only a secondary source. It can
-        # recover named buildings without being allowed to dominate the ranking.
-        if kind in {"address", "street"} and mapbox_ready():
+        # A second external round trip is unnecessary when Geocoding already
+        # found the requested street/address. Keep Search Box as a fallback.
+        has_address_match = any(
+            item.get("type") in {"street", "address"} and (
+                kind == "street"
+                or not query_meta.get("number")
+                or str(item.get("address_number") or "").lower() == str(query_meta["number"]).lower()
+                or item.get("address_number_match") in {"matched", "plausible"}
+            )
+            for item in candidates
+        )
+        if kind in {"address", "street"} and mapbox_ready() and not has_address_match:
             collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox-secondary")
     else:
-        # Strong category intent gets a category-filtered POI request first. For
-        # example, "Shopping Butantã" asks Mapbox for shopping_mall POIs before
-        # the generic text search, preventing shops inside the mall from winning.
+        # Favor the specific category and stop when a primary POI is resolved;
+        # only consult additional providers when the earlier results are weak.
         wanted = str(intent.get("wanted_category") or "")
         category_filter = SEARCHBOX_CATEGORY_FILTERS.get(wanted)
         if mapbox_ready() and category_filter:
@@ -1023,11 +1031,12 @@ def smart_location_search(query, proximity=None):
                 query, effective_proximity, search_language,
                 poi_category=category_filter, types="poi", rank_offset=-30
             ), "searchbox-category")
-        # Generic Search Box remains as coverage/fallback and Geocoding supplies
-        # locality/street fallbacks.
-        if mapbox_ready():
+        if mapbox_ready() and not any(x.get("match_kind") == "primary" for x in candidates):
             collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox")
-        collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode-secondary")
+        # Geocoding recovers localities and streets when Search Box has no
+        # semantically relevant primary result; avoid it for a good POI match.
+        if not any(x.get("match_kind") == "primary" for x in candidates):
+            collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode-secondary")
 
     merged, seen = [], set()
     for item in candidates:
