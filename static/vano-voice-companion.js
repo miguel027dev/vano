@@ -43,6 +43,7 @@
   const stopAudio=()=>{
     try{window.speechSynthesis?.cancel?.()}catch(_){}
     if(audio){audio.pause();audio=null;}
+    try{window.VANO_NATIVE_SPEECH?.stop?.();}catch(_){}
     if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl=null;}
   };
   const status=(text)=>{state.textContent=text;};
@@ -103,6 +104,9 @@
     }
   }
   function localSpeak(){
+    if(responseText&&window.VANO_NATIVE_SPEECH?.speak){
+      try{if(window.VANO_NATIVE_SPEECH.speak(responseText.slice(0,700),locale())==='ok'){status('Usando voz local do Android...');return;}}catch(_){}
+    }
     if(!responseText||!window.speechSynthesis||!window.SpeechSynthesisUtterance){
       status('Voz do dispositivo indisponível.');return;
     }
@@ -138,6 +142,9 @@
     finally{speak.disabled=false;}
   }
   function startDictation(){
+    if(window.VANO_NATIVE_SPEECH?.dictate){
+      try{const result=window.VANO_NATIVE_SPEECH.dictate(locale(),!isOnline());if(result==='ok'){mic.disabled=true;status('Ouvindo pelo Android...');return;}}catch(_){}
+    }
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
     if(!SR){status('Ditado indisponível neste navegador. Você pode digitar.');return;}
     try{
@@ -149,6 +156,16 @@
       mic.disabled=true;recognizer.start();status('Ouvindo...');
     }catch(_){mic.disabled=false;status('Microfone não disponível.');}
   }
+  window.addEventListener('vano:native-dictation',e=>{
+    mic.disabled=false;
+    if(panel.hidden)return;
+    const detail=e.detail||{};
+    if(detail.error){status(String(detail.error).slice(0,180));return;}
+    if(typeof detail.text==='string'&&detail.text.trim()){
+      input.value=detail.text.trim().slice(0,700);
+      status('Ditado recebido. Confira antes de enviar.');
+    }
+  });
   launch.onclick=()=>toggle(panel.hidden);
   close.onclick=()=>toggle(false);
   ask.onclick=()=>send('answer');translate.onclick=()=>send('translate');
