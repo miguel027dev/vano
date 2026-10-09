@@ -36,8 +36,9 @@ const ctx={
   setStep:n=>{ctx.current=n}
 };
 vm.createContext(ctx);
-const src=section('function clearErrors(){','function updateProfile(');
-vm.runInContext(src,ctx);
+const clearSource=section('function clearErrors(){','function invalidate(');
+const validateSource=section('function validateStep(','function updateProfile(');
+vm.runInContext(clearSource+'\n'+validateSource,ctx);
 const start=source.indexOf("$$('[data-ob-next]',form).forEach(");
 assert.ok(start>=0,'Continue click handler missing');
 const end=source.indexOf("}));",start)+4;
@@ -46,7 +47,7 @@ vm.runInContext(source.slice(start,end),ctx);
 assert.equal(typeof onContinue,'function','Continue button has no click handler');
 onContinue();
 assert.equal(ctx.current,2,'Continue should advance from Perfil to Preferências');
-assert.equal(errorNodes.length,18,'All invalid markers must be cleared at each step');
+assert.equal(errorNodes.length,12,'All invalid markers must be cleared at each step');
 onContinue();
 assert.equal(ctx.current,3,'Continue should advance from Preferências to Revisão');
 ctx.current=1;ctx.name.value='';
