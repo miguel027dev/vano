@@ -1008,14 +1008,22 @@ def smart_location_search(query, proximity=None):
     kind = intent["kind"]
     if kind in {"cep", "cep_number", "address", "street"}:
         collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode")
-        # For a street/address query Search Box is only a secondary source. It can
-        # recover named buildings without being allowed to dominate the ranking.
-        if kind in {"address", "street"} and mapbox_ready():
+        # A second external round trip is unnecessary when Geocoding already
+        # found the requested street/address. Keep Search Box as a fallback.
+        has_address_match = any(
+            item.get("type") in {"street", "address"} and (
+                kind == "street"
+                or not query_meta.get("number")
+                or str(item.get("address_number") or "").lower() == str(query_meta["number"]).lower()
+                or item.get("address_number_match") in {"matched", "plausible"}
+            )
+            for item in candidates
+        )
+        if kind in {"address", "street"} and mapbox_ready() and not has_address_match:
             collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox-secondary")
     else:
-        # Strong category intent gets a category-filtered POI request first. For
-        # example, "Shopping Butantã" asks Mapbox for shopping_mall POIs before
-        # the generic text search, preventing shops inside the mall from winning.
+        # Favor the specific category and stop when a primary POI is resolved;
+        # only consult additional providers when the earlier results are weak.
         wanted = str(intent.get("wanted_category") or "")
         category_filter = SEARCHBOX_CATEGORY_FILTERS.get(wanted)
         if mapbox_ready() and category_filter:
@@ -1023,11 +1031,12 @@ def smart_location_search(query, proximity=None):
                 query, effective_proximity, search_language,
                 poi_category=category_filter, types="poi", rank_offset=-30
             ), "searchbox-category")
-        # Generic Search Box remains as coverage/fallback and Geocoding supplies
-        # locality/street fallbacks.
-        if mapbox_ready():
+        if mapbox_ready() and not any(x.get("match_kind") == "primary" for x in candidates):
             collect(lambda: mapbox_searchbox_forward(query, effective_proximity, search_language), "searchbox")
-        collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode-secondary")
+        # Geocoding recovers localities and streets when Search Box has no
+        # semantically relevant primary result; avoid it for a good POI match.
+        if not any(x.get("match_kind") == "primary" for x in candidates):
+            collect(lambda: mapbox_forward_geocode(query, effective_proximity, search_language), "geocode-secondary")
 
     merged, seen = [], set()
     for item in candidates:
@@ -1120,12 +1129,32 @@ def mapbox_forward_geocode(query, proximity=None, language=None):
         "autocomplete": "true",
         "types": "address,street,postcode,place,locality,neighborhood,district,region,country",
     })
-    try:
-        features.extend((mapbox_get(f"{MAPBOX_GEOCODING_URL}/forward", general, timeout=5.5).get("features") or [])[:10])
-    except Exception:
-        # Se a consulta estruturada já trouxe resultados, não falhamos a busca inteira.
-        if not features:
-            raise
+    # A verified structured CEP result already provides a routable point.
+    # Preserve a generic fallback if the postcode/house number is not verified.
+    structured_answer = False
+    if query_meta.get("cep") and features:
+        wanted_cep = query_meta["cep"]
+        wanted_number = str(query_meta.get("number") or "").lower()
+        for feature in features:
+            item = _mapbox_result(feature, query_meta)
+            if not item:
+                continue
+            got_cep = re.sub(r"\D", "", str(item.get("postcode") or ""))
+            cep_ok = got_cep == wanted_cep or item.get("postcode_match") == "matched"
+            number_ok = not wanted_number or (
+                str(item.get("address_number") or "").lower() == wanted_number
+                and item.get("type") == "address"
+            )
+            if cep_ok and number_ok:
+                structured_answer = True
+                break
+    if not structured_answer:
+        try:
+            features.extend((mapbox_get(f"{MAPBOX_GEOCODING_URL}/forward", general, timeout=5.5).get("features") or [])[:10])
+        except Exception:
+            # Structured geocoding may already have usable address results.
+            if not features:
+                raise
 
     results = []
     seen = set()
