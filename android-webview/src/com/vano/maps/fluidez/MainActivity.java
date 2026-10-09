@@ -13,6 +13,13 @@ import android.util.Base64;
 import android.view.*;
 import android.webkit.*;
 import android.widget.*;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.Voice;
+import java.util.ArrayList;
+import java.util.Locale;
 import org.json.JSONObject;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -23,7 +30,7 @@ import java.util.concurrent.*;
 /** Remote VANO application. No screen streaming, bundled routes or native map. */
 public final class MainActivity extends Activity {
     private static final String BASE="https://vanomaps.online", ENTRY=BASE+"/mobile/entry";
-    private static final int GEO_REQUEST=10, FILE_REQUEST=11;
+    private static final int GEO_REQUEST=10, FILE_REQUEST=11, AUDIO_REQUEST=12;
     private final ExecutorService network=Executors.newSingleThreadExecutor();
     private WebView web;
     private FrameLayout root;
@@ -31,6 +38,10 @@ public final class MainActivity extends Activity {
     private String currentUrl=ENTRY, geoOrigin;
     private GeolocationPermissions.Callback geoCallback;
     private ValueCallback<Uri[]> fileCallback;
+    private SpeechRecognizer voiceRecognizer;
+    private TextToSpeech localTts;
+    private boolean ttsInitialized, pendingVoiceOffline;
+    private String pendingVoiceLang="pt-BR";
     private boolean destroyed, recovering, pageFailed;
     private final Handler handler=new Handler(Looper.getMainLooper());
 
@@ -129,6 +140,12 @@ public final class MainActivity extends Activity {
                         share.putExtra(Intent.EXTRA_SUBJECT,data.optString("title"));
                         share.putExtra(Intent.EXTRA_TEXT,data.optString("text")+"\n"+data.optString("url"));
                         startActivity(Intent.createChooser(share,"Compartilhar"));result.confirm("ok");
+                    }else if("dictate".equals(action)){
+                        beginNativeDictation(data.optString("lang","pt-BR"),data.optBoolean("offline",false));result.confirm("ok");
+                    }else if("speak".equals(action)){
+                        speakNative(data.optString("text",""),data.optString("lang","pt-BR"));result.confirm("ok");
+                    }else if("stopSpeech".equals(action)){
+                        stopVoiceResources();result.confirm("ok");
                     }else if("wake".equals(action)){
                         if(data.optBoolean("active"))getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -155,7 +172,7 @@ public final class MainActivity extends Activity {
         });
     }
     private void injectRuntime(){
-        web.evaluateJavascript("(()=>{if(window.__vanoShell)return;window.__vanoShell=true;document.documentElement.classList.add('vano-android-webview');const call=data=>prompt('VANO_NATIVE',JSON.stringify(data));if(!navigator.share){navigator.share=async d=>{if(call({action:'share',title:d.title||'',text:d.text||'',url:d.url||''})!=='ok')throw new DOMException('Compartilhamento cancelado','AbortError')};}let lastWake=null;const sync=()=>{const active=document.visibilityState==='visible'&&document.body.classList.contains('body-nav');if(active!==lastWake){lastWake=active;call({action:'wake',active})}};new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});document.addEventListener('visibilitychange',sync);sync();})()",null);
+        web.evaluateJavascript("(()=>{if(window.__vanoShell)return;window.__vanoShell=true;document.documentElement.classList.add('vano-android-webview');const call=data=>prompt('VANO_NATIVE',JSON.stringify(data));window.VANO_NATIVE_SPEECH={dictate:(lang,offline)=>call({action:'dictate',lang,offline}),speak:(text,lang)=>call({action:'speak',text,lang}),stop:()=>call({action:'stopSpeech'})};if(!navigator.share){navigator.share=async d=>{if(call({action:'share',title:d.title||'',text:d.text||'',url:d.url||''})!=='ok')throw new DOMException('Compartilhamento cancelado','AbortError')};}let lastWake=null;const sync=()=>{const active=document.visibilityState==='visible'&&document.body.classList.contains('body-nav');if(active!==lastWake){lastWake=active;call({action:'wake',active})}};new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});document.addEventListener('visibilitychange',sync);sync();})()",null);
     }
     private boolean navigate(Uri uri){
         if(trusted(uri)){
@@ -168,9 +185,86 @@ public final class MainActivity extends Activity {
         }
         return true;
     }
+    private void dispatchVoice(String value,String error){
+        if(destroyed||web==null||!trusted(web.getUrl()))return;
+        try{
+            JSONObject detail=new JSONObject().put("text",value==null?"":value).put("error",error==null?"":error);
+            web.evaluateJavascript("window.dispatchEvent(new CustomEvent('vano:native-dictation',{detail:"+detail.toString()+"}));",null);
+        }catch(Exception ignored){}
+    }
+    private void beginNativeDictation(String lang,boolean offline){
+        pendingVoiceLang=lang!=null&&lang.length()<=12?lang:"pt-BR";
+        pendingVoiceOffline=offline;
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},AUDIO_REQUEST);return;
+        }
+        startNativeRecognizer();
+    }
+    private void startNativeRecognizer(){
+        try{
+            if(voiceRecognizer!=null){voiceRecognizer.destroy();voiceRecognizer=null;}
+            boolean device=Build.VERSION.SDK_INT>=31&&SpeechRecognizer.isOnDeviceRecognitionAvailable(this);
+            if(pendingVoiceOffline&&!device){dispatchVoice("","Modelo de reconhecimento offline não disponível; digite o destino.");return;}
+            if(!device&&!SpeechRecognizer.isRecognitionAvailable(this)){
+                dispatchVoice("","Serviço de reconhecimento indisponível neste Android.");return;
+            }
+            voiceRecognizer=device?SpeechRecognizer.createOnDeviceSpeechRecognizer(this):SpeechRecognizer.createSpeechRecognizer(this);
+            voiceRecognizer.setRecognitionListener(new RecognitionListener(){
+                @Override public void onReadyForSpeech(Bundle b){}
+                @Override public void onBeginningOfSpeech(){}
+                @Override public void onRmsChanged(float v){}
+                @Override public void onBufferReceived(byte[] b){}
+                @Override public void onEndOfSpeech(){}
+                @Override public void onPartialResults(Bundle b){}
+                @Override public void onEvent(int type,Bundle b){}
+                @Override public void onError(int error){
+                    dispatchVoice("","Não consegui reconhecer a fala. Digite ou tente novamente.");
+                    handler.post(()->{if(voiceRecognizer!=null){voiceRecognizer.destroy();voiceRecognizer=null;}});
+                }
+                @Override public void onResults(Bundle result){
+                    ArrayList<String> words=result.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    dispatchVoice(words!=null&&!words.isEmpty()?words.get(0):"","");
+                    handler.post(()->{if(voiceRecognizer!=null){voiceRecognizer.destroy();voiceRecognizer=null;}});
+                }
+            });
+            Intent intent=new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE,pendingVoiceLang);
+            intent.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE,device||pendingVoiceOffline);
+            intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS,1);
+            voiceRecognizer.startListening(intent);
+        }catch(Exception e){dispatchVoice("","Reconhecimento de voz indisponível.");}
+    }
+    private void speakNative(String text,String lang){
+        if(text==null||text.isEmpty()||text.length()>700)return;
+        if(localTts==null){
+            localTts=new TextToSpeech(this,status->{
+                ttsInitialized=status==TextToSpeech.SUCCESS;
+                if(ttsInitialized)speakNative(text,lang);
+                else dispatchVoice("","Voz offline indisponível neste aparelho.");
+            });return;
+        }
+        if(!ttsInitialized)return;
+        Locale preferred=Locale.forLanguageTag(lang==null?"pt-BR":lang);
+        Voice local=null;
+        try{
+            java.util.Set<Voice> voices=localTts.getVoices();
+            if(voices!=null)for(Voice voice:voices)
+                if(voice!=null&&!voice.isNetworkConnectionRequired()&&voice.getLocale().getLanguage().equals(preferred.getLanguage())){
+                    local=voice;break;
+                }
+        }catch(Exception ignored){}
+        if(local==null){dispatchVoice("","Instale uma voz local para reproduzir sem internet.");return;}
+        localTts.stop();localTts.setVoice(local);
+        localTts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"vano-offline-tts");
+    }
+    private void stopVoiceResources(){
+        if(voiceRecognizer!=null){voiceRecognizer.cancel();voiceRecognizer.destroy();voiceRecognizer=null;}
+        if(localTts!=null)localTts.stop();
+    }
     private boolean locationGranted(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
     private void finishGeo(boolean allow){if(geoCallback!=null){geoCallback.invoke(geoOrigin,allow,false);geoCallback=null;geoOrigin=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST)finishGeo(locationGranted());}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST)finishGeo(locationGranted());if(request==AUDIO_REQUEST){if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED)startNativeRecognizer();else dispatchVoice("","Permissão do microfone negada.");}}
     @Override public void onActivityResult(int req,int result,Intent data){
         super.onActivityResult(req,result,data);
         if(req==FILE_REQUEST&&fileCallback!=null){
@@ -235,6 +329,6 @@ public final class MainActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle state){if(web!=null){Bundle saved=new Bundle();web.saveState(saved);state.putBundle("web",saved);}super.onSaveInstanceState(state);}
     @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);root.requestApplyInsets();if(web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);}
     @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();}
-    @Override protected void onPause(){if(web!=null)web.onPause();CookieManager.getInstance().flush();super.onPause();}
-    @Override protected void onDestroy(){destroyed=true;handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onPause(){if(web!=null)web.onPause();stopVoiceResources();CookieManager.getInstance().flush();super.onPause();}
+    @Override protected void onDestroy(){destroyed=true;handler.removeCallbacksAndMessages(null);finishGeo(false);stopVoiceResources();if(localTts!=null){localTts.shutdown();localTts=null;}if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
 }

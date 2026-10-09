@@ -60,7 +60,7 @@ def security_headers(response):
     # the user for microphone access there; other pages remain microphone-off.
     # An explicitly configured policy always takes precedence.
     permissions_policy = VANO_PERMISSIONS_POLICY
-    if request.path == "/" and response.mimetype == "text/html" and not os.environ.get("VANO_PERMISSIONS_POLICY"):
+    if response.mimetype == "text/html" and not request.path.startswith(("/admin", "/api/admin")) and request.path != "/onboarding" and not os.environ.get("VANO_PERMISSIONS_POLICY"):
         permissions_policy = permissions_policy.replace("microphone=()", "microphone=(self)")
     response.headers["Permissions-Policy"] = permissions_policy
     response.headers.setdefault("X-DNS-Prefetch-Control", "off")
@@ -76,7 +76,7 @@ def security_headers(response):
         "/api/live-trip/", "/live/", "/profile", "/notifications",
         "/login", "/register", "/auth/", "/onboarding", "/logout",
         "/forgot-password", "/reset-password/", "/account/delete",
-        "/api/saved-places", "/api/weekly-routine", "/api/notifications/",
+        "/api/saved-places", "/api/weekly-routine", "/api/notifications/", "/api/voice/",
         "/api/shared-route", "/api/shared-routes", "/route/share/", "/family/",
     )
     if request.path.startswith(sensitive_prefixes):
