@@ -1129,12 +1129,32 @@ def mapbox_forward_geocode(query, proximity=None, language=None):
         "autocomplete": "true",
         "types": "address,street,postcode,place,locality,neighborhood,district,region,country",
     })
-    try:
-        features.extend((mapbox_get(f"{MAPBOX_GEOCODING_URL}/forward", general, timeout=5.5).get("features") or [])[:10])
-    except Exception:
-        # Se a consulta estruturada já trouxe resultados, não falhamos a busca inteira.
-        if not features:
-            raise
+    # A verified structured CEP result already provides a routable point.
+    # Preserve a generic fallback if the postcode/house number is not verified.
+    structured_answer = False
+    if query_meta.get("cep") and features:
+        wanted_cep = query_meta["cep"]
+        wanted_number = str(query_meta.get("number") or "").lower()
+        for feature in features:
+            item = _mapbox_result(feature, query_meta)
+            if not item:
+                continue
+            got_cep = re.sub(r"\D", "", str(item.get("postcode") or ""))
+            cep_ok = got_cep == wanted_cep or item.get("postcode_match") == "matched"
+            number_ok = not wanted_number or (
+                str(item.get("address_number") or "").lower() == wanted_number
+                and item.get("type") == "address"
+            )
+            if cep_ok and number_ok:
+                structured_answer = True
+                break
+    if not structured_answer:
+        try:
+            features.extend((mapbox_get(f"{MAPBOX_GEOCODING_URL}/forward", general, timeout=5.5).get("features") or [])[:10])
+        except Exception:
+            # Structured geocoding may already have usable address results.
+            if not features:
+                raise
 
     results = []
     seen = set()
