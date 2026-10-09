@@ -76,7 +76,7 @@ def security_headers(response):
         "/api/live-trip/", "/live/", "/profile", "/notifications",
         "/login", "/register", "/auth/", "/onboarding", "/logout",
         "/forgot-password", "/reset-password/", "/account/delete",
-        "/api/saved-places", "/api/weekly-routine", "/api/notifications/",
+        "/api/saved-places", "/api/weekly-routine", "/api/notifications/", "/api/voice/",
         "/api/shared-route", "/api/shared-routes", "/route/share/", "/family/",
     )
     if request.path.startswith(sensitive_prefixes):
