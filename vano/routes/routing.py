@@ -335,7 +335,8 @@ def api_route():
             primary_provider = str((routes[0] if routes else {}).get("_provider") or "mapbox")
             mapbox_base_count=len(routes)
     except Exception as exc:
-        return jsonify({"error": "Não foi possível calcular a rota agora.", "detail": str(exc)}), 502
+        app.logger.exception("Routing provider request failed")
+        return jsonify({"error": "Não foi possível calcular a rota agora.", "code": "routing_unavailable"}), 502
     if not routes:
         return jsonify({"error": "Nenhuma rota encontrada."}), 404
 
