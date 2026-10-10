@@ -38,11 +38,23 @@
   <meta property="og:site_name" content="VANO MAPS">
   <meta property="og:locale" content="{{ active_locale|replace('-','_') }}">
   <meta property="og:url" content="{{ seo_canonical_url }}">
+  <meta property="og:image" content="{{ public_site_url }}/static/vano-maps-icon-512.png">
+  <meta property="og:image:alt" content="Símbolo laranja do VANO MAPS">
   <meta property="og:title" content="{% block og_title %}VANO MAPS — navegação inteligente{% endblock %}">
   <meta property="og:description" content="{% block og_description %}GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto.{% endblock %}">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="VANO MAPS — navegação inteligente">
-  <meta name="twitter:description" content="GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto.">
+  <meta name="twitter:title" content="{{ self.og_title()|striptags }}">
+  <meta name="twitter:description" content="{{ self.meta_description()|striptags }}">
+  <meta name="twitter:image" content="{{ public_site_url }}/static/vano-maps-icon-512.png">
+  {% if seo_indexable %}
+  <script type="application/ld+json">{{ {
+    '@context':'https://schema.org', '@type':'Organization',
+    '@id':public_site_url ~ '/#organization', 'name':'VANO MAPS',
+    'url':public_site_url ~ '/sobre', 'logo':public_site_url ~ '/static/vano-maps-icon-512.png',
+    'description':'Projeto independente brasileiro de navegação adaptativa para carro e moto.',
+    'contactPoint':{'@type':'ContactPoint','contactType':'customer support','email':'sac.vano.maps@gmail.com','availableLanguage':'Portuguese'}
+  }|tojson }}</script>
+  {% endif %}
   <script type="application/ld+json">{{ {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -63,6 +75,9 @@
     'terms_of_use':'Termos de Uso',
     'about':'Como funciona',
     'sobre':'Sobre o VANO',
+    'beta_page':'Teste Android',
+    'contact_page':'Contato',
+    'press_page':'Imprensa e marca',
     'account_delete_page':'Excluir conta',
     'help_page':'Central de ajuda',
     'route_benchmark_page':'Benchmark de rotas'
@@ -160,7 +175,7 @@
     'what_is_vano', 'seo_waze_alternative', 'seo_google_maps_alternative',
     'seo_avoid_traffic', 'seo_fastest_route', 'seo_motorcycle_gps',
     'privacy_policy', 'terms_of_use', 'about', 'sobre',
-    'account_delete_page', 'help_page'
+    'account_delete_page', 'help_page', 'beta_page', 'contact_page', 'press_page'
   ] %}
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
@@ -204,6 +219,8 @@
         <a class="vano-nav-item {% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round" width="16"></i><span>Perfil</span></a>
         {% if current_user['role']=='admin' %}<a class="vano-nav-item {% if vano_endpoint.startswith('admin_') %}active{% endif %}" {% if vano_endpoint.startswith('admin_') %}aria-current="page"{% endif %} href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check" width="16"></i><span>Admin</span></a>{% endif %}
       {% else %}
+        <a class="vano-nav-item" href="{{ url_for('sobre') }}">Sobre</a>
+        <a class="vano-nav-item" href="{{ url_for('beta_page') }}">Teste Android</a>
         <a class="vano-nav-item {% if vano_endpoint == 'about' %}active{% endif %}" {% if vano_endpoint == 'about' %}aria-current="page"{% endif %} href="{{ url_for('about') }}">Como funciona</a>
         <a class="vano-nav-item {% if vano_endpoint == 'help_page' %}active{% endif %}" {% if vano_endpoint == 'help_page' %}aria-current="page"{% endif %} href="{{ url_for('help_page') }}">Ajuda</a>
         <a class="vano-nav-item {% if vano_endpoint == 'privacy_policy' %}active{% endif %}" {% if vano_endpoint == 'privacy_policy' %}aria-current="page"{% endif %} href="{{ url_for('privacy_policy') }}">Privacidade</a>
@@ -216,6 +233,10 @@
           <a href="{{ url_for('map_page') }}">Abrir mapa</a>
           {% if current_user %}<a href="{{ url_for('profile') }}">Minha conta</a><a href="{{ url_for('notifications_page') }}">Notificações</a>{% else %}<a href="{{ url_for('login') }}">Entrar</a><a href="{{ url_for('register') }}">Criar conta</a>{% endif %}
           <a href="{{ url_for('about') }}">Como funciona</a>
+          <a href="{{ url_for('sobre') }}">Sobre o VANO</a>
+          <a href="{{ url_for('beta_page') }}">Teste Android</a>
+          <a href="{{ url_for('contact_page') }}">Contato</a>
+          <a href="{{ url_for('press_page') }}">Imprensa e marca</a>
           <a href="{{ url_for('help_page') }}">Ajuda</a>
           <a href="{{ url_for('privacy_policy') }}">Privacidade</a>
           <a href="{{ url_for('terms_of_use') }}">Termos de Uso</a>
@@ -244,7 +265,7 @@
 {% block content %}{% endblock %}
 {% if current_user and not vano_admin_surface and vano_endpoint != 'onboarding' %}<nav class="mobile-dock vano-mobile-nav {% if current_user['role']=='admin' %}admin-dock{% endif %}" aria-label="Navegação mobile"><a class="{% if vano_endpoint in ['index','map_page'] %}active{% endif %}" {% if vano_endpoint in ['index','map_page'] %}aria-current="page"{% endif %} href="{{ url_for('map_page') }}"><i data-lucide="navigation"></i><span>Rotas</span></a><a class="{% if vano_endpoint == 'alerts_page' %}active{% endif %}" {% if vano_endpoint == 'alerts_page' %}aria-current="page"{% endif %} href="{{ url_for('alerts_page') }}"><i data-lucide="triangle-alert"></i><span>Alertas</span></a><a class="vano-mobile-report {% if vano_endpoint == 'report_page' %}active{% endif %}" {% if vano_endpoint == 'report_page' %}aria-current="page"{% endif %} href="{{ url_for('report_page') }}"><span class="vano-mobile-report-icon"><i data-lucide="plus"></i></span><span>Reportar</span></a><a class="{% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round"></i><span>Perfil</span></a>{% if current_user['role']=='admin' %}<a class="{% if vano_endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check"></i><span>Admin</span></a>{% endif %}</nav>{% endif %}
 
-{% if vano_endpoint != 'onboarding' %}<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('what_is_vano') }}">O que é o VANO</a> · <a href="{{ url_for('seo_waze_alternative') }}">Alternativa ao Waze</a> · <a href="{{ url_for('seo_fastest_route') }}">Rota mais rápida</a> · <a href="{{ url_for('seo_avoid_traffic') }}">Evitar trânsito</a> · <a href="{{ url_for('seo_motorcycle_gps') }}">GPS para moto</a> · <a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a></span></div></footer>{% endif %}
+{% if vano_endpoint != 'onboarding' %}<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('what_is_vano') }}">O que é o VANO</a> · <a href="{{ url_for('seo_waze_alternative') }}">Alternativa ao Waze</a> · <a href="{{ url_for('seo_fastest_route') }}">Rota mais rápida</a> · <a href="{{ url_for('seo_avoid_traffic') }}">Evitar trânsito</a> · <a href="{{ url_for('seo_motorcycle_gps') }}">GPS para moto</a> · <a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('beta_page') }}">Teste Android</a> · <a href="{{ url_for('contact_page') }}">Contato</a> · <a href="{{ url_for('press_page') }}">Imprensa</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a></span></div></footer>{% endif %}
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
 {% if vano_endpoint != 'onboarding' %}<script src="{{ url_for('static', filename='vano-runtime.js') }}?v={{ vano_build_id }}"></script>{% endif %}
 <script src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>

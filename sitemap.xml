@@ -8,10 +8,13 @@
   <url><loc>__PUBLIC_SITE_URL__/alternativa-ao-google-maps</loc><lastmod>2026-10-03</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/gps-para-moto</loc><lastmod>2026-10-03</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/benchmark-de-rotas</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
-  <url><loc>__PUBLIC_SITE_URL__/sobre</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>__PUBLIC_SITE_URL__/sobre</loc><lastmod>2026-10-10</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/help</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>__PUBLIC_SITE_URL__/politica-de-privacidade</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>__PUBLIC_SITE_URL__/politica-de-privacidade</loc><lastmod>2026-10-10</lastmod><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/termos-de-uso</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/excluir-conta</loc><changefreq>yearly</changefreq><priority>0.5</priority></url>
+  <url><loc>__PUBLIC_SITE_URL__/testar</loc><lastmod>2026-10-10</lastmod></url>
+  <url><loc>__PUBLIC_SITE_URL__/contato</loc><lastmod>2026-10-10</lastmod></url>
+  <url><loc>__PUBLIC_SITE_URL__/imprensa</loc><lastmod>2026-10-10</lastmod></url>
 </urlset>

@@ -253,7 +253,10 @@ def csrf_token():
 def validate_csrf():
     sent = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token")
     expected = session.get("csrf_token")
-    return bool(sent and expected and secrets.compare_digest(sent, expected))
+    # compare_digest rejects non-ASCII str values. Malformed external tokens
+    # must fail validation rather than turn any protected form into HTTP 500.
+    return bool(isinstance(sent, str) and isinstance(expected, str) and sent and expected
+                and secrets.compare_digest(sent.encode("utf-8"), expected.encode("utf-8")))
 
 
 @app.context_processor

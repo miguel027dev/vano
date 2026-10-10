@@ -1014,3 +1014,7 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
 @media(max-height:500px) {.vano-voice-panel {bottom:58px;max-height:calc(100dvh - 80px)}
   .vano-voice-launch{bottom:7px;}}
 @media(prefers-reduced-motion:reduce) {.vano-voice-panel,.vano-voice-launch {transition:none!important;}}
+/* Beta and press surfaces use the existing light/Black reading-page system. */
+body.vano-page-surface .vano-press-icon {border-radius:22px;object-fit:contain;}
+body.vano-page-surface .vano-beta-admin-card {margin-bottom:18px;}
+body.vano-page-surface .vano-feedback-message {white-space:pre-wrap;overflow-wrap:anywhere;}

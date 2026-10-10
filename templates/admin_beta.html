@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Feedback de teste · Admin VANO{% endblock %}
+{% block content %}
+<main class="page" id="conteudo-principal" tabindex="-1"><div class="container">
+<div class="page-head"><div><p class="eyebrow">Operação · teste do produto</p><h1>Feedback recebido</h1><p class="page-subtitle">Relatos privados, investigação e registro das melhorias. Esta fila não mede inscrição nem permanência no teste da Play; confira esses requisitos na Console.</p></div><a class="btn btn-ghost" href="{{ url_for('admin_dashboard') }}">Dashboard</a></div>
+{% for r in rows %}<article class="panel vano-beta-admin-card"><div class="panel-body">
+<p class="eyebrow">#{{ r['id'] }} · {{ r['category'] }} · {{ r['created_at'][:16] }} UTC</p>
+<p class="vano-feedback-message">{{ r['message'] }}</p>
+<p class="muted">Aparelho: {{ r['device'] or 'Não informado' }} · Versão: {{ r['app_version'] or 'Não informada' }}</p>
+{% if r['email'] %}<p class="muted">Contato: {{ r['email'] }}</p>{% endif %}
+<form class="form-grid" method="post" action="{{ url_for('admin_beta_update',feedback_id=r['id']) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="field"><label for="status-{{ r['id'] }}">Status</label><select class="select" name="status" id="status-{{ r['id'] }}">{% for value,label in [('pending','Pendente'),('investigating','Em investigação'),('resolved','Concluído')] %}<option value="{{ value }}" {% if r['status']==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+<div class="field full"><label for="resolution-{{ r['id'] }}">Correção, conclusão e versão/commit</label><textarea class="textarea" id="resolution-{{ r['id'] }}" name="resolution" maxlength="1200">{{ r['resolution'] }}</textarea></div>
+<div class="field"><button class="btn btn-primary" type="submit">Salvar investigação</button></div></form>
+</div></article>{% else %}<div class="empty">Ainda não há feedback recebido. Convide os testadores reais a enviar seus relatos.</div>{% endfor %}
+</div></main>{% endblock %}

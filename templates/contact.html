@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block title %}Contato e suporte | VANO MAPS{% endblock %}
+{% block og_title %}Contato e suporte | VANO MAPS{% endblock %}
+{% block meta_description %}Fale com o VANO MAPS sobre suporte, teste Android, privacidade, parcerias e imprensa. Canal oficial de atendimento do projeto.{% endblock %}
+{% block content %}<main class="page" id="conteudo-principal" tabindex="-1"><div class="legal-shell">
+<nav class="vano-public-breadcrumb" aria-label="Trilha de navegação"><a href="{{ url_for('index') }}">Início</a><span aria-hidden="true">/</span><span aria-current="page">Contato</span></nav>
+
+<section class="legal-hero"><p class="eyebrow">Fale com o VANO</p><h1>Um canal direto com quem está construindo.</h1><p>Dúvidas sobre o produto, problemas na navegação ou uma ideia para colaborar? Entre em contato pelo canal oficial.</p><div class="legal-actions"><a class="btn btn-primary" href="mailto:sac.vano.maps@gmail.com">sac.vano.maps@gmail.com</a><a class="btn btn-ghost" href="{{ url_for('beta_page') }}#feedback">Relatar um problema</a></div></section>
+<section class="section"><div class="public-grid"><article class="public-info-card"><h2>Suporte</h2><p>Conte qual recurso tentou usar e o que aconteceu. Inclua sistema e versão do app quando possível. Nunca envie sua senha.</p><a class="btn btn-ghost" href="{{ url_for('help_page') }}">Central de ajuda</a></article><article class="public-info-card"><h2>Teste Android</h2><p>Para solicitar acesso, informe ao suporte o e-mail da sua conta Google Play. O Android está em teste fechado; o acesso público à produção ainda depende da avaliação do Google.</p><a class="btn btn-ghost" href="{{ url_for('beta_page') }}">Como participar</a></article><article class="public-info-card"><h2>Privacidade</h2><p>Use o formulário de direitos ou envie seu pedido para {{ privacy_email }}. Pedidos de dados passam por verificação de identidade.</p><a class="btn btn-ghost" href="{{ url_for('privacy_policy') }}#direitos">Seus direitos</a></article></div></section>
+<section class="section"><div class="public-highlight"><h2>Parcerias e imprensa</h2><p>Para uma conversa sobre mobilidade, tecnologia ou divulgação, envie sua proposta para o mesmo e-mail com o assunto “Parceria VANO” ou “Imprensa VANO”.</p><div class="legal-actions"><a class="btn btn-ghost" href="{{ url_for('press_page') }}">Marca e apresentação</a><a class="btn btn-ghost" href="{{ url_for('sobre') }}">Conhecer o projeto</a></div></div></section>
+
+</div></main>{% endblock %}

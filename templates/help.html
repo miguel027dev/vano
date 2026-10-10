@@ -54,7 +54,7 @@
     {% for icon,title,items in groups %}<section class="faq-group" data-faq-group><header class="faq-group-head"><i data-lucide="{{ icon }}" width="17"></i><b>{{ title }}</b></header><div class="faq">{% for q,a in items %}<details data-faq><summary>{{ q }}</summary><p>{{ a }}</p></details>{% endfor %}</div></section>{% endfor %}
   </div>
   <div class="faq-empty" id="faqEmpty" role="status" aria-live="polite">Nenhuma resposta encontrada. Tente uma palavra mais curta.</div>
-  <div class="help-actions"><a href="{{ url_for('privacy_policy') }}"><b>Privacidade</b><span>Dados, localização, IA e direitos.</span></a><a href="{{ url_for('terms_of_use') }}"><b>Termos de Uso</b><span>Regras e limites do serviço.</span></a><a href="{{ url_for('account_delete_page') }}"><b>Excluir conta</b><span>Veja o que é removido e como excluir.</span></a></div>
+  <div class="help-actions"><a href="{{ url_for('beta_page') }}#feedback"><b>Enviar feedback</b><span>Relate problemas ou sugestões.</span></a><a href="{{ url_for('contact_page') }}"><b>Contato</b><span>Fale com a equipe do VANO.</span></a><a href="{{ url_for('privacy_policy') }}"><b>Privacidade</b><span>Dados, localização, IA e direitos.</span></a><a href="{{ url_for('terms_of_use') }}"><b>Termos de Uso</b><span>Regras e limites do serviço.</span></a><a href="{{ url_for('account_delete_page') }}"><b>Excluir conta</b><span>Veja o que é removido e como excluir.</span></a></div>
 </div></main>
 <script>
 (()=>{

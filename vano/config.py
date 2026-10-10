@@ -47,6 +47,7 @@ SEO_INDEXABLE_ENDPOINTS = {
     "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "seo_fastest_route",
     "seo_google_maps_alternative", "seo_motorcycle_gps", "route_benchmark_page",
     "account_delete_page",
+    "beta_page", "contact_page", "press_page",
 }
 SEO_CANONICAL_PATHS = {
     "index": "/",
@@ -63,6 +64,9 @@ SEO_CANONICAL_PATHS = {
     "seo_motorcycle_gps": "/gps-para-moto",
     "route_benchmark_page": "/benchmark-de-rotas",
     "account_delete_page": "/excluir-conta",
+    "beta_page": "/testar",
+    "contact_page": "/contato",
+    "press_page": "/imprensa",
 }
 
 def _load_session_secret():

@@ -20,6 +20,7 @@
     </header>
 
     <nav class="admin350-nav admin350-reveal" aria-label="Áreas administrativas">
+      <a href="{{ url_for('admin_beta_feedback') }}"><span><i data-lucide="message-square" width="18"></i></span><div><b>Feedback de teste</b><small>Relatos e correções</small></div><i data-lucide="arrow-up-right" width="14"></i></a>
       <a href="{{ url_for('admin_users') }}"><span><i data-lucide="users" width="18"></i></span><div><b>Usuários</b><small>{{ stats['users'] }} contas</small></div><i data-lucide="arrow-up-right" width="14"></i></a>
       <a href="{{ url_for('admin_reports') }}"><span><i data-lucide="triangle-alert" width="18"></i></span><div><b>Alertas</b><small>{{ stats['active_reports'] }} ativos</small></div><i data-lucide="arrow-up-right" width="14"></i></a>
       <a href="{{ url_for('admin_risk_zones') }}"><span><i data-lucide="map-pinned" width="18"></i></span><div><b>Zonas</b><small>Risco e bloqueios</small></div><i data-lucide="arrow-up-right" width="14"></i></a>

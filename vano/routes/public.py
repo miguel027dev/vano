@@ -12,7 +12,7 @@ def legal_identity_context():
     return {
         "legal_name": str(os.environ.get("VANO_LEGAL_NAME") or "VANO MAPS").strip()[:180],
         "legal_cnpj": str(os.environ.get("VANO_LEGAL_CNPJ") or "").strip()[:32],
-        "privacy_email": str(os.environ.get("VANO_PRIVACY_EMAIL") or os.environ.get("VANO_PRIVACY_EMAIL") or "").strip()[:220],
+        "privacy_email": str(os.environ.get("VANO_PRIVACY_EMAIL") or "sac.vano.maps@gmail.com").strip()[:220],
         "activity_log_retention_days": ACTIVITY_LOG_RETENTION_DAYS,
     }
 
@@ -29,8 +29,93 @@ def about():
 
 @app.route("/sobre")
 def sobre():
-    # Institutional route intentionally kept out of the main navigation for now.
     return render_template("sobre.html", **legal_identity_context())
+
+
+@app.route("/contato")
+def contact_page():
+    return render_template("contact.html", **legal_identity_context())
+
+
+@app.route("/imprensa")
+def press_page():
+    return render_template("press.html")
+
+
+@app.route("/testar", methods=["GET", "POST"])
+def beta_page():
+    """Real beta feedback, private intake, no fabricated tester participation."""
+    categories = {"bug": "Algo não funcionou", "experience": "Experiência de uso", "suggestion": "Sugestão"}
+    if request.method == "GET":
+        session.setdefault("beta_submission_id", secrets.token_urlsafe(32))
+        return render_template("beta.html", categories=categories)
+    if not validate_csrf():
+        abort(400)
+    submission_id = str(request.form.get("submission_id") or "")
+    expected = session.get("beta_submission_id")
+    if not expected or not re.fullmatch(r"[A-Za-z0-9_-]{43}", submission_id) or not secrets.compare_digest(submission_id, expected):
+        flash("Este formulário já foi enviado ou expirou. Abra um novo formulário.", "warning")
+        return redirect(url_for("beta_page") + "#feedback")
+    if not rate_limit("beta-feedback", 5, 3600):
+        abort(429)
+    category = str(request.form.get("category") or "")
+    message = str(request.form.get("message") or "").strip()
+    email = str(request.form.get("email") or "").strip().lower()
+    device = str(request.form.get("device") or "").strip()
+    version = str(request.form.get("version") or "").strip()
+    if (category not in categories or not 20 <= len(message) <= 2000
+            or len(email) > 180 or (email and not EMAIL_RE.fullmatch(email))
+            or len(device) > 120 or len(version) > 40):
+        flash("Confira a categoria, o relato (20 a 2.000 caracteres) e os dados opcionais.", "danger")
+        return redirect(url_for("beta_page") + "#feedback")
+    db = None
+    try:
+        db = get_db()
+        # Unique submission identity protects retries and concurrent double-clicks.
+        db.execute("""INSERT INTO beta_feedback(submission_id,category,message,email,device,app_version,created_at,updated_at)
+                      VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(submission_id) DO NOTHING""",
+                   (submission_id, category, message, email, device, version, utcnow_iso(), utcnow_iso()))
+        db.commit()
+    except Exception:
+        if db is not None:
+            db.rollback()
+        app.logger.error("Beta feedback persistence failed")
+        flash("Não foi possível salvar seu relato. Tente novamente ou use o e-mail de suporte.", "danger")
+        return redirect(url_for("beta_page") + "#feedback")
+    session.pop("beta_submission_id", None)
+    flash("Relato recebido. Obrigado por ajudar a melhorar o VANO!", "success")
+    return redirect(url_for("beta_page") + "#feedback")
+
+
+@app.route("/admin/beta")
+@admin_required
+def admin_beta_feedback():
+    rows = get_db().execute("SELECT * FROM beta_feedback ORDER BY created_at DESC LIMIT 300").fetchall()
+    return render_template("admin_beta.html", rows=rows)
+
+
+@app.route("/admin/beta/<int:feedback_id>", methods=["POST"])
+@admin_required
+def admin_beta_update(feedback_id):
+    if not validate_csrf():
+        abort(400)
+    if not rate_limit("admin-beta-update", 60, 60):
+        abort(429)
+    status = str(request.form.get("status") or "")
+    resolution = str(request.form.get("resolution") or "").strip()
+    if status not in {"pending", "investigating", "resolved"} or len(resolution) > 1200:
+        abort(400)
+    if status == "resolved" and not resolution:
+        flash("Descreva a correção ou conclusão para manter o histórico verificável.", "warning")
+        return redirect(url_for("admin_beta_feedback"))
+    db = get_db()
+    if not db.execute("SELECT id FROM beta_feedback WHERE id=?", (feedback_id,)).fetchone():
+        abort(404)
+    db.execute("UPDATE beta_feedback SET status=?,resolution=?,updated_at=? WHERE id=?", (status, resolution, utcnow_iso(), feedback_id))
+    db.commit()
+    audit("beta_feedback_updated", {"id": feedback_id, "status": status})
+    flash("Relato atualizado.", "success")
+    return redirect(url_for("admin_beta_feedback"))
 
 
 def _serve_root_seo_file(filename, mimetype):

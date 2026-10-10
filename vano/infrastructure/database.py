@@ -269,6 +269,21 @@ def init_db():
                 updated_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS beta_feedback (
+                id SERIAL PRIMARY KEY,
+                submission_id TEXT NOT NULL UNIQUE,
+                category TEXT NOT NULL CHECK(category IN ('bug','experience','suggestion')),
+                message TEXT NOT NULL,
+                email TEXT NOT NULL DEFAULT '',
+                device TEXT NOT NULL DEFAULT '',
+                app_version TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','investigating','resolved')),
+                resolution TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_beta_feedback_created ON beta_feedback(created_at DESC);
+
             CREATE TABLE IF NOT EXISTS route_history (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
