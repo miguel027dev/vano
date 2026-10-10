@@ -8,7 +8,8 @@
 <main class="page" id="conteudo-principal" tabindex="-1"><div class="container faq-shell">
   <nav class="vano-public-breadcrumb" aria-label="Trilha de navegação"><a href="{{ url_for('index') }}">Início</a><span class="vano-breadcrumb-sep" aria-hidden="true">/</span><span aria-current="page">Central de ajuda</span></nav>
   <header class="faq-hero"><div class="eyebrow">Central de ajuda</div><h1>Resolva rápido. Volte para a rota.</h1><p>Pesquise dúvidas sobre GPS, navegação, modo seguro, Spark, conta, privacidade, offline e recursos de emergência.</p></header>
-  <div class="faq-search-wrap"><i data-lucide="search" width="17"></i><input type="search" class="faq-search" id="faqSearch" placeholder="Pesquisar: GPS, rota, privacidade, offline…" autocomplete="off" aria-label="Pesquisar na central de ajuda"></div>
+  <div class="faq-search-wrap"><i data-lucide="search" width="17"></i><input type="search" class="faq-search" id="faqSearch" placeholder="Pesquisar: GPS, rota, privacidade, offline…" autocomplete="off" aria-label="Pesquisar na central de ajuda" aria-controls="faqList" aria-describedby="faqSearchStatus"></div>
+  <p id="faqSearchStatus" class="faq-search-status" role="status" aria-live="polite" aria-atomic="true"></p>
 
   {% set groups = [
     ('navigation','Navegação e GPS',[
@@ -55,5 +56,35 @@
   <div class="faq-empty" id="faqEmpty" role="status" aria-live="polite">Nenhuma resposta encontrada. Tente uma palavra mais curta.</div>
   <div class="help-actions"><a href="{{ url_for('privacy_policy') }}"><b>Privacidade</b><span>Dados, localização, IA e direitos.</span></a><a href="{{ url_for('terms_of_use') }}"><b>Termos de Uso</b><span>Regras e limites do serviço.</span></a><a href="{{ url_for('account_delete_page') }}"><b>Excluir conta</b><span>Veja o que é removido e como excluir.</span></a></div>
 </div></main>
-<script>(()=>{const input=document.getElementById('faqSearch'),items=[...document.querySelectorAll('[data-faq]')],groups=[...document.querySelectorAll('[data-faq-group]')],empty=document.getElementById('faqEmpty');if(!input)return;const norm=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();input.addEventListener('input',()=>{const q=norm(input.value.trim());let total=0;items.forEach(x=>{const show=!q||norm(x.textContent).includes(q);x.hidden=!show;if(show)total++});groups.forEach(g=>{g.hidden=![...g.querySelectorAll('[data-faq]')].some(x=>!x.hidden)});empty.style.display=total?'none':'block'})})();</script>
+<script>
+(()=>{
+  const input=document.getElementById('faqSearch');
+  const items=[...document.querySelectorAll('[data-faq]')];
+  const groups=[...document.querySelectorAll('[data-faq-group]')];
+  const empty=document.getElementById('faqEmpty');
+  const status=document.getElementById('faqSearchStatus');
+  if(!input||!empty||!status)return;
+  const normalize=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase();
+  const update=()=>{
+    const q=normalize(input.value.trim());
+    let total=0;
+    for(const detail of items){
+      const matches=!q||normalize(detail.textContent).includes(q);
+      detail.hidden=!matches;
+      if(matches)total++;
+    }
+    for(const group of groups){
+      group.hidden=![...group.querySelectorAll('[data-faq]')].some(detail=>!detail.hidden);
+    }
+    empty.style.display=total?'none':'block';
+    status.textContent=q ? (total ? `${total} ${total===1?'resposta encontrada':'respostas encontradas'}.` : 'Nenhuma resposta encontrada.') : '';
+  };
+  input.addEventListener('input',update);
+  input.addEventListener('search',update);
+  input.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&input.value){input.value='';update();event.stopPropagation();}
+  });
+  update();
+})();
+</script>
 {% endblock %}
