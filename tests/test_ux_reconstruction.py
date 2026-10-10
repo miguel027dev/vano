@@ -32,7 +32,7 @@ def test_no_empty_coordinates_can_be_used_as_saved_places():
     source = (ROOT / "static/vano-routine.js").read_text(encoding="utf-8")
     assert "const validCoordinate=" in source
     assert "const rawLat=r?.dataset.lat,rawLon=r?.dataset.lon" in source
-    assert "if(p.label&&!validCoordinate(p.lat,p.lon))" in source
+    assert "if(p.label&&(!validCoordinate(p.lat,p.lon)))" in source
     assert "invalidateAddressSearch()" in source
     assert "revision!==searchRevision" in source
 
