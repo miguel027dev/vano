@@ -933,6 +933,13 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
   body.vano-page-surface .faq summary:focus-visible {
     outline:3px solid var(--ui-focus)!important;outline-offset:-3px!important;
   }
+  body.vano-page-surface :is(.faq-group[hidden],.faq details[hidden]) {
+    display:none!important;
+  }
+  body.vano-page-surface .faq-search-status {
+    min-height:20px!important;margin:-16px 0 18px!important;
+    font-size:13px!important;line-height:1.5!important;color:var(--ui-muted)!important;
+  }
   body.vano-page-surface footer .footer-row {min-width:0!important;}
   body.vano-page-surface footer .footer-row>span {
     min-width:0!important;overflow-wrap:anywhere!important;
