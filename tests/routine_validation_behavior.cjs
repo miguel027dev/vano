@@ -33,12 +33,12 @@ vm.runInContext(between('  function clearRowCoords(','  function bindRows('),c);
 vm.runInContext(between('  function placeFromRow(','  function useRow('),c);
 vm.runInContext(between('  function collect(','  async function save('),c);
 
-assert.equal(c.validCoordinate(null,null),false);
-assert.equal(c.validCoordinate('',''),false);
-assert.equal(c.validCoordinate('0','0'),false);
-assert.equal(c.validCoordinate(-23.55,-46.63),true);
-assert.equal(c.validCoordinate(92,45),false);
-assert.equal(c.validCoordinate(-23.55,202),false);
+assert.equal(vm.runInContext('validCoordinate(null,null)',c),false);
+assert.equal(vm.runInContext("validCoordinate('','')",c),false);
+assert.equal(vm.runInContext("validCoordinate('0','0')",c),false);
+assert.equal(vm.runInContext('validCoordinate(-23.55,-46.63)',c),true);
+assert.equal(vm.runInContext('validCoordinate(92,45)',c),false);
+assert.equal(vm.runInContext('validCoordinate(-23.55,202)',c),false);
 const data=c.normalize([{weekday:0,label:'Rua sem coordenada',lat:null,lon:null},{weekday:1,label:'Rua válida',lat:-23.55,lon:-46.63}]);
 assert.equal(data[0].lat,null,'Unselected destination must not become latitude 0');
 assert.equal(data[0].lon,null);
