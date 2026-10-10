@@ -194,7 +194,7 @@
 {% if not vano_map_surface %}<a class="vano-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>{% endif %}
 {% if vano_endpoint != 'onboarding' %}
 <header class="topbar">
-  <nav class="nav">
+  <nav class="nav" aria-label="Navegação principal">
     <a class="brand vano-nav-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS">{% if vano_map_surface %}<span class="vano-adaptive-brand vano-nav-brand-images"><img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span>{% else %}<span class="vano-nav-brand-lite"><img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}?v={{ vano_build_id }}" width="34" height="34" decoding="async" alt=""><span><b>VANO</b><small>MAPS</small></span></span>{% endif %}</a>
     <div class="navlinks">
       {% if current_user %}
@@ -204,12 +204,14 @@
         <a class="vano-nav-item {% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round" width="16"></i><span>Perfil</span></a>
         {% if current_user['role']=='admin' %}<a class="vano-nav-item {% if vano_endpoint.startswith('admin_') %}active{% endif %}" {% if vano_endpoint.startswith('admin_') %}aria-current="page"{% endif %} href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check" width="16"></i><span>Admin</span></a>{% endif %}
       {% else %}
-        <a href="{{ url_for('about') }}">Como funciona</a><a href="{{ url_for('help_page') }}">Recursos</a><a href="{{ url_for('help_page') }}">Ajuda</a>
+        <a class="vano-nav-item {% if vano_endpoint == 'about' %}active{% endif %}" {% if vano_endpoint == 'about' %}aria-current="page"{% endif %} href="{{ url_for('about') }}">Como funciona</a>
+        <a class="vano-nav-item {% if vano_endpoint == 'help_page' %}active{% endif %}" {% if vano_endpoint == 'help_page' %}aria-current="page"{% endif %} href="{{ url_for('help_page') }}">Ajuda</a>
+        <a class="vano-nav-item {% if vano_endpoint == 'privacy_policy' %}active{% endif %}" {% if vano_endpoint == 'privacy_policy' %}aria-current="page"{% endif %} href="{{ url_for('privacy_policy') }}">Privacidade</a>
       {% endif %}
     </div>
     <div class="nav-actions">
       {% if not vano_map_surface %}<details class="vano-support-menu">
-        <summary>Menu</summary>
+        <summary aria-label="Abrir menu de navegação">Menu</summary>
         <nav aria-label="Páginas do VANO">
           <a href="{{ url_for('map_page') }}">Abrir mapa</a>
           {% if current_user %}<a href="{{ url_for('profile') }}">Minha conta</a><a href="{{ url_for('notifications_page') }}">Notificações</a>{% else %}<a href="{{ url_for('login') }}">Entrar</a><a href="{{ url_for('register') }}">Criar conta</a>{% endif %}
