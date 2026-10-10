@@ -4,6 +4,7 @@ Static assertions complement browser checks; they do not certify pixel layout.
 """
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -90,7 +91,9 @@ def test_all_public_routes_render_with_metadata_and_without_map_css():
         assert response.status_code == 200, (path, response.status_code)
         html = response.get_data(as_text=True)
         assert '<meta name="description"' in html, path
-        assert '<link rel="canonical"' in html, path
+        canonical = re.search(r'<link rel="canonical" href="([^"]+)"', html)
+        assert canonical, path
+        assert urlparse(canonical.group(1)).path == path, (path, canonical.group(1))
         assert 'property="og:title"' in html, path
         assert 'name="twitter:card"' in html, path
         assert 'vano-foundation.css' in html, path
