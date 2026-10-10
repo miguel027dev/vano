@@ -55,7 +55,7 @@ let lastCameraEaseCadence=650;
 let destinationConfirmed=false,parkingController=null,parkingCache=new Map(),activeParkingItems=[];
 let guestTrialId=''; const makeGuestTrialId=()=>`g_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,10)}`;
 const ACTIVE_TRIP_KEY='vano.activeTrip.v33',ACTIVE_TRIP_MAX_AGE=12*60*60*1000;let pendingResumeTrip=null,lastTripPersistAt=0;
-let currentMapMood=(MAP_STYLE_MODE==='auto'?(VANO_BLACK_THEME?'night':'day'):MAP_STYLE_MODE),currentStyleUri=STYLE,styleSwitching=false,weatherController=null,lastWeatherFetchAt=0,lastWeatherPos=null,moodTimer=null,signalPulseTimer=null,signalPulseState=false;
+let currentMapMood=VANO_BLACK_THEME?'night':'day',currentStyleUri=STYLE,styleSwitching=false,weatherController=null,lastWeatherFetchAt=0,lastWeatherPos=null,moodTimer=null,signalPulseTimer=null,signalPulseState=false;
 
 const VOICE_PREF_KEY='vano-nav-voice-v43';
 let selectedVoiceName='';
@@ -492,16 +492,9 @@ function restoreRuntimeMapState(){
   }catch(e){console.debug('[VANO:restore-style]',e)}
 }
 function moodFromConditions(weather){
-  if(MAP_STYLE_MODE!=='auto')return ['day','afternoon','night','rain'].includes(MAP_STYLE_MODE)?MAP_STYLE_MODE:'day';
-  const h=new Date().getHours();
-  const manualMode=(window.VANOTheme?.getMode?.()||document.documentElement.dataset.vanoThemeMode||'light');
-  const manualBlack=manualMode==='black';
-  const reactiveNight=REACTIVE_BLACK_ALLOWED && (h>=19||h<7);
-  if(manualBlack || reactiveNight || document.documentElement.dataset.vanoTheme==='black' && manualMode!=='light')return 'night';
-  if(weather?.rainy)return 'rain';
-  if(weather?.is_day===0||h>=18||h<6)return 'night';
-  if(h>=12&&h<18)return 'afternoon';
-  return 'day';
+  // A saved light/Black preference wins over clock, weather and stale map overrides.
+  const mode=window.VANOTheme?.get?.()||document.documentElement.dataset.vanoTheme||'light';
+  return mode==='black'?'night':'day';
 }
 function moodLabel(mood){return mood==='rain'?'CHUVA':mood==='night'?'NOITE':mood==='afternoon'?'TARDE':'DIA'}
 function updateWeatherPill(weather){const v=$('weatherPillValue'),pill=$('weatherPill');if(!v||!pill)return;const temp=weather&&Number.isFinite(+weather.temperature_c)?Math.round(+weather.temperature_c):null;v.textContent=temp!=null?`${temp}°`:'--°';pill.title=temp!=null?`${temp}°C agora`:'Clima indisponível'}

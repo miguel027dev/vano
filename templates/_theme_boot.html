@@ -1,0 +1,17 @@
+{# Resolve the saved theme before the first paint, including standalone views. #}
+<script>
+(() => {
+  const keys = ['vano.theme.mode.v200','vano.theme.mode.v60','vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55','vano.theme.mode'];
+  let mode = 'light';
+  try {
+    for (const key of keys) {
+      const saved = localStorage.getItem(key);
+      if (saved === 'black' || saved === 'light') { mode = saved; break; }
+    }
+  } catch (_) {}
+  const root = document.documentElement;
+  root.dataset.vanoTheme = root.dataset.vanoThemeMode = mode;
+  root.style.colorScheme = mode === 'black' ? 'dark' : 'light';
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'black' ? '#0A0A0B' : '#FFF8F2');
+})();
+</script>

@@ -109,7 +109,7 @@
   </div>
   <div class="nav-voice-popover" id="navVoicePopover"><small>VOZ DAS INSTRUÇÕES</small><select id="navVoiceSelect" aria-label="Selecionar voz"><option value="">Automática</option><option value="vano">Vano Maps</option></select><button type="button" id="voicePreviewBtn">Ouvir exemplo</button></div>
   <div class="map-tools" aria-label="Controles rápidos do mapa">
-    <button id="mapThemeBtn" class="map-btn map-theme-btn" type="button" data-vano-theme-toggle aria-label="Ativar modo Black" aria-pressed="false" title="Usar mapa Black"><span class="map-theme-day" aria-hidden="true"><i data-lucide="moon-star" width="18"></i></span><span class="map-theme-night" aria-hidden="true"><i data-lucide="sun" width="18"></i></span></button>
+    <button id="mapThemeBtn" class="map-btn map-theme-btn vano-theme-control vano-theme-control--icon" type="button" data-vano-theme-toggle aria-label="Tema escuro" aria-pressed="false" title="Usar mapa Black">{% include '_theme_icon.html' %}</button>
   </div>
 
 
@@ -179,10 +179,10 @@
           </a>
           {% endif %}
           <div class="v351-account-actions" aria-label="Tema e sessão">
-            <button class="drawer-link drawer-theme-toggle" type="button" data-vano-theme-toggle aria-label="Alternar tema do mapa">
-              <i data-lucide="moon-star" width="17"></i>
+            <button class="drawer-link drawer-theme-toggle vano-theme-control vano-theme-control--row" type="button" data-vano-theme-toggle aria-label="Tema escuro" aria-pressed="false">
+              {% include '_theme_icon.html' %}
               <span class="v258-link-copy"><b>Tema do mapa</b><small>Alternar entre claro e Black</small></span>
-              <i data-lucide="sun" width="14"></i>
+              <i data-lucide="chevron-right" width="14" aria-hidden="true"></i>
             </button>
             <form action="{{ url_for('logout') }}" method="post">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -210,7 +210,7 @@
           <span><i data-lucide="bookmark" width="15"></i>Destinos salvos</span>
           <span><i data-lucide="cloud-upload" width="15"></i>Preferências sincronizadas</span>
         </div>
-        <button class="guest-theme-toggle" type="button" data-vano-theme-toggle><i data-lucide="moon-star" width="15"></i><span>Alternar tema do mapa</span></button>
+        <button class="guest-theme-toggle vano-theme-control vano-theme-control--row" type="button" data-vano-theme-toggle aria-label="Tema escuro" aria-pressed="false">{% include '_theme_icon.html' %}<span>Alternar tema do mapa</span></button>
         <div class="guest-drawer-actions">
           <a class="guest-drawer-primary" href="{{ url_for('register') }}">Criar conta</a>
           <a class="guest-drawer-secondary" href="{{ url_for('login', next=url_for('index')) }}">Já tenho conta</a>

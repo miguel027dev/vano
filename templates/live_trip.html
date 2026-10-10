@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="{{ active_locale }}">
 <head>
-  <style>@layer vanoFoundation, vanoLegacy;</style>
+  <style>@layer vanoTheme, vanoFoundation, vanoLegacy;</style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
@@ -9,7 +9,7 @@
   {% if active_locale != 'pt-BR' %}<script defer src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>{% endif %}
   
   <meta name="theme-color" content="#F7F8FC">
-  <script>(function(){try{var k='vano.theme.mode.v60',legacy=localStorage.getItem('vano.theme.mode.v57')||localStorage.getItem('vano.theme.mode.v56')||localStorage.getItem('vano.theme.v55'),m=localStorage.getItem(k)||((legacy==='black')?'black':'light');document.documentElement.dataset.vanoTheme=m==='black'?'black':'light';document.documentElement.dataset.vanoThemeMode=m==='black'?'black':'light'}catch(_){document.documentElement.dataset.vanoTheme='light';document.documentElement.dataset.vanoThemeMode='light'}})();</script>
+  {% include '_theme_boot.html' %}
   <title>Trajeto ao vivo · VANO MAPS</title>
   {% if mapbox_ready %}<link href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css" rel="stylesheet"><script src="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js"></script>{% endif %}
   

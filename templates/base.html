@@ -1,32 +1,13 @@
 <!doctype html>
 <html lang="{{ active_locale }}">
 <head>
-  <style>@layer vanoFoundation, vanoLegacy;</style>
+  <style>@layer vanoTheme, vanoFoundation, vanoLegacy;</style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <script>window.VANO_I18N_BOOT={locale:{{ active_locale|tojson }},source:{{ locale_source|tojson }},country:{{ detected_country|tojson }}};</script>
   {% if active_locale != 'pt-BR' %}<script defer src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>{% endif %}
   <meta name="theme-color" content="#F4F5F8">
-  <script>(function(){
-    var MODE_KEY='vano.theme.mode.v60';
-    var LEGACY_KEYS=['vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55'];
-    var mode='light';
-    try{
-      var saved=localStorage.getItem(MODE_KEY);
-      if(saved!=='black'&&saved!=='light'){
-        for(var i=0;i<LEGACY_KEYS.length;i++){
-          var legacy=localStorage.getItem(LEGACY_KEYS[i]);
-          if(legacy){saved=legacy;break;}
-        }
-      }
-      mode=(saved==='black')?'black':'light';
-    }catch(_){}
-    document.documentElement.dataset.vanoThemeMode=mode;
-    document.documentElement.dataset.vanoTheme=mode;
-    document.documentElement.style.colorScheme=mode==='black'?'dark':'light';
-    var meta=document.querySelector('meta[name="theme-color"]');
-    if(meta)meta.setAttribute('content',mode==='black'?'#090B0E':'#F4F5F8');
-  })();</script>
+  {% include '_theme_boot.html' %}
   <meta name="description" content="{% block meta_description %}VANO MAPS — GPS, mapas, rotas rápidas, trânsito em tempo real e navegação inteligente.{% endblock %}">
   <meta name="robots" content="{% if seo_indexable %}index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1{% else %}noindex,nofollow{% endif %}">
   {% if seo_indexable %}<link rel="canonical" href="{{ seo_canonical_url }}">{% endif %}
@@ -243,7 +224,7 @@
           <a href="{{ url_for('account_delete_page') }}">Excluir conta</a>
         </nav>
       </details>{% endif %}
-      <button id="globalThemeToggle" class="vano-theme-toggle" type="button" data-vano-theme-toggle aria-label="Ativar modo Black" title="Alternar tema"><span class="vano-theme-sun"><i data-lucide="sun" width="17"></i></span><span class="vano-theme-moon"><i data-lucide="moon-star" width="17"></i></span></button>
+      <button id="globalThemeToggle" class="vano-theme-toggle vano-theme-control vano-theme-control--icon" type="button" data-vano-theme-toggle aria-label="Tema escuro" title="Alternar tema" aria-pressed="false">{% include '_theme_icon.html' %}</button>
       {% if current_user %}
         <a class="vano-nav-account" href="{{ url_for('profile') }}" aria-label="Abrir meu perfil">
           {% if current_user['avatar_url'] %}<img class="vano-nav-avatar" src="{{ current_user['avatar_url'] }}" alt="">{% else %}<span class="vano-nav-avatar vano-nav-avatar-fallback">{{ current_user['name'][:1]|upper }}</span>{% endif %}

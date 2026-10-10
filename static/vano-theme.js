@@ -7,18 +7,19 @@
   const LEGACY_KEYS = ['vano.theme.mode.v60','vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55','vano.theme.mode'];
   const root = document.documentElement;
   const meta = document.querySelector('meta[name="theme-color"]');
+  let sessionMode = root.dataset.vanoTheme === 'black' ? 'black' : 'light';
 
   const normalize = (value) => String(value || '').toLowerCase() === 'black' ? 'black' : 'light';
 
   function storedMode() {
     try {
       const saved = localStorage.getItem(MODE_KEY);
-      if (saved) return normalize(saved);
+      if (saved === 'black' || saved === 'light') return saved;
       for (const key of LEGACY_KEYS) {
         const legacy = localStorage.getItem(key);
-        if (legacy) return normalize(legacy);
+        if (legacy === 'black' || legacy === 'light') return legacy;
       }
-    } catch (_) {}
+    } catch (_) { return sessionMode; }
     return 'light';
   }
 
@@ -37,8 +38,8 @@
       const black = mode === 'black';
       button.classList.toggle('is-black', black);
       button.setAttribute('aria-pressed', black ? 'true' : 'false');
-      button.setAttribute('aria-label', black ? 'Ativar modo White' : 'Ativar modo Black');
-      button.setAttribute('title', black ? 'Usar mapa claro' : 'Usar mapa Black');
+      button.setAttribute('aria-label', 'Tema escuro');
+      button.setAttribute('title', black ? 'Usar tema claro' : 'Usar tema Black');
     });
 
     document.querySelectorAll('[data-theme-state]').forEach((node) => {
@@ -51,6 +52,7 @@
 
   function apply(mode, { persist = false, reason = 'manual' } = {}) {
     mode = normalize(mode);
+    sessionMode = mode;
     const previous = root.dataset.vanoTheme;
     root.dataset.vanoThemeMode = mode;
     root.dataset.vanoTheme = mode;
@@ -81,7 +83,7 @@
   function setMode(mode) { return apply(mode, { persist: true, reason: 'manual' }); }
   function refresh(reason = 'refresh') { return apply(storedMode(), { persist: false, reason }); }
 
-  window.VANOTheme = window.VANOTheme = {
+  window.VANOTheme = {
     key: MODE_KEY,
     getMode: storedMode,
     get: () => root.dataset.vanoTheme || storedMode(),
@@ -108,7 +110,8 @@
   });
 
   document.addEventListener('DOMContentLoaded', () => refresh('dom-ready'));
+  window.addEventListener('pageshow', () => refresh('pageshow'));
   window.addEventListener('storage', (event) => {
-    if (event.key === MODE_KEY || LEGACY_KEYS.includes(event.key)) refresh('storage');
+    if (event.key === null || event.key === MODE_KEY || LEGACY_KEYS.includes(event.key)) refresh('storage');
   });
 })();

@@ -1,13 +1,11 @@
 <!doctype html>
 <html lang="{{ active_locale }}" data-vano-auth="startup">
 <head>
-  <style>@layer vanoFoundation, vanoLegacy;</style>
+  <style>@layer vanoTheme, vanoFoundation, vanoLegacy;</style>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#F4F5F8">
-  <script>
-  (()=>{try{const keys=['vano.theme.mode.v200','vano.theme.mode.v60','vano.theme.mode.v57','vano.theme.mode.v56','vano.theme.v55','vano.theme.mode'];let mode='light';for(const key of keys){const value=localStorage.getItem(key);if(value){mode=String(value).toLowerCase()==='black'?'black':'light';break}}document.documentElement.dataset.vanoTheme=mode;document.documentElement.dataset.vanoThemeMode=mode;document.documentElement.style.colorScheme=mode==='black'?'dark':'light'}catch(_){}})();
-  </script>
+  {% include '_theme_boot.html' %}
   <meta name="robots" content="noindex,follow">
   <title>Entrar · VANO MAPS</title>
   <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-64.png') }}?v={{ vano_build_id }}">
@@ -38,10 +36,7 @@
            alt="VANO MAPS">
     </a>
 
-    <button class="startup-theme" type="button" data-vano-theme-toggle aria-label="Alternar tema" title="Alternar tema">
-      <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
-      <svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.2 15.2A8.5 8.5 0 0 1 8.8 3.8 8.5 8.5 0 1 0 20.2 15.2Z"/></svg>
-    </button>
+    <button class="startup-theme vano-theme-control vano-theme-control--icon" type="button" data-vano-theme-toggle aria-label="Tema escuro" title="Alternar tema" aria-pressed="false">{% include '_theme_icon.html' %}</button>
   </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}

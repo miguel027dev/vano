@@ -52,12 +52,8 @@
   },true);
   window.addEventListener('pageshow',()=>d.querySelectorAll('form.vano-x-submitting').forEach(f=>f.classList.remove('vano-x-submitting')));
 
-  // Blend theme transitions while keeping the existing theme engine authoritative.
-  d.addEventListener('click',e=>{
-    if(!e.target.closest?.('[data-vano-theme-toggle],#globalThemeToggle,.ob-theme-v402,.startup-theme-toggle'))return;
-    root.classList.add('vano-x-theme-changing');
-    setTimeout(()=>root.classList.remove('vano-x-theme-changing'),320);
-  },true);
+  // Theme motion belongs to the shared control. Avoid repainting every element
+  // and applying a full-page filter over the map on each toggle.
 
   // Profile dirty state gives the save bar a clear but quiet response.
   const profileForm=d.getElementById('profileForm')||d.querySelector('.profile350-form');

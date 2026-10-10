@@ -6,8 +6,20 @@
     --ui-radius:20px;--ui-space:16px;--ui-shadow:0 12px 32px #27231f0b;
   }
   html[data-vano-theme="black"] {
-    --ui-bg:#171513;--ui-surface:#24211e;--ui-raised:#302a25;
-    --ui-ink:#fff6ee;--ui-muted:#d1c2b5;--ui-line:#65574c;--ui-focus:#ffc197;
+    --ui-bg:#0a0a0b;--ui-surface:#18181b;--ui-raised:#242428;
+    --ui-ink:#f7f7f8;--ui-muted:#b7b7c2;--ui-line:#48484f;--ui-focus:#ffc197;
+  }
+  /* Bridge the auth/profile/map palette to the same preference as reading pages. */
+  body {
+    --vano-ui-bg:var(--ui-bg)!important;--vano-ui-surface:var(--ui-surface)!important;
+    --vano-ui-surface-2:var(--ui-raised)!important;--vano-ui-surface-3:var(--ui-raised)!important;
+    --vano-ui-text:var(--ui-ink)!important;--vano-ui-muted:var(--ui-muted)!important;
+    --vano-ui-faint:var(--ui-muted)!important;--vano-ui-line:var(--ui-line)!important;
+    --vano-ui-line-strong:var(--ui-line)!important;
+  }
+  body.vano-route-access-page {
+    --access-ink:var(--ui-ink)!important;--access-muted:var(--ui-muted)!important;
+    --access-surface:var(--ui-surface)!important;--access-line:var(--ui-line)!important;
   }
   body.vano-page-surface {
     --bg:var(--ui-bg)!important;--surface:var(--ui-surface)!important;
@@ -1018,3 +1030,58 @@ html.vano-map-gesture body.vano-map-surface .ws-app :is(.sheet,.nav-panel,.nav-m
 body.vano-page-surface .vano-press-icon {border-radius:22px;object-fit:contain;}
 body.vano-page-surface .vano-beta-admin-card {margin-bottom:18px;}
 body.vano-page-surface .vano-feedback-message {white-space:pre-wrap;overflow-wrap:anywhere;}
+
+/* Theme controls own the first layer: legacy !important rules cannot split variants. */
+@layer vanoTheme, vanoFoundation, vanoLegacy;
+@layer vanoTheme {
+  :root {--theme-surface:#fff3e8;--theme-ink:#9c4518;--theme-line:#decfc3;--theme-halo:#f59a622b;}
+  html[data-vano-theme="black"] {--theme-surface:#222225;--theme-ink:#ffc197;--theme-line:#424248;--theme-halo:#f59a621f;}
+  html body button.vano-theme-control {
+    position:relative!important;min-height:44px!important;min-width:44px!important;
+    color:var(--theme-ink)!important;touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;cursor:pointer;
+    transition:transform 180ms ease!important;
+  }
+  html body button.vano-theme-control--icon {
+    display:inline-grid!important;place-items:center!important;flex:0 0 44px!important;
+    width:44px!important;height:44px!important;padding:0!important;gap:0!important;
+    border:1px solid var(--theme-line)!important;border-radius:15px!important;
+    background:var(--theme-surface)!important;box-shadow:none!important;overflow:visible!important;
+  }
+  html body button.vano-theme-control--row {gap:10px!important;color:var(--ui-ink)!important;}
+  html body button.vano-theme-control .vano-theme-orbit {
+    position:relative!important;display:inline-grid!important;place-items:center!important;
+    width:30px!important;height:30px!important;flex:0 0 30px!important;
+    grid-area:auto!important;border:0!important;padding:0!important;margin:0!important;
+    border-radius:50%!important;background:transparent!important;box-shadow:none!important;
+    opacity:1!important;transform:none!important;overflow:visible!important;
+    color:var(--theme-ink)!important;
+  }
+  html body button.vano-theme-control .vano-theme-orbit::before {
+    content:'';position:absolute;inset:1px;border-radius:50%;background:var(--theme-halo);
+    opacity:0;transform:scale(.5);transition:transform 420ms ease,opacity 240ms ease;pointer-events:none;
+  }
+  html body button.vano-theme-control:hover .vano-theme-orbit::before,
+  html body button.vano-theme-control:focus-visible .vano-theme-orbit::before {opacity:1;transform:scale(1.18);}
+  html body button.vano-theme-control:active {transform:scale(.94)!important;}
+  html body button.vano-theme-control:focus-visible {outline:3px solid var(--theme-ink)!important;outline-offset:3px!important;}
+  html body button.vano-theme-control svg.vano-theme-glyph {
+    display:block!important;width:30px!important;height:30px!important;
+    color:var(--theme-ink)!important;stroke-width:1.8!important;overflow:visible!important;
+    opacity:1!important;transform:none!important;
+  }
+  .vano-theme-glyph g {transform-box:view-box;transform-origin:16px 16px;}
+  .vano-theme-solar,.vano-theme-lunar {transition:transform 460ms cubic-bezier(.22,1.3,.38,1),opacity 200ms ease;}
+  .vano-theme-solar {opacity:1;transform:rotate(0) scale(1);}
+  .vano-theme-lunar {opacity:0;transform:rotate(-80deg) scale(.35);}
+  .vano-theme-rays {transition:transform 460ms ease;}
+  .vano-theme-stars {opacity:0;transform:scale(.25);transition:transform 380ms cubic-bezier(.22,1.3,.38,1),opacity 220ms ease;}
+  html[data-vano-theme="black"] .vano-theme-solar {opacity:0;transform:rotate(100deg) scale(.35);}
+  html[data-vano-theme="black"] .vano-theme-rays {transform:rotate(45deg);}
+  html[data-vano-theme="black"] .vano-theme-lunar {opacity:1;transform:rotate(0) scale(1);}
+  html[data-vano-theme="black"] .vano-theme-stars {opacity:1;transform:scale(1);transition-delay:80ms;}
+  @media(prefers-reduced-motion:reduce) {
+    html body button.vano-theme-control,html body button.vano-theme-control *,
+    html body button.vano-theme-control *::before {transition:none!important;animation:none!important;}
+  }
+}

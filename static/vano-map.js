@@ -191,7 +191,7 @@ function readLocalRecentDestinations(){try{const raw=JSON.parse(localStorage.get
 function rememberLocalDestination(x){if(!x||!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon))return;try{const label=String(x.label||x.name||'Destino').trim().slice(0,180),key=`${(+x.lat).toFixed(4)}:${(+x.lon).toFixed(4)}`,now=Date.now(),existing=readLocalRecentDestinations(),prev=existing.find(y=>y.key===key||String(y.label||'').toLowerCase()===label.toLowerCase());const item={key,label,name:String(x.name||label.split(',')[0]||'Destino').slice(0,90),lat:+x.lat,lon:+x.lon,last_used_at:now,uses:Math.min(999,(+prev?.uses||0)+1),kind:'local'};const next=[item,...existing.filter(y=>y!==prev&&y.key!==key&&String(y.label||'').toLowerCase()!==label.toLowerCase())].slice(0,LOCAL_RECENT_DEST_MAX);localStorage.setItem(LOCAL_RECENT_DEST_KEY,JSON.stringify(next))}catch{}}
 function localSmartDestinations(){const now=Date.now(),hour=new Date().getHours();return readLocalRecentDestinations().map(x=>{const ageH=Math.max(0,(now-(+x.last_used_at||now))/36e5),useBoost=Math.min(38,Math.log2(Math.max(1,+x.uses||1)+1)*11),recency=Math.max(0,42-ageH*.55),savedHour=new Date(+x.last_used_at||now).getHours(),hourDiff=Math.min(Math.abs(savedHour-hour),24-Math.abs(savedHour-hour)),hourBoost=Math.max(0,20-hourDiff*4);return{...x,smart_score:Math.round(useBoost+recency+hourBoost)}}).sort((a,b)=>(+b.smart_score||0)-(+a.smart_score||0)).slice(0,6)}
 let mapThemeOverride=null;try{const saved=localStorage.getItem('vano.map.theme.override.v173');if(saved==='night'||saved==='day')mapThemeOverride=saved}catch{}
-let currentMapMood=(VANO_BLACK_THEME?'black':(mapThemeOverride||(MAP_STYLE_MODE==='auto'?'day':MAP_STYLE_MODE)));
+let currentMapMood=VANO_BLACK_THEME?'black':'day';
 function mapStyleForMood(mood){const key=String(mood||'day').toLowerCase();const isNight=key==='night'||key==='black';return isNight?(STYLE_SET?.night||STYLE_SET?.day||STYLE):(STYLE_SET?.day||STYLE)}
 function applyVanoLightBasemapConfig(){
   if(!map||document.body.dataset.mood==='night'||currentMapMood==='night'||currentMapMood==='black')return;
@@ -1139,19 +1139,9 @@ function restoreRuntimeMapState(){
   }catch(e){console.debug('[VANO MAPS:restore-style]',e)}
 }
 function moodFromConditions(weather){
-  if(mapThemeOverride==='night'||mapThemeOverride==='day')return mapThemeOverride;
-  const manualMode=(window.VANOTheme?.getMode?.()||document.documentElement.dataset.vanoThemeMode||'light');
-  const manualBlack=manualMode==='black'||document.documentElement.dataset.vanoTheme==='black';
-  // Explicit Black mode always wins and uses the dedicated VANO Black Mapbox style.
-  if(manualBlack)return'black';
-  if(MAP_STYLE_MODE!=='auto')return ['day','afternoon','night','rain'].includes(MAP_STYLE_MODE)?MAP_STYLE_MODE:'day';
-  const now=new Date(),h=now.getHours(),minutes=h*60+now.getMinutes(),nightByClock=minutes>=18*60+30||minutes<6*60+30;
-  const reactiveNight=REACTIVE_BLACK_ALLOWED && nightByClock;
-  if(reactiveNight)return 'night';
-  if(weather?.rainy)return 'rain';
-  if(weather?.is_day===0||nightByClock)return 'night';
-  if(minutes>=12*60&&minutes<18*60+30)return 'afternoon';
-  return 'day';
+  // A saved light/Black preference wins over clock, weather and stale map overrides.
+  const mode=window.VANOTheme?.get?.()||document.documentElement.dataset.vanoTheme||'light';
+  return mode==='black'?'black':'day';
 }
 function moodLabel(mood){return mood==='black'?'BLACK':mood==='rain'?'CHUVA':mood==='night'?'NOITE':mood==='afternoon'?'TARDE':'DIA'}
 const styleJsonCache=new Map();
