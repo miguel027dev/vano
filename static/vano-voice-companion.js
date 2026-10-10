@@ -37,10 +37,11 @@
   panel.append(header,state,result,input,actions,note);
   document.body.append(launch,panel);
   let capabilities={cloud_available:false,speech_available:false};
-  let responseText='',activeController=null,recognizer=null,audio=null,audioUrl=null;
+  let responseText='',activeController=null,speechController=null,recognizer=null,audio=null,audioUrl=null;
   const isOnline=()=>navigator.onLine!==false;
   const locale=()=>['pt-BR','pt-PT','en','es','fr','ru'].includes(document.documentElement.lang)?document.documentElement.lang:'pt-BR';
   const stopAudio=()=>{
+    speechController?.abort();speechController=null;
     try{window.speechSynthesis?.cancel?.()}catch(_){}
     if(audio){audio.pause();audio=null;}
     try{window.VANO_NATIVE_SPEECH?.stop?.();}catch(_){}
@@ -65,11 +66,12 @@
     }catch(_){}
     status(capabilities.cloud_available?'IA disponível com internet':'Modo local · IA externa não configurada');
   }
-  function toggle(showPanel){
+  function toggle(showPanel,restoreFocus=true){
+    if(!showPanel&&panel.hidden)return;
     panel.hidden=!showPanel;
     launch.setAttribute('aria-expanded',String(showPanel));
     if(showPanel){refresh();input.focus({preventScroll:true});}
-    else{try{recognizer?.abort?.()}catch(_){};stopAudio();activeController?.abort();launch.focus({preventScroll:true});}
+    else{try{recognizer?.abort?.()}catch(_){};mic.disabled=false;stopAudio();activeController?.abort();if(restoreFocus)launch.focus({preventScroll:true});}
   }
   async function send(mode){
     const value=input.value.trim();
@@ -95,12 +97,12 @@
       if(!r.ok||!d.ok)throw Error(d.code||'service_unavailable');
       show(d.text);status(mode==='translate'?'Tradução online concluída':'Resposta da IA disponível');
     }catch(e){
-      if(e.name==='AbortError'){status('Solicitação interrompida.');return;}
+      if(e.name==='AbortError'){if(activeController===controller)status('Solicitação interrompida.');return;}
+      if(activeController!==controller)return;
       show(localResponse(value,mode));
       status('IA indisponível · modo local');
     }finally{
-      if(activeController===controller)activeController=null;
-      ask.disabled=false;translate.disabled=false;
+      if(activeController===controller){activeController=null;ask.disabled=false;translate.disabled=false;}
     }
   }
   function localSpeak(){
@@ -126,7 +128,7 @@
     const csrf=window.VANO?.csrf;if(!csrf){localSpeak();return;}
     speak.disabled=true;status('Preparando áudio...');
     try{
-      const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),14000);
+      const controller=new AbortController();speechController=controller;const timer=setTimeout(()=>controller.abort(),14000);
       let r;
       try{r=await fetch('/api/voice/speech',{
         method:'POST',credentials:'same-origin',signal:controller.signal,
@@ -135,11 +137,12 @@
       });}finally{clearTimeout(timer);}
       if(!r.ok||!(r.headers.get('content-type')||'').startsWith('audio/'))throw Error('speech_unavailable');
       const blob=await r.blob();
+      if(controller.signal.aborted||panel.hidden||speechController!==controller)return;
       audioUrl=URL.createObjectURL(blob);audio=new Audio(audioUrl);
       audio.onended=()=>{stopAudio();status('Áudio concluído.');};
       await audio.play();status('Reproduzindo voz...');
-    }catch(_){status('Voz online indisponível · usando voz do dispositivo');localSpeak();}
-    finally{speak.disabled=false;}
+    }catch(_){if(!panel.hidden&&isOnline()){status('Voz online indisponível · usando voz do dispositivo');localSpeak();}}
+    finally{speechController=null;speak.disabled=false;}
   }
   function startDictation(){
     if(window.VANO_NATIVE_SPEECH?.dictate){
@@ -167,6 +170,12 @@
       status('Ditado recebido. Confira antes de enviar.');
     }
   });
+  // Navigation hides the widget via CSS; closing state must also cancel mic,
+  // pending AI and TTS requests, so audio never starts during a route.
+  const navigationObserver=new MutationObserver(()=>{
+    if(document.body.classList.contains('body-nav')&&!panel.hidden)toggle(false,false);
+  });
+  navigationObserver.observe(document.body,{attributes:true,attributeFilter:['class']});
   launch.onclick=()=>toggle(panel.hidden);
   close.onclick=()=>toggle(false);
   ask.onclick=()=>send('answer');translate.onclick=()=>send('translate');
