@@ -7,6 +7,7 @@ const PRECACHE=[
   '/static/vano-runtime.js',
   '/static/vano-theme.js',
   '/static/vano-map.js',
+  '/static/vano-voice-companion.js',
 
 
 
@@ -33,7 +34,7 @@ const PRECACHE=[
   '/static/voices/vano/leve_curva_a_direita.mp3',
   '/static/voices/vano/leve_curva_a_esquerda.mp3'
 ];
-const CORE_RE=/\/static\/(vano\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-access\.js)$/;
+const CORE_RE=/\/static\/(vano\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-access\.js|vano-voice-companion\.js)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;
