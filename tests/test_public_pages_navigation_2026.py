@@ -52,7 +52,7 @@ def test_public_theme_and_mobile_dock_are_scoped():
 def test_legal_toc_has_links_for_all_sections():
     for filename in ("terms_of_use.html", "privacy_policy.html", "account_delete_page.html"):
         page = read("templates/" + filename)
-        sections = set(re.findall(r'<section\\s+id="([^"]+)"', page))
+        sections = set(re.findall(r'<section\s+id="([^"]+)"', page))
         anchors = set(re.findall(r'href="#([^"]+)"', page))
         assert sections, filename
         assert sections.issubset(anchors), (filename, sorted(sections - anchors))
