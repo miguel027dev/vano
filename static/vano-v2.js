@@ -9,6 +9,19 @@
     if (!search || !preset || !nearby || !field) return;
 
     document.body.classList.add('vano-v2');
+
+    // The V1 origin field must keep its DOM ID for routing, but never be
+    // displayed in the V2 search control. Moving its container to the hidden
+    // welcome panel prevents its legacy styles from breaking the new header.
+    const internalOrigin = search.querySelector('.origin-hidden');
+    if (internalOrigin) {
+      internalOrigin.setAttribute('aria-hidden', 'true');
+      internalOrigin.hidden = true;
+      internalOrigin.querySelectorAll('input,button').forEach(control => {
+        control.tabIndex = -1;
+      });
+      document.getElementById('welcomeState')?.appendChild(internalOrigin);
+    }
     const dock = document.createElement('section');
     dock.id = 'v2Dock';
     dock.setAttribute('aria-label', 'Busca de endereços e destinos');
@@ -23,6 +36,11 @@
     if (adjustButton) adjustButton.hidden = true;
     const headerMenu = document.getElementById('optionsBtn');
     const searchRow = dock.querySelector('.planner-location-row');
+    const magnifier = searchRow?.querySelector('.planner-search-icon');
+    if (magnifier) {
+      magnifier.setAttribute('aria-hidden', 'true');
+      magnifier.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7.5"/><path d="m16.5 16.5 5 5"/></svg>';
+    }
     if (headerMenu && searchRow) {
       headerMenu.setAttribute('title', 'Opções e perfil');
       searchRow.appendChild(headerMenu);
@@ -47,7 +65,76 @@
       if (name) name.textContent = label;
       shortcuts.appendChild(button);
     }
+    // Map V1 has late-loading !important rules for its bottom card. Keep the
+    // V2 search geometry stable even when those legacy styles arrive later.
+    const card = dock.querySelector('.planner-search-card');
+    const setStrong = (element, properties) => {
+      if (!element) return;
+      for (const [name, value] of Object.entries(properties)) {
+        element.style.setProperty(name, value, 'important');
+      }
+    };
+    function layoutV2() {
+      const small = window.innerWidth <= 700;
+      const compact = window.innerWidth <= 359;
+      const cardHeight = small ? '60px' : '64px';
+      const rowHeight = small ? '54px' : '56px';
+      setStrong(search, {
+        display:'block', width:'100%', height:cardHeight,
+        'min-height':cardHeight, 'max-height':cardHeight,
+        margin:'0px', padding:'0px',
+        'grid-template-columns':'none', transform:'none'
+      });
+      setStrong(card, {
+        display:'block', width:'100%', 'max-width':'100%', height:cardHeight,
+        'min-height':cardHeight, 'max-height':cardHeight,
+        'box-sizing':'border-box', left:'0px', right:'auto', top:'0px',
+        margin:'0px', transform:'none', background:'#ffffff',
+        padding:small?'3px 8px':'4px 10px',
+        border:'1px solid rgba(28,42,57,.10)',
+        'box-shadow':'0 5px 20px rgba(22,37,52,.15)',
+        'border-radius':small?'30px':'32px'
+      });
+      setStrong(searchRow, {
+        display:'grid', width:'100%', height:rowHeight, 'min-height':rowHeight,
+        'max-height':rowHeight, 'grid-template-columns':small
+          ? '38px minmax(0,1fr) 38px'
+          : '46px minmax(0,1fr) 46px',
+        'align-items':'center', gap:'0px', margin:'0px', padding:'0px',
+        left:'0px', top:'0px', transform:'none'
+      });
+      setStrong(headerMenu, {
+        width:small?'38px':'42px', height:small?'38px':'42px',
+        'min-width':small?'38px':'42px', 'min-height':small?'38px':'42px',
+        'max-height':small?'38px':'42px', position:'relative',
+        left:'auto', right:'auto', top:'auto', bottom:'auto', margin:'0px'
+      });
+      setStrong(field, {
+        width:'100%', 'min-width':'0px', height:rowHeight,
+        'min-height':rowHeight, 'font-size':compact?'13px':small?'15px':'16px',
+        'box-sizing':'border-box', padding:'0px 2px', margin:'0px',
+        'line-height':'normal'
+      });
+      setStrong(shortcuts, {
+        display:'flex', height:small?'55px':'57px',
+        'min-height':'0px', 'max-height':'57px', 'flex-wrap':'nowrap',
+        'align-items':'flex-start', 'overflow-x':'auto',
+        'overflow-y':'hidden', width:'100%', margin:'0px'
+      });
+      for (const button of shortcuts.querySelectorAll('button')) {
+        setStrong(button, {
+          display:'inline-flex', position:'relative', 'flex-direction':'row',
+          'flex-shrink':'0', width:'auto', height:small?'42px':'44px',
+          'min-height':small?'42px':'44px',
+          'max-height':small?'42px':'44px',
+          'border-radius':'24px', margin:'0px'
+        });
+      }
+    }
+    layoutV2();
+
     field.setAttribute('placeholder', 'Buscar endereço, lugar ou destino');
+    field.setAttribute('autocomplete', 'off');
     field.setAttribute('aria-label', 'Buscar endereço, lugar ou destino');
 
     const sheet = document.getElementById('planSheet');
@@ -101,7 +188,7 @@
     if (app) observer.observe(app, {attributes:true,attributeFilter:['class']});
     if (results) observer.observe(results, {attributes:true,attributeFilter:['class','style']});
     window.visualViewport?.addEventListener('resize', update, {passive:true});
-    window.addEventListener('resize', update, {passive:true});
+    window.addEventListener('resize', () => {layoutV2();update()}, {passive:true});
     observer.observe(document.body, {attributes:true,attributeFilter:['class']});
     update();
   }

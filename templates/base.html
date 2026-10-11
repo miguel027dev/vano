@@ -150,7 +150,7 @@
 
 }</style>
   {% set vano_endpoint = request.endpoint or 'page' %}
-  {% set vano_map_surface = vano_endpoint in ['index', 'map_page', 'embed_entry'] %}
+  {% set vano_map_surface = vano_endpoint in ['index', 'map_page', 'embed_entry', 'v2_preview'] %}
   {% set vano_admin_surface = vano_endpoint == 'admin_dashboard' or vano_endpoint.startswith('admin_') %}
   {# SEO/legal/help only: the interactive benchmark, map and authentication
      retain their component styles from the legacy sheet.
@@ -190,7 +190,7 @@
   {% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
 </head>
-<body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
+<body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_endpoint == 'v2_preview' %}vano-route-index{% endif %} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
 {% if not vano_map_surface %}<a class="vano-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>{% endif %}
 {% if vano_endpoint != 'onboarding' and not vano_map_surface %}
 <header class="topbar">
