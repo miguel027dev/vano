@@ -7,7 +7,6 @@ const PRECACHE=[
   '/static/vano-runtime.js',
   '/static/vano-theme.js',
   '/static/vano-map.js',
-  '/static/vano-voice-companion.js',
 
 
 
@@ -17,24 +16,8 @@ const PRECACHE=[
   '/static/vano-maps-icon-64.png',
   '/static/vano-maps-icon-192.png',
   '/static/vano-maps-icon-512.png',
-  '/static/voices/vano/chegou_ao_destino.mp3',
-  '/static/voices/vano/continue_em_frente.mp3',
-  '/static/voices/vano/em_50_metros.mp3',
-  '/static/voices/vano/em_200_metros.mp3',
-  '/static/voices/vano/em_300_metros.mp3',
-  '/static/voices/vano/em_500_metros.mp3',
-  '/static/voices/vano/em_1_km.mp3',
-  '/static/voices/vano/em_2_km.mp3',
-  '/static/voices/vano/faca_retorno.mp3',
-  '/static/voices/vano/mantenha_a_direita.mp3',
-  '/static/voices/vano/mantenha_a_esquerda.mp3',
-  '/static/voices/vano/mantenha_se_a_direita.mp3',
-  '/static/voices/vano/siga_em_frente.mp3',
-  '/static/voices/vano/vire_a_direita.mp3',
-  '/static/voices/vano/leve_curva_a_direita.mp3',
-  '/static/voices/vano/leve_curva_a_esquerda.mp3'
 ];
-const CORE_RE=/\/static\/(vano\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-access\.js|vano-voice-companion\.js)$/;
+const CORE_RE=/\/static\/(vano\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-access\.js)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;

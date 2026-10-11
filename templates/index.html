@@ -82,7 +82,7 @@
   <aside class="permission" id="locationPermission" role="alert" aria-live="assertive">
     <div class="permission-icon"><i data-lucide="locate-fixed" width="19"></i></div>
     <div class="permission-copy"><b>Permita acesso à localização</b><span id="permissionText">Precisamos do GPS para acompanhar sua posição e iniciar a navegação.</span></div>
-    <button id="enableLocationBtn" type="button">Permitir</button>
+    <button id="enableLocationBtn" type="button">Permitir</button><button id="dismissLocationPromptBtn" type="button" aria-label="Fechar aviso de localização" title="Fechar aviso">×</button>
   </aside>
 
   <section class="destination-confirm" id="destinationConfirm" aria-live="polite" aria-hidden="true">
@@ -104,10 +104,8 @@
     <button type="button" class="nav-stack-btn nav-exit-main" id="navExitBtn" aria-label="Encerrar trajeto" title="Encerrar trajeto"><i data-lucide="x" width="20"></i></button>
     <button type="button" class="nav-stack-btn nav-report-main" id="quickAlertBtn" aria-label="Informar ocorrência" title="Informar ocorrência"><i data-lucide="triangle-alert" width="19"></i></button>
     <button type="button" class="nav-stack-btn nav-recenter-main" id="navDrawerRecenter" aria-label="Recalibrar câmera e seguir minha posição" title="Recalibrar câmera"><i data-lucide="crosshair" width="19"></i></button>
-    <button type="button" class="nav-audio-toggle active nav-audio-main" id="soundBtn" aria-label="Desativar orientações por voz" title="Áudio ligado"><i data-lucide="volume-2" width="19"></i></button>
     <button type="button" class="nav-drawer-toggle" id="navDrawerToggle" aria-label="Mostrar mais controles" aria-expanded="false" title="Mais controles"><i data-lucide="chevron-up" width="18"></i></button>
   </div>
-  <div class="nav-voice-popover" id="navVoicePopover"><small>VOZ DAS INSTRUÇÕES</small><select id="navVoiceSelect" aria-label="Selecionar voz"><option value="">Automática</option><option value="vano">Vano Maps</option></select><button type="button" id="voicePreviewBtn">Ouvir exemplo</button></div>
   <div class="map-tools" aria-label="Controles rápidos do mapa">
     <button id="mapThemeBtn" class="map-btn map-theme-btn vano-theme-control vano-theme-control--icon" type="button" data-vano-theme-toggle aria-label="Tema escuro" aria-pressed="false" title="Usar mapa Black">{% include '_theme_icon.html' %}</button>
   </div>
@@ -246,10 +244,6 @@
         <div class="prefs-section-label"><span>MAPA</span><small>Informação que aparece enquanto você dirige</small></div>
         <label class="pref-row"><span><b>Mapa vivo</b><span>Mostra trânsito, sinais e ocorrências disponíveis no seu corredor.</span></span><input class="pref-switch" id="prefLiveSignals" type="checkbox"></label>
       </section>
-      <section class="prefs-section" aria-label="Preferências de voz">
-        <div class="prefs-section-label"><span>ÁUDIO</span><small>Orientações de navegação</small></div>
-        <label class="pref-row voice-pref-row"><span><b>Voz das instruções</b><span>Use a voz automática do aparelho ou a voz VANO MAPS.</span></span><select class="voice-select" id="voiceSelect" aria-label="Voz das instruções"><option value="">Automática</option><option value="vano">Vano Maps</option></select></label>
-      </section>
     </div>
 <p class="prefs-foot">Preferências salvas neste dispositivo. Você pode mudar tudo quando quiser.</p>
   </section>
@@ -265,7 +259,7 @@
       <div class="planner-search-row">
         <div class="search-card planner-search-card" aria-label="Buscar destino, endereço ou lugar">
           <div class="origin-hidden"><input type="text" id="originInput" class="location-input" autocomplete="off" dir="ltr"><button type="button" id="locateBtn"></button><button type="button" id="swapBtn"></button></div>
-          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input type="text" id="destinationInput" class="location-input" placeholder="Busque endereço, lugar ou destino" autocomplete="off" enterkeyhint="search" inputmode="search" dir="ltr" role="combobox" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false"><button type="button" id="voiceSearchBtn" class="row-btn voice-search-btn" aria-label="Pesquisar endereço por voz" title="Pesquisar por voz"><i data-lucide="mic" width="17"></i></button></div>
+          <div class="location-row planner-location-row"><span class="planner-search-icon"><i data-lucide="search" width="18"></i></span><input type="text" id="destinationInput" class="location-input" placeholder="Busque endereço, lugar ou destino" autocomplete="off" enterkeyhint="search" inputmode="search" dir="ltr" role="combobox" aria-autocomplete="list" aria-controls="searchResults" aria-expanded="false"></div>
           <div class="search-results" id="searchResults" role="listbox" aria-label="Resultados da busca"></div>
         </div>
         <button type="button" class="planner-adjust-btn" id="prefsBtn" aria-label="Ajustes de mapa e rota" title="Ajustes"><i data-lucide="sliders-horizontal" width="19"></i><span>Mapa</span></button>
@@ -281,7 +275,7 @@
         <button type="button" class="planner-preset" id="quickHome"><span class="planner-preset-icon"><i data-lucide="house" width="16"></i></span><span><b>Casa</b><small>{% if current_user and current_user['home_label'] %}{{ current_user['home_label'] }}{% else %}Definir endereço{% endif %}</small></span></button>
         <button type="button" class="planner-preset" id="quickWork"><span class="planner-preset-icon"><i data-lucide="briefcase-business" width="16"></i></span><span><b>Trabalho</b><small>{% if current_user and current_user['work_label'] %}{{ current_user['work_label'] }}{% else %}Definir endereço{% endif %}</small></span></button>
         <button type="button" class="planner-preset routine-preset" id="quickRoutine"><span class="planner-preset-icon"><i data-lucide="calendar-days" width="16"></i></span><span><b>Rotina</b><small id="routineQuickSub">Configure sua semana</small></span></button>
-        <button type="button" class="planner-preset planner-preset-personalize" id="quickPrefs"><span class="planner-preset-icon"><i data-lucide="sliders-horizontal" width="16"></i></span><span><b>Personalizar</b><small>Rota, mapa e voz</small></span></button>
+        <button type="button" class="planner-preset planner-preset-personalize" id="quickPrefs"><span class="planner-preset-icon"><i data-lucide="sliders-horizontal" width="16"></i></span><span><b>Personalizar</b><small>Rota e mapa</small></span></button>
       </div>
 
       <div class="planner-smart-destinations" id="plannerSmartDestinations" hidden>

@@ -1085,3 +1085,103 @@ body.vano-page-surface .vano-feedback-message {white-space:pre-wrap;overflow-wra
     html body button.vano-theme-control *::before {transition:none!important;animation:none!important;}
   }
 }
+
+
+/* Interaction QA Oct 2026 — compact routes, no clipped controls, readable themes. */
+body.vano-map-surface .permission.show{
+  top:calc(env(safe-area-inset-top, 0px) + 124px)!important;
+  left:8px!important;right:8px!important;max-width:420px!important;
+  margin:0 auto!important;z-index:32!important;padding:12px 36px 12px 10px!important;
+}
+body.vano-map-surface .permission-copy span{line-height:1.4!important;font-size:11px!important;color:#e3e5e8!important}
+body.vano-map-surface #dismissLocationPromptBtn{
+  position:absolute!important;right:5px!important;top:5px!important;
+  width:28px!important;height:28px!important;min-width:28px!important;
+  padding:0!important;background:transparent!important;color:#fff!important;
+  font-size:22px!important;border-radius:9px!important;
+}
+body.vano-map-surface #routeState{overflow-x:hidden!important;min-width:0!important;max-width:100%!important}
+body.vano-map-surface #planSheet,
+body.vano-map-surface #routeState,
+body.vano-map-surface #routeMoreDetails{box-sizing:border-box!important}
+body.vano-map-surface #routeState .vr-hero,
+body.vano-map-surface #routeState .route-head{min-width:0!important;max-width:100%!important}
+body.vano-map-surface #routeState #routeMoreDetails[data-open="true"]{
+  max-height:min(58dvh,520px)!important;overflow-y:auto!important;
+  overflow-x:hidden!important;overscroll-behavior:contain!important;
+}
+body.vano-map-surface #routeState #routeMoreContent{max-width:100%!important;min-width:0!important}
+body.vano-map-surface #routeState :is(.travel,.segment,.route-card,.route-deep-grid){max-width:100%!important;min-width:0!important}
+body.vano-map-surface #routeState :is(.route-option-copy,.route-option-copy b,.route-option-copy small){min-width:0!important;overflow-wrap:anywhere!important}
+@media(max-width:600px){
+  body.vano-app-root.vano-map-surface #routeState.vano-route-studio #routeVariants{
+    display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+    grid-auto-columns:auto!important;grid-auto-flow:row!important;
+    width:100%!important;max-width:100%!important;overflow-x:hidden!important;
+    overflow-y:visible!important;gap:8px!important;padding:1px!important;
+    scroll-snap-type:none!important;
+  }
+  body.vano-app-root.vano-map-surface #routeState.vano-route-studio #routeVariants button.route-variant{
+    display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:center!important;column-gap:10px!important;row-gap:4px!important;
+    flex:none!important;min-width:0!important;width:100%!important;
+    max-width:100%!important;min-height:104px!important;height:auto!important;
+    padding:12px!important;box-sizing:border-box!important;text-align:left!important;
+    white-space:normal!important;
+  }
+  body.vano-map-surface #routeVariants .route-variant small{grid-column:1!important;grid-row:1!important;font-size:11px!important}
+  body.vano-map-surface #routeVariants .route-variant>b{grid-column:2!important;grid-row:1!important;font-size:18px!important;text-align:right!important}
+  body.vano-map-surface #routeVariants .route-variant>span:not(.route-variant-use){grid-column:2!important;grid-row:2!important;text-align:right!important}
+  body.vano-map-surface #routeVariants .route-variant>em{grid-column:1!important;grid-row:2!important;white-space:normal!important;overflow-wrap:anywhere!important;font-size:10px!important}
+  body.vano-map-surface #routeVariants .route-variant-signals{grid-column:1!important;grid-row:3!important;display:flex!important;gap:6px!important}
+  body.vano-map-surface #routeVariants .route-variant-signals i{font-size:10px!important}
+  body.vano-map-surface #routeVariants .route-variant-use{grid-column:2!important;grid-row:3!important;align-self:center!important;margin:0!important;padding:6px 9px!important;min-height:34px!important;font-size:10px!important}
+  body.vano-map-surface #routeState #routeMoreContent :is(.travel,.segment){grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:360px){
+  body.vano-map-surface .permission.show{top:calc(env(safe-area-inset-top, 0px) + 116px)!important}
+  body.vano-map-surface #routeState #routeMoreContent :is(.travel,.segment) button{padding:8px 4px!important}
+}
+/* Benchmark uses intrinsic CSS grid minimums unless each track is constrained. */
+body.vano-page-surface .bench261,
+body.vano-page-surface .bench261-shell,
+body.vano-page-surface .bench261-grid,
+body.vano-page-surface .bench261-main,
+body.vano-page-surface .bench261-panel,
+body.vano-page-surface .bench261-controls,
+body.vano-page-surface .bench261-field-group,
+body.vano-page-surface .bench261-field,
+body.vano-page-surface .bench261-input-row,
+body.vano-page-surface .bench261-two-cols,
+body.vano-page-surface .bench261-block,
+body.vano-page-surface .bench261-run-row,
+body.vano-page-surface .bench261-details{
+  min-width:0!important;max-width:100%!important;box-sizing:border-box!important;
+}
+body.vano-page-surface .bench261 :is(input,select,textarea,button,summary){min-width:0;max-width:100%;box-sizing:border-box}
+body.vano-page-surface .bench261-input-row{grid-template-columns:minmax(0,1fr) 42px!important}
+body.vano-page-surface .bench261-two-cols{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+body.vano-page-surface .bench261-controls{overflow:hidden}
+body.vano-page-surface .bench261-run-row .bench261-run{flex:1 1 0!important}
+@media(max-width:680px){
+  body.vano-page-surface .bench261-grid{grid-template-columns:minmax(0,1fr)!important}
+  body.vano-page-surface .bench261-head-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body.vano-page-surface .bench261-head-actions > *{min-width:0!important;white-space:normal!important}
+  body.vano-page-surface .bench261-panel-head{gap:7px!important}
+  body.vano-page-surface .bench261-shell{width:calc(100% - 14px)!important}
+}
+
+.vano-external-auth-tip{display:grid;gap:9px;margin:13px 0;padding:14px;border:1px solid rgba(245,154,98,.32);border-radius:14px;background:rgba(245,154,98,.07);color:inherit}
+.vano-external-auth-tip p{margin:0;font-size:12px!important;line-height:1.5!important;color:inherit!important}
+.vano-external-auth-tip button{min-height:44px;padding:9px 12px;border:1px solid rgba(245,154,98,.45);border-radius:10px;background:rgba(245,154,98,.16);color:inherit;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.vano-external-auth-tip input{width:100%;min-width:0;padding:10px;border-radius:9px}
+
+/* One vertical scroll owner in the expanded trip details. */
+body.vano-map-surface #routeState #routeMoreDetails[data-open="true"]{
+  max-height:none!important;height:auto!important;overflow:visible!important;
+}
+body.vano-map-surface #routeState{overflow-y:auto!important;overscroll-behavior-y:contain!important}
+body.vano-map-surface #routeState #routeSubtitle{
+  white-space:normal!important;overflow-wrap:anywhere!important;
+  max-height:none!important;-webkit-line-clamp:unset!important;
+}

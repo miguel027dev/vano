@@ -73,5 +73,6 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='auth-entry.js') }}?v={{ vano_build_id }}"></script>
+<script defer src="{{ url_for('static', filename='vano-inapp-auth.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-auth-startup.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}

@@ -20,13 +20,13 @@ for(const profile of ['motorcycle','driving']){
   assert.ok(tune.zoomMin<tune.zoomMax);
  }
 }
-const voice=fs.readFileSync('static/vano-voice-companion.js','utf8');
-assert.ok(voice.includes('const navigationObserver=new MutationObserver('));
-assert.ok(voice.includes("document.body.classList.contains('body-nav')"));
-assert.ok(voice.includes("toggle(false,false)"));
-assert.ok(voice.includes('speechController?.abort()'));
-assert.ok(voice.includes('if(controller.signal.aborted||panel.hidden||speechController!==controller)return'));
+const base=fs.readFileSync('templates/base.html','utf8');
+const html=fs.readFileSync('templates/index.html','utf8');
 const sw=fs.readFileSync('static/vano-sw.js','utf8');
-assert.ok(sw.includes("'/static/vano-voice-companion.js'"));
-assert.ok(sw.includes('vano-voice-companion\\.js'), 'Voice script needs a version-aware offline cache strategy');
-console.log('PASS: camera clamps agree with per-vehicle tuning, voice lifecycle and offline asset cache');
+assert.ok(!fs.existsSync('static/vano-voice-companion.js'));
+for(const token of ['vano-voice-companion.js','id="voiceSearchBtn"','id="soundBtn"','id="navVoicePopover"']){
+  assert.ok(!html.includes(token) && !base.includes(token),token+' should not be rendered');
+}
+assert.ok(!sw.includes('vano-voice-companion.js'),'do not precache deleted assistant');
+assert.ok(!sw.includes('/static/voices/vano/'),'do not precache unused speech audio');
+console.log('PASS: camera clamps agree with per-vehicle tuning, removed voice UI and offline asset cache');

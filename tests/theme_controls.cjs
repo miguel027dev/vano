@@ -37,7 +37,7 @@ for(const mode of ['light','black']) {
     assert.equal(p.data.get(KEY),expected);
     for(const control of p.controls) {
       assert.equal(control.attrs['aria-pressed'],expected==='black'?'true':'false');
-      assert.equal(control.attrs['aria-label'],'Tema escuro');
+      assert.equal(control.attrs['aria-label'], expected==='black'?'Ativar tema claro':'Ativar tema escuro');
     }
     assert.equal(p.events.at(-1).detail.reason,'manual');
     assert.equal(run(Object.fromEntries(p.data)).firstPaint,expected,'Next navigation must retain the preference');

@@ -128,13 +128,18 @@ def test_tts_requires_entitlement_and_returns_private_audio(client, monkeypatch)
     assert r.mimetype=="audio/mpeg" and r.headers["Cache-Control"]=="no-store"
 
 
-def test_page_integrates_without_map_camera_changes():
-    base=(ROOT/"templates/base.html").read_text()
-    script=(ROOT/"static/vano-voice-companion.js").read_text()
-    headers=(ROOT/"vano/security/headers.py").read_text()
-    assert "vano-voice-companion.js" in base
-    assert "body-nav .vano-voice-launch" in (ROOT/"static/vano-foundation.css").read_text()
-    assert "window.speechSynthesis" in script
-    assert "const localResponse=" in script
-    assert "nova busca" not in script.lower() or "internet" in script.lower()
+def test_page_removes_voice_ui_and_keeps_backend_apis_available():
+    base = (ROOT / "templates/base.html").read_text()
+    page = (ROOT / "templates/index.html").read_text()
+    headers = (ROOT / "vano/security/headers.py").read_text()
+    assert "vano-voice-companion.js" not in base
+    assert "vano-voice-companion.js" not in (ROOT / "static/vano-sw.js").read_text()
+    assert not (ROOT / "static/vano-voice-companion.js").exists()
+    for token in ["voiceSearchBtn", "soundBtn", "navVoicePopover", "voicePreviewBtn"]:
+        assert 'id="' + token + '"' not in page
     assert '"/api/voice/"' in headers
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is required")
+    outcome = subprocess.run([node, test_script], cwd=ROOT, capture_output=True, text=True, check=False, timeout=20)
+    assert outcome.returncode == 0, outcome.stdout + "\n" + outcome.stderr

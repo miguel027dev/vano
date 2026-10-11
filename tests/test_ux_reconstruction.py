@@ -37,8 +37,10 @@ def test_no_empty_coordinates_can_be_used_as_saved_places():
     assert "revision!==searchRevision" in source
 
 
-def test_navigation_closes_voice_session():
-    source = (ROOT / "static/vano-voice-companion.js").read_text(encoding="utf-8")
-    assert "navigationObserver.observe(document.body" in source
-    assert "stopAudio();activeController?.abort();" in source
-    assert "if(controller.signal.aborted||panel.hidden||speechController!==controller)return" in source
+def test_removed_voice_component_is_not_loaded():
+    assert not (ROOT / "static/vano-voice-companion.js").exists()
+    base = (ROOT / "templates/base.html").read_text(encoding="utf-8")
+    page = (ROOT / "templates/index.html").read_text(encoding="utf-8")
+    assert "vano-voice-companion.js" not in base
+    assert 'id="voiceSearchBtn"' not in page
+    assert 'id="soundBtn"' not in page

@@ -52,7 +52,7 @@
     {% endif %}
   {% endwith %}
 
-  <main class="startup-shell" id="startupShell" tabindex="-1">
+  <main class="startup-shell" id="conteudo-principal" tabindex="-1">
     <section class="startup-auth" aria-labelledby="startupTitle">
       <div class="startup-auth-inner">
         <div class="startup-flow" id="startupFlow" data-step="choice">
@@ -207,5 +207,6 @@
   <script src="{{ url_for('static', filename='vano-login-startup.js') }}?v={{ vano_build_id }}"></script>
   <script defer src="{{ url_for('static', filename='vano-auth-startup.js') }}?v={{ vano_build_id }}"></script>
   <script defer src="{{ url_for('static', filename='vano-experience.js') }}?v={{ vano_build_id }}"></script>
+  <script defer src="{{ url_for('static', filename='vano-inapp-auth.js') }}?v={{ vano_build_id }}"></script>
 </body>
 </html>

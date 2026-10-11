@@ -38,7 +38,7 @@
       const black = mode === 'black';
       button.classList.toggle('is-black', black);
       button.setAttribute('aria-pressed', black ? 'true' : 'false');
-      button.setAttribute('aria-label', 'Tema escuro');
+      button.setAttribute('aria-label', black ? 'Ativar tema claro' : 'Ativar tema escuro');
       button.setAttribute('title', black ? 'Usar tema claro' : 'Usar tema Black');
     });
 
