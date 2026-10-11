@@ -121,7 +121,7 @@ function startPassiveMapTracking(){
   if(passiveWatchId===null){try{passiveWatchId=navigator.geolocation.watchPosition(updatePassiveTracking,e=>{if(e?.code===1)showPermission(locationErrorMessage(e))},{enableHighAccuracy:true,maximumAge:0,timeout:9000})}catch(e){console.warn('[VANO:passive GPS]',e)}}
   startPassiveGpsHeartbeat();
 }
-function applyStartupFix(g,asOrigin=false,center=false){const raw=geoRaw(g),p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();if(asOrigin){if(!origin||origin.is_gps){if(!origin)setPoint('origin',{...p,is_gps:true},'Minha localização',false);else{origin={...origin,...p,is_gps:true,label:'Minha localização'};originInput.value='Minha localização';originMarker?.setLngLat([p.lon,p.lat])}}}if(center&&map)map.jumpTo({center:[p.lon,p.lat],zoom:16.2});if(destinationConfirmed&&destination&&origin&&!window.__sparkStartupRouteQueued){window.__sparkStartupRouteQueued=true;setTimeout(()=>{window.__sparkStartupRouteQueued=false;calculateRoutes()},120)}maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);return p}
+function applyStartupFix(g,asOrigin=false,center=false){const raw=geoRaw(g),p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();if(asOrigin){if(!origin||origin.is_gps){if(!origin)setPoint('origin',{...p,is_gps:true},'Minha localização',false);else{origin={...origin,...p,is_gps:true,label:'Minha localização'};originInput.value='Minha localização';originMarker?.setLngLat([p.lon,p.lat])}}}if(center&&map)map.jumpTo({center:[p.lon,p.lat],zoom:16.2});if(destinationConfirmed&&destination&&origin&&!selectedRoute&&!window.__sparkStartupRouteQueued){window.__sparkStartupRouteQueued=true;setTimeout(()=>{window.__sparkStartupRouteQueued=false;if(!selectedRoute)calculateRoutes()},120)}maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);return p}
 function bootstrapGps(asOrigin=false){const cached=readLastGps();mapFollowMode=true;if(cached){userLocation={lat:cached.lat,lon:cached.lon};lastPassivePosition={...cached};updateUserMarker(cached);updateGpsQuality(cached.accuracy);if(map)map.jumpTo({center:[cached.lon,cached.lat],zoom:16});scheduleTrafficSnapshot(false);if(asOrigin&&!origin){setPoint('origin',{...cached,is_gps:true},'Minha localização',false);origin.is_gps=true}}if(!navigator.geolocation)return;let gotFresh=false;const finishStartup=()=>{stopStartupGps();startPassiveMapTracking()};navigator.geolocation.getCurrentPosition(g=>{gotFresh=true;applyStartupFix(g,asOrigin,!cached)},e=>{if(!cached&&e?.code===1)showPermission(locationErrorMessage(e))},{enableHighAccuracy:false,timeout:1200,maximumAge:60000});stopStartupGps();startupWatchId=navigator.geolocation.watchPosition(g=>{applyStartupFix(g,asOrigin,!cached&&!gotFresh);gotFresh=true;if((+g.coords.accuracy||999)<=35)finishStartup()},e=>{if(!cached&&e?.code===1)showPermission(locationErrorMessage(e))},{enableHighAccuracy:true,maximumAge:600,timeout:5000});startupWatchTimer=setTimeout(finishStartup,8500)}
 function updateGpsQuality(acc){if(!Number.isFinite(acc))return;const box=$('gpsQuality'),bars=$('gpsBars');box.classList.add('show');$('gpsAccuracy').textContent=`GPS ±${Math.round(acc)} m`;bars.className='gps-bars '+(acc<=20?'good':acc<=60?'mid':'')}
 function makeUserMarker(){const el=document.createElement('div');el.className='user-marker vano-uploaded-user';el.innerHTML='<span class="pulse"></span><img class="user-puck-image" src="/static/icons/vano/user-puck.svg" alt="">';userMarkerElement=el;return el}
@@ -716,8 +716,9 @@ function stabilizeCompactRouteCards(box){
   const boxStyles={
     'display':'grid','grid-template-columns':'minmax(0, 1fr)',
     'grid-auto-flow':'row','grid-auto-columns':'auto','gap':'9px',
-    'overflow-x':'hidden','overflow-y':'visible','width':'100%',
-    'max-width':'100%','scroll-snap-type':'none','padding':'1px'
+    'overflow':'visible','overflow-x':'visible','overflow-y':'visible',
+    'width':'100%','max-width':'100%','height':'auto','min-height':'0',
+    'max-height':'none','scroll-snap-type':'none','padding':'1px'
   };
   const cardStyles={
     'display':'grid','grid-template-columns':'minmax(0, 1fr) auto',
@@ -729,6 +730,8 @@ function stabilizeCompactRouteCards(box){
   };
   const apply=(el,defs)=>{if(!el)return;for(const [k,v] of Object.entries(defs)){if(compact)set(el,k,v);else el.style.removeProperty(k)}};
   apply(box,boxStyles);
+  // The old sticky CTA overlapped the second route card on narrow screens.
+  apply(document.getElementById('startTripBtn'),{'position':'relative','bottom':'auto','top':'auto','z-index':'1'});
   box.querySelectorAll('button.route-variant').forEach(btn=>{
     apply(btn,cardStyles);
     const children=[
