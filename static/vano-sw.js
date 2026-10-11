@@ -25,7 +25,22 @@ const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;
 function isCacheableMapbox(url){return (url.hostname==='api.mapbox.com'||url.hostname==='tiles.mapbox.com'||url.hostname.endsWith('.tiles.mapbox.com'))&&MAPBOX_CACHE_PATH_RE.test(url.pathname)}
 async function trimCache(cache,maxEntries){try{const keys=await cache.keys();if(keys.length>maxEntries)await Promise.all(keys.slice(0,keys.length-maxEntries).map(k=>cache.delete(k)))}catch(_){}}
-async function mapboxNetworkFirst(request){const cache=await caches.open(MAP_CACHE);try{const response=await fetchWithTimeout(request,3000);if(response&&response.ok&&response.type!=='opaque'){try{await cache.put(request,response.clone());trimCache(cache,MAP_CACHE_MAX)}catch(_){}}return response}catch(_){return (await cache.match(request))||Response.error()}}
+async function mapboxCacheFirst(request,event){
+  const cache=await caches.open(MAP_CACHE),cached=await cache.match(request);
+  const refresh=(async()=>{
+    try{
+      const response=await fetchWithTimeout(request,3000);
+      if(response&&response.ok&&response.type!=='opaque'){
+        try{await cache.put(request,response.clone());await trimCache(cache,MAP_CACHE_MAX)}catch(_){}
+      }
+      return response;
+    }catch(_){return cached||Response.error()}
+  })();
+  // The region is already saved. Do not delay map display until another
+  // network request finishes (or reaches its three-second timeout).
+  if(cached){event.waitUntil(refresh);return cached}
+  return refresh;
+}
 
 async function putSafe(cache,request,response){
   if(response&&response.ok&&response.type!=='opaque'){
@@ -64,7 +79,7 @@ self.addEventListener('fetch',event=>{
   if(req.method!=='GET') return;
   const url=new URL(req.url);
   if(url.origin!==self.location.origin){
-    if(isCacheableMapbox(url))event.respondWith(mapboxNetworkFirst(req));
+    if(isCacheableMapbox(url))event.respondWith(mapboxCacheFirst(req,event));
     return;
   }
   if(NEVER_CACHE_RE.test(url.pathname)) return;

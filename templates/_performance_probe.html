@@ -3,6 +3,11 @@
 <script>
 (()=>{
   const totals={longTasks:0,blockingMs:0,maxInteractionMs:0};
+  window.addEventListener('vano:map-ready',()=>{
+    totals.mapCreatedMs=Math.round(performance.now());
+    const map=window.__VANO_MAP_BRIDGE?.getMap?.();
+    map?.once?.('load',()=>{totals.mapLoadedMs=Math.round(performance.now());summarize()});
+  },{once:true});
   try{new PerformanceObserver(list=>{for(const e of list.getEntries()){totals.longTasks++;totals.blockingMs+=Math.max(0,e.duration-50)}}).observe({type:'longtask',buffered:true})}catch(_){}
   try{new PerformanceObserver(list=>{for(const e of list.getEntries())totals.maxInteractionMs=Math.max(totals.maxInteractionMs,e.duration)}).observe({type:'event',buffered:true,durationThreshold:40})}catch(_){}
   const summarize=()=>{
