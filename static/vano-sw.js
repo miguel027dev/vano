@@ -24,14 +24,21 @@ const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;
 function isCacheableMapbox(url){return (url.hostname==='api.mapbox.com'||url.hostname==='tiles.mapbox.com'||url.hostname.endsWith('.tiles.mapbox.com'))&&MAPBOX_CACHE_PATH_RE.test(url.pathname)}
+function mapboxCacheKey(request){
+  const url=new URL(request.url);
+  // SKU identifies SDK usage, not tile content. Keep credentials and all
+  // content parameters separate; send the original SKU on every refresh.
+  url.searchParams.delete('sku');
+  return url.href;
+}
 async function trimCache(cache,maxEntries){try{const keys=await cache.keys();if(keys.length>maxEntries)await Promise.all(keys.slice(0,keys.length-maxEntries).map(k=>cache.delete(k)))}catch(_){}}
 async function mapboxCacheFirst(request,event){
-  const cache=await caches.open(MAP_CACHE),cached=await cache.match(request);
+  const cache=await caches.open(MAP_CACHE),key=mapboxCacheKey(request),cached=await cache.match(key);
   const refresh=(async()=>{
     try{
       const response=await fetchWithTimeout(request,3000);
       if(response&&response.ok&&response.type!=='opaque'){
-        try{await cache.put(request,response.clone());await trimCache(cache,MAP_CACHE_MAX)}catch(_){}
+        try{await cache.put(key,response.clone());await trimCache(cache,MAP_CACHE_MAX)}catch(_){}
       }
       return response;
     }catch(_){return cached||Response.error()}

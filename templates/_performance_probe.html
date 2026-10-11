@@ -3,6 +3,10 @@
 <script>
 (()=>{
   const totals={longTasks:0,blockingMs:0,maxInteractionMs:0};
+  if('serviceWorker' in navigator){
+    totals.serviceWorkerControlled=!!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{totals.serviceWorkerControlled=!!navigator.serviceWorker.controller});
+  }
   window.addEventListener('vano:map-ready',()=>{
     totals.mapCreatedMs=Math.round(performance.now());
     const map=window.__VANO_MAP_BRIDGE?.getMap?.();
@@ -14,7 +18,7 @@
     const nav=performance.getEntriesByType('navigation')[0];
     const resources=performance.getEntriesByType('resource').map(e=>{
       const u=new URL(e.name);
-      return {path:u.origin===location.origin?u.pathname:u.hostname+u.pathname,durationMs:Math.round(e.duration),bytes:e.transferSize};
+      return {path:u.origin===location.origin?u.pathname:u.hostname+u.pathname,durationMs:Math.round(e.duration),bytes:e.transferSize,queryKeys:u.hostname==='api.mapbox.com'?[...u.searchParams.keys()]:[]};
     }).sort((a,b)=>b.durationMs-a.durationMs).slice(0,12);
     const result={build:{{ vano_build_id|tojson }},page:location.pathname,
       elapsedMs:Math.round(performance.now()),ttfbMs:Math.round(nav?.responseStart||0),
