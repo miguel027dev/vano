@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from urllib.parse import urlparse
 
 try:
@@ -93,6 +94,7 @@ def _rewrite_sql(sql: str) -> str:
 
 _POOL = None
 _POOL_LOCK = __import__("threading").Lock()
+_POOL_LAST_RETURNED = {}
 
 def _pool_limits() -> tuple[int, int]:
     minconn = max(1, min(8, int(os.environ.get("DATABASE_POOL_MIN", "1") or 1)))
@@ -193,6 +195,10 @@ class PostgresDB:
         if self._pool is not None:
             try:
                 self._pool.putconn(self._connection, close=bool(self._connection.closed))
+                if self._connection.closed:
+                    _POOL_LAST_RETURNED.pop(id(self._connection), None)
+                else:
+                    _POOL_LAST_RETURNED[id(self._connection)] = time.monotonic()
                 return
             except Exception:
                 pass
@@ -214,10 +220,19 @@ def connect_db() -> PostgresDB:
             pool.putconn(connection, close=True)
             connection = pool.getconn()
         connection.autocommit = False
-        # Cheap liveness check catches connections dropped by the provider while idle.
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-        connection.rollback()
+        # A new connection has just completed its handshake; a recently used
+        # pooled connection is already known to work. Probing each checkout
+        # added SELECT + ROLLBACK network round trips to every API/page request.
+        last_returned = _POOL_LAST_RETURNED.pop(id(connection), None)
+        if last_returned is not None and time.monotonic() - last_returned >= 60:
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT 1")
+                connection.rollback()
+            except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                pool.putconn(connection, close=True)
+                connection = pool.getconn()
+                connection.autocommit = False
         return PostgresDB(connection, pool=pool)
     except Exception:
         try:
