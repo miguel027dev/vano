@@ -324,7 +324,7 @@ function routeBearingAt(index,speed=0){const c=selectedRoute?.geometry?.coordina
 function bearingDelta(a,b){return Math.abs(((b-a+540)%360)-180)}
 function hav(a,b){const R=6371000,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180,x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
 function locationErrorMessage(e){if(e?.code===1)return 'A localização está bloqueada. Abra as permissões do navegador, permita Localização e tente novamente.';if(e?.code===2)return 'Não conseguimos determinar sua posição. Verifique se o GPS do celular está ligado.';if(e?.code===3)return 'O GPS demorou para responder. Tente novamente com melhor sinal.';return 'Permita acesso à localização para usar a navegação.'}
-function showPermission(m){const box=$('locationPermission'),message=$('permissionText');if(!box||!message)return;if(box.classList.contains('show')&&message.textContent===(m||'Precisamos do GPS para acompanhar sua posição e iniciar a navegação.'))return;message.textContent=m||'Precisamos do GPS para acompanhar sua posição e iniciar a navegação.';box.classList.add('show')}
+function showPermission(m){const box=$('locationPermission'),message=$('permissionText');if(!box||!message)return;if(box.classList.contains('show')&&message.textContent===(m||'Precisamos do GPS para acompanhar sua posição e iniciar a navegação.'))return;message.textContent=m||'Precisamos do GPS para acompanhar sua posição e iniciar a navegação.';box.classList.add('show');box.style.setProperty('top','calc(env(safe-area-inset-top, 0px) + 124px)','important');box.style.setProperty('z-index','32','important')}
 function hidePermission(){$('locationPermission').classList.remove('show')}
 $('dismissLocationPromptBtn')?.addEventListener('click',hidePermission);
 const LAST_GPS_KEY='vano-last-location-v3';
@@ -1462,12 +1462,51 @@ async function calculateRoutes(preserveCurrent=false){
   if(window.lucide)lucide.createIcons();
 }
 function variantLabel(r){if(r.event_variant)return 'Desvio de evento';if(r.badges?.includes('fastest'))return 'Mais rápida';if(r.badges?.includes('smart'))return 'Spark';if(r.badges?.includes('safest'))return 'Mais segura';if(r.safety_variant)return 'Desvio seguro';return r.micro_route?'Atalho':'Alternativa'}
+
+/* Inline !important beats legacy author-layer selectors on the mobile trip sheet. */
+function stabilizeCompactRouteCards(box){
+  if(!box)return;
+  const compact=window.matchMedia('(max-width: 600px)').matches;
+  const set=(el,key,value)=>el.style.setProperty(key,value,'important');
+  const boxStyles={
+    'display':'grid','grid-template-columns':'minmax(0, 1fr)',
+    'grid-auto-flow':'row','grid-auto-columns':'auto','gap':'9px',
+    'overflow-x':'hidden','overflow-y':'visible','width':'100%',
+    'max-width':'100%','scroll-snap-type':'none','padding':'1px'
+  };
+  const cardStyles={
+    'display':'grid','grid-template-columns':'minmax(0, 1fr) auto',
+    'grid-template-rows':'auto auto auto','column-gap':'10px','row-gap':'5px',
+    'flex':'none','width':'100%','min-width':'0','max-width':'none',
+    'height':'auto','min-height':'108px','padding':'11px',
+    'box-sizing':'border-box','white-space':'normal','text-align':'left',
+    'overflow-wrap':'anywhere'
+  };
+  const apply=(el,defs)=>{if(!el)return;for(const [k,v] of Object.entries(defs)){if(compact)set(el,k,v);else el.style.removeProperty(k)}};
+  apply(box,boxStyles);
+  box.querySelectorAll('button.route-variant').forEach(btn=>{
+    apply(btn,cardStyles);
+    const children=[
+      [btn.querySelector('small'),{'grid-column':'1','grid-row':'1','font-size':'11px'}],
+      [btn.querySelector('b'),{'grid-column':'2','grid-row':'1','font-size':'18px','text-align':'right'}],
+      [btn.querySelector('em'),{'grid-column':'1','grid-row':'2','font-size':'10px','white-space':'normal'}],
+      [btn.querySelector(':scope > span:not(.route-variant-use)'),{'grid-column':'2','grid-row':'2','text-align':'right'}],
+      [btn.querySelector('.route-variant-signals'),{'grid-column':'1','grid-row':'3','display':'flex','gap':'5px','flex-wrap':'wrap'}],
+      [btn.querySelector('.route-variant-use'),{'grid-column':'2','grid-row':'3','align-self':'center','min-height':'34px','font-size':'10px','padding':'6px 9px','margin':'0'}]
+    ];
+    for(const [el,defs] of children)apply(el,defs);
+    btn.querySelectorAll('.route-variant-signals i').forEach(el=>apply(el,{'font-size':'10px'}));
+  });
+}
+window.addEventListener('resize',()=>stabilizeCompactRouteCards(document.getElementById('routeVariants')),{passive:true});
+
 function renderRouteVariants(){
   const box=$('routeVariants');if(!box)return;
   const list=(routes||[]).filter(r=>r?.geometry?.coordinates?.length>1).slice().sort((a,b)=>(+a.duration||9e12)-(+b.duration||9e12)).slice(0,4),count=$('routeChooserCount');
   if(count)count.textContent=list.length>1?`${list.length} opções comparadas`:'1 rota pronta';box.classList.toggle('route-alt-hidden',!mapPrefs.showAlternatives||list.length<2);if(!mapPrefs.showAlternatives||list.length<2){box.innerHTML='';return}
   const fastest=list[0],fastEta=Math.max(1,+fastest.duration||1),fastSafety=routeSafetyScore(fastest),activeKey=selectedRoute?routeClientKey(selectedRoute):'';
   box.innerHTML=list.map((r,i)=>{const key=routeClientKey(r),active=(r===selectedRoute)||key===activeKey,delta=Math.max(0,Math.round(((+r.duration||0)-fastEta)/60)),safeDelta=Math.round(routeSafetyScore(r)-fastSafety),exposure=routeExposurePct(r),traffic=Math.round(+r.traffic_score||0),reason=r.event_variant?'Evita movimento de evento':r.safety_variant?'Desvio verificado de segurança':r.adaptive_variant?'Corredor alternativo':r.micro_route?'Atalho de quarteirão':delta?`+${delta} min vs. mais rápida`:'Menor ETA',gain=safeDelta>=4?`+${safeDelta} seg.`:safeDelta<=-4?`${safeDelta} seg.`:'';return `<button type="button" class="route-variant ${active?'active':''}" data-route-rank="${i}" aria-pressed="${active?'true':'false'}"><small>${active?'Selecionada':variantLabel(r)}</small><b>${esc(fmtDuration(r.duration_min||(+r.duration||0)/60))}</b><span>${esc(fmtDistance(r.distance||0))}${gain?` · ${esc(gain)}`:''}</span><em>${esc(reason)}</em><div class="route-variant-signals"><i>Trânsito ${traffic||'—'}</i>${routeMode!=='fastest'?`<i>Exposição ${exposure.toFixed(exposure<10?1:0)}%</i>`:''}</div><span class="route-variant-use">${active?'Rota selecionada':'Usar rota'}</span></button>`}).join('');
+  stabilizeCompactRouteCards(box);
   box.querySelectorAll('[data-route-rank]').forEach(btn=>btn.addEventListener('click',()=>{const rank=Number(btn.dataset.routeRank);if(!Number.isInteger(rank)||rank<0||rank>=list.length)return;const found=list[rank];if(!found?.geometry?.coordinates?.length)return;if(found===selectedRoute||routeClientKey(found)===routeClientKey(selectedRoute))return;manualRouteSelection=true;selectedRoute=found;renderRoute();haptic(8);requestAnimationFrame(()=>box.querySelector('.route-variant.active')?.focus?.({preventScroll:true}));if(isMotorizedProfile())setTimeout(()=>nonFatal('event-manual-route',()=>checkEventDisruption(true,{pretrip:!activeNav?.classList.contains('show')})),180)}));
 }
 function alternativeRoutesFC(){if(activeNav?.classList.contains('show'))return navAlternativeFC();if(!mapPrefs.showAlternatives||!selectedRoute)return emptyFC();const key=routeClientKey(selectedRoute),list=(routes||[]).filter(r=>r?.geometry?.coordinates?.length>1&&routeClientKey(r)!==key).slice().sort((a,b)=>(+a.duration||9e12)-(+b.duration||9e12)).slice(0,3);return{type:'FeatureCollection',features:list.map((r,i)=>({type:'Feature',properties:{alternative:true,rank:i,key:routeClientKey(r),micro:!!r.micro_route},geometry:r.geometry}))}}
