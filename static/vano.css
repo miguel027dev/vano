@@ -25289,3 +25289,17 @@ body.vano-map-surface :is(
 }
 
 }
+
+/* 2026-10 route sheet: readable options and expandable content at narrow widths. */
+body.vano-map-surface #routeState {width:min(100%, 520px)!important;max-width:calc(100vw - 16px)!important;box-sizing:border-box!important;}
+body.vano-map-surface #routeState :is(.route-variants,.vano-route-more,.vano-route-more-content,.route-card,.route-deep-grid){min-width:0!important;max-width:100%!important;box-sizing:border-box!important;}
+body.vano-map-surface #routeState .route-variants{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr))!important;gap:10px!important;overflow:visible!important;}
+body.vano-map-surface #routeState .route-variants > *{min-width:0!important;min-height:58px!important;height:auto!important;white-space:normal!important;overflow-wrap:anywhere!important;}
+body.vano-map-surface #routeState .route-variants :is(button,b,small,span){max-width:100%;min-width:0;overflow-wrap:anywhere;white-space:normal!important;}
+body.vano-map-surface #routeState #routeMoreDetails[data-open="true"]{height:auto!important;max-height:min(68dvh,640px)!important;overflow-y:auto!important;overscroll-behavior:contain;}
+body.vano-map-surface #routeState #routeMoreContent{height:auto!important;max-height:none!important;overflow:visible!important;}
+body.vano-map-surface #routeState #routeMoreContent :is(.travel,.route-modes,.route-deep-grid){min-width:0!important;max-width:100%!important;}
+body.vano-map-surface #routeState #routeMoreContent button{min-height:44px!important;height:auto!important;white-space:normal!important;overflow-wrap:anywhere!important;}
+@media(max-width:420px){body.vano-map-surface #routeState{max-width:calc(100vw - 12px)!important;}body.vano-map-surface #routeState .route-variants{grid-template-columns:1fr!important;}body.vano-map-surface #routeState #routeMoreContent .travel{grid-template-columns:repeat(2,minmax(0,1fr))!important;}body.vano-map-surface #routeState #routeMoreContent .travel button{padding:10px 8px!important;}}
+html[data-vano-theme="black"] body:not(.vano-admin-surface) :is(h1,h2,h3,h4,h5,h6,.vr-section-head,.vano-route-more-toggle-copy b,.route-option-copy b,.route-card-top h3){color:#f5f6f8!important;}
+html[data-vano-theme="black"] body.vano-map-surface #routeState :is(.vr-section-head span,.vr-copy b,.route-variants b,.route-card b,.vano-route-more-section-head span){color:#f5f6f8!important;}

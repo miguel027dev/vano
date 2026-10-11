@@ -1,7 +1,7 @@
 /* VANO Voice Companion — opt-in, offline-first, no recording uploads. */
 (()=>{
   'use strict';
-  if(!document.body || document.body.classList.contains('vano-admin-surface'))return;
+  if(!document.body || !document.body.classList.contains('vano-map-surface') || document.body.classList.contains('vano-admin-surface'))return;
   const el=(tag,cls,text)=>{
     const n=document.createElement(tag);
     if(cls)n.className=cls;
