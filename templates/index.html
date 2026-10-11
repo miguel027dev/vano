@@ -7,7 +7,7 @@
 {% block head %}
 {% if v2_preview|default(false) %}
 <meta name="robots" content="noindex,nofollow,noarchive">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v={{ vano_build_id }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=v2-ui-20261011-r3">
 {% endif %}
 
 <script>
@@ -528,6 +528,6 @@
 </script>
 
 {% if v2_preview|default(false) %}
-<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v={{ vano_build_id }}"></script>
+<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=v2-ui-20261011-r3"></script>
 {% endif %}
 {% endblock %}
