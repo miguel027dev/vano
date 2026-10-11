@@ -76,6 +76,9 @@
   {% endif %}
   <title>{% block title %}VANO MAPS{% endblock %}</title>
   {% block legacy_map_assets %}{% endblock %}
+  {% for asset in ['vano-runtime.js', 'vano-theme.js', 'vano-telemetry.js'] %}
+  <link rel="preload" as="script" href="{{ url_for('static', filename=asset) }}?v={{ vano_build_id }}">
+  {% endfor %}
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <script defer src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu" crossorigin="anonymous"></script>
   <style>@layer vanoLegacy {
@@ -189,7 +192,7 @@
 </head>
 <body class="vano-app-root vano-route-{{ vano_endpoint|replace('_','-') }} {% if vano_map_surface %}vano-map-surface{% elif vano_admin_surface %}vano-admin-surface vano-page-surface{% else %}vano-page-surface{% endif %} {% if current_user %}vano-signed-in{% else %}vano-signed-out{% endif %}" data-map-style="{{ (current_user['map_style'] if current_user and current_user['map_style'] else 'standard') }}">
 {% if not vano_map_surface %}<a class="vano-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>{% endif %}
-{% if vano_endpoint != 'onboarding' %}
+{% if vano_endpoint != 'onboarding' and not vano_map_surface %}
 <header class="topbar">
   <nav class="nav" aria-label="Navegação principal">
     <a class="brand vano-nav-brand" href="{{ url_for('index') }}" aria-label="VANO MAPS">{% if vano_map_surface %}<span class="vano-adaptive-brand vano-nav-brand-images"><img class="vano-brand-img vano-brand-img-light" src="{{ url_for('static', filename='vano-maps-banner.png') }}?v={{ vano_build_id }}" alt="VANO MAPS"><img class="vano-brand-img vano-brand-img-dark" src="{{ url_for('static', filename='vano-maps-banner-dark.png') }}?v={{ vano_build_id }}" alt="" aria-hidden="true"></span>{% else %}<span class="vano-nav-brand-lite"><img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}?v={{ vano_build_id }}" width="34" height="34" decoding="async" alt=""><span><b>VANO</b><small>MAPS</small></span></span>{% endif %}</a>

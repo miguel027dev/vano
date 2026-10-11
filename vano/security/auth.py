@@ -151,9 +151,7 @@ def revoke_current_persistent_login():
     g.vano_remember_clear = True
 
 
-VANO_PUBLIC_RESOURCE_ENDPOINTS = frozenset({
-    'static', 'healthz', 'web_app_manifest', 'vano_service_worker', 'android_asset_links',
-})
+from vano.security.sessions import PUBLIC_RESOURCE_ENDPOINTS as VANO_PUBLIC_RESOURCE_ENDPOINTS
 CURRENT_USER_COLUMNS = (
     'id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,'
     'auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,'
@@ -238,6 +236,8 @@ def restore_persistent_login():
 
 @app.before_request
 def record_authenticated_ip():
+    if request.endpoint in VANO_PUBLIC_RESOURCE_ENDPOINTS:
+        return
     uid = session.get("user_id")
     fast_mobile_paths = {
         "/api/mobile/bootstrap", "/api/mobile/navigation/config",
@@ -360,6 +360,8 @@ def onboarding_needed(user):
 @app.before_request
 def enforce_profile_onboarding():
     """Keep every account-creation method on the same profile-completion flow."""
+    if request.endpoint in VANO_PUBLIC_RESOURCE_ENDPOINTS:
+        return
     if not session.get("user_id"):
         return
     endpoint = request.endpoint or ""

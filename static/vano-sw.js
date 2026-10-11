@@ -1,8 +1,10 @@
 /* VANO MAPS — canonical service worker. */
 const CACHE='vano-static-current';
 const MAP_CACHE='vano-map-region-current',MAP_CACHE_MAX=180;
+const BUILD=new URL(self.location.href).searchParams.get('v')||'';
 const PRECACHE=[
-  '/static/vano.css',
+  '/static/vano-runtime.css',
+  '/static/vano-foundation.css',
 
   '/static/vano-runtime.js',
   '/static/vano-theme.js',
@@ -39,7 +41,14 @@ async function fetchWithTimeout(request,ms=4500){
 self.addEventListener('install',event=>{
   event.waitUntil((async()=>{
     const cache=await caches.open(CACHE);
-    await Promise.allSettled(PRECACHE.map(url=>fetch(url,{cache:'reload'}).then(resp=>resp.ok?cache.put(url,resp):Promise.reject(new Error(String(resp.status))))));
+    // Reuse files the page already fetched, under their exact build URL.
+    // Never download the obsolete legacy CSS again during installation.
+    await Promise.allSettled(PRECACHE.map(async path=>{
+      const url=path+(/^[a-f0-9]{7,40}$/i.test(BUILD)?'?v='+BUILD:'');
+      if(await cache.match(url))return;
+      const resp=await fetch(url,{cache:'force-cache'});
+      if(resp.ok)await cache.put(url,resp);
+    }));
     await self.skipWaiting();
   })());
 });
@@ -62,12 +71,13 @@ self.addEventListener('fetch',event=>{
   if(req.mode==='navigate') return; // HTML must remain network-controlled/auth-safe.
   if(!url.pathname.startsWith('/static/')) return;
 
-  if(CORE_RE.test(url.pathname)){
+  // Build fingerprints apply to all local CSS/JS, not just a few older files.
+  const versioned=/^[a-f0-9]{7,40}$/i.test(url.searchParams.get('v')||'');
+  if(versioned||CORE_RE.test(url.pathname)){
     event.respondWith((async()=>{
       const cache=await caches.open(CACHE);
       // The ?v= fingerprint changes on every deployment. A cached matching
       // URL is safe and avoids waiting for a 5s network timeout on every page.
-      const versioned=/^[a-f0-9]{7,40}$/i.test(url.searchParams.get('v')||'');
       if(versioned){
         const hit=await cache.match(req);
         if(hit)return hit;

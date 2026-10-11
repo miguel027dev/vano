@@ -42,6 +42,7 @@ from flask import (
 from vano.bootstrap import install as _vano_install
 from vano.security.route_integrity import attest_route, valid_attestation, valid_geometry, valid_metrics
 from vano.security.redaction import redact_path
+from vano.security.sessions import ResourceSessionInterface
 
 _vano_install(globals(), "vano.config")
 _vano_install(globals(), "vano.services.nodes")
@@ -67,6 +68,7 @@ VANO_TRUSTED_HOSTS = _trusted_hosts_env or list(dict.fromkeys(
 SECURE_COOKIE = True
 
 app = Flask(__name__, template_folder="templates")
+app.session_interface = ResourceSessionInterface()
 app.config.update(
     COMPRESS_MIMETYPES=["text/html", "text/css", "text/javascript", "application/javascript", "application/json", "image/svg+xml"],
     COMPRESS_LEVEL=3,

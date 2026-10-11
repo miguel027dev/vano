@@ -108,7 +108,7 @@ def test_literal_static_references_exist():
 
 def test_controlled_stylesheet_layers_only():
     css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
-    assert css_files == ["vano-foundation.css", "vano.css"]
+    assert css_files == ["vano-foundation.css", "vano-runtime.css", "vano.css"]
 
 
 def test_literal_template_endpoints_are_registered():

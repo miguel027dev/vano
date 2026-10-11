@@ -83,7 +83,7 @@ def security_headers(response):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
-    if session.get("user_id") or request.path in {"/privacy", "/politica-de-privacidade", "/privacy/request", "/testar"}:
+    if request.endpoint not in VANO_PUBLIC_RESOURCE_ENDPOINTS and (session.get("user_id") or request.path in {"/privacy", "/politica-de-privacidade", "/privacy/request", "/testar"}):
         response.headers["Cache-Control"] = "no-store, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.vary.add("Cookie")

@@ -229,7 +229,7 @@ def record_request_activity(response):
             "/api/mobile/bootstrap", "/api/mobile/navigation/config",
             "/api/mobile/navigation/batch", "/mobile/health",
         }
-        if endpoint != "static" and request.path != "/healthz" and endpoint != "api_telemetry_event" and request.path not in fast_mobile_paths:
+        if endpoint not in VANO_PUBLIC_RESOURCE_ENDPOINTS and endpoint != "api_telemetry_event" and request.path not in fast_mobile_paths:
             started = getattr(g, "vano_request_started", None)
             duration = int((time.monotonic() - started) * 1000) if started else 0
             meta = {

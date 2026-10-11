@@ -9,8 +9,8 @@ del _vano_inject
 
 @app.route("/map")
 def map_page():
-    # A navegação principal agora vive na home mobile-first.
-    return redirect(url_for("index"))
+    # Render the same map without another authenticated request/round trip.
+    return index()
 
 
 @app.route("/report", methods=["GET", "POST"])
