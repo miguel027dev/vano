@@ -95,10 +95,7 @@ def embed_entry():
 @app.route("/v2")
 @app.route("/V2")
 def v2_preview():
-    # Preview is private: knowing the URL is not authorization.
-    user = current_user()
-    if not user or user["role"] != "admin":
-        return redirect(url_for("login", next="/v2")) if not user else abort(403)
+    # Public V2 layout: available to guests and signed-in users alike.
     return index()
 
 
