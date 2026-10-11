@@ -1,0 +1,25 @@
+
+/* Scoped experimental map home — affects /v2 only. */
+body.vano-v2 #v2Dock{position:fixed;z-index:1000;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 76px);width:min(94vw,640px);pointer-events:none;display:flex;flex-direction:column;gap:12px}
+body.vano-v2 #v2Dock>*{pointer-events:auto}
+body.vano-v2 #v2Dock .planner-search-row{display:flex!important;width:100%!important;align-items:center!important;gap:8px!important;opacity:1!important;transform:none!important;margin:0!important;padding:0!important}
+body.vano-v2 #v2Dock .planner-search-card{min-width:0;flex:1;border-radius:20px!important;background:var(--card-bg,rgba(20,25,34,.94))!important;box-shadow:0 8px 24px #0002!important;overflow:visible!important}
+body.vano-v2 #v2Dock .planner-location-row{min-height:50px!important}
+body.vano-v2 #v2Dock .planner-adjust-btn{width:48px!important;height:48px!important;border-radius:16px!important}
+body.vano-v2 #v2Dock .planner-presets,body.vano-v2 #v2Dock .nearby-services{display:contents!important}
+body.vano-v2 #v2Shortcuts{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;padding:2px 6px 8px;overscroll-behavior-x:contain}
+body.vano-v2 #v2Shortcuts::-webkit-scrollbar{display:none}
+body.vano-v2 #v2Shortcuts .planner-preset,body.vano-v2 #v2Shortcuts .nearby-service{display:flex!important;flex:0 0 66px!important;width:66px!important;min-width:66px!important;max-width:66px!important;min-height:75px!important;flex-direction:column!important;justify-content:flex-start!important;align-items:center!important;gap:6px!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;margin:0!important;color:inherit!important}
+body.vano-v2 #v2Shortcuts .planner-preset-icon,body.vano-v2 #v2Shortcuts .nearby-service-icon{display:grid!important;place-items:center!important;flex:0 0 48px!important;width:48px!important;height:48px!important;border-radius:50%!important;background:var(--card-bg,rgba(28,33,41,.92))!important;box-shadow:0 3px 12px #0002!important;margin:0!important}
+body.vano-v2 #v2Shortcuts b{display:block!important;font-size:11px!important;line-height:1.25!important;font-weight:650!important;white-space:nowrap!important;text-align:center!important}
+body.vano-v2 #v2Shortcuts small{display:none!important}
+body.vano-v2 #v2Shortcuts .planner-preset>span:last-child{display:block!important}
+body.vano-v2 #welcomeState{display:none!important}
+body.vano-v2 #planSheet.sheet-collapsed{pointer-events:none!important;background:transparent!important;box-shadow:none!important;border:0!important}
+body.vano-v2 #planSheet.sheet-collapsed #planGrab{pointer-events:none!important;opacity:0!important}
+body.vano-v2 #planSheet:not(.sheet-collapsed) #planGrab{pointer-events:auto!important}
+body.vano-v2 #v2Dock .search-results{z-index:1010!important;max-height:50vh!important;overflow-y:auto!important}
+body.vano-v2 #v2Dock.v2-is-navigating{opacity:0;transform:translate(-50%,-14px);pointer-events:none;transition:opacity .22s ease,transform .22s ease}
+body.vano-v2 #v2Dock.v2-is-navigating *{pointer-events:none!important}
+@media(max-width:700px){body.vano-v2 #v2Dock{top:calc(env(safe-area-inset-top,0px) + 64px);width:calc(100% - 22px);gap:9px}body.vano-v2 #v2Shortcuts{gap:8px}body.vano-v2 #v2Dock .planner-search-card{border-radius:16px!important}}
+@media(prefers-reduced-motion:reduce){body.vano-v2 #v2Dock{transition:none!important}}

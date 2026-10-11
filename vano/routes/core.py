@@ -92,6 +92,16 @@ def embed_entry():
 # Pages
 # -----------------------------
 
+@app.route("/v2")
+@app.route("/V2")
+def v2_preview():
+    # Preview is private: knowing the URL is not authorization.
+    user = current_user()
+    if not user or user["role"] != "admin":
+        return redirect(url_for("login", next="/v2")) if not user else abort(403)
+    return index()
+
+
 @app.route("/")
 def index():
     # V91 — keep the product entry path lean. The old page counted users and
@@ -118,6 +128,7 @@ def index():
         map_accent_pref = "violet"
     return render_template(
         "index.html",
+        v2_preview=request.path.lower() == "/v2",
         mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
         mapbox_style=selected_map_style,
         mapbox_styles={
