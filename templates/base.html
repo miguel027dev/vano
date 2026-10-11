@@ -160,7 +160,7 @@
   ] %}
   {% block head %}{% endblock %}
   {% block tail_head %}{% endblock %}
-  {% if not vano_light_public_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano.css') }}?v={{ vano_build_id }}">{% endif %}
+  {% if not vano_light_public_surface %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-runtime.css') }}?v={{ vano_build_id }}">{% endif %}
   
   {% if vano_endpoint != 'onboarding' %}{% endif %}
   {% if vano_map_surface %}{% endif %}

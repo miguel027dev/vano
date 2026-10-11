@@ -12,9 +12,9 @@ def test_localization_does_not_block_first_paint_for_pt_br():
     assert "<script defer src=\"{{ url_for('static', filename='vano-i18n.js')" in base
 
 
-def test_repository_has_two_controlled_stylesheets():
+def test_repository_has_optimized_controlled_stylesheets():
     css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
-    assert css_files == ["vano-foundation.css", "vano.css"]
+    assert css_files == ["vano-foundation.css", "vano-runtime.css", "vano.css"]
 
 
 def test_templates_reference_controlled_local_stylesheets():
@@ -22,7 +22,7 @@ def test_templates_reference_controlled_local_stylesheets():
     pattern = re.compile(r"filename=['\"]([^'\"]+\.css)['\"]")
     for path in (ROOT / "templates").glob("*.html"):
         refs.update(pattern.findall(path.read_text(encoding="utf-8", errors="ignore")))
-    assert refs == {"vano.css", "vano-foundation.css"}
+    assert refs == {"vano-runtime.css", "vano-foundation.css"}
 
 
 def test_onboarding_stays_lightweight_outside_shared_stylesheet():
