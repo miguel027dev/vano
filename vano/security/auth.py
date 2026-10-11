@@ -151,6 +151,36 @@ def revoke_current_persistent_login():
     g.vano_remember_clear = True
 
 
+VANO_PUBLIC_RESOURCE_ENDPOINTS = frozenset({
+    'static', 'healthz', 'web_app_manifest', 'vano_service_worker', 'android_asset_links',
+})
+CURRENT_USER_COLUMNS = (
+    'id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,'
+    'auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,'
+    'onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,'
+    'vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,'
+    'presence_terms_accepted_at,emergency_name,emergency_phone,map_style,map_accent,'
+    'avoid_ferries,avoid_tolls,avoid_unpaved'
+)
+
+
+def _load_authenticated_user(uid):
+    columns = ','.join('u.' + column for column in CURRENT_USER_COLUMNS.split(','))
+    return get_db().execute(
+        f'''SELECT {columns} FROM auth_sessions a JOIN users u ON u.id=a.user_id
+            WHERE a.token_hash=? AND a.user_id=? AND a.revoked_at IS NULL
+            AND a.expires_at>? AND u.is_active=1''',
+        (session.get('auth_session_hash') or '', uid, utcnow_iso()),
+    ).fetchone()
+
+
+def _cache_authenticated_user(uid, row):
+    g.vano_auth_session_valid = True
+    g.vano_current_user_loaded = True
+    g.vano_current_user_uid = int(uid)
+    g.vano_current_user_value = row
+
+
 @app.before_request
 def restore_persistent_login():
     """Restore an authenticated Flask session after a browser restart.
@@ -158,18 +188,12 @@ def restore_persistent_login():
     This runs only when the signed Flask session cookie is absent. It does not
     bypass account state: inactive users and revoked/expired tokens are ignored.
     """
-    if request.endpoint in {"static", "healthz"}:
+    if request.endpoint in VANO_PUBLIC_RESOURCE_ENDPOINTS:
         return
     if session.get("user_id"):
-        bound = session.get("auth_session_hash")
-        valid = get_db().execute(
-            """SELECT a.id FROM auth_sessions a JOIN users u ON u.id=a.user_id
-               WHERE a.token_hash=? AND a.user_id=? AND a.revoked_at IS NULL
-               AND a.expires_at>? AND u.is_active=1""",
-            (bound or "", session["user_id"], utcnow_iso()),
-        ).fetchone()
-        if valid:
-            g.vano_auth_session_valid = True
+        user = _load_authenticated_user(session['user_id'])
+        if user:
+            _cache_authenticated_user(session['user_id'], user)
             return
         # Legacy signed cookies alone are never credentials. A valid remember
         # token can migrate an existing device into the revocable session model.
@@ -219,7 +243,7 @@ def record_authenticated_ip():
         "/api/mobile/bootstrap", "/api/mobile/navigation/config",
         "/api/mobile/navigation/batch", "/mobile/health",
     }
-    if not uid or request.endpoint in {"static", "healthz"} or request.path in fast_mobile_paths:
+    if not uid or request.endpoint in VANO_PUBLIC_RESOURCE_ENDPOINTS or request.path in fast_mobile_paths:
         return
     record_user_access(uid)
 
@@ -295,22 +319,18 @@ def current_user():
         return None
 
     if not getattr(g, "vano_auth_session_valid", False):
-        valid = get_db().execute(
-            """SELECT id FROM auth_sessions WHERE token_hash=? AND user_id=?
-               AND revoked_at IS NULL AND expires_at>?""",
-            (session.get("auth_session_hash") or "", uid, utcnow_iso()),
-        ).fetchone()
-        if not valid:
+        row = _load_authenticated_user(uid)
+        if not row:
             session.clear()
             return None
-        g.vano_auth_session_valid = True
+        _cache_authenticated_user(uid, row)
 
     if getattr(g, "vano_current_user_loaded", False) and getattr(g, "vano_current_user_uid", None) == uid:
         return getattr(g, "vano_current_user_value", None)
 
     db = get_db()
     row = db.execute(
-        "SELECT id,name,email,role,locale,is_active,created_at,last_login_at,google_sub,avatar_url,auth_provider,age,sex,is_app_driver,night_safety_mode,route_preference,onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,presence_terms_accepted_at,emergency_name,emergency_phone,map_style,map_accent,avoid_ferries,avoid_tolls,avoid_unpaved FROM users WHERE id = ?",
+        f"SELECT {CURRENT_USER_COLUMNS} FROM users WHERE id = ?",
         (uid,),
     ).fetchone()
     g.vano_current_user_loaded = True
@@ -351,7 +371,7 @@ def enforce_profile_onboarding():
         "account_delete_page", "account_delete", "privacy_request_create",
         "forgot_password", "reset_password", "google_link", "shared_route_view",
     }
-    if endpoint in allowed or endpoint.startswith("static"):
+    if endpoint in allowed or endpoint in VANO_PUBLIC_RESOURCE_ENDPOINTS or endpoint.startswith("static"):
         return
     user = current_user()
     if not onboarding_needed(user):

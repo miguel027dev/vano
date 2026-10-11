@@ -16,6 +16,7 @@
   
   
   <script defer src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>
+  {% include '_performance_probe.html' %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-runtime.css') }}?v={{ vano_build_id }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
 </head>

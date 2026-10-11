@@ -153,6 +153,10 @@ def detect_ui_locale():
 
 @app.before_request
 def resolve_ui_locale():
+    # These responses contain no localized account content. Loading a CSS/JS
+    # asset with a signed cookie must not authenticate or open a DB connection.
+    if request.endpoint in VANO_PUBLIC_RESOURCE_ENDPOINTS:
+        return
     locale, source, country = detect_ui_locale()
     g.vano_locale = locale
     g.vano_locale_source = source

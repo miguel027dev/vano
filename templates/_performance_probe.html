@@ -1,0 +1,26 @@
+{# Opt-in diagnosis: timings only, no addresses, cookie values or URL queries. #}
+{% if request.args.get('perf') == '1' %}
+<script>
+(()=>{
+  const totals={longTasks:0,blockingMs:0,maxInteractionMs:0};
+  try{new PerformanceObserver(list=>{for(const e of list.getEntries()){totals.longTasks++;totals.blockingMs+=Math.max(0,e.duration-50)}}).observe({type:'longtask',buffered:true})}catch(_){}
+  try{new PerformanceObserver(list=>{for(const e of list.getEntries())totals.maxInteractionMs=Math.max(totals.maxInteractionMs,e.duration)}).observe({type:'event',buffered:true,durationThreshold:40})}catch(_){}
+  const summarize=()=>{
+    const nav=performance.getEntriesByType('navigation')[0];
+    const resources=performance.getEntriesByType('resource').map(e=>{
+      const u=new URL(e.name);
+      return {path:u.origin===location.origin?u.pathname:u.hostname+u.pathname,durationMs:Math.round(e.duration),bytes:e.transferSize};
+    }).sort((a,b)=>b.durationMs-a.durationMs).slice(0,12);
+    const result={build:{{ vano_build_id|tojson }},page:location.pathname,
+      elapsedMs:Math.round(performance.now()),ttfbMs:Math.round(nav?.responseStart||0),
+      domReadyMs:Math.round(nav?.domContentLoadedEventEnd||0),loadMs:Math.round(nav?.loadEventEnd||0),
+      paints:performance.getEntriesByType('paint').map(e=>({name:e.name,ms:Math.round(e.startTime)})),
+      ...totals,blockingMs:Math.round(totals.blockingMs),resources};
+    document.documentElement.setAttribute('data-vano-performance',JSON.stringify(result));
+    console.info('[VANO performance]',JSON.stringify(result));
+  };
+  for(const ms of [1000,5000,10000])setTimeout(summarize,ms);
+  window.addEventListener('load',summarize,{once:true});
+})();
+</script>
+{% endif %}

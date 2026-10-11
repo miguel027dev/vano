@@ -8,6 +8,7 @@
   {% if active_locale != 'pt-BR' %}<script defer src="{{ url_for('static', filename='vano-i18n.js') }}?v={{ vano_build_id }}"></script>{% endif %}
   <meta name="theme-color" content="#F4F5F8">
   {% include '_theme_boot.html' %}
+  {% include '_performance_probe.html' %}
   <meta name="description" content="{% block meta_description %}VANO MAPS — GPS, mapas, rotas rápidas, trânsito em tempo real e navegação inteligente.{% endblock %}">
   <meta name="robots" content="{% if seo_indexable %}index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1{% else %}noindex,nofollow{% endif %}">
   {% if seo_indexable %}<link rel="canonical" href="{{ seo_canonical_url }}">{% endif %}
