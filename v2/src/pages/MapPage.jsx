@@ -12,12 +12,36 @@ import { useVano } from '../context';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage(){
   const {preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
-  const mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
   destRef.current=dest;
   useEffect(()=>setChoice(initialChoice),[initialChoice]);
+  // Floating map controls are positioned against the ACTUAL route panel height.
+  // This avoids the gap caused by assuming every expanded sheet occupies 66dvh.
+  useEffect(()=>{
+    const root=mapPageRef.current;
+    if(!root)return;
+    const panel=root.querySelector('.route-sheet, .collapsed-route');
+    if(!panel){root.style.removeProperty('--v33-panel-clearance');return;}
+    const measure=()=>{
+      if(!panel.isConnected)return;
+      const inset=Number.parseFloat(window.getComputedStyle(panel).bottom)||0;
+      const clearance=Math.ceil(panel.offsetHeight+inset+12);
+      root.style.setProperty('--v33-panel-clearance',clearance+'px');
+    };
+    measure();
+    const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
+    observer?.observe(panel);
+    window.addEventListener('resize',measure,{passive:true});
+    return()=>{
+      observer?.disconnect();
+      window.removeEventListener('resize',measure);
+      root.style.removeProperty('--v33-panel-clearance');
+    };
+  },[sheetOpen,navMode,searchOpen,Boolean(dest),loadingRoute]);
+
   useEffect(()=>{api('/places').then(setAllPlaces).catch(()=>{});},[]);
   useEffect(()=>{
     if(!pointMenu&&!editor)return;
@@ -268,7 +292,7 @@ export default function MapPage(){
       .finally(()=>{if(epoch===routeEpoch.current)setRecalculating(false);});
   },[navMode,userCoords?.[0],userCoords?.[1],telemetry?.accuracy,route,dest?.id,recalculating,preferences?.vehicle]);
 
-  return <div className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''}`}>
+  return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
     <VanoMap userCoords={origin} destination={dest} onNavigationProgress={setGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} telemetry={telemetry} vehicle={preferences.vehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
