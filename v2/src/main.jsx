@@ -10,6 +10,7 @@ import './v5-refinement.css';
 import './v27-locales.css';
 import './v28-navigation.css';
 import './v29-polish.css';
+import './v30-atlas.css';
 import 'leaflet/dist/leaflet.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);
