@@ -144,8 +144,18 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     const route=routes?.find(r=>r.id===selectedRoute)||routes?.[0];
     const timeline=buildRouteTimeline(route?.geometry);
     let raf=0,stopped=false;
-    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
+    const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    let reduced=preference?.matches||false;
     const state={...visual.current,last:0,lastReport:0,lastPaint:0,lastFlowAt:0,lastFlowFrame:-1,progress:0};
+    function preferenceChanged(){
+      reduced=Boolean(preference?.matches);
+      state.lastFlowFrame=-1;
+      const m=mapRef.current;
+      if(backend.current==='mapbox'&&m&&isLoaded(m)&&m.getLayer('vano-v2-flow')){
+        try{m.setPaintProperty('vano-v2-flow','line-opacity',reduced?0:.86);}catch{}
+      }
+    }
+    preference?.addEventListener?.('change',preferenceChanged);
     visual.current=state;
     function animate(now){
       if(stopped)return;
