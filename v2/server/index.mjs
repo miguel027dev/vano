@@ -586,7 +586,12 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     if(!['GET','POST','PATCH','DELETE','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     if(!requestHTTPS(req,res))return;
     if(!limits(req,res,'all',240,60000))return;
-    if((req.url||'').startsWith('/api/')){store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);}
+    // Google OAuth legacy callback must reach the API controller, not the React SPA fallback.
+    // Otherwise React redirects /login/google/callback to /inicio before a session is created.
+    const requestPath=new URL(req.url||'/','http://localhost').pathname;
+    if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'){
+      store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
+    }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     const dist=path.join(root,'dist');
     let name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
