@@ -40,6 +40,12 @@ test('Google readiness reports missing credentials without exposing secrets',()=
   assert.equal(badPath.reason,'invalid-callback-path');
   assert.deepEqual(googleOAuthStatus(config),{ready:true,reason:null,callbackOrigin:'https://v2.example.com'});
 });
+test('Legacy original VANO Maps callback is supported without allowing arbitrary callback paths',()=>{
+ const legacy={...config,GOOGLE_REDIRECT_URI:'https://vanomaps.online/login/google/callback'};
+ assert.equal(googleOAuthStatus(legacy).ready,true);
+ assert.equal(googleRedirectUri(legacy),legacy.GOOGLE_REDIRECT_URI);
+ assert.equal(canonicalGoogleStart('vanu-73xu.onrender.com',legacy),'https://vanomaps.online/api/auth/google/start');
+});
 test('Google starts on its callback origin, not a separate domain with missing state cookie',()=>{
   const other='vanu-test.onrender.com', trusted='v2.example.com';
   assert.equal(canonicalGoogleStart(trusted,config),null);
