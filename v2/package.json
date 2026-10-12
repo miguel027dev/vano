@@ -18,7 +18,8 @@
     "test:oauth": "node --test server/google-oauth.test.mjs",
     "migration:check": "node scripts/check-vaigo1-migration.mjs",
     "migration:dryrun": "node scripts/import-v1-to-v2.mjs",
-    "migration:test": "node --test scripts/import-v1-to-v2.test.mjs"
+    "migration:test": "node --test scripts/import-v1-to-v2.test.mjs",
+    "migration:bootstrap": "node scripts/bootstrap-vaigo-state.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
