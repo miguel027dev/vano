@@ -268,7 +268,8 @@
   bottom:var(--v33-panel-clearance,112px);
 }
 /* Preserve separation from the live navigation instruction dock. */
-.map-page.in-navigation .map-controls{bottom:245px}
+/* Bring the three navigation controls slightly closer to the lower dock (19px). */
+.map-page.in-navigation .map-controls{bottom:226px}
 @media(max-width:720px){
   .map-page .map-controls{bottom:calc(env(safe-area-inset-bottom,0px) + 62px)}
 }
