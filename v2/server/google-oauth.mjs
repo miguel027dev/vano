@@ -4,7 +4,7 @@ import { createHash, randomBytes } from 'node:crypto';
 export function googleOAuthStatus(env) {
   const client=String(env.GOOGLE_CLIENT_ID||'').trim(),secret=String(env.GOOGLE_CLIENT_SECRET||'').trim();
   if(!client||!secret||client.startsWith('REPLACE_')||secret.startsWith('REPLACE_'))return {ready:false,reason:'credentials-missing'};
-  if(!/^[A-Za-z0-9_.-]+\\.apps\\.googleusercontent\\.com$/.test(client))return {ready:false,reason:'invalid-client-id'};
+  if(!/^[A-Za-z0-9_.-]+\.apps\.googleusercontent\.com$/.test(client))return {ready:false,reason:'invalid-client-id'};
   let uri;
   try {uri=new URL(googleRedirectUri(env));}catch{return {ready:false,reason:'invalid-callback'};}
   if(uri.pathname!=='/api/auth/google/callback'||uri.search||uri.hash)return {ready:false,reason:'invalid-callback-path'};
