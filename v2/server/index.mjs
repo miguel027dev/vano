@@ -10,6 +10,8 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
+import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
+import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleConfigured, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
@@ -24,6 +26,8 @@ if (fs.existsSync(envFile)) for (const line of fs.readFileSync(envFile, 'utf8').
 const production = process.env.NODE_ENV === 'production';
 const origin = process.env.VANO_PUBLIC_ORIGIN || '';
 const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.VANO_EMAIL_FROM);
+const startupMs = Date.now();
+const runtimeMetrics = { requests:0,routeRequests:0,routeErrors:0,routeLatencyMs:0,pageViews:Object.create(null) };
 const googleReady = googleConfigured(process.env);
 if (production) {
   let publicUrl;try{publicUrl=new URL(origin);}catch{throw Error('VANO_PUBLIC_ORIGIN inválida.');}
@@ -76,7 +80,7 @@ const limiter = createLimiter();
 const headers = secureHeaders(production);
 const now = () => Date.now();
 const stamp = () => new Date().toISOString();
-const safeUser = u => u ? { id: u.id, name: u.name, email: u.email, verified: Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub) } : null;
+const safeUser = u => u ? { id: u.id, name: u.name, email: u.email, verified: Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub),isAdmin:isAdminAccount(u) } : null;
 const json = (res, status, data, extra = {}) => {
   res.writeHead(status, { ...headers, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store, private', ...extra });
   res.end(JSON.stringify(data));
@@ -293,6 +297,14 @@ async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
   if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady});
+  if ((pathname === '/api/admin' || pathname === '/api/admin/users') && req.method === 'GET') {
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
+    if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
+    if(!limits(req,res,'admin-console',30,60000))return;
+    if(pathname==='/api/admin/users')return json(res,200,adminUsers(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit')}));
+    return json(res,200,adminMetrics(db,runtimeMetrics,{now:Date.now(),startedAt:startupMs,status:{google:googleReady,mapbox:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,v1Router:!!process.env.VANO_V1_API_URL,email:mailReady,persistentDb:false,storage:'JSON da instância atual — dados podem desaparecer com reinícios no Render Free'}}));
+  }
   if (pathname === '/api/bootstrap' && req.method === 'GET') { const newGuest=guestCookie(req);return json(res,200,bootstrap(req),newGuest?{'Set-Cookie':newGuest}:{}); }
   if (pathname === '/api/auth/google/start' && req.method === 'GET') {
     if(!googleReady)return err(res,503,'Login Google ainda não configurado.');
@@ -369,7 +381,12 @@ async function route(req, res) {
     const t=body.telemetry&&typeof body.telemetry==='object'?body.telemetry:{};
     const telemetry={ bearing:typeof t.bearing==='number'&&t.bearing>=0&&t.bearing<360?t.bearing:null, speed:typeof t.speed==='number'&&t.speed>=0&&t.speed<90?t.speed:null };
     const language=normalizeLocale(body.language)||prefFor(id,getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language).language;
-    const result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language);
+    runtimeMetrics.routeRequests+=1;
+    const routeStarted=performance.now();
+    let result;
+    try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language);}
+    catch(e){runtimeMetrics.routeErrors+=1;throw e;}
+    finally {runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
     return json(res,200,result);
   }
@@ -498,26 +515,30 @@ async function route(req, res) {
   if(pathname.startsWith('/api/routines/')&&req.method==='DELETE'){
     const id=pathname.split('/').pop(),own=owner(req);db.routines=db.routines.filter(x=>!(x.id===id&&x.owner===own));persist();return json(res,200,{ok:true});
   }
-  if(pathname==='/api/admin')return err(res,403,'Painel administrativo não está disponível.');
+  if(pathname.startsWith('/api/admin'))return err(res,404,'Recurso administrativo não encontrado.');
   return err(res,404,'Rota não encontrada.');
 }
-const types={'.json':'application/json; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2'};
+const types={'.json':'application/json; charset=utf-8','.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2'};
 const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersTimeout:10000},async(req,res)=>{
   try {
     const method=req.method||'GET';
     if(!['GET','POST','PATCH','DELETE','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     if(!requestHTTPS(req,res))return;
     if(!limits(req,res,'all',240,60000))return;
-    if((req.url||'').startsWith('/api/'))return await route(req,res);
+    if((req.url||'').startsWith('/api/')){runtimeMetrics.requests+=1;return await route(req,res);}
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     const dist=path.join(root,'dist');
     let name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
+    if(method==='GET'&&PUBLIC_PATHS.includes(name))runtimeMetrics.pageViews[name]=(runtimeMetrics.pageViews[name]||0)+1;
     if(name==='/')name='/index.html';
     let target=path.resolve(dist,'.'+name);
+    // Pre-rendered guides have a folder index so crawlers receive real content before JavaScript.
+    if(target.startsWith(dist+path.sep) && fs.existsSync(target) && fs.statSync(target).isDirectory())target=path.join(target,'index.html');
     if(!target.startsWith(dist+path.sep)||!fs.existsSync(target)||!fs.statSync(target).isFile())target=path.join(dist,'index.html');
     if(!fs.existsSync(target)){res.writeHead(404,headers);return res.end('Frontend não compilado. Rode npm run build.');}
     const contentType=types[path.extname(target)]||'application/octet-stream';
-    res.writeHead(200,{...headers,'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600'});
+    const privatePage=/^\/(admin|perfil|conta|entrar|cadastro|recuperar-senha|redefinir-senha|personalizar|atividade|favoritos|rotinas|configuracoes|relatar)(\/|$)/.test(name);
+    res.writeHead(200,{...headers,'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
     if(method==='HEAD')return res.end();
     fs.createReadStream(target).pipe(res);
   }catch(e){
