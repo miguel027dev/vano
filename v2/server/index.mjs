@@ -9,6 +9,7 @@ import path from 'node:path';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
+import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
@@ -379,6 +380,27 @@ async function route(req, res) {
     if(!['localhost','127.0.0.1','[::1]'].includes(hostname))return err(res,426,'Para usar contas pelo celular, habilite HTTPS confiável.');
   }
   if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
+  // Address lookup only after location permission; no coordinates are persisted.
+  // A strict request limit prevents GPS jitter from exhausting provider quotas.
+  if (pathname === '/api/reverse' && req.method === 'GET') {
+    if (!limits(req,res,'reverse-geocode',12,60000)) return;
+    const point=parseReverseCoords(u.searchParams);
+    if(!point)return err(res,400,'Coordenadas inválidas.');
+    const access=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+    if(!access)return err(res,503,'Endereços indisponíveis nesta instância.');
+    const language=normalizeLocale(u.searchParams.get('lang'))||'pt-BR';
+    const request=new URL('https://api.mapbox.com/search/geocode/v6/reverse');
+    request.searchParams.set('longitude',String(point.lon));
+    request.searchParams.set('latitude',String(point.lat));
+    request.searchParams.set('language',language);
+    request.searchParams.set('access_token',access);
+    try{
+      const response=await fetch(request,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(6500)});
+      if(!response.ok)return err(res,502,'Não foi possível identificar o endereço agora.');
+      const result=normalizedReverseAddress(await response.json());
+      return json(res,200,{found:Boolean(result),address:result});
+    }catch{return err(res,503,'Serviço de endereços temporariamente indisponível.');}
+  }
   if (pathname === '/api/search' && req.method === 'GET') {
     if (!limits(req,res,'search',25,60000)) return;
     const detected=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1');
