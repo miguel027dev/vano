@@ -53,6 +53,23 @@ function motionController(map,latest,status){
 export default function VanoMap({userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,previewMode=false,previewRun=0,onNavigationProgress}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0);
+  function centerOnFirstGpsFix(){
+    const map=mapRef.current,d=latest.current;
+    if(!map||d.navigation||d.destination||!validPoint(d.userCoords)||firstGpsCenter.current>=2)return;
+    if(motion.current?.freeLook||map._vanoFreeLook)return;
+    const accurate=Number.isFinite(d.telemetry?.accuracy)&&d.telemetry.accuracy<=120;
+    if(firstGpsCenter.current===1&&!accurate)return;
+    // Mapbox may still be loading when GPS first answers. Do not consume
+    // the first-fix recenter until the map is ready. style.load retries.
+    if(backend.current==='mapbox'&&!isLoaded(map))return;
+    firstGpsCenter.current=accurate?2:1;
+    if(backend.current==='mapbox'){
+      map.stop();
+      map.easeTo({center:d.userCoords,zoom:Math.max(map.getZoom(),14.5),duration:550,essential:true});
+    }else if(backend.current==='leaflet'){
+      map.setView(ll(d.userCoords),Math.max(map.getZoom(),14.5),{animate:false});
+    }
+  }
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0});
   latest.current={userCoords,destination,routes,selectedRoute,navigation,layer,telemetry,vehicle,pickingOrigin,onPickOrigin,previewMode,previewRun,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
@@ -63,13 +80,12 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     if(token){
       try{
         mapboxgl.accessToken=token;
-        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:12.4,pitch:0,attributionControl:true,antialias:false});
-        map.addControl(new mapboxgl.NavigationControl({showCompass:false,showZoom:false}),'bottom-right');
+        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-right',antialias:false});
         map._vanoStyle=styleFor(latest.current.layer);
         map.on('error',report);
         backend.current='mapbox';mapRef.current=map;
         motion.current=motionController(map,latest,status);
-        const update=()=>{if(deleted||!isLoaded(map))return;setError('');paintMapbox(map,latest.current,lastSelection);if(latest.current.navigation)motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
+        const update=()=>{if(deleted||!isLoaded(map))return;setError('');paintMapbox(map,latest.current,lastSelection);centerOnFirstGpsFix();if(latest.current.navigation)motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
         map.on('style.load',update);
         map.on('load',update);
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
@@ -91,18 +107,9 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     document.addEventListener('visibilitychange',visibility);
     return()=>{deleted=true;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token]);
-  // The first real fix must replace the startup map center. A later accurate fix may refine once.
-  // Never override manual map exploration or an active route preview.
-  useEffect(()=>{
-    const map=mapRef.current;
-    if(!map||navigation||destination||!validPoint(userCoords)||firstGpsCenter.current>=2)return;
-    if(motion.current?.freeLook||map._vanoFreeLook)return;
-    const accurate=Number.isFinite(telemetry?.accuracy)&&telemetry.accuracy<=120;
-    if(firstGpsCenter.current===1&&!accurate)return;
-    firstGpsCenter.current=accurate?2:1;
-    if(backend.current==='mapbox')map.easeTo({center:userCoords,zoom:Math.max(map.getZoom(),14.5),duration:550,essential:true});
-    else map.setView(ll(userCoords),Math.max(map.getZoom(),14.5),{animate:false});
-  },[userCoords?.[0],userCoords?.[1],telemetry?.accuracy,navigation,destination?.id]);
+  // If GPS arrives before Mapbox is ready, the style.load handler performs
+  // this same recenter as soon as the map can accept camera operations.
+  useEffect(()=>{centerOnFirstGpsFix();},[userCoords?.[0],userCoords?.[1],telemetry?.accuracy,navigation,destination?.id]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,previewMode,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
   useEffect(()=>{
