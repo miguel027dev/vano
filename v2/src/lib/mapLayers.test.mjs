@@ -11,3 +11,8 @@ test('fallback Leaflet usa imagem de satélite real',()=>{
   assert.match(leafletTilesFor('streets').url,/openstreetmap/);
   assert.equal(normalizedMapLayer('wrong'),'streets');
 });
+
+test('estilo Atlas opcional só altera ruas e preserva satélite',()=>{
+  assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json'),'/mapbox/vano-atlas-light.json');
+  assert.match(mapboxStyleFor('satellite','/mapbox/vano-atlas-light.json'),/satellite-streets-v12$/);
+});
