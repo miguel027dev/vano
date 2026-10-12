@@ -3,6 +3,7 @@ import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,nextRouteBearing,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline, sampleRoute, distanceOnRoute, previewMetersPerSecond, nextManeuver} from '../lib/routeAnimation';
+import {mapboxStyleFor,leafletTilesFor} from '../lib/mapLayers';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -13,15 +14,14 @@ const markerElement=(kind,vehicle='carro')=>{
  const el=document.createElement('div');el.className=`map-pin map-pin-${kind}`;
  if(kind==='destination')el.textContent='⌖';
  if(kind==='vehicle') {
-  el.className=`vano-vehicle-marker ${vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car'}`;
-  // This is a fixed, application-owned SVG; no server or user input is interpolated.
-  el.innerHTML=vehicle==='moto'?
-   '<svg viewBox="0 0 48 64" aria-hidden="true"><ellipse cx="24" cy="12" rx="7" ry="10" fill="#171d22"/><path d="M24 3 L24 57" stroke="#171d22" stroke-width="6" stroke-linecap="round"/><rect x="16" y="19" width="16" height="31" rx="8" fill="#fa682c" stroke="white" stroke-width="2"/><path d="M12 24 H36" stroke="#171d22" stroke-width="5" stroke-linecap="round"/><ellipse cx="24" cy="53" rx="6" ry="9" fill="#171d22"/></svg>':
-   '<svg viewBox="0 0 48 64" aria-hidden="true"><path d="M12 5Q24 -1 36 5L41 17V49Q41 58 33 59H15Q7 58 7 49V17Z" fill="#f46b34" stroke="white" stroke-width="3"/><path d="M15 13Q24 8 33 13L36 25H12Z" fill="#243642"/><path d="M12 39H36V51Q24 55 12 51Z" fill="#cc4c23"/><rect x="4" y="20" width="5" height="13" rx="2" fill="#1a232a"/><rect x="39" y="20" width="5" height="13" rx="2" fill="#1a232a"/><path d="M13 6L24 2L35 6" fill="none" stroke="#fff1da" stroke-width="2"/></svg>';
+  // Proprietary VANO route arrow: raised orange enamel, extruded side and a soft compass halo.
+  // Static markup only; no untrusted content is interpolated.
+  el.className=`vano-vehicle-marker vano-direction-arrow ${vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car'}`;
+  el.innerHTML='<svg viewBox="0 0 80 96" width="68" height="82" aria-hidden="true" focusable="false"><defs><linearGradient id="vano-arrow-top" x1=".15" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#ffc18c"/><stop offset=".31" stop-color="#ff8d46"/><stop offset=".72" stop-color="#f25a22"/><stop offset="1" stop-color="#cc3e15"/></linearGradient><linearGradient id="vano-arrow-edge" x1="0" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#ae3b19"/><stop offset="1" stop-color="#652616"/></linearGradient><filter id="vano-arrow-shadow" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation="4"/></filter></defs><ellipse cx="41" cy="76" rx="22" ry="10" fill="#142028" opacity=".34" filter="url(#vano-arrow-shadow)"/><path d="M40 8C37 8 35 11 33 15L12 68C10 74 16 79 22 77L40 69L58 77C64 79 70 74 68 68L47 15C45 11 43 8 40 8Z" fill="url(#vano-arrow-edge)" transform="translate(0 6)"/><path d="M40 8C37 8 35 11 33 15L12 68C10 74 16 79 22 77L40 69L58 77C64 79 70 74 68 68L47 15C45 11 43 8 40 8Z" fill="url(#vano-arrow-top)" stroke="#fff" stroke-width="3.7" stroke-linejoin="round"/><path d="M40 16L40 62" stroke="#fff3e5" stroke-width="3.5" stroke-linecap="round" opacity=".8"/><path d="M33 55L21 69" stroke="#ffd5b4" stroke-width="2" opacity=".5" stroke-linecap="round"/></svg>';
  }
  return el;
 };
-const styleFor=layer=>layer==='satellite'?'mapbox://styles/mapbox/satellite-streets-v12':'mapbox://styles/mapbox/streets-v12';
+const styleFor=mapboxStyleFor;
 const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 
 /** Single camera writer: route launch, tracking, free-look and recenter all flow through it. */
@@ -92,8 +92,28 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
   },[token]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);if(navigation&&!previewMode&&validPoint(userCoords))map.panTo(ll(userCoords),{animate:true});}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,previewMode,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
-  useEffect(()=>{const map=mapRef.current;if(!map||backend.current!=='mapbox')return;const style=styleFor(layer);if(map._vanoStyle===style)return;map._vanoStyle=style;if(map.loaded()||isLoaded(map)){map.setStyle(style);}else{const change=()=>{if(!mapRef.current||mapRef.current!==map)return;map.setStyle(style);};map.once('load',change);return()=>map.off('load',change);}},[layer,token]);
-  useEffect(()=>{const map=mapRef.current;if(!map||backend.current!=='leaflet')return;const url=layer==='satellite'?'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png':'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';if(map._vanoTiles?._url!==url)map._vanoTiles.setUrl(url);},[layer]);
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||backend.current!=='mapbox')return;
+    const style=styleFor(layer);
+    if(map._vanoStyle===style)return;
+    // setStyle is valid during style loading. Waiting for map.loaded() can drop rapid layer taps.
+    try{
+      map._vanoStyle=style;
+      setError('');
+      map.setStyle(style,{diff:false});
+      // style.load rehydrates route sources/layers and markers for the new style.
+    }catch(e){map._vanoStyle='';setError('Não foi possível trocar a camada. Tente novamente.');console.warn('Mapbox style:',e.message);}
+  },[layer,token]);
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||backend.current!=='leaflet')return;
+    const tiles=leafletTilesFor(layer);
+    if(map._vanoTiles?._url!==tiles.url){
+      map._vanoTiles?.setUrl(tiles.url);
+      map._vanoTiles?.setAttribution(tiles.attribution);
+    }
+  },[layer]);
   useEffect(()=>{if(!navigation){status.current=CAMERA_STATES.IDLE;lastFit.current='';return;}motion.current?.recenter();},[navigation]);
   // The visual pose has its own RAF clock. GPS remains authoritative; preview never mutates GPS or history.
   useEffect(()=>{
@@ -137,7 +157,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
           map.getSource('vano-v2-traveled')?.setData(geo([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:traveled.length>1?traveled:[point,point]}}]));
         }
       } else if(map&&backend.current==='leaflet'){
-        if(!map._vanoVehicleMarker){map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({className:'vano-leaflet-vehicle',html:markerElement('vehicle',d.vehicle).outerHTML,iconSize:[48,64],iconAnchor:[24,32]})}).addTo(map);}
+        if(!map._vanoVehicleMarker){map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({className:'vano-leaflet-vehicle',html:markerElement('vehicle',d.vehicle).outerHTML,iconSize:[80,96],iconAnchor:[40,48]})}).addTo(map);}
         map._vanoVehicleMarker.setLatLng(ll(point));
         const svg=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
         if(svg)svg.style.transform=`rotate(${state.bearing}deg)`;
