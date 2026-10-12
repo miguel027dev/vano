@@ -14,7 +14,7 @@ import { directionsFromV1 } from './v1-bridge.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
-import { googleConfigured, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
+import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
@@ -29,7 +29,9 @@ const origin = process.env.VANO_PUBLIC_ORIGIN || '';
 const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.VANO_EMAIL_FROM);
 const startupMs = Date.now();
 const runtimeMetrics = { requests:0,routeRequests:0,routeErrors:0,routeLatencyMs:0,pageViews:Object.create(null) };
-const googleReady = googleConfigured(process.env);
+const googleStatus = googleOAuthStatus(process.env);
+const googleReady = googleStatus.ready;
+console.info('VANO Google OAuth:', googleReady ? 'configurado' : googleStatus.reason);
 if (production) {
   let publicUrl;try{publicUrl=new URL(origin);}catch{throw Error('VANO_PUBLIC_ORIGIN inválida.');}
   if (!origin || publicUrl.protocol !== 'https:' || publicUrl.origin !== origin || publicUrl.username || publicUrl.password) throw Error('Produção exige VANO_PUBLIC_ORIGIN=https://seu-dominio');
@@ -297,7 +299,7 @@ function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ow
 async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
-  if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady});
+  if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,googleIssue:googleStatus.reason,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady});
   if (pathname === '/api/engine/status' && req.method === 'GET') {
     const configured=Boolean(process.env.VANO_V1_API_URL?.trim());
     if(!configured)return json(res,200,{configured:false,online:false,mode:'mapbox-fallback'});
@@ -321,8 +323,17 @@ async function route(req, res) {
   if (pathname === '/api/auth/google/start' && req.method === 'GET') {
     if(!googleReady)return err(res,503,'Login Google ainda não configurado.');
     if(!limits(req,res,'google-start',15,300000))return;
-    const state=newOAuthToken(), verifier=newOAuthToken(48);
     const linking=u.searchParams.get('link')==='1';
+    // The Google callback must share the cookie's exact hostname.
+    // Example: vanomaps.online -> vanu-73xu.onrender.com before setting the state cookie.
+    // Redirect destination is from trusted server configuration, never request Host.
+    const canonical=canonicalGoogleStart(req.headers.host,process.env);
+    if(canonical){
+      if(linking)return err(res,409,'Para vincular o Google, entre na sua conta pelo endereço oficial deste serviço.');
+      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':canonical});
+      res.end();return;
+    }
+    const state=newOAuthToken(), verifier=newOAuthToken(48);
     const session=linking?userSession(req):null;
     if(linking&&!session)return err(res,401,'Entre na conta VANO antes de conectar o Google.');
     db.oauthStates.push({stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:session?.user.id||null,linkSessionHash:session?.hash||null});
