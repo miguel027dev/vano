@@ -13,7 +13,7 @@ const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusines
 export default function MapPage(){
   const {preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
-  const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
+  const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
   destRef.current=dest;
@@ -141,17 +141,19 @@ export default function MapPage(){
   useEffect(()=>{
     if(!searchOpen){setSearchBusy(false);return;}
     const term=query.trim();
-    if(term.length<2){setSuggestions(allPlaces.slice(0,5));setSearchBusy(false);return;}
-    const cacheKey=language+'|'+term.toLocaleLowerCase();
+    if(term.length<2){setSuggestions(allPlaces.slice(0,5));setSearchError('');setSearchBusy(false);return;}
+    const nearby=validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'
+      ?'&lng='+encodeURIComponent(userCoords[0])+'&lat='+encodeURIComponent(userCoords[1]):'';
+    const cacheKey=language+'|'+term.toLocaleLowerCase()+'|'+nearby;
     const cached=searchCache.current.get(cacheKey);
     if(cached&&Date.now()-cached.at<30000){
-      setSuggestions(cached.results);setSearchBusy(false);return;
+      setSuggestions(cached.results);setSearchError('');setSearchBusy(false);return;
     }
     const controller=new AbortController();
     // Never let an older server response overwrite the latest query.
-    setSuggestions([]);setSearchBusy(true);
+    setSuggestions([]);setSearchError('');setSearchBusy(true);
     const timer=setTimeout(()=>{
-      api('/search?q='+encodeURIComponent(term)+'&lang='+encodeURIComponent(language),{signal:controller.signal})
+      api('/search?q='+encodeURIComponent(term)+'&lang='+encodeURIComponent(language)+nearby,{signal:controller.signal})
         .then(items=>{
           if(controller.signal.aborted)return;
           const results=Array.isArray(items)?items:[];
@@ -159,11 +161,11 @@ export default function MapPage(){
           if(searchCache.current.size>16)searchCache.current.clear();
           setSuggestions(results);
         })
-        .catch(()=>{if(!controller.signal.aborted)setSuggestions([]);})
+        .catch(error=>{if(!controller.signal.aborted){setSuggestions([]);setSearchError(error?.message||'Busca indisponível no momento.');}})
         .finally(()=>{if(!controller.signal.aborted)setSearchBusy(false);});
     },145);
     return()=>{clearTimeout(timer);controller.abort();};
-  },[query,searchOpen,allPlaces,language]);
+  },[query,searchOpen,allPlaces,language,usingManual,gpsStatus,userCoords?.[0],userCoords?.[1]]);
   async function calculateRoute(place,departure){
     if(!validPoint(departure)||!validPoint(place?.coords))return;
     const epoch=++routeEpoch.current;
@@ -196,7 +198,7 @@ export default function MapPage(){
   }
   function openEditor(kind){
     setEditor(kind);setPointMenu(null);setSearchOpen(false);
-    setEditorQuery('');setEditorResults(allPlaces.slice(0,6));
+    setEditorQuery('');setEditorError('');setEditorResults(allPlaces.slice(0,6));
   }
   function chooseEdited(place){
     if(!validPoint(place?.coords)){setToast('O endereço ainda não possui uma posição válida.');return;}
@@ -215,16 +217,16 @@ export default function MapPage(){
   useEffect(()=>{
     if(!editor)return;
     const q=editorQuery.trim();
-    if(q.length<2){setEditorResults(allPlaces.slice(0,6));setEditorBusy(false);return;}
-    const controller=new AbortController();setEditorBusy(true);
+    if(q.length<2){setEditorResults(allPlaces.slice(0,6));setEditorError('');setEditorBusy(false);return;}
+    const controller=new AbortController();setEditorError('');setEditorBusy(true);
     const timer=setTimeout(()=>{
-      api(`/search?q=${encodeURIComponent(q)}&lang=${encodeURIComponent(language)}`, {signal:controller.signal})
+      api(`/search?q=${encodeURIComponent(q)}&lang=${encodeURIComponent(language)}${validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'?`&lng=${encodeURIComponent(userCoords[0])}&lat=${encodeURIComponent(userCoords[1])}`:''}`, {signal:controller.signal})
       .then(items=>{if(!controller.signal.aborted)setEditorResults(Array.isArray(items)?items:[]);})
-      .catch(()=>{if(!controller.signal.aborted)setEditorResults([]);})
+      .catch(error=>{if(!controller.signal.aborted){setEditorResults([]);setEditorError(error?.message||'Busca indisponível no momento.');}})
       .finally(()=>{if(!controller.signal.aborted)setEditorBusy(false);});
     },145);
     return()=>{clearTimeout(timer);controller.abort()};
-  },[editor,editorQuery,allPlaces,language]);
+  },[editor,editorQuery,allPlaces,language,usingManual,gpsStatus,userCoords?.[0],userCoords?.[1]]);
   function clickShortcut(s){
     if(s.name==='Rotina'){navigate('/rotinas');return;}
     if(s.name==='Casa'||s.name==='Trabalho'){const f=favorites.find(f=>f.category===s.name||f.name.toLowerCase()===s.name.toLowerCase());if(f)pick(f);else navigate(`/favoritos?new=${encodeURIComponent(s.name)}`);return;}
@@ -298,8 +300,8 @@ export default function MapPage(){
       <div className="gps-actions"><button onClick={()=>requestGPS(true)}>{t('Tentar novamente')}</button><button className="gps-primary" onClick={()=>setPickOriginMode(true)}>{t('Escolher origem no mapa')}</button></div>
     </div>}
     {!navMode&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
-    {searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t('Sugestões próximas')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':query.trim().length<2?'Digite um lugar, rua ou CEP.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
-    {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
+    {searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t('Sugestões próximas')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':searchError?searchError:query.trim().length<2?'Digite um lugar, rua ou CEP.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
+    {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{editorError||t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
     {!navMode&&!sheetOpen&&!searchOpen&&!pickOriginMode&&<div className="v31-location-card" role="status" aria-label="Endereço da localização atual">
       <span className="v31-location-symbol" aria-hidden="true"><LocateFixed size={18} strokeWidth={1.9}/></span>
       <span className="v31-location-copy">
