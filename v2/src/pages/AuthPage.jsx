@@ -34,7 +34,14 @@ export function AuthPage({mode='login'}){
   const t=(key,vars)=>translate(key,register?form.language:language,vars);
   const [busy,setBusy]=useState(false);
   const googleResult=new URLSearchParams(location.search).get('google');
-  const [error,setError]=useState(()=>googleResult==='conta-existente'?'Este e-mail já possui uma conta VANO. Entre com sua senha e conecte o Google em Minha conta.':googleResult?'Não foi possível entrar com Google. Confira o callback e as credenciais no Render.':'');
+  const googleErrors={
+    'conta-existente':'Este e-mail já possui uma conta VANO. Entre usando a senha e vincule o Google em Minha conta. Isso protege sua conta existente.',
+    'estado-expirado':'A verificação do Google expirou ou mudou de domínio. Abra o VANO pelo endereço oficial, permita cookies e tente novamente.',
+    'cancelado':'A autorização do Google foi cancelada. Você pode tentar de novo.',
+    'sessao-expirada':'Sua sessão expirou antes de vincular o Google. Entre novamente com sua senha.',
+    'erro':'Não foi possível confirmar o acesso com o Google. Tente novamente e, se continuar, entre com e-mail e senha.'
+  };
+  const [error,setError]=useState(()=>googleErrors[googleResult]||'');
   function update(key,value){setForm(p=>({...p,[key]:value}));if(error)setError('');}
   async function submit(e){
     e.preventDefault();setError('');
