@@ -46,13 +46,13 @@
 .map-page .gps-banner:not(.gps-picking),
 .map-page .gps-picking{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 137px)}
 .map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 137px)}
-/* Bottom-left card sits ABOVE legally required Mapbox attribution/logo. */
+/* Mapbox wordmark is explicitly placed bottom-right; the card can align near the bottom-left without covering legal credit. */
 .map-page .v31-location-card{
   position:absolute;z-index:450;
   left:calc(env(safe-area-inset-left,0px) + 12px);
-  bottom:calc(env(safe-area-inset-bottom,0px) + 49px);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 11px);
   display:flex;align-items:center;gap:12px;
-  width:min(325px,calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 100px));
+  width:min(325px,calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 125px));
   min-width:0;min-height:75px;padding:12px 14px;
   border:1px solid rgba(222,229,221,.96);border-radius:19px;
   background:rgba(255,255,255,.97);color:#26392e;
@@ -90,7 +90,7 @@
   .map-page .v31-shortcuts .quick-chip{min-height:38px;padding:7px 11px;font-size:.74rem}
   .map-page .search-results{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 65px);width:calc(100% - 20px)}
   .map-page .gps-banner:not(.gps-picking),.map-page .gps-picking,.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 128px)}
-  .map-page .v31-location-card{bottom:calc(env(safe-area-inset-bottom,0px) + 48px);min-height:72px;padding:10px 11px;gap:9px;border-radius:17px}
+  .map-page .v31-location-card{bottom:calc(env(safe-area-inset-bottom,0px) + 10px);min-height:72px;padding:10px 11px;gap:9px;border-radius:17px}
   .map-page .v31-location-symbol{width:36px;height:36px;border-radius:12px}
 }
 @media(max-width:375px){
@@ -102,7 +102,7 @@
   .map-page .v31-location-eyebrow{font-size:8px}
 }
 @media(max-height:530px) and (orientation:landscape){
-  .map-page .v31-location-card{min-height:60px;padding:8px 11px;bottom:calc(env(safe-area-inset-bottom,0px) + 42px)}
+  .map-page .v31-location-card{min-height:60px;padding:8px 11px;bottom:calc(env(safe-area-inset-bottom,0px) + 9px)}
   .map-page .v31-location-symbol{width:32px;height:32px}
 }
 @media(prefers-reduced-motion:reduce){
