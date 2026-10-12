@@ -13,6 +13,7 @@ import { directionsFromV1 } from './v1-bridge.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleConfigured, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
+import { openPostgresStore } from './postgres-store.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,7 +30,9 @@ if (production) {
   let publicUrl;try{publicUrl=new URL(origin);}catch{throw Error('VANO_PUBLIC_ORIGIN inválida.');}
   if (!origin || publicUrl.protocol !== 'https:' || publicUrl.origin !== origin || publicUrl.username || publicUrl.password) throw Error('Produção exige VANO_PUBLIC_ORIGIN=https://seu-dominio');
   if (!process.env.VANO_SECURITY_SECRET || process.env.VANO_SECURITY_SECRET.length < 32) throw Error('Produção exige VANO_SECURITY_SECRET com no mínimo 32 caracteres.');
-  if (process.env.VANO_ALLOW_SINGLE_INSTANCE_JSON !== '1') throw Error('Use banco transacional externo ou autorize explicitamente JSON single-instance com VANO_ALLOW_SINGLE_INSTANCE_JSON=1.');
+  if (!process.env.DATABASE_URL && process.env.VANO_ALLOW_SINGLE_INSTANCE_JSON !== '1') throw Error('Use DATABASE_URL PostgreSQL ou autorize explicitamente JSON single-instance em disco persistente.');
+  if (process.env.RENDER === 'true' && !process.env.DATABASE_URL) throw Error('Render requer PostgreSQL: JSON local é efêmero.');
+  if (process.env.RENDER === 'true' && process.env.VANO_V2_CUTOVER_APPROVED !== '1') throw Error('Troca bloqueada: migração de contas e motor V1 devem ser homologados antes do cutover.');
   if (!mailReady || process.env.RESEND_API_KEY.startsWith('REPLACE_') || !process.env.VANO_EMAIL_FROM.includes('@')) throw Error('Produção exige e-mail verificado: RESEND_API_KEY e VANO_EMAIL_FROM reais.');
   if (process.env.VANO_SECURITY_SECRET.startsWith('REPLACE_')) throw Error('Substitua o segredo de exemplo antes da produção.');
   if (!process.env.VITE_MAPBOX_PUBLIC_TOKEN?.startsWith('pk.')) throw Error('Produção exige token público Mapbox válido no build e no servidor.');
@@ -43,9 +46,10 @@ if (production) {
 const port = Number(process.env.PORT || process.env.API_PORT || 8878);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('API_PORT inválida.');
 const file = process.env.VANO_DATA_FILE ? path.resolve(root, process.env.VANO_DATA_FILE) : path.join(root, 'data', 'store.json');
-const store = openStore(file);
+const store = process.env.DATABASE_URL ? await openPostgresStore(process.env.DATABASE_URL) : openStore(file);
 const db = store.data;
-const persist = opts => {
+let storageFailed = false;
+const persist = async opts => {
   const time=Date.now();
   db.sessions=db.sessions.filter(x=>x.expires>time);
   db.emailTokens=db.emailTokens.filter(x=>x.expires>time);
@@ -53,7 +57,7 @@ const persist = opts => {
   db.usedProofs=db.usedProofs.filter(x=>x.expires>time).slice(-3000);
   // Unverified incident reports expire after 30 days; verified community data after 180 days.
   db.reports=db.reports.filter(x=>new Date(x.createdAt).getTime()>(time-(x.status==='verificado'?180:30)*86400000));
-  store.save(opts);
+  try { await store.save(opts); } catch (e) { storageFailed = true; throw e; }
 };
 // Invalidate legacy plaintext sessions once, without leaving a plaintext backup.
 let migrated = false;
@@ -64,12 +68,12 @@ if (db.sessions.some(s => Object.hasOwn(s, 'token') || !s.tokenHash)) {
 for (const u of db.users) {
   if (!Object.hasOwn(u,'verifiedAt')) {u.verifiedAt=production?null:(u.createdAt||stampLegacy());migrated=true;}
   if (!Object.hasOwn(u,'verificationMethod')) {u.verificationMethod='legacy';migrated=true;}
-  if (production && u.verificationMethod!=='email' && u.verifiedAt) {u.verifiedAt=null;migrated=true;}
+  if (production && !['email','google'].includes(u.verificationMethod) && u.verifiedAt) {u.verifiedAt=null;migrated=true;}
 }
 function stampLegacy(){return new Date().toISOString();}
 if (migrated) {
-  try { fs.rmSync(file + '.bak', { force: true }); } catch { /* best effort */ }
-  persist({ backup: false });
+  try { if (!process.env.DATABASE_URL) fs.rmSync(file + '.bak', { force: true }); } catch { /* best effort */ }
+  await persist({ backup: false });
 }
 const secret = process.env.VANO_SECURITY_SECRET || hex(32);
 const limiter = createLimiter();
@@ -286,6 +290,7 @@ function requestHTTPS(req, res) {
   if (!production) return true;
   // This API must be hosted behind a trusted HTTPS reverse proxy and not exposed directly.
   if (req.headers['x-forwarded-proto'] !== 'https') { err(res,426,'Acesso HTTPS obrigatório.'); return false; }
+  if (process.env.RENDER === 'true' && String(req.headers.host || '').toLowerCase() !== new URL(origin).host.toLowerCase()) { err(res,421,'Host inválido para este serviço.'); return false; }
   return true;
 }
 function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ownerId?1:0),0)<max; }
@@ -303,7 +308,7 @@ async function route(req, res) {
     if(linking&&!session)return err(res,401,'Entre na conta VANO antes de conectar o Google.');
     db.oauthStates.push({stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:session?.user.id||null,linkSessionHash:session?.hash||null});
     db.oauthStates=db.oauthStates.filter(x=>x.expires>now()).slice(-100);
-    persist();
+    await persist();
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':googleAuthUrl(process.env,state,verifier),'Set-Cookie':setCookie('vano_oauth',state,600)});
     res.end();return;
   }
@@ -312,7 +317,7 @@ async function route(req, res) {
     const record=(state.length>=20 && state.length<=200 && safeEqual(state,source)) ? db.oauthStates.find(x=>x.stateHash===hashState(state)&&x.expires>now()) : null;
     const drop=setCookie('vano_oauth','',0);
     if(!record || u.searchParams.has('error')){res.writeHead(302,{...headers,'Location':'/entrar?google=erro','Set-Cookie':drop});res.end();return;}
-    db.oauthStates=db.oauthStates.filter(x=>x!==record);persist();
+    db.oauthStates=db.oauthStates.filter(x=>x!==record);await persist();
     try {
       const id=await fetchGoogleIdentity(process.env,u.searchParams.get('code')||'',record.verifier);
       if(record.linkUserId){
@@ -325,7 +330,7 @@ async function route(req, res) {
           res.writeHead(302,{...headers,'Location':'/conta?google=email-divergente','Set-Cookie':drop});res.end();return;
         }
         session.user.googleSub=id.googleSub;
-        persist();
+        await persist();
         res.writeHead(302,{...headers,'Location':'/conta?google=vinculado','Set-Cookie':drop});res.end();return;
       }
       let user=db.users.find(x=>x.googleSub===id.googleSub);
@@ -339,14 +344,14 @@ async function route(req, res) {
         const chosen=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
         db.preferences.push({...prefFor(user.id,chosen),owner:user.id,language:chosen,languageConfirmed:false});
       }
-      const raw=createSession(user.id);persist();
+      const raw=createSession(user.id);await persist();
       const complete=prefFor(user.id).onboardingComplete;
       res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':complete?'/mapa':'/personalizar','Set-Cookie':[drop,setCookie('vano_session',raw,604800)]});res.end();return;
     }catch(e){console.error('Google OAuth falhou:',e?.message||String(e));res.writeHead(302,{...headers,'Location':'/entrar?google=erro','Set-Cookie':drop});res.end();return;}
   }
   if (pathname === '/api/auth/verify' && req.method === 'GET') {
     const raw = u.searchParams.get('token');const record = db.emailTokens.find(x=>x.kind==='verify'&&x.tokenHash===sha256(raw||'')&&x.expires>now());
-    if (record) { const user=db.users.find(x=>x.id===record.userId);if(user){user.verifiedAt=stamp();user.verificationMethod='email';}db.emailTokens=db.emailTokens.filter(x=>x!==record);persist(); }
+    if (record) { const user=db.users.find(x=>x.id===record.userId);if(user){user.verifiedAt=stamp();user.verificationMethod='email';}db.emailTokens=db.emailTokens.filter(x=>x!==record);await persist(); }
     const where=record?'/entrar?verificado=1':'/entrar?verificado=0';
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':where});res.end();return;
   }
@@ -387,10 +392,10 @@ async function route(req, res) {
     db.preferences=db.preferences.filter(x=>x.owner!==user.id);
     db.preferences.push({...prefFor(user.id,chosenLanguage),owner:user.id,language:chosenLanguage,languageConfirmed:true});
     if(mailReady){
-      try {await emailAction(user,'verify');persist();return json(res,201,{verificationRequired:true,message:'Verifique sua caixa de entrada para confirmar o e-mail.'});}
+      try {await emailAction(user,'verify');await persist();return json(res,201,{verificationRequired:true,message:'Verifique sua caixa de entrada para confirmar o e-mail.'});}
       catch {db.users=db.users.filter(x=>x.id!==user.id);db.preferences=db.preferences.filter(x=>x.owner!==user.id);db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);return err(res,503,'Não foi possível enviar a confirmação. Tente novamente.');}
     }
-    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,201,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,604800)});
+    adoptGuest(req,user.id);const raw=createSession(user.id);await persist();return json(res,201,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,604800)});
   }
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     if (!limits(req,res,'login',12,900000))return;
@@ -399,14 +404,14 @@ async function route(req, res) {
     const user=db.users.find(x=>x.email===em);
     if(!passwordMatches(body.password,user?.passwordHash||dummyHash)||!user)return err(res,401,'E-mail ou senha incorretos.');
     if(!user.verifiedAt || (production && user.verificationMethod!=='email'))return err(res,403,'Confirme seu e-mail para acessar a conta.');
-    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,604800)});
+    adoptGuest(req,user.id);const raw=createSession(user.id);await persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,604800)});
   }
   if (pathname === '/api/auth/resend-verification' && req.method === 'POST') {
     if(!limits(req,res,'verify-email',3,3600000))return;
     const b=await getBody(req),em=normEmail(b.email);
     if(!limitAccount(res,'verify-email',em,3,3600000))return;
     const user=db.users.find(x=>x.email===em&&!x.verifiedAt);
-    if(user&&mailReady){try{await emailAction(user,'verify');persist();}catch{ /* generic response */ }}
+    if(user&&mailReady){try{await emailAction(user,'verify');await persist();}catch{ /* generic response */ }}
     return json(res,200,{ok:true,message:'Se a conta precisar de confirmação, enviaremos as instruções.'});
   }
   if (pathname === '/api/auth/forgot' && req.method === 'POST') {
@@ -414,7 +419,7 @@ async function route(req, res) {
     const b=await getBody(req),em=normEmail(b.email);
     if(!limitAccount(res,'forgot',em,3,3600000))return;
     const user=db.users.find(x=>x.email===em);
-    if(user&&mailReady){try{await emailAction(user,'reset');persist();}catch{ /* generic response */ }}
+    if(user&&mailReady){try{await emailAction(user,'reset');await persist();}catch{ /* generic response */ }}
     return json(res,200,{ok:true,message:'Se o e-mail estiver cadastrado, você receberá as instruções.'});
   }
   if (pathname === '/api/auth/reset' && req.method === 'POST') {
@@ -424,10 +429,10 @@ async function route(req, res) {
     if(!rec)return err(res,400,'Link expirado ou inválido.');
     const user=db.users.find(x=>x.id===rec.userId);if(!user)return err(res,400,'Link inválido.');
     user.passwordHash=passwordHash(b.password);user.verifiedAt=stamp();user.verificationMethod='email';db.sessions=db.sessions.filter(x=>x.userId!==user.id);
-    db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);persist();return json(res,200,{ok:true});
+    db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);await persist();return json(res,200,{ok:true});
   }
   if (pathname === '/api/auth/logout' && req.method === 'POST') {
-    const key=sha256(cookie(req,'vano_session'));db.sessions=db.sessions.filter(x=>x.tokenHash!==key);persist();
+    const key=sha256(cookie(req,'vano_session'));db.sessions=db.sessions.filter(x=>x.tokenHash!==key);await persist();
     return json(res,200,{ok:true}, {'Set-Cookie':setCookie('vano_session','',0)});
   }
   if(pathname==='/api/profile/export'&&req.method==='GET'){
@@ -439,7 +444,7 @@ async function route(req, res) {
   if(pathname==='/api/profile'&&req.method==='PATCH'){
     const account=requireAccount(req,res);if(!account)return;
     const b=await getBody(req);if(!validName(b.name))return err(res,400,'Nome inválido.');
-    const rec=db.users.find(x=>x.id===account.id);rec.name=cleanText(b.name,80);persist();return json(res,200,{user:safeUser(rec)});
+    const rec=db.users.find(x=>x.id===account.id);rec.name=cleanText(b.name,80);await persist();return json(res,200,{user:safeUser(rec)});
   }
   if(pathname==='/api/profile'&&req.method==='DELETE'){
     const account=requireAccount(req,res);if(!account)return;
@@ -448,7 +453,7 @@ async function route(req, res) {
     if(!passwordMatches(b.password,rec.passwordHash))return err(res,401,'Confirme sua senha atual para excluir a conta.');
     db.users=db.users.filter(x=>x.id!==account.id);db.sessions=db.sessions.filter(x=>x.userId!==account.id);
     for(const key of ['favorites','history','routines','preferences','reports'])db[key]=db[key].filter(x=>x.owner!==account.id);
-    db.emailTokens=db.emailTokens.filter(x=>x.userId!==account.id);persist();return json(res,200,{ok:true},{'Set-Cookie':setCookie('vano_session','',0)});
+    db.emailTokens=db.emailTokens.filter(x=>x.userId!==account.id);await persist();return json(res,200,{ok:true},{'Set-Cookie':setCookie('vano_session','',0)});
   }
   if(pathname==='/api/preferences'&&req.method==='PATCH'){
     if(!limits(req,res,'writes',90,60000))return;
@@ -460,16 +465,16 @@ async function route(req, res) {
     if(p.alerts!==undefined){if(typeof p.alerts!=='boolean')return err(res,400,'Alertas inválidos.');next.alerts=p.alerts;}
     if(p.routineTags!==undefined){if(!Array.isArray(p.routineTags))return err(res,400,'Rotina inválida.');const allowed=new Set(['Casa','Trabalho','Faculdade','Academia','Mercado']);next.routineTags=[...new Set(p.routineTags.filter(x=>allowed.has(x)))].slice(0,5);}
     if(p.onboardingComplete!==undefined){if(typeof p.onboardingComplete!=='boolean')return err(res,400,'Preferência inválida.');next.onboardingComplete=p.onboardingComplete;}
-    db.preferences=db.preferences.filter(x=>x.owner!==id);db.preferences.push(next);persist();const {owner:_privateOwner,...publicPref}=next;return json(res,200,publicPref);
+    db.preferences=db.preferences.filter(x=>x.owner!==id);db.preferences.push(next);await persist();const {owner:_privateOwner,...publicPref}=next;return json(res,200,publicPref);
   }
   if(pathname==='/api/favorites'&&req.method==='POST'){
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);if(!cleanText(b.name,90)||!pointOK(b.coords))return err(res,400,'Local inválido.');
     if(!listCap(db.favorites,id,100))return err(res,429,'Limite de lugares favoritos atingido.');
-    const rec={id:hex(8),owner:id,name:cleanText(b.name,90),address:cleanText(b.address,180),category:cleanText(b.category,30),coords:b.coords,createdAt:stamp()};db.favorites.push(rec);persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
+    const rec={id:hex(8),owner:id,name:cleanText(b.name,90),address:cleanText(b.address,180),category:cleanText(b.category,30),coords:b.coords,createdAt:stamp()};db.favorites.push(rec);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/favorites/')&&req.method==='DELETE'){
-    const id=pathname.split('/').pop(),own=owner(req);db.favorites=db.favorites.filter(x=>!(x.id===id&&x.owner===own));persist();return json(res,200,{ok:true});
+    const id=pathname.split('/').pop(),own=owner(req);db.favorites=db.favorites.filter(x=>!(x.id===id&&x.owner===own));await persist();return json(res,200,{ok:true});
   }
   if(pathname==='/api/history'&&req.method==='POST'){
     if(!limits(req,res,'history',20,3600000))return;
@@ -478,7 +483,7 @@ async function route(req, res) {
     if(!proof)return err(res,422,'Histórico exige uma rota validada pelo servidor. Calcule novamente.');
     const rec={id:hex(8),owner:id,destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
     db.history.push(rec);db.usedProofs.push({hash:sha256(b.proof),expires:proof.expires});
-    db.history=db.history.slice(-10000);db.usedProofs=db.usedProofs.filter(x=>x.expires>now()).slice(-3000);persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
+    db.history=db.history.slice(-10000);db.usedProofs=db.usedProofs.filter(x=>x.expires>now()).slice(-3000);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
   if(pathname==='/api/reports'&&req.method==='POST'){
     if(!limits(req,res,'reports',6,3600000))return;
@@ -486,17 +491,17 @@ async function route(req, res) {
     if(!pointOK(b.coords)||!['transito','obra','acidente','risco','radar'].includes(b.type))return err(res,400,'Dados da ocorrência inválidos.');
     if(!listCap(db.reports,id,40))return err(res,429,'Limite de relatos desta conta atingido.');
     const record={id:hex(8),type:b.type,description:cleanText(b.description,280),coords:b.coords,createdAt:stamp(),status:'nao_verificado',owner:id};
-    db.reports.push(record);persist();return json(res,201,reportPublic(record));
+    db.reports.push(record);await persist();return json(res,201,reportPublic(record));
   }
   if(pathname==='/api/routines'&&req.method==='POST'){
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);
     if(!cleanText(b.name,80)||!cleanText(b.destination,80)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time||''))return err(res,400,'Rotina inválida.');
     if(!listCap(db.routines,id,50))return err(res,429,'Limite de rotinas atingido.');
-    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp()};db.routines.push(item);persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
+    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp()};db.routines.push(item);await persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/routines/')&&req.method==='DELETE'){
-    const id=pathname.split('/').pop(),own=owner(req);db.routines=db.routines.filter(x=>!(x.id===id&&x.owner===own));persist();return json(res,200,{ok:true});
+    const id=pathname.split('/').pop(),own=owner(req);db.routines=db.routines.filter(x=>!(x.id===id&&x.owner===own));await persist();return json(res,200,{ok:true});
   }
   if(pathname==='/api/admin')return err(res,403,'Painel administrativo não está disponível.');
   return err(res,404,'Rota não encontrada.');
@@ -507,6 +512,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     const method=req.method||'GET';
     if(!['GET','POST','PATCH','DELETE','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     if(!requestHTTPS(req,res))return;
+    if(storageFailed)return err(res,503,'Armazenamento indisponível. Serviço pausado para proteger os dados.');
     if(!limits(req,res,'all',240,60000))return;
     if((req.url||'').startsWith('/api/'))return await route(req,res);
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
@@ -527,6 +533,6 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
   }
 });
 const host=process.env.API_HOST||'127.0.0.1';
-if(production && !['127.0.0.1','::1','localhost'].includes(host)) throw Error('O backend de produção deve ficar privado, acessível somente via proxy HTTPS.');
+if(production && !['127.0.0.1','::1','localhost'].includes(host) && !(process.env.RENDER === 'true' && process.env.VANO_TRUST_RENDER_PROXY === '1' && host === '0.0.0.0')) throw Error('Produção exige backend privado ou proxy Render explicitamente confiável.');
 if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
 export { server,search,directions };
