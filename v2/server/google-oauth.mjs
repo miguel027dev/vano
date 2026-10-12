@@ -1,6 +1,6 @@
 /** Google OAuth Authorization Code + PKCE integration for the isolated VANO V2. */
 import { createHash, randomBytes } from 'node:crypto';
-export const googleConfigured = env => Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && (env.GOOGLE_REDIRECT_URI || env.VANO_PUBLIC_ORIGIN));
+export const googleConfigured = env => Boolean(env.GOOGLE_CLIENT_ID?.trim() && env.GOOGLE_CLIENT_SECRET?.trim() && !String(env.GOOGLE_CLIENT_ID).startsWith('REPLACE_') && !String(env.GOOGLE_CLIENT_SECRET).startsWith('REPLACE_') && (env.GOOGLE_REDIRECT_URI || env.VANO_PUBLIC_ORIGIN));
 export const newOAuthToken = (length=32) => randomBytes(length).toString('base64url');
 export const hashState = state => createHash('sha256').update(String(state)).digest('hex');
 export const challenge = verifier => createHash('sha256').update(verifier).digest('base64url');
