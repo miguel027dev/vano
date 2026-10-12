@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {FLOW_DASH_FRAMES,FLOW_FRAME_MS,flowFrameAt} from './routeFlow.js';
+import {FLOW_DASH_FRAMES,FLOW_FRAME_MS,flowFrameAt,sameRouteShapeReferences} from './routeFlow.js';
 
 test('route flow holds a fixed pattern length without editing route geometry',()=>{
   assert.equal(FLOW_DASH_FRAMES.length,14);
@@ -24,4 +24,22 @@ test('invalid timestamps or frame intervals yield safe static start frame',()=>{
   assert.equal(flowFrameAt(-50),0);
   assert.equal(flowFrameAt(Infinity),0);
   assert.equal(flowFrameAt(500,0),0);
+});
+
+test('reuses route source when GeoJSON geometry references have not changed',()=>{
+  const geometry={type:'LineString',coordinates:[[-46.68,-23.58],[-46.67,-23.59]]};
+  const alt={type:'LineString',coordinates:[[-46.68,-23.58],[-46.66,-23.59]]};
+  assert.equal(sameRouteShapeReferences([geometry,alt],[geometry,alt]),true);
+  assert.equal(sameRouteShapeReferences([],[]),true);
+  assert.equal(sameRouteShapeReferences([geometry],[{...geometry}]),false);
+  assert.equal(sameRouteShapeReferences([geometry,alt],[geometry]),false);
+  assert.equal(sameRouteShapeReferences(null,[]),false);
+});
+test('animation frames are bounded and do not mutate the underlying geometry',()=>{
+  const route={type:'LineString',coordinates:[[-46.68,-23.58],[-46.67,-23.59]]};
+  const before=JSON.stringify(route);
+  const phases=Array.from({length:100},(_,i)=>FLOW_DASH_FRAMES[flowFrameAt(i*FLOW_FRAME_MS)]);
+  assert.equal(phases.length,100);
+  assert.ok(phases.every(f=>Array.isArray(f)&&f.every(Number.isFinite)));
+  assert.equal(JSON.stringify(route),before);
 });
