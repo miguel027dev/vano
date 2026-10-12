@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { googleConfigured, googleRedirectUri, googleAuthUrl, newOAuthToken, hashState, challenge, fetchGoogleIdentity } from './google-oauth.mjs';
+import { googleConfigured, googleOAuthStatus, canonicalGoogleStart, googleRedirectUri, googleAuthUrl, newOAuthToken, hashState, challenge, fetchGoogleIdentity } from './google-oauth.mjs';
 const config={GOOGLE_CLIENT_ID:'test.apps.googleusercontent.com',GOOGLE_CLIENT_SECRET:'test-only',GOOGLE_REDIRECT_URI:'https://v2.example.com/api/auth/google/callback'};
 test('OAuth só fica disponível quando client id e secret estão definidos',()=>{
   assert.equal(googleConfigured(config),true);
@@ -29,4 +29,26 @@ test('Google identity requer e-mail verificado e nunca devolve token',async()=>{
 test('Google identity rejeita e-mail não confirmado',async()=>{
   const fetcher=async url=>url.includes('/token')?{ok:true,json:async()=>({access_token:'fake'})}:{ok:true,json:async()=>({sub:'1',email:'fake@example.com',email_verified:false})};
   await assert.rejects(fetchGoogleIdentity(config,'fake-code-123456','verifier',fetcher),/confirmado/);
+});
+
+test('Google readiness reports missing credentials without exposing secrets',()=>{
+  const missing=googleOAuthStatus({GOOGLE_CLIENT_ID:'',GOOGLE_CLIENT_SECRET:'',GOOGLE_REDIRECT_URI:config.GOOGLE_REDIRECT_URI});
+  assert.deepEqual(missing,{ready:false,reason:'credentials-missing'});
+  const invalid=googleOAuthStatus({...config,GOOGLE_CLIENT_ID:'wrong-client'});
+  assert.equal(invalid.ready,false);assert.equal(invalid.reason,'invalid-client-id');
+  const badPath=googleOAuthStatus({...config,GOOGLE_REDIRECT_URI:'https://v2.example.com/login/google/callback'});
+  assert.equal(badPath.reason,'invalid-callback-path');
+  assert.deepEqual(googleOAuthStatus(config),{ready:true,reason:null,callbackOrigin:'https://v2.example.com'});
+});
+test('Google starts on its callback origin, not a separate domain with missing state cookie',()=>{
+  const other='vanu-test.onrender.com', trusted='v2.example.com';
+  assert.equal(canonicalGoogleStart(trusted,config),null);
+  assert.equal(canonicalGoogleStart(other,config),'https://v2.example.com/api/auth/google/start');
+  assert.equal(canonicalGoogleStart('attacker.invalid',config),'https://v2.example.com/api/auth/google/start');
+  assert.equal(canonicalGoogleStart('v2.example.com.evil.test',config),'https://v2.example.com/api/auth/google/start');
+  assert.equal(canonicalGoogleStart('V2.EXAMPLE.COM',config),null);
+});
+test('Google login refuses insecure or malformed redirect paths',()=>{
+  assert.equal(googleOAuthStatus({...config,GOOGLE_REDIRECT_URI:'http://evil.example.com/api/auth/google/callback'}).reason,'invalid-callback');
+  assert.equal(googleOAuthStatus({...config,GOOGLE_REDIRECT_URI:'https://v2.example.com/api/auth/google/callback?next=https://evil.example.com'}).reason,'invalid-callback-path');
 });
