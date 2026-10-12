@@ -270,11 +270,11 @@ export default function MapPage(){
 
   return <div className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''}`}>
     <VanoMap userCoords={origin} destination={dest} onNavigationProgress={setGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} telemetry={telemetry} vehicle={preferences.vehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
-    {!navMode ? <div className="map-top v31-map-top">
+    {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
       <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
       {!searchOpen&&<div className="quick-scroll v31-shortcuts" role="group" aria-label="Atalhos de destinos">{shortcuts.map(s=><button type="button" className="quick-chip" key={s.name} onClick={()=>clickShortcut(s)}><s.icon size={16}/>{t(s.name)}</button>)}</div>}
-      </>:<><div className="map-header map-header-active v31-route-header"><Link className="circle-btn v31-route-profile" to="/perfil" aria-label="Abrir meu perfil"><UserRound size={20}/></Link><button className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button></div>
+      </>:<><div className="v32-route-layout">
       <div className="v5-route-box" aria-label="Origem e destino da rota">
         <div className="v5-point-row">
           <span className="v5-point-indicator v5-point-start" aria-hidden="true"/>
@@ -287,6 +287,11 @@ export default function MapPage(){
           <div className="v5-point-actions"><button className="v5-point-more" aria-label="Opções do destino" aria-haspopup="menu" aria-expanded={pointMenu==='destination'} onClick={()=>setPointMenu(m=>m==='destination'?null:'destination')}><MoreHorizontal size={21}/></button>{pointMenu==='destination'&&<div className="v5-point-popover" role="menu"><button role="menuitem" onClick={()=>openEditor('destination')}><PencilLine size={17}/> {t('Alterar destino')}</button><button role="menuitem" onClick={swapPoints}><ArrowUpDown size={17}/> {t('Inverter trajeto')}</button><button role="menuitem" onClick={reset}><X size={17}/> {t('Remover destino')}</button></div>}</div>
         </div>
         <button className="v5-swap" aria-label="Inverter origem e destino" title="Inverter origem e destino" onClick={swapPoints} disabled={!validPoint(origin)}><ArrowUpDown size={20}/></button>
+      </div>
+      <div className="v32-route-actions" role="group" aria-label="Ações da rota">
+        <button type="button" className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button>
+        <Link className="circle-btn v31-route-profile" to="/perfil" aria-label="Abrir meu perfil"><UserRound size={20}/></Link>
+      </div>
       </div></>}
     </div> : <div className="nav-instruction v28-nav-instruction" aria-live="polite"><div className="turn-icon v28-turn-icon">{/left/.test(guidance?.modifier||'')?<CornerUpLeft size={35}/>: /right/.test(guidance?.modifier||'')?<CornerUpRight size={35}/>:<ArrowUp size={34}/>}</div><div className="v28-nav-copy" key={guidance?.instruction||'iniciar'}><strong>{guidance?.instruction||route?.steps?.[0]?.instruction||t('Continue até o destino')}</strong><span>{guidance?.distance>15?`${Math.round(guidance.distance)} m até a próxima indicação`:'Acompanhe a sinalização real'}</span>{guidance?.lanes?.length>0&&<div className="v28-lane-guidance" aria-label="Orientação de faixas disponível na rota">{guidance.lanes.map((lane,i)=><span key={i} className={lane.valid?'suggested':''} title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}>{lane.indications?.some(v=>v.includes('left'))?'↰':lane.indications?.some(v=>v.includes('right'))?'↱':'↑'}</span>)}</div>}</div><button className="circle-btn" onClick={()=>setMuted(!muted)} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button></div>}
     {!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking" role="status">
