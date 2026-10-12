@@ -20,7 +20,11 @@ COPY . .
 # Enforce audited Git-blob parity of the ORIGINAL Python engine in the final image.
 RUN node --test v2/server/original-engine-source.test.mjs
 COPY --from=frontend /build/v2/dist ./v2/dist
-RUN chmod 755 v2/original-engine/start.sh
+RUN chmod 755 v2/original-engine/start.sh \
+    && useradd --system --uid 10001 --create-home --home-dir /home/vano vano \
+    && mkdir -p /opt/vano/v2/data \
+    && chown -R vano:vano /opt/vano/v2/data
+USER vano
 EXPOSE 10000
 ENTRYPOINT ["/usr/bin/tini","--"]
 CMD ["bash","v2/original-engine/start.sh"]
