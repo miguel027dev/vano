@@ -33,7 +33,8 @@ export function AuthPage({mode='login'}){
   useEffect(()=>{if(!languageEdited)setForm(p=>({...p,language:language||'pt-BR'}));},[language,languageEdited]);
   const t=(key,vars)=>translate(key,register?form.language:language,vars);
   const [busy,setBusy]=useState(false);
-  const [error,setError]=useState(()=>new URLSearchParams(location.search).has('google')?t('Não foi possível entrar com Google. Tente novamente ou use seu e-mail.'): '');
+  const googleResult=new URLSearchParams(location.search).get('google');
+  const [error,setError]=useState(()=>googleResult==='conta-existente'?'Este e-mail já possui uma conta VANO. Entre com sua senha e conecte o Google em Minha conta.':googleResult?'Não foi possível entrar com Google. Confira o callback e as credenciais no Render.':'');
   function update(key,value){setForm(p=>({...p,[key]:value}));if(error)setError('');}
   async function submit(e){
     e.preventDefault();setError('');
@@ -72,7 +73,7 @@ export function AuthPage({mode='login'}){
             {busy?<><LoaderCircle size={18} className="v3-loading-icon"/> {t('Aguarde…')}</>:<>{t(register?'Criar minha conta':'Entrar')} <ArrowRight size={19}/></>}
           </button>
         </form>
-        {googleReady&&<a className="v3-google-action" href="/api/auth/google/start" aria-label={t('Continuar com Google')}><span className="v3-google-g">G</span>{t('Continuar com Google')}</a>}
+        {googleReady?<a className="v3-google-action" href="/api/auth/google/start" aria-label={t('Continuar com Google')}><span className="v3-google-g">G</span>{t('Continuar com Google')}</a>:<div className="v28-google-unavailable"><button type="button" className="v3-google-action" disabled aria-disabled="true"><span className="v3-google-g">G</span>{t('Continuar com Google')}</button><small>Google indisponível nesta prévia: configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no Render.</small></div>}
         {!register&&<p className="v3-auth-recovery"><Link to="/recuperar-senha">{t('Esqueceu sua senha?')}</Link></p>}
         <div className="v3-auth-alt"><span>{t(register?'Já faz parte do VANO?':'Primeira vez por aqui?')}</span><Link to={register?'/entrar':'/cadastro'}>{t(register?'Entre na sua conta':'Crie sua conta')} <ArrowUpRight size={15}/></Link></div>
         <Link className="v3-auth-explore" to="/mapa">{t('Explorar sem conta')} <ArrowRight size={16}/></Link>
