@@ -248,10 +248,10 @@ async function search(query,language='pt-BR',country=null) {
   }
   return places.filter(x => `${x.name} ${x.address}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())).slice(0,6);
 }
-async function directions(originPoint, destination, vehicle = 'carro', telemetry = {}, language = 'pt-BR') {
+async function directions(originPoint, destination, vehicle = 'carro', telemetry = {}, language = 'pt-BR', options = {}) {
   if (!pointOK(originPoint) || !pointOK(destination)) throw new HttpError(400, 'Coordenadas inválidas.');
   if (!['carro', 'moto'].includes(vehicle)) throw new HttpError(400, 'Veículo inválido.');
-  if (process.env.VANO_V1_API_URL?.trim()) return directionsFromV1(process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry);
+  if (process.env.VANO_V1_API_URL?.trim()) return directionsFromV1(process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry, { ...options, timeoutMs: Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS) || 65000 });
   const access = process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
   if (access) {
     const profile = 'mapbox/driving-traffic';
@@ -297,6 +297,17 @@ async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
   if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady});
+  if (pathname === '/api/engine/status' && req.method === 'GET') {
+    const configured=Boolean(process.env.VANO_V1_API_URL?.trim());
+    if(!configured)return json(res,200,{configured:false,online:false,mode:'mapbox-fallback'});
+    const address=new URL('/healthz',process.env.VANO_V1_API_URL);
+    const started=performance.now();
+    try {
+      const upstream=await fetch(address,{signal:AbortSignal.timeout(2500),headers:{Accept:'application/json'}});
+      const safeBody=upstream.ok?await upstream.json().catch(()=>({})):{};
+      return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
+    }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
+  }
   if ((pathname === '/api/admin' || pathname === '/api/admin/users') && req.method === 'GET') {
     const session=userSession(req);
     if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
@@ -381,10 +392,22 @@ async function route(req, res) {
     const t=body.telemetry&&typeof body.telemetry==='object'?body.telemetry:{};
     const telemetry={ bearing:typeof t.bearing==='number'&&t.bearing>=0&&t.bearing<360?t.bearing:null, speed:typeof t.speed==='number'&&t.speed>=0&&t.speed<90?t.speed:null };
     const language=normalizeLocale(body.language)||prefFor(id,getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language).language;
+    // The Python original owns risk/traffic/ETA policy. Node only validates input.
+    const provided=body.routeOptions&&typeof body.routeOptions==='object'&&!Array.isArray(body.routeOptions)?body.routeOptions:{};
+    const routeOptions={
+      avoidTolls:provided.avoidTolls===true, avoidFerries:provided.avoidFerries===true,
+      avoidUnpaved:provided.avoidUnpaved===true, reroute:provided.reroute===true,
+      adaptive:provided.adaptive!==false,includeAdvanced:provided.includeAdvanced===true,
+      variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
+      localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
+      safetyBias:typeof provided.safetyBias==='number'&&Number.isFinite(provided.safetyBias)?provided.safetyBias:undefined,
+      trafficBias:typeof provided.trafficBias==='number'&&Number.isFinite(provided.trafficBias)?provided.trafficBias:undefined,
+      departAt:typeof provided.departAt==='string'?provided.departAt:undefined,
+    };
     runtimeMetrics.routeRequests+=1;
     const routeStarted=performance.now();
     let result;
-    try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language);}
+    try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);}
     catch(e){runtimeMetrics.routeErrors+=1;throw e;}
     finally {runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
