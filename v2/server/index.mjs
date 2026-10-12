@@ -9,7 +9,7 @@ import path from 'node:path';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
-import { fold, rankSearchResults } from './search-utils.mjs';
+import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
@@ -235,48 +235,17 @@ async function emailAction(user, kind) {
   catch (e) { db.emailTokens=db.emailTokens.filter(x=>!(x.userId===user.id&&x.kind===kind)).concat(previous);throw e; }
   return true;
 }
-async function search(query,language='pt-BR',country=null) {
+async function search(query,language='pt-BR',proximity=null) {
   const text=safeStr(query,256).trim();
   if(text.length<2)return [];
   const access=process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
-  if(access){
-    // Search Box returns POIs (including shopping centres) as well as addresses,
-    // whereas Geocoding v6 largely focuses on addresses. Fall back if unavailable.
-    const endpoints=[
-      'https://api.mapbox.com/search/searchbox/v1/forward',
-      'https://api.mapbox.com/search/geocode/v6/forward'
-    ];
-    for(const endpoint of endpoints){
-      try {
-        const u=new URL(endpoint);
-        u.searchParams.set('q',text);
-        u.searchParams.set('language',language.split('-')[0]);
-        u.searchParams.set('limit','8');
-        u.searchParams.set('access_token',access);
-        if(['FR','PT','BR'].includes(country))u.searchParams.set('country',country);
-        if(country==='BR')u.searchParams.set('proximity','-46.67,-23.58');
-        if(endpoint.includes('searchbox'))u.searchParams.set('auto_complete','true');
-        const response=await fetch(u,{signal:AbortSignal.timeout(3900)});
-        if(!response.ok)continue;
-        const data=await response.json();
-        const found=(data.features||[]).map((feature,i)=>{
-          const p=feature.properties||{};
-          const rawCoords=feature.geometry?.coordinates;
-          const coords=pointOK(rawCoords)?rawCoords:
-            (Number.isFinite(p.coordinates?.longitude)&&Number.isFinite(p.coordinates?.latitude)?[p.coordinates.longitude,p.coordinates.latitude]:null);
-          return {id:p.mapbox_id||p.id||'map-'+i,name:p.name_preferred||p.name||p.full_address||text,
-            address:p.full_address||p.place_formatted||p.context?.place?.name||'',
-            coords,category:p.feature_type||'local'};
-        }).filter(x=>pointOK(x.coords));
-        if(found.length)return rankSearchResults(found,text);
-      }catch{ /* The geocoding fallback below is available even if Search Box is disabled. */ }
-    }
+  if(!access){
+    if(production)throw new HttpError(503,'A busca de endereços está temporariamente indisponível.');
+    return places.filter(x=>x.name.toLocaleLowerCase().includes(text.toLocaleLowerCase())).slice(0,6);
   }
-  // Preserve the small offline sample for local previews; don't claim an online result exists.
-  const foldQuery=fold(text);
-  return rankSearchResults(places.filter(x=>
-    fold(x.name+' '+x.address).includes(foldQuery)
-  ),text);
+  const outcome=await queryPlaces(text,{token:access,language,proximity});
+  if(!outcome.providerOk)throw new HttpError(503,'O serviço de endereços não respondeu. Tente novamente.');
+  return outcome.results;
 }
 async function directions(originPoint, destination, vehicle = 'carro', telemetry = {}, language = 'pt-BR', options = {}) {
   if (!pointOK(originPoint) || !pointOK(destination)) throw new HttpError(400, 'Coordenadas inválidas.');
@@ -444,7 +413,9 @@ async function route(req, res) {
     if (!limits(req,res,'search',90,60000)) return;
     const detected=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1');
     const lang=normalizeLocale(u.searchParams.get('lang'))||prefFor(owner(req),detected.language).language;
-    return json(res,200,await search(u.searchParams.get('q'),lang,detected.country));
+    const lon=Number(u.searchParams.get('lng')),lat=Number(u.searchParams.get('lat'));
+    const proximity=u.searchParams.has('lng')&&u.searchParams.has('lat')&&pointOK([lon,lat])?[lon,lat]:null;
+    return json(res,200,await search(u.searchParams.get('q'),lang,proximity));
   }
   if (pathname === '/api/route' && req.method === 'POST') {
     if (!limits(req,res,'route',10,60000)) return;
