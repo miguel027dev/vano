@@ -110,8 +110,9 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     if(!map||backend.current!=='leaflet')return;
     const tiles=leafletTilesFor(layer);
     if(map._vanoTiles?._url!==tiles.url){
-      map._vanoTiles?.setUrl(tiles.url);
-      map._vanoTiles?.setAttribution(tiles.attribution);
+      // Leaflet has no setAttribution(): replace the layer so legal credits update too.
+      if(map._vanoTiles)map.removeLayer(map._vanoTiles);
+      map._vanoTiles=L.tileLayer(tiles.url,{maxZoom:19,attribution:tiles.attribution}).addTo(map);
     }
   },[layer]);
   useEffect(()=>{if(!navigation){status.current=CAMERA_STATES.IDLE;lastFit.current='';return;}motion.current?.recenter();},[navigation]);
