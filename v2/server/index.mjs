@@ -14,6 +14,7 @@ import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleConfigured, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import { openPostgresStore } from './postgres-store.mjs';
+import { verifyVanoPassword, isLegacyHash } from './password-verifier.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -138,14 +139,7 @@ function createSession(userId) {
   return raw;
 }
 function passwordHash(password, salt = hex(16)) { return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; }
-function passwordMatches(password, stored) {
-  try {
-    if (typeof password !== 'string' || password.length > 128) return false;
-    const [salt, value] = stored.split(':');
-    const actual = scryptSync(password, salt, 64), expected = Buffer.from(value, 'hex');
-    return expected.length === actual.length && timingSafeEqual(actual, expected);
-  } catch { return false; }
-}
+const passwordMatches = verifyVanoPassword;
 const dummyHash = passwordHash(hex(20));
 function remoteIP(req) {
   const direct=String(req.socket.remoteAddress||'unknown');
@@ -402,8 +396,9 @@ async function route(req, res) {
     const body=await getBody(req),em=normEmail(body.email);
     if(!limitAccount(res,'login',em,8,900000))return;
     const user=db.users.find(x=>x.email===em);
-    if(!passwordMatches(body.password,user?.passwordHash||dummyHash)||!user)return err(res,401,'E-mail ou senha incorretos.');
+    if(!await passwordMatches(body.password,user?.passwordHash||dummyHash)||!user)return err(res,401,'E-mail ou senha incorretos.');
     if(!user.verifiedAt || (production && user.verificationMethod!=='email'))return err(res,403,'Confirme seu e-mail para acessar a conta.');
+    if (isLegacyHash(user.passwordHash)) user.passwordHash=passwordHash(body.password);
     adoptGuest(req,user.id);const raw=createSession(user.id);await persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,604800)});
   }
   if (pathname === '/api/auth/resend-verification' && req.method === 'POST') {
@@ -450,7 +445,7 @@ async function route(req, res) {
     const account=requireAccount(req,res);if(!account)return;
     if(!limits(req,res,'delete',4,3600000))return;
     const b=await getBody(req),rec=db.users.find(x=>x.id===account.id);
-    if(!passwordMatches(b.password,rec.passwordHash))return err(res,401,'Confirme sua senha atual para excluir a conta.');
+    if(!await passwordMatches(b.password,rec.passwordHash))return err(res,401,'Confirme sua senha atual para excluir a conta.');
     db.users=db.users.filter(x=>x.id!==account.id);db.sessions=db.sessions.filter(x=>x.userId!==account.id);
     for(const key of ['favorites','history','routines','preferences','reports'])db[key]=db[key].filter(x=>x.owner!==account.id);
     db.emailTokens=db.emailTokens.filter(x=>x.userId!==account.id);await persist();return json(res,200,{ok:true},{'Set-Cookie':setCookie('vano_session','',0)});
