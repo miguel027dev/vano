@@ -158,18 +158,6 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
       const dt=state.last?Math.min(now-state.last,100):16;
       if(dt<13)return;
       state.last=now;
-      // Separate cosmetic phase from GPS: planned routes animate even before the first fix.
-      if(!reduced&&now-state.lastFlowAt>=72&&route?.geometry?.coordinates?.length>1&&backend.current==='mapbox'){
-        state.lastFlowAt=now;
-        const m=mapRef.current;
-        if(m&&isLoaded(m)&&m.getLayer('vano-v2-flow')){
-          const phase=flowFrameAt(now);
-          if(phase!==state.lastFlowFrame){
-            try{m.setPaintProperty('vano-v2-flow','line-dasharray',FLOW_DASH_FRAMES[phase]);state.lastFlowFrame=phase;}
-            catch{state.lastFlowFrame=-1;}
-          }
-        }
-      }
       const d=latest.current,target=d.userCoords;
       if(!validPoint(target))return;
       const point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
