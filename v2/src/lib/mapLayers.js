@@ -8,5 +8,9 @@ export const LEAFLET_TILES=Object.freeze({
   satellite:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attribution:'Tiles © Esri, Maxar, Earthstar Geographics and GIS User Community'},
 });
 export const normalizedMapLayer=layer=>layer==='satellite'?'satellite':'streets';
-export const mapboxStyleFor=layer=>MAPBOX_STYLES[normalizedMapLayer(layer)];
+// A local copy works before publication in Mapbox Studio.
+export const VANO_ATLAS_STYLE='/mapbox/vano-atlas-light.json';
+export const mapboxStyleFor=(layer,customStreetsStyle='')=>normalizedMapLayer(layer)==='satellite'
+  ? MAPBOX_STYLES.satellite
+  : customStreetsStyle || MAPBOX_STYLES.streets;
 export const leafletTilesFor=layer=>LEAFLET_TILES[normalizedMapLayer(layer)];
