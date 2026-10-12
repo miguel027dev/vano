@@ -3,6 +3,7 @@ import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,nextRouteBearing,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline, sampleRoute, distanceOnRoute, previewMetersPerSecond, nextManeuver} from '../lib/routeAnimation';
+import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 
 const START=[-46.6808,-23.5857];
@@ -50,11 +51,11 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,previewMode=false,previewRun=0,onNavigationProgress}){
+export default function VanoMap({active=true,userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,previewMode=false,previewRun=0,onNavigationProgress}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0});
-  latest.current={userCoords,destination,routes,selectedRoute,navigation,layer,telemetry,vehicle,pickingOrigin,onPickOrigin,previewMode,previewRun,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,userCoords,destination,routes,selectedRoute,navigation,layer,telemetry,vehicle,pickingOrigin,onPickOrigin,previewMode,previewRun,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null;const initial=coord(latest.current.userCoords);
@@ -70,7 +71,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
         motion.current=motionController(map,latest,status);
         const update=()=>{if(deleted||!isLoaded(map))return;setError('');paintMapbox(map,latest.current,lastSelection);if(latest.current.navigation)motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
         map.on('style.load',update);
-        map.on('load',update);
+        map.on('load',()=>{update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
         map.on('rotatestart',e=>{if(e.originalEvent)motion.current?.setFree();});
@@ -80,16 +81,17 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     if(!map){
       map=L.map(root.current,{zoomControl:false,attributionControl:true}).setView(ll(initial),12);
       const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
-      map._vanoTiles=tiles;map._vanoLayer=L.layerGroup().addTo(map);
+      tiles.once('load',()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'leaflet'});}));map._vanoTiles=tiles;map._vanoLayer=L.layerGroup().addTo(map);
       backend.current='leaflet';mapRef.current=map;
       paintLeaflet(map,latest.current);
       map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.([e.latlng.lng,e.latlng.lat]);});
     }
     if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation)motion.current?.recenter();else if(validPoint(latest.current.userCoords))map.flyTo({center:latest.current.userCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.userCoords))map.panTo(ll(latest.current.motionCoords||latest.current.userCoords),{animate:true});},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt()};
-    function visibility(){if(document.hidden)motion.current?.suspend();else motion.current?.resume();}
+    function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
     return()=>{deleted=true;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token]);
+  useEffect(()=>{const map=mapRef.current;if(!map)return;if(!active)motion.current?.suspend();else{if(backend.current==='mapbox')map.resize();else map.invalidateSize({animate:false});motion.current?.resume();}},[active]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);if(navigation&&!previewMode&&validPoint(userCoords))map.panTo(ll(userCoords),{animate:true});}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,previewMode,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
   useEffect(()=>{
@@ -118,7 +120,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
   useEffect(()=>{if(!navigation){status.current=CAMERA_STATES.IDLE;lastFit.current='';return;}motion.current?.recenter();},[navigation]);
   // The visual pose has its own RAF clock. GPS remains authoritative; preview never mutates GPS or history.
   useEffect(()=>{
-    if(!navigation){visual.current={point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0};return;}
+    if(!active||!navigation){visual.current={point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0};return;}
     const route=routes?.find(r=>r.id===selectedRoute)||routes?.[0];
     const timeline=buildRouteTimeline(route?.geometry);
     if(previewMode && (!timeline.total || timeline.points.length<2))return;
@@ -130,7 +132,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     function animate(now){
       if(stopped)return;
       raf=requestAnimationFrame(animate);
-      if(document.hidden){state.last=now;return;}
+      if(document.hidden||!latest.current.active){state.last=now;return;}
       if(state.last && now-state.last<28)return; // max ~35 fps avoids battery drain
       const dt=state.last?Math.min(now-state.last,100):33;state.last=now;
       const d=latest.current;
@@ -173,7 +175,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     }
     raf=requestAnimationFrame(animate);
     return()=>{stopped=true;cancelAnimationFrame(raf);if(mapRef.current?._vanoVehicleMarker){mapRef.current._vanoVehicleMarker.remove();mapRef.current._vanoVehicleMarker=null;}visual.current={point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0};};
-  },[navigation,previewMode,previewRun,selectedRoute,routes,token]);
+  },[active,navigation,previewMode,previewRun,selectedRoute,routes,token]);
   useEffect(()=>{onMotionState?.(status.current);},[navigation]);
   return <><div className={`map-container ${pickingOrigin?'choosing-origin':''}`} ref={root} role="region" aria-label="Mapa interativo de rotas"/>{error&&<div className="vano-map-alert" role="status">{error}</div>}</>;
 }

@@ -1,0 +1,1 @@
+.vano-retained-map{position:fixed;inset:0;width:100%;height:100%;z-index:2}.vano-retained-map[aria-hidden="true"]{z-index:-1}.vano-retained-map .map-page{width:100%;height:100%}@media(prefers-reduced-motion:no-preference){.vano-retained-map[aria-hidden="false"]{animation:vano-map-return .16s ease-out}}@keyframes vano-map-return{from{opacity:.82}to{opacity:1}}

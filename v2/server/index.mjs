@@ -3,6 +3,7 @@
  * This small local store is deliberately NOT a multi-instance database.
  */
 import http from 'node:http';
+import {readMobileRequest,mobileGrants,mobileCallback} from './mobile-auth.mjs';
 import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -77,6 +78,7 @@ if (migrated) {
 }
 const secret = process.env.VANO_SECURITY_SECRET || hex(32);
 const limiter = createLimiter();
+const nativeGrants=mobileGrants();
 const headers = secureHeaders(production);
 const now = () => Date.now();
 const stamp = () => new Date().toISOString();
@@ -320,11 +322,13 @@ async function route(req, res) {
   if (pathname === '/api/auth/google/start' && req.method === 'GET') {
     if(!googleReady)return err(res,503,'Login Google ainda não configurado.');
     if(!limits(req,res,'google-start',15,300000))return;
+    let native;try{native=readMobileRequest(u.searchParams);}catch(e){return err(res,400,e.message);}
     const state=newOAuthToken(), verifier=newOAuthToken(48);
     const linking=u.searchParams.get('link')==='1';
+    if(native&&linking)return err(res,400,'Entre com e-mail para conectar o Google nas configurações da conta.');
     const session=linking?userSession(req):null;
     if(linking&&!session)return err(res,401,'Entre na conta VANO antes de conectar o Google.');
-    db.oauthStates.push({stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:session?.user.id||null,linkSessionHash:session?.hash||null});
+    db.oauthStates.push({native,stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:session?.user.id||null,linkSessionHash:session?.hash||null});
     db.oauthStates=db.oauthStates.filter(x=>x.expires>now()).slice(-100);
     persist();
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':googleAuthUrl(process.env,state,verifier),'Set-Cookie':setCookie('vano_oauth',state,600)});
@@ -334,7 +338,8 @@ async function route(req, res) {
     const state=u.searchParams.get('state')||'', source=cookie(req,'vano_oauth');
     const record=(state.length>=20 && state.length<=200 && safeEqual(state,source)) ? db.oauthStates.find(x=>x.stateHash===hashState(state)&&x.expires>now()) : null;
     const drop=setCookie('vano_oauth','',0);
-    if(!record || u.searchParams.has('error')){res.writeHead(302,{...headers,'Location':'/entrar?google=erro','Set-Cookie':drop});res.end();return;}
+    const failed=(error='erro')=>{res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':record?.native?mobileCallback(record.native.state,null,error):`/entrar?google=${error}`,'Set-Cookie':drop});res.end();};
+    if(!record || u.searchParams.has('error')){failed();return;}
     db.oauthStates=db.oauthStates.filter(x=>x!==record);persist();
     try {
       const id=await fetchGoogleIdentity(process.env,u.searchParams.get('code')||'',record.verifier);
@@ -355,23 +360,33 @@ async function route(req, res) {
       if(!user){
         // A matching password account requires explicit linking after password login.
         if(db.users.some(x=>x.email===id.email)){
-          res.writeHead(302,{...headers,'Location':'/entrar?google=conta-existente','Set-Cookie':drop});res.end();return;
+          failed('conta-existente');return;
         }
         user={id:hex(12),name:id.name,email:id.email,googleSub:id.googleSub,passwordHash:passwordHash(newOAuthToken()),createdAt:stamp(),verifiedAt:stamp(),verificationMethod:'google'};
         db.users.push(user);
         const chosen=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
         db.preferences.push({...prefFor(user.id,chosen),owner:user.id,language:chosen,languageConfirmed:false});
       }
+      if(record.native){const code=nativeGrants.issue(user.id,record.native);persist();res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':mobileCallback(record.native.state,code),'Set-Cookie':drop});res.end();return;}
       const raw=createSession(user.id);persist();
       const complete=prefFor(user.id).onboardingComplete;
       res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':complete?'/mapa':'/personalizar','Set-Cookie':[drop,setCookie('vano_session',raw,604800)]});res.end();return;
-    }catch(e){console.error('Google OAuth falhou:',e?.message||String(e));res.writeHead(302,{...headers,'Location':'/entrar?google=erro','Set-Cookie':drop});res.end();return;}
+    }catch(e){console.error('Google OAuth falhou:',e?.message||String(e));failed();return;}
   }
   if (pathname === '/api/auth/verify' && req.method === 'GET') {
     const raw = u.searchParams.get('token');const record = db.emailTokens.find(x=>x.kind==='verify'&&x.tokenHash===sha256(raw||'')&&x.expires>now());
     if (record) { const user=db.users.find(x=>x.id===record.userId);if(user){user.verifiedAt=stamp();user.verificationMethod='email';}db.emailTokens=db.emailTokens.filter(x=>x!==record);persist(); }
     const where=record?'/entrar?verificado=1':'/entrar?verificado=0';
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':where});res.end();return;
+  }
+  // PKCE replaces cookie/CSRF authentication only for this one-time native exchange.
+  if(pathname==='/api/mobile/auth/exchange'&&req.method==='POST'){
+    if(!limits(req,res,'mobile-exchange',20,300000))return;
+    const body=await getBody(req),uid=nativeGrants.redeem(body);
+    const user=uid&&db.users.find(x=>x.id===uid);
+    if(!user)return err(res,401,'Retorno de login inválido ou expirado.');
+    const raw=createSession(user.id);persist();
+    return json(res,200,{ok:true,cookieName:'vano_session',sessionToken:raw,maxAge:604800,next:prefFor(user.id).onboardingComplete?'/mapa':'/personalizar'});
   }
   if (req.method !== 'GET' && !protectedWrite(req,res)) return;
   if(!production && !secured && /^\/api\/(auth\/(login|signup|forgot|reset|resend-verification)|profile)/.test(pathname)){

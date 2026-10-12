@@ -8,8 +8,9 @@ import {swapJourney} from '../lib/routePoints';
 import { Brand } from '../components/Brand';
 import { api, fmtKm, fmtTime } from '../lib/api';
 import { useVano } from '../context';
+import {notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
-export default function MapPage(){
+export default function MapPage({active=true}){
   const {preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const mapControl=useRef(null),searchInput=useRef(null),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0);
   const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[manualLabel,setManualLabel]=useState('Origem selecionada'),[previewMode,setPreviewMode]=useState(false),[previewRun,setPreviewRun]=useState(0),[guidance,setGuidance]=useState(null);
@@ -75,15 +76,16 @@ export default function MapPage(){
     navigator.geolocation.getCurrentPosition(success,failed,
       {enableHighAccuracy:true,timeout:18000,maximumAge:30000});
   }
-  useEffect(()=>{requestGPS(false);},[]);
+  useEffect(()=>{if(active)requestGPS(false);},[active]);
+  useEffect(()=>{notifyNative({action:'wake',active:active&&navMode});return()=>notifyNative({action:'wake',active:false});},[active,navMode]);
   useEffect(()=>{
-    if(!window.isSecureContext||!navigator.geolocation)return;
+    if(!active||!window.isSecureContext||!navigator.geolocation)return;
     // Keep a live fix while the map is open, not only after Start. It also refreshes stale cached positions.
     const id=navigator.geolocation.watchPosition(onPosition,onPositionError,{
       enableHighAccuracy:navMode,maximumAge:navMode?2000:15000,timeout:navMode?15000:26000,
     });
     return()=>navigator.geolocation.clearWatch(id);
-  },[navMode]);
+  },[navMode,active]);
   useEffect(()=>{
     if(!searchOpen)return;
     const t=setTimeout(()=>{
@@ -157,11 +159,12 @@ export default function MapPage(){
     setQuery(s.name==='Restaurantes'?'restaurante':'hospital');setSearchOpen(true);setTimeout(()=>searchInput.current?.focus(),70);
   }
   useEffect(()=>{
+    if(!active)return;
     const id=new URLSearchParams(location.search).get('destination');
     if(!id || handledDestination.current===id)return;
     const found=favorites.find(x=>x.id===id);
     if(found){handledDestination.current=id;pick(found);}
-  },[location.search,favorites]);
+  },[location.search,favorites,active]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
   async function begin(){
     if(!route||!dest)return;
@@ -176,7 +179,7 @@ export default function MapPage(){
   const demoRoute=routeData?.source==='demonstracao';
   // Debounced deviation reroute: only on good GPS with sustained off-route signal.
   useEffect(()=>{
-    if(!navMode||!hasLiveGPS||!route?.geometry||demoRoute||recalculating||!dest)return;
+    if(!active||!navMode||!hasLiveGPS||!route?.geometry||demoRoute||recalculating||!dest)return;
     const now=Date.now(),state=rerouteState.current;
     const accuracy=telemetry.accuracy;
     if(!Number.isFinite(accuracy)||accuracy>50){state.outsideSince=0;return;}
@@ -191,10 +194,10 @@ export default function MapPage(){
       .then(next=>{if(epoch===routeEpoch.current){setRouteData(next);setToast('Rota recalculada conforme sua posição.');}})
       .catch(e=>{if(epoch===routeEpoch.current)setToast(`Rota atual mantida: ${e.message}`);})
       .finally(()=>{if(epoch===routeEpoch.current)setRecalculating(false);});
-  },[navMode,userCoords?.[0],userCoords?.[1],telemetry?.accuracy,route,dest?.id,recalculating,preferences?.vehicle]);
+  },[active,navMode,userCoords?.[0],userCoords?.[1],telemetry?.accuracy,route,dest?.id,recalculating,preferences?.vehicle]);
 
   return <div className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''}`}>
-    <VanoMap userCoords={origin} destination={dest} previewMode={previewMode} previewRun={previewRun} onNavigationProgress={setGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} telemetry={telemetry} vehicle={preferences.vehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
+    <VanoMap active={active} userCoords={origin} destination={dest} previewMode={previewMode} previewRun={previewRun} onNavigationProgress={setGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} telemetry={telemetry} vehicle={preferences.vehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className="map-top">
       {!dest ? <><div className="map-header"><Brand/><Link className="circle-btn avatar-button" to="/perfil" aria-label="Abrir perfil"><UserRound size={20}/></Link></div>
       <div className="map-search"><Search size={20}/><input ref={searchInput} aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}}/>{query&&<button onClick={()=>setQuery('')} aria-label="Limpar busca"><X size={18}/></button>}</div>
