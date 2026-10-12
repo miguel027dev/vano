@@ -73,8 +73,9 @@ export async function queryPlaces(query,{token,language='pt-BR',proximity=null,f
         }else found.push(...next);
       }
       // A named place should prefer POI hits; complete CEPs prefer geocoding.
+      if(viaCep&&found.length>0)break;
       if(found.length>=5 || (!viaCep&&endpoint.includes('searchbox')&&found.length>=2))break;
     }catch{providerErrors++;}
   }
-  return {results:rankSearchResults(found,viaCep&&canonical?'CEP '+precise:text),providerOk,providerErrors};
+  return {results:rankSearchResults(found,text),providerOk,providerErrors};
 }
