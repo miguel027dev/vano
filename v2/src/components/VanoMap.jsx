@@ -145,7 +145,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     const timeline=buildRouteTimeline(route?.geometry);
     let raf=0,stopped=false;
     const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
-    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0};
+    const state={...visual.current,last:0,lastReport:0,lastPaint:0,lastFlowFrame:-1,progress:0};
     visual.current=state;
     function animate(now){
       if(stopped)return;
