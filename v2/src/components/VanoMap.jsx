@@ -284,7 +284,13 @@ function paintMapbox(map,data,selection){
     paint:{'line-color':'#fff2df','line-width':2.6,'line-opacity':window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:.86,'line-dasharray':FLOW_DASH_FRAMES[0]}
   },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
   if(!map.getSource('vano-v2-traveled'))upsert('vano-v2-traveled',geo([]));
-  if(!data.navigation)map.getSource('vano-v2-traveled').setData(geo([]));
+  // Empty progress only when navigation ends; repeated clears on every GPS update
+  // caused extra source repaints and visible instability in the route overlay.
+  if(data.navigation)map._vanoTraveledCleared=false;
+  else if(!map._vanoTraveledCleared){
+    map.getSource('vano-v2-traveled').setData(geo([]));
+    map._vanoTraveledCleared=true;
+  }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
   const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const type=key==='current'?(data.navigation?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:'center',rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:'viewport'}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
   marker('current',data.motionCoords||data.userCoords);marker('destination',data.destination?.coords);
