@@ -11,7 +11,8 @@ export function rankSearchResults(items, query) {
     seen.add(key);return true;
   }).map((item,index)=>{
     const n=fold(item.name),a=fold(item.address);
-    const match=isCep && postalDigits(item.name+' '+item.address).includes(digits) ? 0
+    const match=isCep && postalDigits(item.name)===digits ? 0
+      : isCep && postalDigits(item.name+' '+item.address).includes(digits) ? 1
       : n===q ? 0
       : n.startsWith(q) ? 1
       : n.includes(q) ? 2
