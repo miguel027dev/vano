@@ -342,7 +342,7 @@ async function route(req, res) {
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':googleAuthUrl(process.env,state,verifier),'Set-Cookie':setCookie('vano_oauth',state,600)});
     res.end();return;
   }
-  if (pathname === '/api/auth/google/callback' && req.method === 'GET') {
+  if ((pathname === '/api/auth/google/callback' || pathname === '/login/google/callback') && req.method === 'GET') {
     const state=u.searchParams.get('state')||'', source=cookie(req,'vano_oauth');
     const record=(state.length>=20 && state.length<=200 && safeEqual(state,source)) ? db.oauthStates.find(x=>x.stateHash===hashState(state)&&x.expires>now()) : null;
     const drop=setCookie('vano_oauth','',0);
