@@ -271,7 +271,7 @@ function paintMapbox(map,data,selection){
   if(!map.getLayer('vano-v2-flow'))map.addLayer({
     id:'vano-v2-flow',type:'line',source:'vano-v2-selected',
     layout:{'line-join':'round','line-cap':'round'},
-    paint:{'line-color':'#fff2df','line-width':2.6,'line-opacity':window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:.86,'line-dasharray':FLOW_DASH_FRAMES[0]}
+    paint:{'line-color':'#fff2df','line-width':2.6,'line-opacity':window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:.86,'line-dasharray':FLOW_DASH_FRAMES[0]}
   },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
   if(!map.getSource('vano-v2-traveled'))upsert('vano-v2-traveled',geo([]));
   if(!data.navigation)map.getSource('vano-v2-traveled').setData(geo([]));
