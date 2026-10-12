@@ -4,15 +4,15 @@ import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixe
 import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
+import {shouldRefreshAddress} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
-import { Brand } from '../components/Brand';
 import { api, fmtKm, fmtTime } from '../lib/api';
 import { useVano } from '../context';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage(){
   const {preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
-  const mapControl=useRef(null),searchInput=useRef(null),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null);
-  const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[manualLabel,setManualLabel]=useState('Origem selecionada'),[previewMode,setPreviewMode]=useState(false),[previewRun,setPreviewRun]=useState(0),[guidance,setGuidance]=useState(null);
+  const mapControl=useRef(null),searchInput=useRef(null),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[manualLabel,setManualLabel]=useState('Origem selecionada'),[previewMode,setPreviewMode]=useState(false),[previewRun,setPreviewRun]=useState(0),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
   destRef.current=dest;
@@ -99,6 +99,29 @@ export default function MapPage(){
     });
     return()=>navigator.geolocation.clearWatch(id);
   },[navMode]);
+  // Reverse geocode a granted browser location, never the initial map default or a manual origin.
+  // Requests are throttled by time and distance; out-of-order updates never repaint the card.
+  useEffect(()=>{
+    const point=userCoords;
+    if(!validPoint(point)||!hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))return;
+    if(addressController.current||!shouldRefreshAddress(addressLookup.current,point,Date.now(),navMode))return;
+    addressLookup.current={point:[...point],at:Date.now()};
+    const controller=new AbortController();
+    addressController.current=controller;
+    const longitude=point[0].toFixed(5),latitude=point[1].toFixed(5);
+    api(`/reverse?longitude=${longitude}&latitude=${latitude}&lang=${encodeURIComponent(language)}`,{signal:controller.signal})
+      .then(result=>{
+        if(controller.signal.aborted)return;
+        if(result?.found&&result.address?.street){
+          setCurrentAddress({street:result.address.street,detail:result.address.detail||''});
+        }else setCurrentAddress({street:'Endereço não encontrado',detail:'Seu GPS está ativo'});
+      })
+      .catch(()=>{
+        if(!controller.signal.aborted)setCurrentAddress(prev=>prev||{street:'Localização identificada',detail:'Endereço temporariamente indisponível'});
+      })
+      .finally(()=>{if(addressController.current===controller)addressController.current=null;});
+  },[userCoords?.[0],userCoords?.[1],navMode,language]);
+  useEffect(()=>()=>addressController.current?.abort(),[]);
   useEffect(()=>{
     if(!searchOpen)return;
     const t=setTimeout(()=>{
@@ -212,11 +235,11 @@ export default function MapPage(){
 
   return <div className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''}`}>
     <VanoMap userCoords={origin} destination={dest} previewMode={previewMode} previewRun={previewRun} onNavigationProgress={setGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} telemetry={telemetry} vehicle={preferences.vehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
-    {!navMode ? <div className="map-top">
-      {!dest ? <><div className="map-header"><Brand/><Link className="circle-btn avatar-button" to="/perfil" aria-label="Abrir perfil"><UserRound size={20}/></Link></div>
-      <div className="map-search"><Search size={20}/><input ref={searchInput} aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}}/>{query&&<button onClick={()=>setQuery('')} aria-label="Limpar busca"><X size={18}/></button>}</div>
-      {!searchOpen&&<div className="quick-scroll">{shortcuts.map(s=><button className="quick-chip" key={s.name} onClick={()=>clickShortcut(s)}><s.icon size={16}/>{t(s.name)}</button>)}</div>}
-      </>:<><div className="map-header map-header-active"><Brand/><button className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button></div>
+    {!navMode ? <div className="map-top v31-map-top">
+      {!dest ? <>
+      <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}}/>{query&&<button onClick={()=>setQuery('')} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
+      {!searchOpen&&<div className="quick-scroll v31-shortcuts" role="group" aria-label="Atalhos de destinos">{shortcuts.map(s=><button type="button" className="quick-chip" key={s.name} onClick={()=>clickShortcut(s)}><s.icon size={16}/>{t(s.name)}</button>)}</div>}
+      </>:<><div className="map-header map-header-active v31-route-header"><Link className="circle-btn v31-route-profile" to="/perfil" aria-label="Abrir meu perfil"><UserRound size={20}/></Link><button className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button></div>
       <div className="v5-route-box" aria-label="Origem e destino da rota">
         <div className="v5-point-row">
           <span className="v5-point-indicator v5-point-start" aria-hidden="true"/>
@@ -244,6 +267,16 @@ export default function MapPage(){
     {!navMode&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
     {searchOpen&&!dest&&<div className="search-results"><div className="search-results-head"><span>{t(query.trim()?'Resultados da busca':'Sugestões próximas')}</span><button aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map(s=><button key={s.id} className="suggestion" onClick={()=>pick(s)}><MapPin size={18}/><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank">Nenhum local encontrado. {demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Tente outro termo.'}</div>}</div>}
     {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
+    {!navMode&&!sheetOpen&&!searchOpen&&!pickOriginMode&&<div className="v31-location-card" role="status" aria-label="Endereço da localização atual">
+      <span className="v31-location-symbol" aria-hidden="true"><MapPin size={19} strokeWidth={2}/></span>
+      <span className="v31-location-copy">
+        <span className="v31-location-eyebrow"><span className={hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?'v31-gps-dot is-live':'v31-gps-dot'}/>
+          {hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?telemetry.accuracy>100?'Localização aproximada':'Sua localização':'Última localização'}
+        </span>
+        <strong title={currentAddress?.street||''}>{currentAddress?.street||(!validPoint(userCoords)?gpsStatus==='denied'?'Localização desativada':'Buscando localização…':'Identificando endereço…')}</strong>
+        <small>{currentAddress?.detail||(!validPoint(userCoords)?'Ative o GPS ou escolha a origem':'Endereço atualizado pelo GPS')}</small>
+      </span>
+    </div>}
     {!searchOpen&&<div className="map-controls"><button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button><button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>{navMode&&<button title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}</div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       {loadingRoute?<div className="route-loader"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><p className="route-caution"><Info size={16}/>{t(routeData.safetyMessage)}</p><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação com GPS':'Assistir prévia animada da rota')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
