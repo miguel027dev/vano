@@ -16,7 +16,7 @@ try {
   await client.connect();
   const legacy = await client.query("SELECT to_regclass('public.users') AS has_users");
   if (legacy.rows[0]?.has_users) {
-    const v1 = await client.query('SELECT count(*)::integer AS total FROM public.users');
+    const v1 = await client.query('SELECT count(*)::integer AS total FROM public.users WHERE is_active=1');
     const v2 = await client.query("SELECT COALESCE(jsonb_array_length(state->'users'),0) AS total FROM vano_v2_state WHERE id=1");
     const a=Number(v1.rows[0]?.total||0),b=Number(v2.rows[0]?.total||0);
     if (a>b) {
