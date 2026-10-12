@@ -220,6 +220,9 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
 function paintLeaflet(map,data){
   if(!map._vanoLayer)return;map._vanoLayer.clearLayers();
   [...(data.routes||[]).filter(x=>x.id!==data.selectedRoute),...(data.routes||[]).filter(x=>x.id===data.selectedRoute)].forEach(r=>{const points=r.geometry?.coordinates?.filter(validPoint).map(ll);if(points?.length>1)L.polyline(points,{color:r.id===data.selectedRoute?'#ff7900':'#8a9ba9',weight:r.id===data.selectedRoute?8:5,opacity:r.id===data.selectedRoute?1:.65}).addTo(map._vanoLayer);});
+  const flowRoute=(data.routes||[]).find(r=>r.id===data.selectedRoute);
+  const flowPoints=flowRoute?.geometry?.coordinates?.filter(validPoint).map(ll);
+  if(flowPoints?.length>1)L.polyline(flowPoints,{color:'#fff2df',weight:2.5,opacity:.82,dashArray:'8 20',lineCap:'round',interactive:false,className:'vano-v35-flow-leaflet'}).addTo(map._vanoLayer);
   if(validPoint(data.destination?.coords))L.marker(ll(data.destination.coords),{icon:L.divIcon({className:'',html:'<div class="map-pin map-pin-destination">⌖</div>',iconSize:[30,30]})}).addTo(map._vanoLayer);
   if(data.destination?.coords&&data.routes?.length&&!data.navigation&&map._vanoFit!==data.destination.id){map._vanoFit=data.destination.id;const selected=data.routes.find(r=>r.id===data.selectedRoute)||data.routes[0];const pts=selected.geometry?.coordinates?.filter(validPoint);if(pts?.length)map.fitBounds(L.latLngBounds(pts.map(ll)),{padding:[60,60],maxZoom:14,animate:true});}
   if(!data.destination)map._vanoFit='';
