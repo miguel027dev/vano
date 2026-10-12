@@ -233,6 +233,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     raf=requestAnimationFrame(animate);
     return()=>{
       stopped=true;cancelAnimationFrame(raf);
+      preference?.removeEventListener?.('change',preferenceChanged);
       visual.current={...state,last:0,lastPaint:0,lastReport:0};
     };
   },[navigation,selectedRoute,routes,token]);
