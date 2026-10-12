@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Bike, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, Flag, MoveRight, CornerUpRight, Info, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, CornerUpLeft, ArrowUp, RotateCcw } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
-import {geoAccessStatus, geoErrorMessage} from '../lib/geolocation';
+import {geoAccessStatus, geoErrorMessage, hasRecentGpsFix, gpsStateAfterError} from '../lib/geolocation';
 import {swapJourney} from '../lib/routePoints';
 import { Brand } from '../components/Brand';
 import { api, fmtKm, fmtTime } from '../lib/api';
@@ -11,7 +11,7 @@ import { useVano } from '../context';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage(){
   const {preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
-  const mapControl=useRef(null),searchInput=useRef(null),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0});
+  const mapControl=useRef(null),searchInput=useRef(null),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0);
   const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[manualLabel,setManualLabel]=useState('Origem selecionada'),[previewMode,setPreviewMode]=useState(false),[previewRun,setPreviewRun]=useState(0),[guidance,setGuidance]=useState(null);
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
@@ -31,19 +31,32 @@ export default function MapPage(){
   function onPosition(p){
     const coords=[p.coords.longitude,p.coords.latitude];
     if(!validPoint(coords))return;
+    lastGpsFix.current={coords,receivedAt:Date.now()};
     setUserCoords(coords);
     setTelemetry({heading:p.coords.heading,speed:p.coords.speed,accuracy:p.coords.accuracy});
     setGpsStatus('granted');setGpsMessage('');
   }
   function onPositionError(error){
-    setGpsStatus(geoAccessStatus(error));
+    const state=gpsStateAfterError(error,lastGpsFix.current);
+    // An old pending request or a temporary indoors accuracy error is not loss of an already valid fix.
+    if(state==='granted'){setGpsStatus('granted');setGpsMessage('');return;}
+    setGpsStatus(state);
     setGpsMessage(geoErrorMessage(error));
   }
   function requestGPS(switchToGPS=true){
-    if(!window.isSecureContext){setGpsStatus('insecure');setGpsMessage('No celular, o IP por HTTP bloqueia o GPS. Use HTTPS confiável ou selecione a origem manualmente.');return;}
-    if(!navigator.geolocation){setGpsStatus('unsupported');setGpsMessage('Este navegador não disponibilizou a localização.');return;}
-    setGpsStatus('checking');setGpsMessage('');
+    if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)){
+      const coords=lastGpsFix.current.coords;
+      setManualCoords(null);setPickOriginMode(false);setGpsStatus('granted');setGpsMessage('');
+      if(destRef.current)calculateRoute(destRef.current,coords);
+      mapControl.current?.center?.();
+      return;
+    }
+    if(!window.isSecureContext){if(!hasRecentGpsFix(lastGpsFix.current)){setGpsStatus('insecure');setGpsMessage('No celular, o IP por HTTP bloqueia o GPS. Use HTTPS confiável ou selecione a origem manualmente.');}return;}
+    if(!navigator.geolocation){if(!hasRecentGpsFix(lastGpsFix.current)){setGpsStatus('unsupported');setGpsMessage('Este navegador não disponibilizou a localização.');}return;}
+    if(!hasRecentGpsFix(lastGpsFix.current)){setGpsStatus('checking');setGpsMessage('');}
+    const attempt=++gpsRequestSeq.current;
     const success=p=>{
+      if(attempt!==gpsRequestSeq.current)return;
       onPosition(p);
       if(switchToGPS){
         setManualCoords(null);setPickOriginMode(false);
@@ -52,6 +65,7 @@ export default function MapPage(){
       }
     };
     const failed=e=>{
+      if(attempt!==gpsRequestSeq.current)return;
       // A mobile GPS chip may be unavailable indoors; retry once using cached/network location.
       if(e?.code===2||e?.code===3){
         navigator.geolocation.getCurrentPosition(success,onPositionError,
@@ -63,10 +77,13 @@ export default function MapPage(){
   }
   useEffect(()=>{requestGPS(false);},[]);
   useEffect(()=>{
-    if(!navMode||usingManual||!navigator.geolocation)return;
-    const id=navigator.geolocation.watchPosition(onPosition,onPositionError,{enableHighAccuracy:true,maximumAge:1500,timeout:11000});
+    if(!window.isSecureContext||!navigator.geolocation)return;
+    // Keep a live fix while the map is open, not only after Start. It also refreshes stale cached positions.
+    const id=navigator.geolocation.watchPosition(onPosition,onPositionError,{
+      enableHighAccuracy:navMode,maximumAge:navMode?2000:15000,timeout:navMode?15000:26000,
+    });
     return()=>navigator.geolocation.clearWatch(id);
-  },[navMode,usingManual]);
+  },[navMode]);
   useEffect(()=>{
     if(!searchOpen)return;
     const t=setTimeout(()=>{
@@ -210,7 +227,7 @@ export default function MapPage(){
     {!navMode&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
     {searchOpen&&!dest&&<div className="search-results"><div className="search-results-head"><span>{t(query.trim()?'Resultados da busca':'Sugestões próximas')}</span><button aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map(s=><button key={s.id} className="suggestion" onClick={()=>pick(s)}><MapPin size={18}/><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank">Nenhum local encontrado. {demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Tente outro termo.'}</div>}</div>}
     {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
-    {!searchOpen&&<div className="map-controls"><button title="Camadas do mapa" className="circle-btn" onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={22}/></button><button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>{navMode&&<button title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}</div>}
+    {!searchOpen&&<div className="map-controls"><button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={20}/><small>{layer==='satellite'?'Satélite':'Mapa'}</small></button><button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>{navMode&&<button title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}</div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       {loadingRoute?<div className="route-loader"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><p className="route-caution"><Info size={16}/>{t(routeData.safetyMessage)}</p><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação com GPS':'Assistir prévia animada da rota')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
