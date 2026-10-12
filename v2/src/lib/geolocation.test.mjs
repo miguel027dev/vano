@@ -23,3 +23,23 @@ test('Rejeita fix inválido, futuro ou muito antigo',()=>{
   assert.equal(hasRecentGpsFix({coords:[1,2],receivedAt:2001},2000),false);
   assert.equal(hasRecentGpsFix({coords:[1,2],receivedAt:1000},100001),false);
 });
+import {evaluateGpsPosition} from './geolocation.js';
+const position=(lng,lat,timestamp,accuracy=12)=>({timestamp,coords:{longitude:lng,latitude:lat,accuracy,heading:89,speed:7}});
+test('Aceita GPS real e preserva timestamp do sensor',()=>{
+ const r=evaluateGpsPosition(position(-46.70,-23.6,90000),null,100000);
+ assert.equal(r.ok,true);assert.equal(r.fix.receivedAt,90000);assert.equal(r.fix.accuracy,12);
+});
+test('Ignora localização em cache desatualizada e fora de ordem',()=>{
+ assert.equal(evaluateGpsPosition(position(-46.70,-23.6,10000),null,80000).reason,'stale');
+ const prev=evaluateGpsPosition(position(-46.70,-23.60,90000),null,91000).fix;
+ assert.equal(evaluateGpsPosition(position(-46.70,-23.60,87000),prev,91000).reason,'out-of-order');
+});
+test('Rejeita teleporte isolado sem bloquear deslocamento normal',()=>{
+ const prev=evaluateGpsPosition(position(-46.700,-23.600,90000),null,90000).fix;
+ assert.equal(evaluateGpsPosition(position(-45.700,-23.600,91000),prev,91000).reason,'jump');
+ assert.equal(evaluateGpsPosition(position(-46.6999,-23.600,91000),prev,91000).ok,true);
+});
+test('Coordenadas inválidas ou sem precisão não viram localização real',()=>{
+ assert.equal(evaluateGpsPosition(position(NaN,-23.6,90000),null,100000).reason,'invalid');
+ assert.equal(evaluateGpsPosition(position(-46.7,-23.6,90000,3000),null,100000).reason,'inaccurate');
+});

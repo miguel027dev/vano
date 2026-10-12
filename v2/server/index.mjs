@@ -559,6 +559,7 @@ async function route(req, res) {
 const types={'.json':'application/json; charset=utf-8','.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff2':'font/woff2'};
 const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersTimeout:10000},async(req,res)=>{
   try {
+    if(process.env.VANO_SEO_INDEXABLE!=='1' || !production)res.setHeader('X-Robots-Tag','noindex, nofollow');
     const method=req.method||'GET';
     if(!['GET','POST','PATCH','DELETE','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     if(!requestHTTPS(req,res))return;

@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:client": "vite --host 0.0.0.0",
     "dev:api": "node --watch server/index.mjs",
-    "build": "vite build && node scripts/prerender-seo.mjs",
+    "build": "vite build && node scripts/prerender-seo.mjs && node scripts/audit-seo.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "start": "node server/index.mjs",
     "test": "node scripts/run-tests.mjs",

@@ -53,6 +53,7 @@ function motionController(map,latest,status){
 
 export default function VanoMap({active=true,userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,previewMode=false,previewRun=0,onNavigationProgress}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
+  const firstGpsCenter=useRef(0);
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0});
   latest.current={active,userCoords,destination,routes,selectedRoute,navigation,layer,telemetry,vehicle,pickingOrigin,onPickOrigin,previewMode,previewRun,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
@@ -91,9 +92,21 @@ export default function VanoMap({active=true,userCoords,destination,routes=[],se
     document.addEventListener('visibilitychange',visibility);
     return()=>{deleted=true;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token]);
+  // The first real fix must replace the startup map center. A later accurate fix may refine once.
+  // Never override manual map exploration or an active route preview.
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||navigation||destination||!validPoint(userCoords)||firstGpsCenter.current>=2)return;
+    if(motion.current?.freeLook||map._vanoFreeLook)return;
+    const accurate=Number.isFinite(telemetry?.accuracy)&&telemetry.accuracy<=120;
+    if(firstGpsCenter.current===1&&!accurate)return;
+    firstGpsCenter.current=accurate?2:1;
+    if(backend.current==='mapbox')map.easeTo({center:userCoords,zoom:Math.max(map.getZoom(),14.5),duration:550,essential:true});
+    else map.setView(ll(userCoords),Math.max(map.getZoom(),14.5),{animate:false});
+  },[userCoords?.[0],userCoords?.[1],telemetry?.accuracy,navigation,destination?.id]);
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(!active)motion.current?.suspend();else{if(backend.current==='mapbox')map.resize();else map.invalidateSize({animate:false});motion.current?.resume();}},[active]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
-  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);if(navigation&&!previewMode&&validPoint(userCoords))map.panTo(ll(userCoords),{animate:true});}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,previewMode,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
+  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,previewMode,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox')return;
@@ -164,7 +177,7 @@ export default function VanoMap({active=true,userCoords,destination,routes=[],se
         map._vanoVehicleMarker.setLatLng(ll(point));
         const svg=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
         if(svg)svg.style.transform=`rotate(${state.bearing}deg)`;
-        if(now-state.lastPaint>220&&!map._vanoFreeLook){state.lastPaint=now;map.panTo(ll(point),{animate:true,duration:.45});}
+        if(now-state.lastPaint>220&&!map._vanoFreeLook){state.lastPaint=now;map.panTo(ll(point),{animate:false});}
       }
       if(now-state.lastReport>320){
         state.lastReport=now;

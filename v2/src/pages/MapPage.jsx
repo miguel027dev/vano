@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Bike, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, Flag, MoveRight, CornerUpRight, Info, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, CornerUpLeft, ArrowUp, RotateCcw } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
-import {geoAccessStatus, geoErrorMessage, hasRecentGpsFix, gpsStateAfterError} from '../lib/geolocation';
+import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {swapJourney} from '../lib/routePoints';
 import { Brand } from '../components/Brand';
 import { api, fmtKm, fmtTime } from '../lib/api';
@@ -12,8 +12,8 @@ import {notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
-  const mapControl=useRef(null),searchInput=useRef(null),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0);
-  const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[manualLabel,setManualLabel]=useState('Origem selecionada'),[previewMode,setPreviewMode]=useState(false),[previewRun,setPreviewRun]=useState(0),[guidance,setGuidance]=useState(null);
+  const mapControl=useRef(null),searchInput=useRef(null),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null);
+  const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[manualLabel,setManualLabel]=useState('Origem selecionada'),[previewMode,setPreviewMode]=useState(false),[previewRun,setPreviewRun]=useState(0),[guidance,setGuidance]=useState(null);
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
   destRef.current=dest;
@@ -28,19 +28,26 @@ export default function MapPage({active=true}){
   },[pointMenu,editor]);
   const origin=manualCoords||userCoords;
   const usingManual=validPoint(manualCoords);
-  const hasLiveGPS=validPoint(userCoords)&&!usingManual&&gpsStatus==='granted';
+  manualCoordsRef.current=manualCoords;
+  const hasLiveGPS=validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'&&hasRecentGpsFix(lastGpsFix.current,Date.now(),35000);
   function onPosition(p){
-    const coords=[p.coords.longitude,p.coords.latitude];
-    if(!validPoint(coords))return;
-    lastGpsFix.current={coords,receivedAt:Date.now()};
-    setUserCoords(coords);
-    setTelemetry({heading:p.coords.heading,speed:p.coords.speed,accuracy:p.coords.accuracy});
-    setGpsStatus('granted');setGpsMessage('');
+    const result=evaluateGpsPosition(p,lastGpsFix.current);
+    if(!result.ok)return null;
+    const {fix}=result;
+    lastGpsFix.current=fix;
+    setUserCoords(fix.coords);
+    setTelemetry({heading:result.heading,speed:result.speed,accuracy:fix.accuracy});
+    setGpsStatus(fix.accuracy<=100?'granted':'approximate');setGpsMessage('');
+    if(awaitingGpsDestination.current&&!validPoint(manualCoordsRef.current)&&destRef.current){
+      awaitingGpsDestination.current=false;setPickOriginMode(false);
+      routeCalculator.current?.(destRef.current,fix.coords);
+    }
+    return fix;
   }
   function onPositionError(error){
     const state=gpsStateAfterError(error,lastGpsFix.current);
     // An old pending request or a temporary indoors accuracy error is not loss of an already valid fix.
-    if(state==='granted'){setGpsStatus('granted');setGpsMessage('');return;}
+    if(state==='granted'){setGpsStatus(lastGpsFix.current?.accuracy<=100?'granted':'approximate');setGpsMessage('');return;}
     setGpsStatus(state);
     setGpsMessage(geoErrorMessage(error));
   }
@@ -58,11 +65,11 @@ export default function MapPage({active=true}){
     const attempt=++gpsRequestSeq.current;
     const success=p=>{
       if(attempt!==gpsRequestSeq.current)return;
-      onPosition(p);
-      if(switchToGPS){
-        setManualCoords(null);setPickOriginMode(false);
-        const coords=[p.coords.longitude,p.coords.latitude];
-        if(validPoint(coords)&&destRef.current)calculateRoute(destRef.current,coords);
+      const waiting=awaitingGpsDestination.current;
+      const fix=onPosition(p);
+      if(switchToGPS&&fix){
+        awaitingGpsDestination.current=false;setManualCoords(null);setPickOriginMode(false);
+        if(destRef.current&&!waiting)calculateRoute(destRef.current,fix.coords);
       }
     };
     const failed=e=>{
@@ -70,7 +77,7 @@ export default function MapPage({active=true}){
       // A mobile GPS chip may be unavailable indoors; retry once using cached/network location.
       if(e?.code===2||e?.code===3){
         navigator.geolocation.getCurrentPosition(success,onPositionError,
-          {enableHighAccuracy:false,timeout:14000,maximumAge:120000});
+          {enableHighAccuracy:false,timeout:14000,maximumAge:15000});
       }else onPositionError(e);
     };
     navigator.geolocation.getCurrentPosition(success,failed,
@@ -78,6 +85,15 @@ export default function MapPage({active=true}){
   }
   useEffect(()=>{if(active)requestGPS(false);},[active]);
   useEffect(()=>{notifyNative({action:'wake',active:active&&navMode});return()=>notifyNative({action:'wake',active:false});},[active,navMode]);
+  useEffect(()=>{
+    if(!active)return;
+    const id=setInterval(()=>{
+      setGpsClock(x=>x+1);
+      if(lastGpsFix.current&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))
+        setGpsStatus(s=>s==='granted'||s==='approximate'?'reconnecting':s);
+    },12000);
+    return()=>clearInterval(id);
+  },[active]);
   useEffect(()=>{
     if(!active||!window.isSecureContext||!navigator.geolocation)return;
     // Keep a live fix while the map is open, not only after Start. It also refreshes stale cached positions.
@@ -104,21 +120,23 @@ export default function MapPage({active=true}){
     }catch(e){if(epoch===routeEpoch.current)setToast(e.message);}
     finally{if(epoch===routeEpoch.current)setLoadingRoute(false);}
   }
+  routeCalculator.current=calculateRoute;
   function pick(place){
     if(!validPoint(place.coords)){setToast('Este destino ainda não tem coordenadas.');return;}
     setDest(place);setQuery('');setSearchOpen(false);setEditor(null);setPointMenu(null);setNavMode(false);setPreviewMode(false);setGuidance(null);setRouteData(null);
     if(!validPoint(origin)){
+      awaitingGpsDestination.current=true;
       routeEpoch.current++;
       setSheetOpen(false);setPickOriginMode(true);
       setToast('Selecione no mapa de onde você quer sair. Não precisa permitir o GPS.');
       return;
     }
-    setPickOriginMode(false);
+    awaitingGpsDestination.current=false;setPickOriginMode(false);
     calculateRoute(place,origin);
   }
   function chooseOrigin(coords,label='Origem selecionada no mapa'){
     if(!validPoint(coords))return;
-    setManualCoords(coords);setManualLabel(label);setPickOriginMode(false);setNavMode(false);setEditor(null);setPointMenu(null);
+    awaitingGpsDestination.current=false;setManualCoords(coords);setManualLabel(label);setPickOriginMode(false);setNavMode(false);setEditor(null);setPointMenu(null);
     setToast('Origem manual definida. Você já pode calcular rotas sem GPS.');
     if(dest)calculateRoute(dest,coords);
   }
@@ -175,14 +193,14 @@ export default function MapPage({active=true}){
     try{await saveTrip({destination:dest,routeType:choice,duration:route.duration,distance:route.distance,proof:route.proof});setToast('GPS conectado. Siga sempre a sinalização real da via.');}
     catch(e){setToast('Navegação iniciada, mas o histórico não foi salvo: '+e.message);}
   }
-  function reset(){routeEpoch.current++;setNavMode(false);setPreviewMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setPreviewMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Debounced deviation reroute: only on good GPS with sustained off-route signal.
   useEffect(()=>{
     if(!active||!navMode||!hasLiveGPS||!route?.geometry||demoRoute||recalculating||!dest)return;
     const now=Date.now(),state=rerouteState.current;
     const accuracy=telemetry.accuracy;
-    if(!Number.isFinite(accuracy)||accuracy>50){state.outsideSince=0;return;}
+    if(!hasRecentGpsFix(lastGpsFix.current,Date.now(),15000)||!Number.isFinite(accuracy)||accuracy>35){state.outsideSince=0;return;}
     const deviation=nearestOnRoute(userCoords,route.geometry).distance;
     if(deviation<75){state.outsideSince=0;return;}
     if(!state.outsideSince){state.outsideSince=now;return;}
@@ -206,7 +224,7 @@ export default function MapPage({active=true}){
       <div className="v5-route-box" aria-label="Origem e destino da rota">
         <div className="v5-point-row">
           <span className="v5-point-indicator v5-point-start" aria-hidden="true"/>
-          <button className="v5-point-label" onClick={()=>openEditor('origin')} aria-label="Alterar origem"><span>{usingManual?manualLabel:t('Minha localização')}</span><small>{t(usingManual?'Origem definida manualmente':hasLiveGPS?'GPS conectado':'Toque para definir origem')}</small></button>
+          <button className="v5-point-label" onClick={()=>openEditor('origin')} aria-label="Alterar origem"><span>{usingManual?manualLabel:t('Minha localização')}</span><small>{t(usingManual?'Origem definida manualmente':hasLiveGPS?'GPS conectado':gpsStatus==='approximate'?'Localização aproximada':'Toque para definir origem')}</small></button>
           <div className="v5-point-actions"><button className="v5-point-more" aria-label="Opções da origem" aria-haspopup="menu" aria-expanded={pointMenu==='origin'} onClick={()=>setPointMenu(m=>m==='origin'?null:'origin')}><MoreHorizontal size={21}/></button>{pointMenu==='origin'&&<div className="v5-point-popover" role="menu"><button role="menuitem" onClick={()=>{setPointMenu(null);requestGPS(true)}}><LocateFixed size={17}/> {t('Usar meu GPS')}</button><button role="menuitem" onClick={()=>openEditor('origin')}><Search size={17}/> {t('Buscar endereço')}</button><button role="menuitem" onClick={()=>{setPointMenu(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={17}/> {t('Escolher no mapa')}</button></div>}</div>
         </div>
         <div className="v5-point-row">
@@ -235,7 +253,7 @@ export default function MapPage({active=true}){
       {loadingRoute?<div className="route-loader"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><p className="route-caution"><Info size={16}/>{t(routeData.safetyMessage)}</p><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação com GPS':'Assistir prévia animada da rota')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
-    {navMode&&<div className="nav-bottom"><div className="nav-summary"><span><strong>{fmtTime(route?.duration)}</strong><small>{fmtKm(route?.distance,language)} · {t(choice==='safe'?'Mais segura':'Mais rápida')}</small></span><Link className="circle-btn" to="/relatar" title="Relatar ocorrência"><Flag size={19}/></Link></div>{recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}{previewMode&&<><p className="nav-demo v28-simulation-note"><Info size={16}/> Prévia acelerada: posição fictícia na rota. Não use para dirigir.</p><div className="v28-preview-track" role="progressbar" aria-label="Progresso da prévia" aria-valuenow={Math.round((guidance?.progress||0)*100)} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${Math.round((guidance?.progress||0)*100)}%`}}/></div>{guidance?.finished&&<button className="v28-preview-replay" onClick={()=>{setGuidance(null);setPreviewRun(v=>v+1);}}><RotateCcw size={17}/> Repetir prévia</button>}</>}{demoRoute&&!previewMode&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}<button className="btn btn-primary" onClick={reset}><X size={18}/> {t('Encerrar navegação')}</button></div>}
+    {navMode&&<div className="nav-bottom"><div className="nav-summary"><span><strong>{fmtTime(route?.duration)}</strong><small>{fmtKm(route?.distance,language)} · {t(choice==='safe'?'Mais segura':'Mais rápida')}</small></span><Link className="circle-btn" to="/relatar" title="Relatar ocorrência"><Flag size={19}/></Link></div>{recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}{!previewMode&&!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}{previewMode&&<><p className="nav-demo v28-simulation-note"><Info size={16}/> Prévia acelerada: posição fictícia na rota. Não use para dirigir.</p><div className="v28-preview-track" role="progressbar" aria-label="Progresso da prévia" aria-valuenow={Math.round((guidance?.progress||0)*100)} aria-valuemin={0} aria-valuemax={100}><span style={{width:`${Math.round((guidance?.progress||0)*100)}%`}}/></div>{guidance?.finished&&<button className="v28-preview-replay" onClick={()=>{setGuidance(null);setPreviewRun(v=>v+1);}}><RotateCcw size={17}/> Repetir prévia</button>}</>}{demoRoute&&!previewMode&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}<button className="btn btn-primary" onClick={reset}><X size={18}/> {t('Encerrar navegação')}</button></div>}
     {!dest&&!searchOpen&&demo&&<div className="demo-label">Prévia local · sem Mapbox</div>}
   </div>
 }
