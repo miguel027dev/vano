@@ -261,7 +261,17 @@ function paintMapbox(map,data,selection){
   if(!isLoaded(map))return;
   const routes=(data.routes||[]).filter(feature),selected=routes.find(r=>r.id===data.selectedRoute),others=routes.filter(r=>r.id!==data.selectedRoute);
   const selectedGeo=geo(selected?[feature(selected)]:[]),othersGeo=geo(others.map(feature));
-  const upsert=(id,body)=>{if(map.getSource(id))map.getSource(id).setData(body);else map.addSource(id,{type:'geojson',data:body});};
+  // Repainting the same GeoJSON on every GPS tick interrupted the dash animation
+  // and needlessly reprocessed route geometry. Reuse sources until actual shapes change.
+  const routeShapes=map._vanoRouteSourceShapes??={};
+  const upsert=(id,body)=>{
+    const shapes=body.features.map(x=>x.geometry);
+    const source=map.getSource(id);
+    if(!source){map.addSource(id,{type:'geojson',data:body});routeShapes[id]=shapes;return;}
+    const previous=routeShapes[id];
+    if(previous?.length===shapes.length&&previous.every((g,i)=>g===shapes[i]))return;
+    source.setData(body);routeShapes[id]=shapes;
+  };
   upsert('vano-v2-alternatives',othersGeo);upsert('vano-v2-selected',selectedGeo);
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
   if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':13,'line-opacity':.94}});
