@@ -1,0 +1,40 @@
+/* V2.7: restrained locale field and compact route preference (mobile first). */
+.v27-language-form{display:flex;flex-direction:column;gap:7px;min-width:0;margin-top:3px}
+.v27-language-form>label{color:var(--ink,#242728);font-size:.82rem;font-weight:750;letter-spacing:-.01em}
+.v27-language-form>small{font-size:.74rem;line-height:1.45;color:#7b8186}
+.v27-language-select{position:relative;display:flex;align-items:center;min-width:0;height:52px;border:1px solid #e3e5e5;background:#fff;border-radius:15px;transition:border-color .22s,box-shadow .22s}
+.v27-language-select:focus-within{border-color:#e96129;box-shadow:0 0 0 3px rgba(233,97,41,.11)}
+.v27-language-select select{appearance:none;-webkit-appearance:none;width:100%;height:100%;background:transparent;outline:0;border:0;cursor:pointer;padding:0 44px 0 15px;color:#20252a;font:inherit;font-weight:650;font-size:.9rem}
+.v27-language-select>span[aria-hidden]{position:absolute;right:16px;color:#9a9ea1;font-size:1.4rem;pointer-events:none;top:50%;transform:translateY(-57%)}
+.v27-settings-select{width:min(220px,48vw);height:44px;background:var(--surface,#fff)}
+.v27-settings-select select{font-size:.78rem;color:var(--ink,#252525)}
+.v27-route-choices{display:grid;gap:12px;width:100%;max-width:740px}
+.v27-route-row{display:flex;align-items:center;gap:16px;min-height:98px;width:100%;padding:19px 19px;text-align:left;border:1.5px solid #e5e6e4;border-radius:19px;background:#fff;box-shadow:0 5px 22px rgba(30,34,34,.025);color:#222c34;transition:border-color .22s,background .22s,box-shadow .22s,transform .22s cubic-bezier(.21,.73,.25,1)}
+.v27-route-row:hover{border-color:#e4aaa0;box-shadow:0 10px 24px rgba(50,26,16,.06);transform:translateY(-1px)}
+.v27-route-row:active{transform:scale(.995)}
+.v27-route-row:focus-visible{outline:3px solid #f3ad87;outline-offset:3px}
+.v27-route-row.selected{border-color:#eb8455;background:#fff8f4;box-shadow:0 5px 20px rgba(225,113,55,.05)}
+.v27-route-symbol{display:grid;place-items:center;flex:none;width:46px;height:46px;border-radius:14px;background:#f5f5f4;color:#8c8f90;transition:background .2s,color .2s}
+.v27-route-row.selected .v27-route-symbol{background:#ffe8dd;color:#d65820}
+.v27-route-copy{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.v27-route-copy strong{font-size:1.03rem;line-height:1.1;font-weight:800;letter-spacing:-.028em;color:#222b30}
+.v27-route-copy small{max-width:460px;line-height:1.4;color:#82898a;font-size:.79rem;font-weight:450}
+.v27-route-check{width:24px;height:24px;flex:none;border-radius:50%;border:1.5px solid #d5d8d8;display:grid;place-items:center;color:white;transition:background .18s,border .18s}
+.v27-route-row.selected .v27-route-check{border-color:#eb612b;background:#eb612b}
+.v27-route-footnote{margin:9px 2px 0;display:flex;gap:8px;align-items:center;font-size:.78rem;color:#7c8585;line-height:1.35}
+.v27-route-footnote svg{flex:none;color:#b6aaa2}
+@media(max-width:740px){
+  .v27-route-choices{gap:10px}
+  .v27-route-row{padding:14px 13px;gap:12px;min-height:85px;border-radius:17px}
+  .v27-route-symbol{width:39px;height:39px;border-radius:12px}
+  .v27-route-copy strong{font-size:.99rem}
+  .v27-route-copy small{font-size:.73rem}
+  .v27-route-check{width:22px;height:22px}
+  .v27-route-footnote{margin-top:5px;font-size:.73rem}
+  .v27-language-select{height:48px}
+  .v27-settings-locale{gap:12px;flex-wrap:wrap}
+}
+@media(max-width:345px){.v27-route-row{gap:9px;padding:12px 10px}.v27-route-symbol{width:34px;height:34px}.v27-route-copy small{font-size:.7rem}}
+@media(prefers-reduced-motion:reduce){.v27-route-row,.v27-route-symbol,.v27-route-check,.v27-language-select{transition:none!important}.v27-route-row:hover{transform:none}}
+
+.v3-google-action{display:flex;align-items:center;justify-content:center;gap:12px;min-height:48px;text-decoration:none;color:#24272b;border:1px solid #dfe2e6;border-radius:16px;background:#fff;font-weight:680;margin-top:16px;transition:border-color .18s,transform .18s,box-shadow .18s}.v3-google-action:hover,.v3-google-action:focus-visible{border-color:#ff7a38;box-shadow:0 4px 15px #1212120d}.v3-google-action:active{transform:scale(.99)}.v3-google-g{font-weight:900;font-size:20px;color:#4285f4}

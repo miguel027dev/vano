@@ -1,0 +1,35 @@
+{
+  "name": "vano-react-local",
+  "version": "2.7.1-render-preview",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:client": "vite --host 0.0.0.0",
+    "dev:api": "node --watch server/index.mjs",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "start": "node server/index.mjs",
+    "test": "node --test server/*.test.mjs src/lib/*.test.mjs",
+    "security:check": "npm test && npm run build && npm audit --audit-level=moderate",
+    "security:audit": "npm audit --audit-level=moderate",
+    "start:production": "NODE_ENV=production node server/index.mjs",
+    "security:config": "node scripts/check-production.mjs",
+    "test:oauth": "node --test server/google-oauth.test.mjs"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.14.2",
+    "lucide-react": "^0.511.0",
+    "leaflet": "^1.9.4",
+    "mapbox-gl": "^3.12.0"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "devDependencies": {
+    "vite": "^6.4.4",
+    "typescript": "^5.8.3"
+  }
+}
