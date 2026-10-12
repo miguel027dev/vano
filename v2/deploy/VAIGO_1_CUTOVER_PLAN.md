@@ -8,7 +8,7 @@
 ## Riscos críticos que impedem a troca direta
 
 1. **Runtime imutável:** Render não converte o serviço Python existente em Node. Trocar apenas a branch não muda `gunicorn app:app` para `node server/index.mjs`.
-2. **Contas e dados:** V1 usa `DATABASE_URL` em PostgreSQL; V2 usa `data/store.json` com lock single-process. A V2 **não implementa driver/adapter PostgreSQL** neste commit. Não é seguro apontar a V2 para `DATABASE_URL` e esperar migração automática. O disco do Render Free é efêmero.
+2. **Contas e dados:** V1 usa `DATABASE_URL` em PostgreSQL; a branch de migração da V2 possui agora um **adaptador PostgreSQL para armazenamento isolado** em `vano_v2_state`, com revisão otimista contra gravações conflitantes. **Isso NÃO migra automaticamente usuários ou sessões da V1**, nem permite derrubar a API Python de micro-rotas. O disco do Render Free é efêmero.
 3. **Motor de rotas:** a V2 precisa de `VANO_V1_API_URL` para usar as micro-rotas/safety originais. Sem a V1 em execução, o fallback Mapbox NÃO equivale ao cálculo de segurança VANO.
 4. **Segredos:** configurações `Environment` são isoladas por serviço. GitHub armazena somente os **nomes** das variáveis, nunca os valores. É obrigatório comparar e vincular os segredos no Render Dashboard/secret manager. Não substituir as variáveis da V1 antecipadamente.
 5. **OAuth:** callback legado `https://vanomaps.online/login/google/callback` deve continuar válido para a V1. A V2 usa `/api/auth/google/callback`; adicionar o novo callback no Google Cloud antes do cutover.
@@ -30,7 +30,7 @@
 
 | V1 atual | V2 Node | Observação |
 | --- | --- | --- |
-| `DATABASE_URL` | **sem suporte nesta versão** | Requer adapter PostgreSQL e migração antes de produção |
+| `DATABASE_URL` | `DATABASE_URL` | Adaptador V2 isolado em `vano_v2_state`; **migração de usuários V1 e histórico ainda pendente** |
 | `VANO_SECRET_KEY` | `VANO_SECURITY_SECRET` | **Não equivalentes**: gerar novo segredo forte; não reutilizar silenciosamente |
 | `GOOGLE_CLIENT_ID` | `GOOGLE_CLIENT_ID` | Pode ser compartilhado após validar origens/callback |
 | `GOOGLE_CLIENT_SECRET` | `GOOGLE_CLIENT_SECRET` | Segredo apenas no Render |
@@ -47,16 +47,28 @@
 
 Manter todas as variáveis V1 de tráfego, OSINT, IA, radar e monitoramento enquanto a arquitetura Python estiver ativa; remover apenas depois de confirmar que não são utilizadas. No serviço Node, não copiar chaves legadas indiscriminadamente.
 
-## Configuração de Node candidata (APÓS suporte de banco durável)
+## Configuração de Node candidata (APÓS migrar identidades e validar o banco)
 
 - Git: `https://github.com/miguel027dev/vano`, branch `release/vaigo-1-v2`
 - Root: `v2`
 - Build: `npm ci && npm test && npm run build && npm audit --audit-level=moderate` (precisa versionar lockfile)
-- Start: `node server/index.mjs`
+- Start: `node server/index.mjs` (somente após migração, segredos e configuração de produção validados)
+- Environment: `NODE_ENV=production`, `DATABASE_URL`, `VANO_TRUST_RENDER_PROXY=1`, `VANO_V2_CUTOVER_APPROVED=1` (última variável **somente no corte aprovado**)
 - Porta: `PORT` provida pelo Render; `API_HOST=0.0.0.0` **só com proxy confiável e revisão do servidor de produção**
 - Health: `/api/health`
 
-**Nota:** o servidor Node atual rejeita `API_HOST=0.0.0.0` quando `NODE_ENV=production`. Isso precisa ser conciliado com a infraestrutura Render **sem simplesmente desabilitar HTTPS, autenticação e validações**. Nem esse blocker nem o de persistência são resolvidos pela configuração acima.
+**Nota:** o servidor Node foi adaptado para `API_HOST=0.0.0.0` **somente** quando `RENDER=true` e `VANO_TRUST_RENDER_PROXY=1`, com verificação HTTPS/host. A inicialização em produção no Render também exige `DATABASE_URL` e `VANO_V2_CUTOVER_APPROVED=1`; **não** libere essa última variável antes de autenticar e migrar os dados reais. Execute `npm run migration:check` e `npm run security:config` como verificações adicionais, além de auditoria independente. O adaptador PostgreSQL permanece de instância única em termos de estado em memória.
+
+
+## Trabalho concluído nesta preparação
+
+- Branch `release/vaigo-1-v2` isolada, preservando `main` e o serviço Python atual.
+- `server/postgres-store.mjs` persiste em tabela PostgreSQL **exclusiva da V2** (`vano_v2_state`) usando revisão condicional para não sobrescrever escrita simultânea.
+- `server/postgres-store.test.mjs` inclui quatro testes de armazenamento, integridade e conflitos.
+- `scripts/check-vaigo1-migration.mjs` faz checagem **somente leitura** da diferença de contagem de contas V1/V2; não importa nem modifica usuários.
+- Backend V2 aceita proxy HTTPS do Render de forma explícita e recusa produção sem PostgreSQL e sem autorização de cutover.
+
+**Pendentes:** migrar e vincular senhas/Google e preferências históricas da V1, validar PostgreSQL real, preservar o motor Python de rotas após o corte, configurar segredos sem extraí-los para o Git, atualizar o destino do domínio/serviço via Dashboard, testar reversão e só depois suspender o staging.
 
 ## Limites da automação conectada
 
