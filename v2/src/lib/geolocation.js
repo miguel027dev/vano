@@ -27,3 +27,29 @@ export function hasRecentGpsFix(fix, now=Date.now(), maxAgeMs=90000){
 export function gpsStateAfterError(error,fix,now=Date.now()){
   return hasRecentGpsFix(fix,now)?'granted':geoAccessStatus(error);
 }
+/** Browser-reported GPS only: reject cached fixes and isolated implausible jumps. */
+export function evaluateGpsPosition(position, previous=null, now=Date.now()) {
+  const p=position?.coords;
+  const coords=p&&[p.longitude,p.latitude];
+  if(!Array.isArray(coords)||coords.length!==2||!coords.every(Number.isFinite)||Math.abs(coords[0])>180||Math.abs(coords[1])>90)
+    return {ok:false,reason:'invalid'};
+  const timestamp=Number(position.timestamp);
+  if(!Number.isFinite(timestamp)||timestamp<=0||timestamp>now+5000||now-timestamp>35000)
+    return {ok:false,reason:'stale'};
+  if(previous?.sourceAt && timestamp<previous.sourceAt-1000)
+    return {ok:false,reason:'out-of-order'};
+  const accuracy=Number(p.accuracy);
+  if(!Number.isFinite(accuracy)||accuracy<0||accuracy>2000)
+    return {ok:false,reason:'inaccurate'};
+  if(previous?.sourceAt && timestamp>previous.sourceAt && Array.isArray(previous.coords)) {
+    const rad=Math.PI/180;
+    const dlat=(coords[1]-previous.coords[1])*111195;
+    const dlon=(coords[0]-previous.coords[0])*111195*Math.cos(coords[1]*rad);
+    const meters=Math.hypot(dlat,dlon);
+    const elapsed=Math.max(0.5,(timestamp-previous.sourceAt)/1000);
+    const tolerance=Math.max(accuracy,Number(previous.accuracy)||0);
+    if(meters>Math.max(150,elapsed*85+60,tolerance*4+50))
+      return {ok:false,reason:'jump'};
+  }
+  return {ok:true,fix:{coords,receivedAt:timestamp,sourceAt:timestamp,accuracy},heading:Number.isFinite(p.heading)?p.heading:null,speed:Number.isFinite(p.speed)?p.speed:null};
+}
