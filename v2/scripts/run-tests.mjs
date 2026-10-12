@@ -1,19 +1,22 @@
-/** Run tests without inheriting Render's runtime port and proxy flags. */
+/** Run unit/API tests without inheriting hosting runtime port/TLS settings.
+ * Render injects PORT=10000 at build time, while API tests allocate their own
+ * ephemeral ports. Do not let the deployed port override those test ports.
+ */
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const folders = ['server', 'src/lib'];
-const files = folders.flatMap(folder => readdirSync(folder)
+const suites = ['server', 'src/lib', 'seo'];
+const testFiles = suites.flatMap(directory => readdirSync(directory)
   .filter(name => name.endsWith('.test.mjs'))
-  .map(name => folder + '/' + name));
-if (!files.length) {
+  .map(name => `${directory}/${name}`));
+if (!testFiles.length) {
   console.error('No test files found.');
   process.exit(1);
 }
-const env = { ...process.env, NODE_ENV: 'test' };
-for (const key of ['PORT','API_PORT','API_HOST','VANO_DEV_HTTPS','VANO_TRUST_PROXY']) delete env[key];
-const result = spawnSync(process.execPath, ['--test', ...files], {
-  cwd: process.cwd(), env, stdio: 'inherit',
+const environment = { ...process.env, NODE_ENV: 'test' };
+for (const key of ['PORT', 'API_HOST', 'API_PORT', 'VANO_DEV_HTTPS', 'VANO_TRUST_PROXY']) delete environment[key];
+const run = spawnSync(process.execPath, ['--test', ...testFiles], {
+  cwd: process.cwd(), env: environment, stdio: 'inherit',
 });
-if (result.error) console.error(result.error);
-process.exit(result.status ?? 1);
+if (run.error) console.error(run.error);
+process.exit(run.status ?? 1);
