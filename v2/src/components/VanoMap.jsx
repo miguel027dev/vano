@@ -147,14 +147,8 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
     const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0};
-    function preferenceChanged(){
-      reduced=Boolean(preference?.matches);
-      state.lastFlowFrame=-1;
-      const m=mapRef.current;
-      if(backend.current==='mapbox'&&m&&isLoaded(m)&&m.getLayer('vano-v2-flow')){
-        try{m.setPaintProperty('vano-v2-flow','line-opacity',reduced?0:.62);}catch{}
-      }
-    }
+    // Reduced-motion still controls GPS/camera smoothing, not static markings.
+    function preferenceChanged(){reduced=Boolean(preference?.matches);}
     preference?.addEventListener?.('change',preferenceChanged);
     visual.current=state;
     function animate(now){
