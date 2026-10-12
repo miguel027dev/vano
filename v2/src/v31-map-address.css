@@ -204,10 +204,9 @@
 /* VANO Atlas 3.3 — route actions aligned to the existing origin/destination card.
    Keep the card's contents, dimensions, spacing and action icons unchanged. */
 .map-page .map-top.v31-map-top.v32-route-top{
-  /* The previous toolbar consumed 45px + a 9px gap.
-     Its removal would jump the card upward by 54px: preserve its visual place,
-     then lift only 9px, maintaining iOS/Android safe-area insets. */
-  padding-top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 45px);
+  /* Route card + X/profile group: lift 18px relative to the previous 45px offset.
+     Retain enough space below the device's status-bar/safe area. */
+  padding-top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 27px);
 }
 .map-page .v32-route-layout{
   display:grid;
@@ -252,4 +251,31 @@
 }
 @media(max-width:360px){
   .map-page .v32-route-layout{column-gap:7px}
+}
+
+/* VANO Atlas 3.4 — deliberate floating control positions.
+   The actual route panel/collapsed-card clearance is measured in MapPage,
+   rather than treating a max-height as the panel's current height. */
+.map-page .map-controls{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 70px);
+  transition:bottom .18s ease;
+}
+.map-page.has-sheet .map-controls{
+  /* Conservative fallback before ResizeObserver's first panel measurement. */
+  bottom:var(--v33-panel-clearance,calc(min(66dvh,570px) + 12px));
+}
+.map-page.has-collapsed-route .map-controls{
+  bottom:var(--v33-panel-clearance,112px);
+}
+/* Preserve separation from the live navigation instruction dock. */
+.map-page.in-navigation .map-controls{bottom:245px}
+@media(max-width:720px){
+  .map-page .map-controls{bottom:calc(env(safe-area-inset-bottom,0px) + 62px)}
+}
+@media(max-height:560px) and (orientation:landscape){
+  /* Expanded panels leave insufficient room for another two controls. */
+  .map-page.has-sheet .map-controls{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page .map-controls{transition:none}
 }
