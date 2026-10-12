@@ -233,6 +233,13 @@ function paintMapbox(map,data,selection){
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
   if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':13,'line-opacity':.94}});
   if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900','line-width':8,'line-opacity':1,'line-opacity-transition':{duration:250}}});
+  // Motion 3.5: decorative dashes use the SAME source as the existing route.
+  // The original orange stroke, white outline and progress layer remain intact.
+  if(!map.getLayer('vano-v2-flow'))map.addLayer({
+    id:'vano-v2-flow',type:'line',source:'vano-v2-selected',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':'#fff2df','line-width':2.6,'line-opacity':window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:.86,'line-dasharray':FLOW_DASH_FRAMES[0]}
+  },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
   if(!map.getSource('vano-v2-traveled'))upsert('vano-v2-traveled',geo([]));
   if(!data.navigation)map.getSource('vano-v2-traveled').setData(geo([]));
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
