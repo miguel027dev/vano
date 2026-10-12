@@ -1,6 +1,27 @@
 /** Google OAuth Authorization Code + PKCE integration for the isolated VANO V2. */
 import { createHash, randomBytes } from 'node:crypto';
-export const googleConfigured = env => Boolean(env.GOOGLE_CLIENT_ID?.trim() && env.GOOGLE_CLIENT_SECRET?.trim() && !String(env.GOOGLE_CLIENT_ID).startsWith('REPLACE_') && !String(env.GOOGLE_CLIENT_SECRET).startsWith('REPLACE_') && (env.GOOGLE_REDIRECT_URI || env.VANO_PUBLIC_ORIGIN));
+/** Public-safe diagnostics; never include client secret, authorization codes or tokens. */
+export function googleOAuthStatus(env) {
+  const client=String(env.GOOGLE_CLIENT_ID||'').trim(),secret=String(env.GOOGLE_CLIENT_SECRET||'').trim();
+  if(!client||!secret||client.startsWith('REPLACE_')||secret.startsWith('REPLACE_'))return {ready:false,reason:'credentials-missing'};
+  if(!/^[A-Za-z0-9_.-]+\\.apps\\.googleusercontent\\.com$/.test(client))return {ready:false,reason:'invalid-client-id'};
+  let uri;
+  try {uri=new URL(googleRedirectUri(env));}catch{return {ready:false,reason:'invalid-callback'};}
+  if(uri.pathname!=='/api/auth/google/callback'||uri.search||uri.hash)return {ready:false,reason:'invalid-callback-path'};
+  return {ready:true,reason:null,callbackOrigin:uri.origin};
+}
+export const googleConfigured = env => googleOAuthStatus(env).ready;
+
+/** Force Google OAuth to begin on the same exact origin that receives its callback.
+ * Otherwise OAuth's SameSite=Lax state cookie can be missing on custom domains.
+ * Never reflect Host into the redirect destination: use only configured trusted URI.
+ */
+export function canonicalGoogleStart(host,env){
+  const callback=googleRedirectUri(env);
+  const canonical=new URL(callback);
+  if(String(host||'').toLowerCase()===canonical.host.toLowerCase())return null;
+  return new URL('/api/auth/google/start',canonical.origin).toString();
+}
 export const newOAuthToken = (length=32) => randomBytes(length).toString('base64url');
 export const hashState = state => createHash('sha256').update(String(state)).digest('hex');
 export const challenge = verifier => createHash('sha256').update(verifier).digest('base64url');
