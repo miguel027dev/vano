@@ -1,0 +1,23 @@
+/* VANO V2.8 — real GPS pose + clearly labelled animated route preview */
+.vano-vehicle-marker{position:relative;width:48px;height:64px;display:grid;place-items:center;pointer-events:none;filter:drop-shadow(0 5px 8px #161a2055);transform-origin:50% 50%;will-change:transform}
+.vano-vehicle-marker::before{content:"";position:absolute;left:50%;top:51%;width:44px;height:44px;border-radius:50%;background:#f46b3433;border:2px solid #f46b3459;transform:translate(-50%,-50%);z-index:-1;box-shadow:0 0 0 9px #f46b3419}
+.vano-vehicle-marker svg{width:42px;height:55px;overflow:visible}
+.vano-vehicle-moto svg{width:34px;height:49px}
+.vano-leaflet-vehicle,.vano-leaflet-vehicle .vano-vehicle-marker{background:transparent;border:0}
+.v28-nav-instruction{gap:11px;border:1px solid #ece9e6;box-shadow:0 6px 24px #14192322}
+.v28-nav-copy{animation:v28-guidance-in .28s ease both;min-width:0}
+.v28-nav-copy strong{display:block;font-size:clamp(.94rem,3.5vw,1.15rem);line-height:1.28}
+.v28-nav-copy>span{display:block;margin-top:5px;font-weight:650;font-size:.71rem;letter-spacing:.015em;color:#777b7f}
+.v28-turn-icon{flex:0 0 46px;width:46px;height:46px;border-radius:15px;background:#fff2e9;color:#e65c24}
+.v28-lane-guidance{display:flex;gap:6px;margin-top:9px}
+.v28-lane-guidance>span{min-width:29px;height:27px;display:grid;place-items:center;border-radius:8px;background:#f0f0ef;color:#818589;font-size:1.25rem}
+.v28-lane-guidance>span.suggested{color:#e95b22;background:#fff0e7;outline:1px solid #efb994}
+.v28-simulation-note{display:flex;gap:7px;align-items:center;color:#8c4a24;font-weight:650;line-height:1.4}
+.v28-preview-track{height:5px;background:#eee5df;border-radius:20px;margin:6px 0 12px;overflow:hidden}
+.v28-preview-track>span{display:block;height:100%;background:#f46b34;border-radius:20px;transition:width .3s linear}
+.v28-preview-replay{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;border-radius:11px;color:#d35720;background:#fff4eb;font-weight:750;margin-bottom:10px}
+@keyframes v28-guidance-in{from{opacity:.25;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:390px){.v28-nav-instruction{gap:8px;padding:10px}.v28-turn-icon{width:39px;height:39px;flex-basis:39px}.v28-nav-copy strong{font-size:.9rem}.v28-nav-copy>span{font-size:.68rem}}
+@media(prefers-reduced-motion:reduce){.v28-nav-copy{animation:none}.v28-preview-track>span{transition:none}}
+
+.v28-google-unavailable .v3-google-action{width:100%;margin-top:16px;opacity:.62;cursor:not-allowed}.v28-google-unavailable>small,.v28-auth-not-configured{display:block;color:#8c7772;font-size:.73rem;line-height:1.5;margin-top:8px}.v28-account-google{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#fff;border:1px solid #e9e4df;border-radius:18px;padding:20px}.v28-account-google>div{display:flex;flex-direction:column;gap:5px}.v28-account-google small{color:#777e81;max-width:440px;line-height:1.4}
