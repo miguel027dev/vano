@@ -66,9 +66,15 @@ Manter todas as variáveis V1 de tráfego, OSINT, IA, radar e monitoramento enqu
 - `server/postgres-store.mjs` persiste em tabela PostgreSQL **exclusiva da V2** (`vano_v2_state`) usando revisão condicional para não sobrescrever escrita simultânea.
 - `server/postgres-store.test.mjs` inclui quatro testes de armazenamento, integridade e conflitos.
 - `scripts/check-vaigo1-migration.mjs` faz checagem **somente leitura** da diferença de contagem de contas V1/V2; não importa nem modifica usuários.
+- `scripts/import-v1-to-v2.mjs` possui **dry-run por padrão**, verifica colisões de e-mails e migra contas ativas, favoritos, históricos, relatos e rotinas, preservando tabelas V1. O `--apply` exige `VANO_IMPORT_V1_APPROVED=1`, `VANO_PG_BACKUP_VERIFIED=1` e dados validados em ambiente isolado.
+- `server/password-verifier.mjs` suporta hashes V1 PBKDF2/Argon2id e V2 scrypt; após login válido o hash antigo é atualizado para V2. Contas legadas por senha passam por nova verificação de e-mail; Google mantém associação por Google Sub.
+- `npm run migration:bootstrap` cria a tabela exclusiva da V2 antes da importação.
+- **64 testes locais passaram** (incluindo migração, senhas e persistência), mas ainda não houve teste contra o PostgreSQL real nem homologação de dependências nativas Argon2.
 - Backend V2 aceita proxy HTTPS do Render de forma explícita e recusa produção sem PostgreSQL e sem autorização de cutover.
 
-**Pendentes:** migrar e vincular senhas/Google e preferências históricas da V1, validar PostgreSQL real, preservar o motor Python de rotas após o corte, configurar segredos sem extraí-los para o Git, atualizar o destino do domínio/serviço via Dashboard, testar reversão e só depois suspender o staging.
+**Pendentes:** executar o dry-run e a migração com backup real verificado, confirmar todos os vínculos de contas V1 e status de e-mail, validar PostgreSQL real e Argon2, preservar o motor Python de rotas após o corte, configurar segredos sem extraí-los para o Git, atualizar o destino do domínio/serviço via Dashboard, testar reversão e só depois suspender o staging.
+
+**Sequência técnica segura:** `npm ci` (após versionar lockfile) → `npm test` → `npm run migration:bootstrap` → `npm run migration:dryrun` → backup PostgreSQL verificado → importação `--apply` com autorização → `npm run migration:check` → `npm run security:config` → auditoria npm → testes reais em HTTPS → promoção de domínio → observação/rollback → suspensão do staging. A importação nunca deve ser disparada automaticamente pelo build.
 
 ## Limites da automação conectada
 
