@@ -1,0 +1,108 @@
+/* VANO Atlas 3.1 — a quiet map-first interface. Never obscure Mapbox/OSM attribution. */
+.map-page .map-top.v31-map-top{
+  max-width:960px;
+  padding:calc(env(safe-area-inset-top,0px) + 8px)
+          max(12px,env(safe-area-inset-right,0px))
+          0 max(12px,env(safe-area-inset-left,0px));
+}
+.map-page .map-search.v31-search{
+  display:flex;align-items:center;gap:12px;
+  height:64px;min-height:64px;padding:6px 7px 6px 19px;
+  background:rgba(255,255,255,.985);border:1px solid #e9ece8;
+  border-radius:22px;
+  box-shadow:0 12px 36px #1e30251e,0 2px 6px #16282012;
+  -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);
+}
+.map-page .v31-search>svg:first-child{width:22px;height:22px;color:#506359;flex:none}
+.map-page .v31-search input{flex:1;min-width:0;color:#1b2924;font-size:16px;letter-spacing:-.025em;line-height:1.3}
+.map-page .v31-search input::placeholder{color:#87948b;opacity:1}
+.map-page .v31-profile-button{
+  width:48px;height:48px;min-width:48px;flex:none;border-radius:17px;
+  background:#f6f8f4;border:1px solid #ecf0eb;color:#33463c;
+  display:grid;place-items:center;
+  transition:background .2s ease,color .2s ease,transform .2s ease;
+}
+.map-page .v31-profile-button:hover{background:#fff1e8;color:#e36329}
+.map-page .v31-profile-button:active{transform:scale(.965)}
+.map-page .v31-profile-button:focus-visible,
+.map-page .v31-route-profile:focus-visible{outline:3px solid #ee875f;outline-offset:2px}
+.map-page .quick-scroll.v31-shortcuts{padding:10px 1px 4px;gap:8px;scrollbar-width:none;scroll-snap-type:x proximity}
+.map-page .v31-shortcuts .quick-chip{
+  min-height:39px;flex:none;padding:8px 13px;gap:8px;
+  background:#fff;border:1px solid #e9ece7;border-radius:14px;
+  font-size:.78rem;color:#405248;box-shadow:0 5px 19px #17281b13;
+  scroll-snap-align:start;white-space:nowrap;
+}
+.map-page .v31-shortcuts .quick-chip:hover{border-color:#e8be9c;background:#fffaf7}
+.map-page .v31-shortcuts .quick-chip svg{width:16px;height:16px;color:#e96c33}
+.map-page .v31-route-header{
+  justify-content:flex-end;gap:8px;min-height:45px;margin:0 0 9px;
+}
+.map-page .v31-route-header .circle-btn{width:44px;height:44px;min-width:44px;border-radius:15px}
+.map-page .v31-route-profile{background:rgba(255,255,255,.97)}
+.map-page .search-results{top:calc(env(safe-area-inset-top,0px) + 83px);width:calc(100% - 24px);max-width:934px}
+.map-page .gps-banner:not(.gps-picking),
+.map-page .gps-picking{top:calc(env(safe-area-inset-top,0px) + 145px)}
+.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + 145px)}
+/* Bottom-left card sits ABOVE legally required Mapbox attribution/logo. */
+.map-page .v31-location-card{
+  position:absolute;z-index:450;
+  left:calc(env(safe-area-inset-left,0px) + 12px);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 49px);
+  display:flex;align-items:center;gap:12px;
+  width:min(325px,calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 100px));
+  min-width:0;min-height:75px;padding:12px 14px;
+  border:1px solid rgba(222,229,221,.96);border-radius:19px;
+  background:rgba(255,255,255,.97);color:#26392e;
+  box-shadow:0 12px 32px #1d33201d,0 2px 6px #20372612;
+  -webkit-backdrop-filter:blur(15px);backdrop-filter:blur(15px);
+  pointer-events:none;animation:v31-card-in .26s ease-out both;
+}
+.map-page .v31-location-symbol{
+  display:grid;place-items:center;flex:none;width:40px;height:40px;
+  border-radius:13px;color:#e86a2d;background:#fff1e7;border:1px solid #f5e3d4;
+}
+.map-page .v31-location-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.map-page .v31-location-eyebrow{
+  display:flex;align-items:center;gap:6px;
+  color:#738378;text-transform:uppercase;letter-spacing:.085em;
+  font-size:9px;font-weight:800;line-height:1.15;
+}
+.map-page .v31-gps-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#a1a9a4}
+.map-page .v31-gps-dot.is-live{background:#23a673;box-shadow:0 0 0 3px #23a67315}
+.map-page .v31-location-copy strong{font-size:13px;font-weight:790;letter-spacing:-.02em;color:#26362d;line-height:1.24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-page .v31-location-copy small{font-size:10.5px;color:#8a978f;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes v31-card-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+[data-theme='dark'] .map-page .v31-search,[data-theme='dark'] .map-page .v31-location-card{background:rgba(31,39,35,.97);border-color:#415047;color:#e7eee7}
+[data-theme='dark'] .map-page .v31-search input,[data-theme='dark'] .map-page .v31-location-copy strong{color:#f3f7f2}
+[data-theme='dark'] .map-page .v31-profile-button{color:#e8f2e9;background:#34433a;border-color:#49564a}
+[data-theme='dark'] .map-page .v31-shortcuts .quick-chip{background:#27372d;border-color:#435347;color:#f0f1e9}
+[data-theme='dark'] .map-page .v31-location-symbol{background:#4f372c;border-color:#624536}
+[data-theme='dark'] .map-page .v31-location-eyebrow,[data-theme='dark'] .map-page .v31-location-copy small{color:#abbab0}
+@media(max-width:600px){
+  .map-page .map-top.v31-map-top{padding:calc(env(safe-area-inset-top,0px) + 7px) max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px))}
+  .map-page .map-search.v31-search{height:60px;min-height:60px;border-radius:19px;padding:5px 6px 5px 15px;gap:10px}
+  .map-page .v31-profile-button{height:46px;width:46px;min-width:46px;border-radius:15px}
+  .map-page .quick-scroll.v31-shortcuts{padding-top:9px;gap:7px}
+  .map-page .v31-shortcuts .quick-chip{min-height:38px;padding:7px 11px;font-size:.74rem}
+  .map-page .search-results{top:calc(env(safe-area-inset-top,0px) + 72px);width:calc(100% - 20px)}
+  .map-page .gps-banner:not(.gps-picking),.map-page .gps-picking,.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + 135px)}
+  .map-page .v31-location-card{bottom:calc(env(safe-area-inset-bottom,0px) + 48px);min-height:72px;padding:10px 11px;gap:9px;border-radius:17px}
+  .map-page .v31-location-symbol{width:36px;height:36px;border-radius:12px}
+}
+@media(max-width:375px){
+  .map-page .v31-search>svg:first-child{width:19px;height:19px}
+  .map-page .v31-search input{font-size:14px}
+  .map-page .v31-profile-button{width:42px;height:42px;min-width:42px}
+  .map-page .v31-location-card{gap:7px}
+  .map-page .v31-location-copy strong{font-size:12px}
+  .map-page .v31-location-eyebrow{font-size:8px}
+}
+@media(max-height:530px) and (orientation:landscape){
+  .map-page .v31-location-card{min-height:60px;padding:8px 11px;bottom:calc(env(safe-area-inset-bottom,0px) + 42px)}
+  .map-page .v31-location-symbol{width:32px;height:32px}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page .v31-location-card{animation:none}
+  .map-page .v31-profile-button{transition:none}
+}
