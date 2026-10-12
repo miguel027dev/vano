@@ -36,7 +36,7 @@ test('Google readiness reports missing credentials without exposing secrets',()=
   assert.deepEqual(missing,{ready:false,reason:'credentials-missing'});
   const invalid=googleOAuthStatus({...config,GOOGLE_CLIENT_ID:'wrong-client'});
   assert.equal(invalid.ready,false);assert.equal(invalid.reason,'invalid-client-id');
-  const badPath=googleOAuthStatus({...config,GOOGLE_REDIRECT_URI:'https://v2.example.com/login/google/callback'});
+  const badPath=googleOAuthStatus({...config,GOOGLE_REDIRECT_URI:'https://v2.example.com/not-an-oauth-callback'});
   assert.equal(badPath.reason,'invalid-callback-path');
   assert.deepEqual(googleOAuthStatus(config),{ready:true,reason:null,callbackOrigin:'https://v2.example.com'});
 });
