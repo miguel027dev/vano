@@ -10,7 +10,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "start": "node server/index.mjs",
-    "test": "node --test server/*.test.mjs src/lib/*.test.mjs",
+    "test": "node scripts/run-tests.mjs",
     "security:check": "npm test && npm run build && npm audit --audit-level=moderate",
     "security:audit": "npm audit --audit-level=moderate",
     "start:production": "NODE_ENV=production node server/index.mjs",
