@@ -76,7 +76,7 @@ const limiter = createLimiter();
 const headers = secureHeaders(production);
 const now = () => Date.now();
 const stamp = () => new Date().toISOString();
-const safeUser = u => u ? { id: u.id, name: u.name, email: u.email, verified: Boolean(u.verifiedAt) } : null;
+const safeUser = u => u ? { id: u.id, name: u.name, email: u.email, verified: Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub) } : null;
 const json = (res, status, data, extra = {}) => {
   res.writeHead(status, { ...headers, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store, private', ...extra });
   res.end(JSON.stringify(data));
@@ -260,7 +260,7 @@ async function directions(originPoint, destination, vehicle = 'carro', telemetry
     if (!data.routes?.length) throw new HttpError(404, 'Nenhuma rota encontrada.');
     const byTime = data.routes.slice().sort((a,b)=>a.duration-b.duration);
     const fastest=byTime[0], other=byTime[1] || fastest;
-    const norm=(r,kind)=>({id:kind,label:kind==='safe'?'Mais segura':'Mais rápida',duration:Math.max(1,Math.round(r.duration/60)),distance:Math.round(r.distance/100)/10,geometry:r.geometry,steps:r.legs?.flatMap(l=>l.steps.map(s=>({instruction:s.maneuver?.instruction || s.name || 'Siga em frente', distance:s.distance, location:s.maneuver?.location})))||[],verifiedSafety:false});
+    const norm=(r,kind)=>({id:kind,label:kind==='safe'?'Mais segura':'Mais rápida',duration:Math.max(1,Math.round(r.duration/60)),distance:Math.round(r.distance/100)/10,geometry:r.geometry,steps:r.legs?.flatMap(l=>l.steps.map(s=>({instruction:s.maneuver?.instruction || s.name || 'Siga em frente', distance:s.distance, location:s.maneuver?.location,modifier:s.maneuver?.modifier||'straight',type:s.maneuver?.type||'',street:s.name||'',lanes:(s.intersections||[]).find(i=>Array.isArray(i.lanes))?.lanes?.slice(0,8).map(l=>({valid:l.valid===true,indications:Array.isArray(l.indications)?l.indications.filter(v=>['left','right','straight','slight left','slight right','sharp left','sharp right'].includes(v)).slice(0,3):[]}))||[]})))||[],verifiedSafety:false});
     return {routes:[norm(other,'safe'),norm(fastest,'fast')],source:'mapbox',microRoutingActive:false,safetyMessage:'Alternativas Mapbox. O motor de micro-rotas V1 não está conectado; não há avaliação de segurança validada.'};
   }
   if (production) throw new HttpError(503, 'Roteamento não configurado.');
@@ -298,7 +298,10 @@ async function route(req, res) {
     if(!googleReady)return err(res,503,'Login Google ainda não configurado.');
     if(!limits(req,res,'google-start',15,300000))return;
     const state=newOAuthToken(), verifier=newOAuthToken(48);
-    db.oauthStates.push({stateHash:hashState(state),verifier,expires:now()+600000});
+    const linking=u.searchParams.get('link')==='1';
+    const session=linking?userSession(req):null;
+    if(linking&&!session)return err(res,401,'Entre na conta VANO antes de conectar o Google.');
+    db.oauthStates.push({stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:session?.user.id||null,linkSessionHash:session?.hash||null});
     db.oauthStates=db.oauthStates.filter(x=>x.expires>now()).slice(-100);
     persist();
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':googleAuthUrl(process.env,state,verifier),'Set-Cookie':setCookie('vano_oauth',state,600)});
@@ -312,6 +315,19 @@ async function route(req, res) {
     db.oauthStates=db.oauthStates.filter(x=>x!==record);persist();
     try {
       const id=await fetchGoogleIdentity(process.env,u.searchParams.get('code')||'',record.verifier);
+      if(record.linkUserId){
+        const session=userSession(req);
+        if(!session||session.user.id!==record.linkUserId||session.hash!==record.linkSessionHash){
+          res.writeHead(302,{...headers,'Location':'/entrar?google=sessao-expirada','Set-Cookie':drop});res.end();return;
+        }
+        // Only link an identical verified email and never seize another user's Google identity.
+        if(id.email!==session.user.email || db.users.some(u=>u.googleSub===id.googleSub && u.id!==session.user.id)){
+          res.writeHead(302,{...headers,'Location':'/conta?google=email-divergente','Set-Cookie':drop});res.end();return;
+        }
+        session.user.googleSub=id.googleSub;
+        persist();
+        res.writeHead(302,{...headers,'Location':'/conta?google=vinculado','Set-Cookie':drop});res.end();return;
+      }
       let user=db.users.find(x=>x.googleSub===id.googleSub);
       if(!user){
         // A matching password account requires explicit linking after password login.
