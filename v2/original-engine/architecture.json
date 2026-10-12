@@ -1,0 +1,28 @@
+{
+  "name": "VANO ORIGINAL engine embedded in V2",
+  "originRepository": "miguel027dev/vano",
+  "originalBranch": "main",
+  "replicaBranchBase": "preview/vano-react-v2-7",
+  "mode": "in-container-python-loopback",
+  "publicEntry": "v2/server/index.mjs",
+  "originalEntry": "app.py",
+  "originalHealth": "/healthz",
+  "originalRoute": "/api/route",
+  "pythonBindings": [
+    "vano/routes/routing.py",
+    "vano/services/routing.py",
+    "vano/services/safety.py",
+    "vano/services/nodes.py",
+    "vano/services/route_cache.py",
+    "vano/services/context.py",
+    "vano/services/search.py",
+    "vano_ai_routing.py",
+    "vano_radars.py",
+    "db_backend.py"
+  ],
+  "routeModes": ["safest", "fastest", "smart", "quietest"],
+  "inputs": ["GPS bearing", "GPS speed", "reroute", "avoid_tolls", "avoid_ferries", "avoid_unpaved", "variant_budget", "safety_bias", "traffic_bias", "local_hour"],
+  "persistentDependencies": ["DATABASE_URL", "MAPBOX_ACCESS_TOKEN"],
+  "distributedDependencies": ["CENTRAL_API_SECRET", "VANO_DISTRIBUTED_ROUTING_ENABLED", "vano_node_configs in PostgreSQL"],
+  "productionReady": false
+}
