@@ -3,7 +3,7 @@ import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,nextRouteBearing,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline, sampleRoute, distanceOnRoute, previewMetersPerSecond, nextManeuver} from '../lib/routeAnimation';
-import {mapboxStyleFor,leafletTilesFor} from '../lib/mapLayers';
+import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -16,12 +16,12 @@ const markerElement=(kind,vehicle='carro')=>{
  if(kind==='vehicle') {
   // Proprietary VANO route arrow: raised orange enamel, extruded side and a soft compass halo.
   // Static markup only; no untrusted content is interpolated.
-  el.className=`vano-vehicle-marker vano-direction-arrow ${vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car'}`;
-  el.innerHTML='<svg viewBox="0 0 80 96" width="68" height="82" aria-hidden="true" focusable="false"><defs><linearGradient id="vano-arrow-top" x1=".15" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#ffc18c"/><stop offset=".31" stop-color="#ff8d46"/><stop offset=".72" stop-color="#f25a22"/><stop offset="1" stop-color="#cc3e15"/></linearGradient><linearGradient id="vano-arrow-edge" x1="0" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#ae3b19"/><stop offset="1" stop-color="#652616"/></linearGradient><filter id="vano-arrow-shadow" x="-90%" y="-90%" width="280%" height="280%"><feGaussianBlur stdDeviation="4"/></filter></defs><ellipse cx="41" cy="76" rx="22" ry="10" fill="#142028" opacity=".34" filter="url(#vano-arrow-shadow)"/><path d="M40 8C37 8 35 11 33 15L12 68C10 74 16 79 22 77L40 69L58 77C64 79 70 74 68 68L47 15C45 11 43 8 40 8Z" fill="url(#vano-arrow-edge)" transform="translate(0 6)"/><path d="M40 8C37 8 35 11 33 15L12 68C10 74 16 79 22 77L40 69L58 77C64 79 70 74 68 68L47 15C45 11 43 8 40 8Z" fill="url(#vano-arrow-top)" stroke="#fff" stroke-width="3.7" stroke-linejoin="round"/><path d="M40 16L40 62" stroke="#fff3e5" stroke-width="3.5" stroke-linecap="round" opacity=".8"/><path d="M33 55L21 69" stroke="#ffd5b4" stroke-width="2" opacity=".5" stroke-linecap="round"/></svg>';
+  el.className=`vano-vehicle-marker vano-direction-arrow vano-atlas-direction ${vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car'}`;
+  el.innerHTML='<svg viewBox="0 0 64 80" width="54" height="68" aria-hidden="true" focusable="false"><defs><linearGradient id="vano-atlas-fill" x1=".12" y1="0" x2=".88" y2="1"><stop offset="0" stop-color="#ff9857"/><stop offset=".55" stop-color="#F4682E"/><stop offset="1" stop-color="#DF4F1D"/></linearGradient></defs><path d="M32 8 55 61Q58 68 50 66L32 59 14 66Q6 68 9 61Z" fill="#A63A1B" opacity=".36" transform="translate(0 3)"/><path d="M32 8 55 61Q58 68 50 66L32 59 14 66Q6 68 9 61Z" fill="url(#vano-atlas-fill)" stroke="#fff" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 19V51" stroke="#FFFAF6" stroke-width="2.7" stroke-linecap="round" opacity=".77"/></svg>';
  }
  return el;
 };
-const styleFor=mapboxStyleFor;
+const styleFor=layer=>mapboxStyleFor(layer,(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE);
 const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 
 /** Single camera writer: route launch, tracking, free-look and recenter all flow through it. */
@@ -158,7 +158,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
           map.getSource('vano-v2-traveled')?.setData(geo([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:traveled.length>1?traveled:[point,point]}}]));
         }
       } else if(map&&backend.current==='leaflet'){
-        if(!map._vanoVehicleMarker){map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({className:'vano-leaflet-vehicle',html:markerElement('vehicle',d.vehicle).outerHTML,iconSize:[80,96],iconAnchor:[40,48]})}).addTo(map);}
+        if(!map._vanoVehicleMarker){map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({className:'vano-leaflet-vehicle',html:markerElement('vehicle',d.vehicle).outerHTML,iconSize:[70,82],iconAnchor:[35,41]})}).addTo(map);}
         map._vanoVehicleMarker.setLatLng(ll(point));
         const svg=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
         if(svg)svg.style.transform=`rotate(${state.bearing}deg)`;
