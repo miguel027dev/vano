@@ -2,7 +2,7 @@
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const folders = ['server', 'src/lib'];
+const folders = ['server', 'src/lib', 'scripts'];
 const files = folders.flatMap(folder => readdirSync(folder)
   .filter(name => name.endsWith('.test.mjs'))
   .map(name => folder + '/' + name));
