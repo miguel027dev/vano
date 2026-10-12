@@ -349,7 +349,8 @@ async function route(req, res) {
     const state=u.searchParams.get('state')||'', source=cookie(req,'vano_oauth');
     const record=(state.length>=20 && state.length<=200 && safeEqual(state,source)) ? db.oauthStates.find(x=>x.stateHash===hashState(state)&&x.expires>now()) : null;
     const drop=setCookie('vano_oauth','',0);
-    if(!record || u.searchParams.has('error')){res.writeHead(302,{...headers,'Location':'/entrar?google=erro','Set-Cookie':drop});res.end();return;}
+    if(u.searchParams.has('error')){res.writeHead(302,{...headers,'Location':'/entrar?google=cancelado','Set-Cookie':drop});res.end();return;}
+    if(!record){console.warn('VANO OAuth: estado ausente, expirado ou cookie de callback não recebido.');res.writeHead(302,{...headers,'Location':'/entrar?google=estado-expirado','Set-Cookie':drop});res.end();return;}
     db.oauthStates=db.oauthStates.filter(x=>x!==record);await persist();
     try {
       const id=await fetchGoogleIdentity(process.env,u.searchParams.get('code')||'',record.verifier);
