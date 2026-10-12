@@ -1,14 +1,26 @@
 import React,{useEffect,useRef,useState} from 'react';
 import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
-import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,validPoint} from '../lib/navigationMotion';
+import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,nextRouteBearing,validPoint} from '../lib/navigationMotion';
+import {buildRouteTimeline, sampleRoute, distanceOnRoute, previewMetersPerSecond, nextManeuver} from '../lib/routeAnimation';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
 const ll=p=>[p[1],p[0]];
 const feature=r=>r?.geometry?.type==='LineString'&&r.geometry.coordinates?.length>1?{type:'Feature',properties:{id:r.id},geometry:r.geometry}:null;
 const geo=features=>({type:'FeatureCollection',features:features.filter(Boolean)});
-const markerElement=kind=>{const el=document.createElement('div');el.className=`map-pin map-pin-${kind}`;if(kind==='destination')el.textContent='⌖';return el;};
+const markerElement=(kind,vehicle='carro')=>{
+ const el=document.createElement('div');el.className=`map-pin map-pin-${kind}`;
+ if(kind==='destination')el.textContent='⌖';
+ if(kind==='vehicle') {
+  el.className=`vano-vehicle-marker ${vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car'}`;
+  // This is a fixed, application-owned SVG; no server or user input is interpolated.
+  el.innerHTML=vehicle==='moto'?
+   '<svg viewBox="0 0 48 64" aria-hidden="true"><ellipse cx="24" cy="12" rx="7" ry="10" fill="#171d22"/><path d="M24 3 L24 57" stroke="#171d22" stroke-width="6" stroke-linecap="round"/><rect x="16" y="19" width="16" height="31" rx="8" fill="#fa682c" stroke="white" stroke-width="2"/><path d="M12 24 H36" stroke="#171d22" stroke-width="5" stroke-linecap="round"/><ellipse cx="24" cy="53" rx="6" ry="9" fill="#171d22"/></svg>':
+   '<svg viewBox="0 0 48 64" aria-hidden="true"><path d="M12 5Q24 -1 36 5L41 17V49Q41 58 33 59H15Q7 58 7 49V17Z" fill="#f46b34" stroke="white" stroke-width="3"/><path d="M15 13Q24 8 33 13L36 25H12Z" fill="#243642"/><path d="M12 39H36V51Q24 55 12 51Z" fill="#cc4c23"/><rect x="4" y="20" width="5" height="13" rx="2" fill="#1a232a"/><rect x="39" y="20" width="5" height="13" rx="2" fill="#1a232a"/><path d="M13 6L24 2L35 6" fill="none" stroke="#fff1da" stroke-width="2"/></svg>';
+ }
+ return el;
+};
 const styleFor=layer=>layer==='satellite'?'mapbox://styles/mapbox/satellite-streets-v12':'mapbox://styles/mapbox/streets-v12';
 const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 
@@ -16,7 +28,7 @@ const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 function motionController(map,latest,status){
   let frame=0,previous=0,pose={center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()},reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
   let suspended=false,freeLook=false,active=false,completeAt=0;
-  function target(){const d=latest.current;return cameraTarget({position:d.userCoords,destination:d.destination?.coords,route:d.routes?.find(r=>r.id===d.selectedRoute),telemetry:d.telemetry,vehicle:d.vehicle,navigation:d.navigation,reducedMotion:reduced});}
+  function target(){const d=latest.current;return cameraTarget({position:d.motionCoords||d.userCoords,destination:d.destination?.coords,route:d.routes?.find(r=>r.id===d.selectedRoute),telemetry:d.previewMode?{...d.telemetry,heading:d.motionBearing,speed:12,accuracy:5}:d.telemetry,vehicle:d.vehicle,navigation:d.navigation,reducedMotion:reduced});}
   function draw(now){frame=0;if(!active||suspended||!latest.current.navigation||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target();if(!t)return;const cameraHalfLife=reduced?85:300,pointHalfLife=reduced?90:360;
     const nextCenter=blendPoint(pose.center,t.center,dt,pointHalfLife);
     const nextZoom=damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=damp(pose.pitch,t.pitch,dt,cameraHalfLife);
@@ -38,10 +50,11 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin}){
+export default function VanoMap({userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,previewMode=false,previewRun=0,onNavigationProgress}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const [error,setError]=useState('');
-  latest.current={userCoords,destination,routes,selectedRoute,navigation,layer,telemetry,vehicle,pickingOrigin,onPickOrigin};
+  const visual=useRef({point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0});
+  latest.current={userCoords,destination,routes,selectedRoute,navigation,layer,telemetry,vehicle,pickingOrigin,onPickOrigin,previewMode,previewRun,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null;const initial=coord(latest.current.userCoords);
@@ -59,8 +72,8 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
         map.on('style.load',update);
         map.on('load',update);
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
-        map.on('dragstart',()=>{if(!latest.current.pickingOrigin)motion.current?.setFree();});
-        map.on('rotatestart',()=>motion.current?.setFree());
+        map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
+        map.on('rotatestart',e=>{if(e.originalEvent)motion.current?.setFree();});
         canvas=map.getCanvas();wheelHandler=()=>motion.current?.setFree();canvas?.addEventListener('wheel',wheelHandler);
       }catch(e){console.warn('Mapbox startup failed:',e);setError('Falha na renderização Mapbox. Reinicie o mapa.');map?.remove?.();map=null;}
     }
@@ -72,23 +85,81 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
       paintLeaflet(map,latest.current);
       map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.([e.latlng.lng,e.latlng.lat]);});
     }
-    if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation)motion.current?.recenter();else if(validPoint(latest.current.userCoords))map.flyTo({center:latest.current.userCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.userCoords))map.panTo(ll(latest.current.userCoords),{animate:true});},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt()};
+    if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation)motion.current?.recenter();else if(validPoint(latest.current.userCoords))map.flyTo({center:latest.current.userCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.userCoords))map.panTo(ll(latest.current.motionCoords||latest.current.userCoords),{animate:true});},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt()};
     function visibility(){if(document.hidden)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
     return()=>{deleted=true;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
-  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);if(navigation&&validPoint(userCoords))map.panTo(ll(userCoords),{animate:true});}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
+  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);if(navigation&&!previewMode&&validPoint(userCoords))map.panTo(ll(userCoords),{animate:true});}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,previewMode,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
   useEffect(()=>{const map=mapRef.current;if(!map||backend.current!=='mapbox')return;const style=styleFor(layer);if(map._vanoStyle===style)return;map._vanoStyle=style;if(map.loaded()||isLoaded(map)){map.setStyle(style);}else{const change=()=>{if(!mapRef.current||mapRef.current!==map)return;map.setStyle(style);};map.once('load',change);return()=>map.off('load',change);}},[layer,token]);
   useEffect(()=>{const map=mapRef.current;if(!map||backend.current!=='leaflet')return;const url=layer==='satellite'?'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png':'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';if(map._vanoTiles?._url!==url)map._vanoTiles.setUrl(url);},[layer]);
   useEffect(()=>{if(!navigation){status.current=CAMERA_STATES.IDLE;lastFit.current='';return;}motion.current?.recenter();},[navigation]);
+  // The visual pose has its own RAF clock. GPS remains authoritative; preview never mutates GPS or history.
+  useEffect(()=>{
+    if(!navigation){visual.current={point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0};return;}
+    const route=routes?.find(r=>r.id===selectedRoute)||routes?.[0];
+    const timeline=buildRouteTimeline(route?.geometry);
+    if(previewMode && (!timeline.total || timeline.points.length<2))return;
+    let raf=0,stopped=false;
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
+    let state={...visual.current,simMeters:0,last:0,lastReport:0,lastPaint:0,point:previewMode?timeline.points[0]:validPoint(userCoords)?userCoords:null};
+    visual.current=state;
+    const simVelocity=previewMetersPerSecond(timeline.total,route?.duration);
+    function animate(now){
+      if(stopped)return;
+      raf=requestAnimationFrame(animate);
+      if(document.hidden){state.last=now;return;}
+      if(state.last && now-state.last<28)return; // max ~35 fps avoids battery drain
+      const dt=state.last?Math.min(now-state.last,100):33;state.last=now;
+      const d=latest.current;
+      const target=previewMode?sampleRoute(timeline,state.simMeters):validPoint(d.userCoords)?{point:d.userCoords,bearing:nextRouteBearing(d.userCoords,route?.geometry,Math.max(35,(Number(d.telemetry?.speed)||0)*4))??d.telemetry?.heading}:null;
+      if(!target?.point)return;
+      if(previewMode)state.simMeters=Math.min(timeline.total,state.simMeters+simVelocity*dt/1000);
+      const point=previewMode?sampleRoute(timeline,state.simMeters).point:blendPoint(state.point,target.point,dt,reduced?70:270);
+      const heading=previewMode?sampleRoute(timeline,state.simMeters).bearing:(Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5?d.telemetry.heading:target.bearing);
+      state.bearing=Number.isFinite(heading)?blendAngle(state.bearing,heading,1-Math.pow(.5,dt/(reduced?80:240))):state.bearing;
+      state.point=point;
+      d.motionCoords=point;d.motionBearing=state.bearing;
+      const map=mapRef.current;
+      if(map&&backend.current==='mapbox'){
+        if(!map._vanoMarker?.current||!map._vanoMarker.current.getElement().classList.contains('vano-vehicle-marker')){
+          try{if(isLoaded(map))paintMapbox(map,d,lastSelection);}catch{}
+        }
+        const marker=map._vanoMarker?.current;
+        if(marker){marker.setLngLat(point);marker.setRotation(state.bearing);}
+        if(previewMode)motion.current?.start();
+        if(now-state.lastPaint>200 && timeline.points.length>1 && previewMode && isLoaded(map)){
+          state.lastPaint=now;
+          const position=sampleRoute(timeline,state.simMeters),at=timeline.cumulative;
+          const traveled=timeline.points.filter((_,i)=>at[i]<=state.simMeters);
+          traveled.push(position.point);
+          map.getSource('vano-v2-traveled')?.setData(geo([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:traveled.length>1?traveled:[point,point]}}]));
+        }
+      } else if(map&&backend.current==='leaflet'){
+        if(!map._vanoVehicleMarker){map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({className:'vano-leaflet-vehicle',html:markerElement('vehicle',d.vehicle).outerHTML,iconSize:[48,64],iconAnchor:[24,32]})}).addTo(map);}
+        map._vanoVehicleMarker.setLatLng(ll(point));
+        const svg=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
+        if(svg)svg.style.transform=`rotate(${state.bearing}deg)`;
+        if(now-state.lastPaint>220&&!map._vanoFreeLook){state.lastPaint=now;map.panTo(ll(point),{animate:true,duration:.45});}
+      }
+      if(now-state.lastReport>320){
+        state.lastReport=now;
+        const progressed=previewMode?state.simMeters:distanceOnRoute(timeline,point);
+        const guide=nextManeuver(route,timeline,progressed);
+        d.onNavigationProgress?.({...guide,progress:timeline.total?progressed/timeline.total:0,preview:previewMode,finished:previewMode&&state.simMeters>=timeline.total,remaining:previewMode?Math.max(0,timeline.total-state.simMeters):null});
+      }
+    }
+    raf=requestAnimationFrame(animate);
+    return()=>{stopped=true;cancelAnimationFrame(raf);if(mapRef.current?._vanoVehicleMarker){mapRef.current._vanoVehicleMarker.remove();mapRef.current._vanoVehicleMarker=null;}visual.current={point:null,bearing:0,simMeters:0,last:0,lastReport:0,lastPaint:0};};
+  },[navigation,previewMode,previewRun,selectedRoute,routes,token]);
   useEffect(()=>{onMotionState?.(status.current);},[navigation]);
   return <><div className={`map-container ${pickingOrigin?'choosing-origin':''}`} ref={root} role="region" aria-label="Mapa interativo de rotas"/>{error&&<div className="vano-map-alert" role="status">{error}</div>}</>;
 }
 function paintLeaflet(map,data){
   if(!map._vanoLayer)return;map._vanoLayer.clearLayers();
   [...(data.routes||[]).filter(x=>x.id!==data.selectedRoute),...(data.routes||[]).filter(x=>x.id===data.selectedRoute)].forEach(r=>{const points=r.geometry?.coordinates?.filter(validPoint).map(ll);if(points?.length>1)L.polyline(points,{color:r.id===data.selectedRoute?'#ff7900':'#8a9ba9',weight:r.id===data.selectedRoute?8:5,opacity:r.id===data.selectedRoute?1:.65}).addTo(map._vanoLayer);});
-  if(validPoint(data.userCoords))L.marker(ll(data.userCoords),{icon:L.divIcon({className:'',html:'<div class="map-pin map-pin-origin"></div>',iconSize:[24,24]})}).addTo(map._vanoLayer);
+  if(validPoint(data.userCoords)&&!data.navigation)L.marker(ll(data.userCoords),{icon:L.divIcon({className:'',html:'<div class="map-pin map-pin-origin"></div>',iconSize:[24,24]})}).addTo(map._vanoLayer);
   if(validPoint(data.destination?.coords))L.marker(ll(data.destination.coords),{icon:L.divIcon({className:'',html:'<div class="map-pin map-pin-destination">⌖</div>',iconSize:[30,30]})}).addTo(map._vanoLayer);
   if(data.destination?.coords&&data.routes?.length&&!data.navigation&&map._vanoFit!==data.destination.id){map._vanoFit=data.destination.id;const selected=data.routes.find(r=>r.id===data.selectedRoute)||data.routes[0];const pts=selected.geometry?.coordinates?.filter(validPoint);if(pts?.length)map.fitBounds(L.latLngBounds(pts.map(ll)),{padding:[60,60],maxZoom:14,animate:true});}
   if(!data.destination)map._vanoFit='';
@@ -102,7 +173,10 @@ function paintMapbox(map,data,selection){
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
   if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':13,'line-opacity':.94}});
   if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900','line-width':8,'line-opacity':1,'line-opacity-transition':{duration:250}}});
-  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(key==='current'?'origin':'destination'),anchor:'center'}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
-  marker('current',data.userCoords);marker('destination',data.destination?.coords);
+  if(!map.getSource('vano-v2-traveled'))upsert('vano-v2-traveled',geo([]));
+  if(!data.navigation)map.getSource('vano-v2-traveled').setData(geo([]));
+  if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
+  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const type=key==='current'?(data.navigation?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:'center',rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:'viewport'}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
+  marker('current',data.navigation?(data.motionCoords||data.userCoords):data.userCoords);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
 }
