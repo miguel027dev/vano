@@ -7,7 +7,7 @@ export function googleOAuthStatus(env) {
   if(!/^[A-Za-z0-9_.-]+\.apps\.googleusercontent\.com$/.test(client))return {ready:false,reason:'invalid-client-id'};
   let uri;
   try {uri=new URL(googleRedirectUri(env));}catch{return {ready:false,reason:'invalid-callback'};}
-  if(uri.pathname!=='/api/auth/google/callback'||uri.search||uri.hash)return {ready:false,reason:'invalid-callback-path'};
+  if(!['/api/auth/google/callback','/login/google/callback'].includes(uri.pathname)||uri.search||uri.hash)return {ready:false,reason:'invalid-callback-path'};
   return {ready:true,reason:null,callbackOrigin:uri.origin};
 }
 export const googleConfigured = env => googleOAuthStatus(env).ready;
