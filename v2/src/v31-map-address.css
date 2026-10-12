@@ -1,7 +1,9 @@
 /* VANO Atlas 3.1 — a quiet map-first interface. Never obscure Mapbox/OSM attribution. */
+/* Reserve a visible top buffer beyond each device's safe-area / browser chrome. */
+.map-page{--v31-top-gap:18px}
 .map-page .map-top.v31-map-top{
   max-width:960px;
-  padding:calc(env(safe-area-inset-top,0px) + 8px)
+  padding:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap))
           max(12px,env(safe-area-inset-right,0px))
           0 max(12px,env(safe-area-inset-left,0px));
 }
@@ -40,10 +42,10 @@
 }
 .map-page .v31-route-header .circle-btn{width:44px;height:44px;min-width:44px;border-radius:15px}
 .map-page .v31-route-profile{background:rgba(255,255,255,.97)}
-.map-page .search-results{top:calc(env(safe-area-inset-top,0px) + 83px);width:calc(100% - 24px);max-width:934px}
+.map-page .search-results{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 75px);width:calc(100% - 24px);max-width:934px}
 .map-page .gps-banner:not(.gps-picking),
-.map-page .gps-picking{top:calc(env(safe-area-inset-top,0px) + 145px)}
-.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + 145px)}
+.map-page .gps-picking{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 137px)}
+.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 137px)}
 /* Bottom-left card sits ABOVE legally required Mapbox attribution/logo. */
 .map-page .v31-location-card{
   position:absolute;z-index:450;
@@ -80,13 +82,14 @@
 [data-theme='dark'] .map-page .v31-location-symbol{background:#4f372c;border-color:#624536}
 [data-theme='dark'] .map-page .v31-location-eyebrow,[data-theme='dark'] .map-page .v31-location-copy small{color:#abbab0}
 @media(max-width:600px){
-  .map-page .map-top.v31-map-top{padding:calc(env(safe-area-inset-top,0px) + 7px) max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px))}
+  .map-page{--v31-top-gap:24px}
+  .map-page .map-top.v31-map-top{padding:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap)) max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px))}
   .map-page .map-search.v31-search{height:60px;min-height:60px;border-radius:19px;padding:5px 6px 5px 15px;gap:10px}
   .map-page .v31-profile-button{height:46px;width:46px;min-width:46px;border-radius:15px}
   .map-page .quick-scroll.v31-shortcuts{padding-top:9px;gap:7px}
   .map-page .v31-shortcuts .quick-chip{min-height:38px;padding:7px 11px;font-size:.74rem}
-  .map-page .search-results{top:calc(env(safe-area-inset-top,0px) + 72px);width:calc(100% - 20px)}
-  .map-page .gps-banner:not(.gps-picking),.map-page .gps-picking,.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + 135px)}
+  .map-page .search-results{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 65px);width:calc(100% - 20px)}
+  .map-page .gps-banner:not(.gps-picking),.map-page .gps-picking,.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 128px)}
   .map-page .v31-location-card{bottom:calc(env(safe-area-inset-bottom,0px) + 48px);min-height:72px;padding:10px 11px;gap:9px;border-radius:17px}
   .map-page .v31-location-symbol{width:36px;height:36px;border-radius:12px}
 }
