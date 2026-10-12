@@ -19,7 +19,11 @@ export async function openPostgresStore(connectionString, ClientType=Client){
     const scheme=original.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]||'ausente';
     throw Error('DATABASE_URL não é uma conexão PostgreSQL. Esquema configurado: '+scheme.slice(0,32));
   }
-  const client=new ClientType({connectionString:normalized,connectionTimeoutMillis:10000,query_timeout:15000,application_name:'vano-v2-node'});
+  // node-postgres defaults sslmode=require to CA validation; libpq defines it as encrypted TLS without CA verification.
+  // Respect the URL's explicit require mode (Render-managed TLS), without changing verify-ca/verify-full connections.
+  const uri=new URL(normalized);
+  if(uri.searchParams.get('sslmode')==='require' && !uri.searchParams.has('uselibpqcompat'))uri.searchParams.set('uselibpqcompat','true');
+  const client=new ClientType({connectionString:uri.toString(),connectionTimeoutMillis:10000,query_timeout:15000,application_name:'vano-v2-node'});
   let broken=null;
   client.on('error',error=>{broken=error;console.error('VANO V2 PostgreSQL: conexão perdida.');});
   await client.connect();
