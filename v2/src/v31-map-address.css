@@ -199,3 +199,53 @@
   .map-page .v32-search-spinner{animation:none;border-color:#e95b22}
   .map-page .map-search.v31-search,.map-page .v32-results .v32-suggestion{transition:none}
 }
+
+
+/* VANO Atlas 3.3 — route actions aligned to the existing origin/destination card.
+   Keep the card's contents, dimensions, spacing and action icons unchanged. */
+.map-page .map-top.v31-map-top.v32-route-top{
+  padding-top:calc(env(safe-area-inset-top,0px) + 9px);
+}
+.map-page .v32-route-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 44px;
+  align-items:stretch;
+  column-gap:10px;
+  width:100%;
+  min-width:0;
+}
+.map-page .v32-route-layout>.v5-route-box{min-width:0}
+.map-page .v32-route-actions{
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  width:44px;
+  min-width:44px;
+  height:100%;
+}
+.map-page .v32-route-actions .circle-btn{
+  display:grid;
+  place-items:center;
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  min-width:44px;
+  padding:0;
+  border-radius:15px;
+  box-shadow:0 4px 13px #172b3220;
+}
+.map-page .v32-route-actions .circle-btn:focus-visible{
+  outline:3px solid #ee875f;
+  outline-offset:2px;
+}
+@media(max-width:600px){
+  .map-page .map-top.v31-map-top.v32-route-top{
+    padding-top:calc(env(safe-area-inset-top,0px) + 15px);
+  }
+  .map-page .v32-route-layout{column-gap:8px}
+}
+@media(max-width:360px){
+  .map-page .v32-route-layout{column-gap:7px}
+}
