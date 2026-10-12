@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /** The HTTPS switch is local-only and requires a certificate trusted by the device. */
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const localTLS = process.env.VANO_DEV_HTTPS === '1';
+  const localTLS = command === 'serve' && process.env.VANO_DEV_HTTPS === '1';
   const certDir = path.resolve('.local-https');
   const https = localTLS ? {
     cert: fs.readFileSync(path.join(certDir,'vano-local.pem')),
