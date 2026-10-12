@@ -11,8 +11,15 @@ function validate(data){
   return clean;
 }
 export async function openPostgresStore(connectionString, ClientType=Client){
-  if(!/^postgres(?:ql)?:\/\//.test(connectionString||''))throw Error('DATABASE_URL deve ser PostgreSQL válido.');
-  const client=new ClientType({connectionString,connectionTimeoutMillis:10000,query_timeout:15000,application_name:'vano-v2-node'});
+  // Flask/SQLAlchemy exports can use a dialect suffix; the Node driver needs a libpq URI.
+  // Never log the full URL because it may contain database credentials.
+  const original=String(connectionString||'').trim().replace(/^["']|["']$/g,'');
+  const normalized=original.replace(/^postgres(?:ql)?\+[a-z0-9_-]+:\/\//i,'postgresql://').replace(/^jdbc:postgresql:\/\//i,'postgresql://');
+  if(!/^postgres(?:ql)?:\/\//i.test(normalized)){
+    const scheme=original.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]||'ausente';
+    throw Error('DATABASE_URL não é uma conexão PostgreSQL. Esquema configurado: '+scheme.slice(0,32));
+  }
+  const client=new ClientType({connectionString:normalized,connectionTimeoutMillis:10000,query_timeout:15000,application_name:'vano-v2-node'});
   let broken=null;
   client.on('error',error=>{broken=error;console.error('VANO V2 PostgreSQL: conexão perdida.');});
   await client.connect();
