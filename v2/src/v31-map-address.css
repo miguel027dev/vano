@@ -221,9 +221,13 @@
 .map-page .v32-route-actions{
   display:flex;
   flex-direction:column;
-  justify-content:space-between;
+  /* Group both existing 44px controls around the card midpoint (the swap
+     button remains at top:50% inside the untouched route card).
+     112px desktop card: (112 - 44*2 - 6)/2 = 9px balanced insets;
+     106px mobile card: (106 - 44*2 - 6)/2 = 6px balanced insets. */
+  justify-content:center;
   align-items:center;
-  gap:8px;
+  gap:6px;
   width:44px;
   min-width:44px;
   height:100%;
