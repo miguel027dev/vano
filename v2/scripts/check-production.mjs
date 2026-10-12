@@ -14,7 +14,9 @@ try {origin=new URL(env.VANO_PUBLIC_ORIGIN);}catch{missing.push('VANO_PUBLIC_ORI
 if(origin && (origin.protocol!=='https:'||origin.origin!==env.VANO_PUBLIC_ORIGIN))missing.push('VANO_PUBLIC_ORIGIN com HTTPS e sem caminho');
 for(const key of ['RESEND_API_KEY','VANO_EMAIL_FROM'])if(!env[key])missing.push(key);
 if(!env.VANO_SECURITY_SECRET||env.VANO_SECURITY_SECRET.length<32||env.VANO_SECURITY_SECRET.startsWith('REPLACE_'))missing.push('VANO_SECURITY_SECRET aleatório (32+ caracteres)');
-if(env.VANO_ALLOW_SINGLE_INSTANCE_JSON!=='1')missing.push('banco de dados persistente single-instance explicitamente autorizado');
+if(!env.DATABASE_URL)missing.push('DATABASE_URL PostgreSQL obrigatório para Render');
+if(env.VANO_V2_CUTOVER_APPROVED!=='1')missing.push('VANO_V2_CUTOVER_APPROVED após validação de contas e motor V1');
+if(env.VANO_TRUST_RENDER_PROXY!=='1')missing.push('VANO_TRUST_RENDER_PROXY para proxy HTTPS do Render');
 if(!env.VANO_V1_API_URL&&!env.MAPBOX_SECRET_TOKEN&&!env.VITE_MAPBOX_PUBLIC_TOKEN)missing.push('provedor de rotas real');
 if(env.VITE_DEMO_MODE==='true')missing.push('modo demo deve estar desligado');
 if(!fs.existsSync(path.join(root,'dist','index.html')))missing.push('dist/index.html: rode npm run build');
