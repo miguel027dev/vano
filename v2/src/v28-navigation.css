@@ -22,10 +22,6 @@
 
 .v28-google-unavailable .v3-google-action{width:100%;margin-top:16px;opacity:.62;cursor:not-allowed}.v28-google-unavailable>small,.v28-auth-not-configured{display:block;color:#8c7772;font-size:.73rem;line-height:1.5;margin-top:8px}.v28-account-google{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#fff;border:1px solid #e9e4df;border-radius:18px;padding:20px}.v28-account-google>div{display:flex;flex-direction:column;gap:5px}.v28-account-google small{color:#777e81;max-width:440px;line-height:1.4}
 
-/* VANO Motion 3.5: cosmetic flow rides along the same Leaflet SVG path.
-   No additional coordinates, GPS simulation or geometry changes. */
-.vano-v35-flow-leaflet{pointer-events:none;animation:vano-v35-flow 1.22s linear infinite}
-@keyframes vano-v35-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-28}}
-@media(prefers-reduced-motion:reduce){
-  .vano-v35-flow-leaflet{animation:none!important;opacity:0!important}
-}
+/* Static Leaflet markers reuse the selected route's SVG geometry.
+   No scrolling dash offset, flashing opacity or extra animation. */
+.vano-v35-flow-leaflet{pointer-events:none;}
