@@ -204,7 +204,10 @@
 /* VANO Atlas 3.3 — route actions aligned to the existing origin/destination card.
    Keep the card's contents, dimensions, spacing and action icons unchanged. */
 .map-page .map-top.v31-map-top.v32-route-top{
-  padding-top:calc(env(safe-area-inset-top,0px) + 9px);
+  /* The previous toolbar consumed 45px + a 9px gap.
+     Its removal would jump the card upward by 54px: preserve its visual place,
+     then lift only 9px, maintaining iOS/Android safe-area insets. */
+  padding-top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 45px);
 }
 .map-page .v32-route-layout{
   display:grid;
@@ -241,9 +244,6 @@
   outline-offset:2px;
 }
 @media(max-width:600px){
-  .map-page .map-top.v31-map-top.v32-route-top{
-    padding-top:calc(env(safe-area-inset-top,0px) + 15px);
-  }
   .map-page .v32-route-layout{column-gap:8px}
 }
 @media(max-width:360px){
