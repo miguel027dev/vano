@@ -4,7 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,nearestOnRoute,nextRouteBearing,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
-import {FLOW_DASH_FRAMES,flowFrameAt,sameRouteShapeReferences} from '../lib/routeFlow.js';
+import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 
 const START=[-46.6808,-23.5857];
@@ -146,7 +146,7 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     let raf=0,stopped=false;
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
-    const state={...visual.current,last:0,lastReport:0,lastPaint:0,lastFlowAt:0,lastFlowFrame:-1,progress:0};
+    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0};
     function preferenceChanged(){
       reduced=Boolean(preference?.matches);
       state.lastFlowFrame=-1;
@@ -250,7 +250,7 @@ function paintLeaflet(map,data){
     map._vanoFlowLine=null;
     map._vanoFlowGeometry=flowRoute?.geometry;
     const flowPoints=flowRoute?.geometry?.coordinates?.filter(validPoint).map(ll);
-    if(flowPoints?.length>1)map._vanoFlowLine=L.polyline(flowPoints,{color:'#fff2df',weight:2,opacity:.62,dashArray:'8 20',lineCap:'butt',interactive:false,className:'vano-v35-flow-leaflet'}).addTo(map);
+    if(flowPoints?.length>1)map._vanoFlowLine=L.polyline(flowPoints,{color:'#fff2df',weight:2,opacity:.62,dashArray:STATIC_LEAFLET_DASH,lineCap:'butt',interactive:false,className:'vano-v35-flow-leaflet'}).addTo(map);
   }
   map._vanoFlowLine?.bringToFront();
   if(validPoint(data.destination?.coords))L.marker(ll(data.destination.coords),{icon:L.divIcon({className:'',html:'<div class="map-pin map-pin-destination">⌖</div>',iconSize:[30,30]})}).addTo(map._vanoLayer);
@@ -281,7 +281,7 @@ function paintMapbox(map,data,selection){
   if(!map.getLayer('vano-v2-flow'))map.addLayer({
     id:'vano-v2-flow',type:'line',source:'vano-v2-selected',
     layout:{'line-join':'round','line-cap':'butt'},
-    paint:{'line-color':'#fff2df','line-width':2.1,'line-opacity':window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?0:.62,'line-dasharray':FLOW_DASH_FRAMES[0]}
+    paint:{'line-color':'#fff2df','line-width':2.1,'line-opacity':.62,'line-dasharray':STATIC_ROUTE_DASH_PATTERN}
   },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
   if(!map.getSource('vano-v2-traveled'))upsert('vano-v2-traveled',geo([]));
   // Empty progress only when navigation ends; repeated clears on every GPS update
