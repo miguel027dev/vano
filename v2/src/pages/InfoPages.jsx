@@ -4,7 +4,41 @@ import {ArrowRight,BookOpen,Check,ChevronDown,ChevronUp,Compass,ExternalLink,Fil
 import {PUBLIC_PAGES,pageForPath} from '../../seo/catalog.mjs';
 import '../public-pages.css';
 const categories=[...new Set(PUBLIC_PAGES.map(p=>p.category))];
-function usePublicMetadata(page){useEffect(()=>{if(!page)return;document.title=`${page.title} | VANO Maps`;const meta=document.querySelector('meta[name="description"]');if(meta)meta.setAttribute('content',page.description);return()=>{document.title='VANO Maps — o melhor caminho é o seu';if(meta)meta.setAttribute('content','VANO Maps — navegação inteligente para sua cidade.');}},[page]);}
+function usePublicMetadata(page){
+  useEffect(()=>{
+    if(!page)return;
+    const previousTitle=document.title;
+    const meta=document.querySelector('meta[name="description"]');
+    const previousDescription=meta?.getAttribute('content')||'';
+    const canonical=document.querySelector('link[rel="canonical"]');
+    const createdCanonical=!canonical;
+    const element=canonical||document.createElement('link');
+    const previousHref=element.getAttribute('href');
+    const canonicalOrigin=(()=>{try{return new URL(previousHref||'https://vanomaps.online').origin;}catch{return 'https://vanomaps.online';}})();
+    if(createdCanonical){element.rel='canonical';document.head.appendChild(element);}
+    document.title=page.title+' | VANO Maps';
+    if(meta)meta.setAttribute('content',page.description);
+    element.href=canonicalOrigin+page.path;
+    const changes=[];
+    for(const [property,value] of [['og:title',page.title+' | VANO Maps'],['og:description',page.description],['og:url',canonicalOrigin+page.path]]){
+      let tag=document.querySelector('meta[property="'+property+'"]');
+      const created=!tag;
+      if(!tag){tag=document.createElement('meta');tag.setAttribute('property',property);document.head.appendChild(tag);}
+      const previous=tag.getAttribute('content');
+      tag.setAttribute('content',value);
+      changes.push({tag,created,previous});
+    }
+    return()=>{
+      document.title=previousTitle;
+      if(meta)meta.setAttribute('content',previousDescription);
+      if(createdCanonical)element.remove();
+      else if(previousHref!==null)element.setAttribute('href',previousHref);
+      for(const {tag,created,previous} of changes){
+        if(created)tag.remove();else if(previous!==null)tag.setAttribute('content',previous);
+      }
+    };
+  },[page]);
+}
 function AnchorIcon({kind}){return kind==='Legal'?<ShieldCheck size={18}/>:kind==='Suporte'?<LifeBuoy size={18}/>:kind==='Alternativas'?<Compass size={18}/>:<BookOpen size={18}/>}
 export function PublicLandingPage({slug}){
   const location=useLocation();const page=pageForPath(slug||location.pathname);const [faqOpen,setFaqOpen]=useState(0);usePublicMetadata(page);
