@@ -4,6 +4,7 @@ import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixe
 import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
+import {startGpsSession} from '../lib/gpsSession';
 import {shouldRefreshAddress} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
@@ -51,7 +52,7 @@ export default function MapPage(){
     setGpsMessage(geoErrorMessage(error));
   }
   function requestGPS(switchToGPS=true){
-    if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)){
+    if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=100){
       const coords=lastGpsFix.current.coords;
       setManualCoords(null);setPickOriginMode(false);setGpsStatus('granted');setGpsMessage('');
       if(destRef.current)calculateRoute(destRef.current,coords);
@@ -82,7 +83,6 @@ export default function MapPage(){
     navigator.geolocation.getCurrentPosition(success,failed,
       {enableHighAccuracy:true,timeout:18000,maximumAge:30000});
   }
-  useEffect(()=>{requestGPS(false);},[]);
   useEffect(()=>{
     const id=setInterval(()=>{
       setGpsClock(x=>x+1);
@@ -92,12 +92,28 @@ export default function MapPage(){
     return()=>clearInterval(id);
   },[]);
   useEffect(()=>{
-    if(!window.isSecureContext||!navigator.geolocation)return;
-    // Keep a live fix while the map is open, not only after Start. It also refreshes stale cached positions.
-    const id=navigator.geolocation.watchPosition(onPosition,onPositionError,{
-      enableHighAccuracy:navMode,maximumAge:navMode?2000:15000,timeout:navMode?15000:26000,
-    });
-    return()=>navigator.geolocation.clearWatch(id);
+    // First login: ONE permission prompt / continuous watch; delayed recovery only if no valid fix.
+    // Every callback is deactivated on unmount and when changing navigation modes.
+    if(!window.isSecureContext){
+      setGpsStatus('insecure');
+      setGpsMessage('A localização exige HTTPS. Use um endereço seguro ou escolha a origem no mapa.');
+      return;
+    }
+    if(!navigator.geolocation){
+      setGpsStatus('unsupported');
+      setGpsMessage('Este navegador não oferece acesso ao GPS.');
+      return;
+    }
+    if(!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
+      setGpsStatus('checking');
+      setGpsMessage('');
+    }
+    const stop=startGpsSession(navigator.geolocation,{onPosition,onError:onPositionError},{navigation:navMode});
+    return()=>{
+      stop();
+      // getCurrentPosition cannot be canceled by browsers; invalidate any older callbacks.
+      gpsRequestSeq.current++;
+    };
   },[navMode]);
   // Reverse geocode a granted browser location, never the initial map default or a manual origin.
   // Requests are throttled by time and distance; out-of-order updates never repaint the card.
