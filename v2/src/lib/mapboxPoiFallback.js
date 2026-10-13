@@ -84,11 +84,26 @@ export function readMapboxPoiFeatures(map){
       value?.type==='vector'&&/mapbox-streets-v8/i.test(String(value.url||''))).map(([name])=>name);
     const poiFeatures=[],roadFeatures=[];
     for(const source of names){
-      try{roadFeatures.push(...map.querySourceFeatures(source,{
-        sourceLayer:'road',
-        filter:['in',['get','class'],['literal',['traffic_signals','level_crossing','roundabout','mini_roundabout']]]
-      }).slice(0,1200));}
-      catch{/* Road vector tiles may not have loaded yet. Retry on camera idle. */}
+      try{
+        const matches=map.querySourceFeatures(source,{
+          sourceLayer:'road',
+          filter:['in',['get','class'],['literal',['traffic_signals','level_crossing','roundabout','mini_roundabout']]]
+        });
+        roadFeatures.push(...matches.slice(0,600));
+      }catch{
+        // Some style versions reject expression filters on source queries;
+        // fall back to locally classifying actual Point features, never
+        // silently dropping all the traffic lights.
+        try{
+          const all=map.querySourceFeatures(source,{sourceLayer:'road'});
+          for(const feature of all){
+            if(feature?.geometry?.type==='Point'&&classifyMapboxRoadPoint(feature.properties)){
+              roadFeatures.push(feature);
+              if(roadFeatures.length>=600)break;
+            }
+          }
+        }catch{/* Source tile not loaded yet; idle event retries. */}
+      }
       try{poiFeatures.push(...map.querySourceFeatures(source,{sourceLayer:'poi_label'}).slice(0,900));}
       catch{/* POI vector tiles may not have loaded yet. Retry on camera idle. */}
     }
