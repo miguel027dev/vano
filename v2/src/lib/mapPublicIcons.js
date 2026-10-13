@@ -60,9 +60,11 @@ export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,v
  const services=new Set(['hospital','saude','bombeiros','policia-base','combustivel','eletroposto','estacionamento']);
  const urgent=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar']);
  const compare=(a,b)=>Number(b.priority||0)-Number(a.priority||0)||String(a.id).localeCompare(String(b.id));
+ const important=candidates.filter(x=>urgent.has(x.type)).sort(compare);
  const reserved=candidates.filter(x=>services.has(x.type)).sort(compare);
- const rest=candidates.filter(x=>!services.has(x.type)).sort(compare);
- const ordered=[...reserved.slice(0,Math.max(10,Math.floor(max*.28))),...rest,...reserved.slice(Math.max(10,Math.floor(max*.28)))];
+ const rest=candidates.filter(x=>!urgent.has(x.type)&&!services.has(x.type)).sort(compare);
+ const serviceSlots=Math.max(10,Math.floor(max*.28));
+ const ordered=[...important,...reserved.slice(0,serviceSlots),...rest,...reserved.slice(serviceSlots)];
  const output=[],occupied=new Set();
  for(const f of ordered){
   if(output.length>=max)break;
