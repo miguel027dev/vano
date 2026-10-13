@@ -125,18 +125,17 @@ public final class MainActivity extends Activity {
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view,String url){return navigate(Uri.parse(url));}
             @Override public void onPageStarted(WebView view,String url,android.graphics.Bitmap icon){
-                pageFailed=false;loadGeneration++;firstFrameSeen=false;showLoading();if(trusted(url))currentUrl=url;else{view.stopLoading();navigate(Uri.parse(url));}
+                pageFailed=false;loadGeneration++;firstFrameSeen=false;
+                // Never cover subsequent pages with a second startup overlay.
+                if(trusted(url))currentUrl=url;else{view.stopLoading();navigate(Uri.parse(url));}
             }
             @Override public void onPageFinished(WebView view,String url){
                 if(!trusted(url)||pageFailed)return;
                 recovering=false;hideError();CookieManager.getInstance().flush();
                 injectRuntime();
-                // The non-map entry/auth screens must never depend on map tile render events.
-                // The SPA remains responsible for displaying the correct account screen.
-                String pagePath=Uri.parse(url).getPath();
-                if(!"/mapa".equals(pagePath))view.evaluateJavascript(
-                    "!!document.querySelector(\u0027.v5-landing,.v3-auth-page,.app-shell.shell-auth\u0027)",
-                    result->{if("true".equals(result))revealReady(view);});
+                // The document has finished; do not wait for a Mapbox first-frame event
+                // just to reveal login, welcome, or the route picker.
+                revealReady(view);
             }
             @Override public void onReceivedError(WebView view,WebResourceRequest req,WebResourceError err){
                 if(req.isForMainFrame()){pageFailed=true;showError("Não foi possível conectar ao VANO. Confira sua conexão e tente novamente.");}
@@ -247,30 +246,32 @@ public final class MainActivity extends Activity {
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);syncScreenAwake();}
+    private void dismissLoading(boolean animate){
+        if(loadingPanel==null)return;
+        final LinearLayout panel=loadingPanel;
+        loadingPanel=null;loadingText=null;
+        if(!animate){root.removeView(panel);return;}
+        panel.animate().alpha(0).setDuration(150).withEndAction(()->root.removeView(panel)).start();
+    }
     private void revealReady(WebView view){
         final long generation=loadGeneration;
         view.postVisualStateCallback(generation,new WebView.VisualStateCallback(){@Override public void onComplete(long id){
             if(!destroyed&&generation==loadGeneration&&view==web&&!pageFailed){
                 handler.removeCallbacks(slowLoading);hideError();
                 if(!shellPrefetchQueued){shellPrefetchQueued=true;handler.postDelayed(()->{if(!destroyed&&offlineCache!=null)offlineCache.primeShell();},4000);}
-                if(loadingPanel!=null){final LinearLayout panel=loadingPanel;loadingPanel=null;loadingText=null;
-                    float scale=android.provider.Settings.Global.getFloat(getContentResolver(),android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,1);
-                    panel.animate().alpha(0).setDuration(scale==0?0:160).withEndAction(()->root.removeView(panel)).start();}
+                dismissLoading(true);
             }
         }});
     }
     private void showLoading(){
-        if(destroyed)return;
-        if(loadingPanel!=null){loadingPanel.setAlpha(1);loadingPanel.bringToFront();return;}
+        if(destroyed||loadingPanel!=null)return;
         loadingPanel=new LinearLayout(this);loadingPanel.setOrientation(LinearLayout.VERTICAL);loadingPanel.setGravity(Gravity.CENTER);loadingPanel.setPadding(48,48,48,48);loadingPanel.setBackgroundColor(Color.rgb(249,247,244));
         ImageView logo=new ImageView(this);logo.setImageResource(com.vano.maps.fluidez.R.drawable.ic_vano);loadingPanel.addView(logo,new LinearLayout.LayoutParams(96,96));
         TextView name=new TextView(this);name.setText("VANO");name.setTextSize(36);name.setTypeface(null,android.graphics.Typeface.BOLD);name.setTextColor(Color.rgb(32,35,40));name.setGravity(Gravity.CENTER);loadingPanel.addView(name);
-        loadingText=new TextView(this);loadingText.setText("Preparando seu mapa");loadingText.setTextSize(16);loadingText.setGravity(Gravity.CENTER);loadingText.setTextColor(Color.rgb(104,107,114));loadingText.setPadding(0,28,0,28);loadingPanel.addView(loadingText);
-        ProgressBar progress=new ProgressBar(this);loadingPanel.addView(progress,new LinearLayout.LayoutParams(48,48));
-        Button retry=new Button(this);retry.setText("Tentar novamente");retry.setOnClickListener(v->{hideError();if(web!=null)web.reload();});loadingPanel.addView(retry);
-        Button continueButton=new Button(this);continueButton.setText("Abrir interface");continueButton.setOnClickListener(v->{if(loadingPanel!=null){root.removeView(loadingPanel);loadingPanel=null;loadingText=null;}});loadingPanel.addView(continueButton);
+        loadingText=new TextView(this);loadingText.setText("Seu caminho começa aqui.");loadingText.setTextSize(15);loadingText.setGravity(Gravity.CENTER);loadingText.setTextColor(Color.rgb(104,107,114));loadingText.setPadding(0,20,0,0);loadingPanel.addView(loadingText);
         root.addView(loadingPanel,new FrameLayout.LayoutParams(-1,-1));
-        handler.removeCallbacks(slowLoading);handler.postDelayed(slowLoading,12000);
+        // A slow bootstrap or missing map render event must NEVER trap the user here.
+        handler.postDelayed(()->dismissLoading(false),1800);
     }
     private boolean navigate(Uri uri){
         if(trusted(uri)){
@@ -336,7 +337,7 @@ public final class MainActivity extends Activity {
         });
     }
     private void showError(String text){
-        if(destroyed)return;hideError();
+        if(destroyed)return;dismissLoading(false);hideError();
         errorPanel=new LinearLayout(this);errorPanel.setOrientation(LinearLayout.VERTICAL);errorPanel.setGravity(Gravity.CENTER);errorPanel.setPadding(48,48,48,48);errorPanel.setBackgroundColor(Color.rgb(244,245,248));
         TextView message=new TextView(this);message.setText(text);message.setTextSize(18);message.setTextColor(Color.rgb(30,30,30));message.setGravity(Gravity.CENTER);errorPanel.addView(message);
         Button retry=new Button(this);retry.setText("Tentar novamente");retry.setOnClickListener(v->{hideError();recovering=false;if(web==null)createWebView();web.loadUrl(currentUrl);});errorPanel.addView(retry);
