@@ -5,6 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,nearestOnRou
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
+import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {notifyNative} from '../lib/nativeShell';
@@ -41,25 +42,37 @@ const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 /** Single camera writer: route launch, tracking, free-look and recenter all flow through it. */
 function motionController(map,latest,status){
   let frame=0,previous=0,pose={center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()},reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
-  let suspended=false,freeLook=false,active=false,completeAt=0;
+  let suspended=false,freeLook=false,active=false,completeAt=0,motoPlan=null;
+  const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const preferenceChanged=()=>{reduced=Boolean(preference?.matches);start();};
+  preference?.addEventListener?.('change',preferenceChanged);
   const following=()=>{const d=latest.current;return shouldFollowLocation({navigation:d.navigation,destination:d.destination,pickingOrigin:d.pickingOrigin,manualOrigin:d.manualOrigin,position:d.gpsCoords});};
-  function target(){
+  function target(now){
     const d=latest.current;
     const userHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry?.speed>1.5&&d.telemetry?.accuracy<=75?d.motionBearing:null;
     const route=d.navigation?(d.routes?.find(r=>r.id===d.selectedRoute)||d.routes?.[0]):null;
     const viewport=d.viewport||{padding:{top:100,bottom:100,left:20,right:20},compact:false};
-    const maneuverPlan=planManeuverCamera({navigation:d.navigation,maneuver:d.guidance,route,
-      speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced});
+    let maneuverPlan;
+    if(d.vehicle==='moto'&&d.navigation){
+      motoPlan=planMotorcycleCamera({navigation:true,route,maneuver:d.guidance,
+        speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced,
+        previous:motoPlan,nowMs:now});
+      maneuverPlan=motoPlan;
+    }else{
+      motoPlan=null;
+      maneuverPlan=planManeuverCamera({navigation:d.navigation,maneuver:d.guidance,route,
+        speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced});
+    }
     return cameraTarget({position:d.motionCoords||d.gpsCoords,
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
       vehicle:d.vehicle,navigation:following(),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
   }
-  function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target();if(!t)return;const cameraHalfLife=reduced?85:300,pointHalfLife=reduced?90:360;
-    const nextCenter=blendPoint(pose.center,t.center,dt,pointHalfLife);
-    const nextZoom=damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=damp(pose.pitch,t.pitch,dt,cameraHalfLife);
-    const nextBearing=t.bearing==null?pose.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(reduced?90:320)));
+  function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';const cameraHalfLife=reduced?85:motorcycle?350:300,pointHalfLife=reduced?90:motorcycle?390:360;
+    const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
+    const nextZoom=reduced?t.zoom:damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=reduced?t.pitch:damp(pose.pitch,t.pitch,dt,cameraHalfLife);
+    const nextBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(motorcycle?420:320)));
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
     pose={center:nextCenter,zoom:nextZoom,pitch:nextPitch,bearing:nextBearing};
     try{map.jumpTo({...pose,padding:latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20}});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
@@ -71,7 +84,7 @@ function motionController(map,latest,status){
   function preview(){if(latest.current.navigation||freeLook)return;const d=latest.current;if(!d.destination?.coords||!d.routes?.length||!isLoaded(map))return;const selected=d.routes.find(x=>x.id===d.selectedRoute)||d.routes[0];const points=selected?.geometry?.coordinates||[coord(d.userCoords),d.destination.coords];if(!points.length)return;const bounds=new mapboxgl.LngLatBounds();points.filter(validPoint).forEach(p=>bounds.extend(p));if(!bounds.isEmpty()){map.stop();map.fitBounds(bounds,{padding:{top:180,bottom:Math.round(window.innerHeight*.4),left:55,right:55},maxZoom:14.8,duration:reduced?0:600});status.current=CAMERA_STATES.PREVIEW;}}
   function suspend(){suspended=true;active=false;cancelAnimationFrame(frame);frame=0;}
   function resume(){suspended=false;previous=0;start();}
-  function end(){suspend();}
+  function end(){suspend();preference?.removeEventListener?.('change',preferenceChanged);}
   function zoom(delta){setFree();map.zoomTo(clamp(map.getZoom()+delta,4,19),{duration:reduced?0:250});}
   function tilt(){setFree();map.easeTo({pitch:map.getPitch()>12?0:45,duration:reduced?0:320});}
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
@@ -182,7 +195,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         const b=node.getBoundingClientRect();
         return {edge,top:b.top-frame.top,bottom:b.bottom-frame.top};
       });
-      const next=computeSafeViewport({width:frame.width,height:frame.height,overlays,navigation});
+      const next=computeSafeViewport({width:frame.width,height:frame.height,overlays,navigation,motorcycle:vehicle==='moto'});
       const prior=viewportRef.current;
       const unchanged=prior?.compact===next.compact&&Object.keys(next.padding).every(k=>prior.padding[k]===next.padding[k]);
       if(unchanged)return;
@@ -197,7 +210,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     window.addEventListener('resize',measure,{passive:true});
     window.addEventListener('orientationchange',measure,{passive:true});
     return()=>{observer?.disconnect();window.removeEventListener('resize',measure);window.removeEventListener('orientationchange',measure);};
-  },[navigation,Boolean(destination),Boolean(manualOrigin),pickingOrigin]);
+  },[navigation,Boolean(destination),Boolean(manualOrigin),pickingOrigin,vehicle]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox')return;
@@ -265,8 +278,8 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       const point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
       if(!validPoint(point))return;
       state.point=point;
-      const heading=Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
-        ?d.telemetry.heading:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
+      const heading=(d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
+        ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
       if(Number.isFinite(heading))state.bearing=blendAngle(state.bearing||0,heading,1-Math.pow(.5,dt/(reduced?75:240)));
       d.motionCoords=point;d.motionBearing=state.bearing||0;
       const map=mapRef.current;
@@ -291,9 +304,10 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         const follow=shouldFollowLocation({navigation:d.navigation,destination:d.destination,pickingOrigin:d.pickingOrigin,manualOrigin:d.manualOrigin,position:d.gpsCoords});
         if(follow){
           if(map._vanoOriginMarker){map._vanoOriginMarker.remove();map._vanoOriginMarker=null;}
-          if(!map._vanoVehicleMarker)map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({
+          if(map._vanoVehicleMarker&&map._vanoVehicleKind!==d.vehicle){map._vanoVehicleMarker.remove();map._vanoVehicleMarker=null;}
+          if(!map._vanoVehicleMarker){map._vanoVehicleKind=d.vehicle;map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({
             className:'vano-leaflet-vehicle',html:markerElement('vehicle',d.vehicle).outerHTML,iconSize:[70,82],iconAnchor:[35,41]
-          })}).addTo(map);
+          })}).addTo(map);}
           map._vanoVehicleMarker.setLatLng(ll(point));
           const arrow=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
           if(arrow)arrow.style.transform='rotate('+(state.bearing||0)+'deg)';
@@ -406,7 +420,7 @@ function paintMapbox(map,data,selection){
     map._vanoTraveledCleared=true;
   }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
-  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
+  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
 }
