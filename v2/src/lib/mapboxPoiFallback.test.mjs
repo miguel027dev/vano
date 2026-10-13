@@ -50,4 +50,6 @@ test('UI keeps local POIs on Overpass failure and refreshes tiles after camera i
  assert.match(app,/!map&&<BrandSplash\/>/);
  assert.match(app,/v42-map-bootstrap/);
  assert.match(html,/class="v42-preboot"/);
+ assert.match(html,/<div id="root"><\/div>/);
+ assert.match(html,/#root:not\(:empty\) \+ \.v42-preboot\{display:none\}/);
 });
