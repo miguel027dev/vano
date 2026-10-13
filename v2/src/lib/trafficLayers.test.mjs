@@ -14,7 +14,7 @@ function mapStub(){
   sources,layers,adds,properties,events,
   getSource:id=>sources.get(id),
   addSource:(id,value)=>{sources.set(id,value);adds.push({type:'source',id,value});},
-  getLayer:id=>layers.get(id),
+  getLayer:id=>id==='street-label'?{id:'street-label',type:'symbol'}:layers.get(id),
   addLayer:(value,before)=>{layers.set(value.id,value);adds.push({type:'layer',id:value.id,value,before});},
   getStyle:()=>({layers:[{id:'road',type:'line'},{id:'street-label',type:'symbol'}]}),
   isStyleLoaded:()=>true,
