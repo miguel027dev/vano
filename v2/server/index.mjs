@@ -15,6 +15,7 @@ import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs
 import { directionsFromV1 } from './v1-bridge.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
+import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
@@ -424,6 +425,21 @@ async function route(req, res) {
     const verified=filterVerifiedReports(db.reports,bbox);
     return json(res,200,{...publicData,features:[...publicData.features,...verified],verifiedReports:verified.length},
       {'Cache-Control':'public, max-age=65'});
+  }
+  // Open traffic sources are OPTIONAL. Historical datasets never enter the
+  // live overlay. The server owns the vetted feed URL, never the browser.
+  if(pathname==='/api/traffic/sources'&&req.method==='GET')
+    return json(res,200,{sources:TRAFFIC_PROVIDER_CATALOG.map(p=>p.id==='municipal-geojson'
+      ?{...p,enabled:Boolean(process.env.VANO_TRAFFIC_OFFICIAL_GEOJSON_URL)}:p)});
+  if(pathname==='/api/traffic/public'&&req.method==='GET'){
+    if(!limits(req,res,'public-traffic',22,60000))return;
+    const bbox=parseTrafficBBox(u.searchParams.get('bbox'));
+    if(!bbox)return err(res,400,'Área de trânsito inválida ou muito ampla.');
+    const result=await configuredPublicTraffic(bbox,{
+      url:process.env.VANO_TRAFFIC_OFFICIAL_GEOJSON_URL||'',
+      token:process.env.VANO_TRAFFIC_OFFICIAL_TOKEN||''
+    });
+    return json(res,200,result,{'Cache-Control':'public, max-age=55'});
   }
   if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
   // Address lookup only after location permission; no coordinates are persisted.
