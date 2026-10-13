@@ -272,3 +272,30 @@ test('Mapas públicos: catálogo real, atribuição, caixa geográfica limitada 
   }
  }finally{await server.stop();}
 });
+
+test('benchmark V2 público: descoberta, cenários, validação e ausência de respostas inventadas',async()=>{
+ const s=await start({MAPBOX_SECRET_TOKEN:'',VITE_MAPBOX_PUBLIC_TOKEN:'',VANO_V1_API_URL:''}),a=client(s.origin);
+ try{
+  const caps=await a.call('/api/benchmark/v1/capabilities');
+  assert.equal(caps.status,200);
+  assert.equal(caps.data.agentReady,true);
+  assert.equal(caps.data.public,true);
+  assert.equal(caps.data.modes.length,2);
+  assert.equal((await a.call('/.well-known/vano-benchmark.json')).status,200);
+  const scenarios=await a.call('/api/benchmark/v1/scenarios?limit=3');
+  assert.equal(scenarios.status,200);
+  assert.equal(scenarios.data.scenarios.length,3);
+  const invalid=await a.call('/api/benchmark/v1/route?start_lat=bad&start_lon=-46.7&end_lat=-23.56&end_lon=-46.65');
+  assert.equal(invalid.status,400);
+  assert.equal(invalid.data.error,'invalid_coordinates');
+  const distance=await a.call('/api/benchmark/v1/route?start_lat=-23.62&start_lon=-46.69&end_lat=-22.2&end_lon=-45');
+  assert.equal(distance.status,422);
+  assert.equal(distance.data.error,'distance_limit');
+  const params='start_lat=-23.6223&start_lon=-46.6987&end_lat=-23.5615&end_lon=-46.6557';
+  assert.equal((await a.call('/api/benchmark/v1/route?'+params+'&mode=smart')).status,422);
+  const demo=await a.call('/api/benchmark/v1/route?'+params);
+  assert.equal(demo.status,503);
+  assert.equal(demo.data.error,'provider_unavailable');
+  assert.equal((await a.call('/api/health')).status,200);
+ }finally{await s.stop();}
+});
