@@ -71,5 +71,5 @@ test('bad source is recoverable and does not silently retain a 130-second blank-
  assert.match(overlay,/Sinalização pública não carregada/);
  assert.match(overlay,/setNotice\(data\?\.error&&items\.length===0/);
  assert.match(overlay,/lastRead=0;latestKey=''/);
- assert.match(overlay,/selectPublicPins\(items,project,zoom,55,\{width:/);
+ assert.match(overlay,/selectPublicPins\(items,project,zoom,zoom>=15\?120:75,\{width:/);
 });
