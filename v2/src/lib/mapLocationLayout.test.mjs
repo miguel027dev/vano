@@ -15,9 +15,11 @@ test('Mapbox logo is configured lower-left; address card remains lower-left',()=
    assert.ok(card>0 && card+12 <= width-100, 'logo must have clear space at '+width+'px');
  }
 });
-test('first real GPS can center after map style loads, without competing listeners',()=>{
+test('first real GPS centers immediately without relying on loading all map tiles',()=>{
  assert.match(map,/function centerOnFirstGpsFix\(\)/);
- assert.match(map,/if\(backend.current==='mapbox'&&!isLoaded\(map\)\)return/);
+ assert.doesNotMatch(map,/if\(backend.current==='mapbox'&&!isLoaded\(map\)\)return/);
+ assert.match(map,/map\.jumpTo\(\{center:d\.userCoords/);
+ assert.doesNotMatch(map,/maskInitialMap/);
  assert.match(map,/paintMapbox\(map,latest\.current,lastSelection\);centerOnFirstGpsFix\(\)/);
  assert.match(page,/startGpsSession\(navigator\.geolocation/);
  assert.doesNotMatch(page,/useEffect\(\(\)=>\{requestGPS\(false\);\},\[\]\)/);
