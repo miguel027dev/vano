@@ -1,1 +1,1 @@
-package android.webkit;import android.net.Uri;import java.util.Map;public interface WebResourceRequest {String getMethod();Uri getUrl();Map<String,String> getRequestHeaders();}
+package android.webkit;import android.net.Uri;import java.util.Map;public interface WebResourceRequest {boolean isForMainFrame();String getMethod();Uri getUrl();Map<String,String> getRequestHeaders();}
