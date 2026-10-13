@@ -11,6 +11,7 @@
 .vb-back{color:#65716a;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:9px}
 .vb-back svg{transform:rotate(180deg)}
 .vb-brand{display:flex;align-items:center;gap:9px;color:#263229;font-weight:950;letter-spacing:-.05em;font-size:20px}
+.vb-logo-img{object-fit:contain;border-radius:10px;flex:none}
 .vb-brand b{font-weight:800;color:#f07136;font-size:11px;letter-spacing:.16em;border-left:1px solid #d9dcd5;padding-left:10px;margin-left:4px}
 .vb-logo{display:grid;place-items:center;width:31px;height:31px;background:#ef6c31;border-radius:10px;color:#fff;font-size:18px;transform:rotate(-7deg)}
 .vb-public{display:inline-flex;align-items:center;gap:8px;color:#6b796f;font-size:12px;font-weight:750}
