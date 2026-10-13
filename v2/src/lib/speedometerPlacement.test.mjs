@@ -18,14 +18,14 @@ test('a single real-GPS speedometer moves left of the street pill in navigation'
  const street=page.indexOf('className="v36-nav-road-pill"',row);
  const report=page.indexOf('className="circle-btn v36-nav-report"',row);
  const dock=page.indexOf('className="nav-bottom v37-nav-bottom"',row);
- assert.ok(0<row&&row<dial&&dial<street&&street<report&&report<dock);
+ assert.ok(0<row&&row<dial&&dial<street&&street<dock&&dock<report);
  assert.match(page,/to="\/relatar" title="Registrar alerta"/);
 });
-test('position is symmetric around the viewport-centered street address and safe areas',()=>{
+test('speedometer and controls clear the viewport-centered street address and safe areas',()=>{
  assert.match(layout,/\.map-page\.in-navigation \.v36-nav-road-row\{/);
  assert.match(layout,/left:50%;\s*transform:translateX\(-50%\)/);
  assert.match(layout,/env\(safe-area-inset-left,0px\)/);
- assert.match(layout,/\.map-page\.in-navigation \.v36-nav-report\{\s*position:absolute;\s*right:0;/);
+ assert.match(layout,/\.map-page\.in-navigation \.v36-nav-report\{\s*justify-self:end;/);
  assert.match(css,/\.map-page\.in-navigation \.v36-nav-road-row \.v43-speedometer\{\s*position:absolute;\s*left:0;\s*top:50%;\s*transform:translateY\(-50%\);/);
  assert.match(css,/width:min\(420px,calc\(100% - 166px\)\)/);
  assert.match(css,/width:min\(420px,calc\(100% - 148px\)\)/);
@@ -37,7 +37,7 @@ test('position is symmetric around the viewport-centered street address and safe
   assert.ok((rowWidth-pillWidth)/2-dialWidth>=13,
    'street pill must clear the left dial at '+screen+'px');
   assert.ok((rowWidth-pillWidth)/2-45>=25,
-   'street pill must clear the right report action at '+screen+'px');
+   'street pill must clear the right map control at '+screen+'px');
  }
 });
 test('do not change physical speedometer size, style or speed-reading behavior',()=>{

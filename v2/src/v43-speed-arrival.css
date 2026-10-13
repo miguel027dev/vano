@@ -1,6 +1,6 @@
 /* VANO Map 4.3 — same circular speedometer, no gauge arc.
-   During navigation it sits to the LEFT of the current-street pill, mirrored
-   against the report action. Outside navigation it stays in map controls. */
+   During navigation it sits to the LEFT of the current-street pill.
+   Map controls occupy the right side; reporting lives inside the arrival dock. */
 .map-page .v43-speedometer{
  box-sizing:border-box;
  flex:0 0 66px;
@@ -44,7 +44,7 @@
  color:#76838b;
 }
 .map-page .map-controls{align-items:center}
-/* Symmetric placement with the existing report icon: no resizing. */
+/* Preserve the speedometer placement and viewport-centered street pill. */
 .map-page.in-navigation .v36-nav-road-row .v43-speedometer{
  position:absolute;
  left:0;
@@ -52,7 +52,7 @@
  transform:translateY(-50%);
 }
 .map-page.in-navigation .v36-nav-road-pill{
- /* Keep breathing room around a 66px dial and a 45px report button.
+ /* Keep breathing room around a 66px dial and the map controls.
     The street pill stays independently centered on the viewport. */
  width:min(420px,calc(100% - 166px));
 }
@@ -89,7 +89,7 @@
  .map-page.in-navigation .v36-nav-road-pill{width:min(420px,calc(100% - 148px))}
 }
 @media(max-height:540px) and (orientation:landscape){
- /* The street/report row remains active even when map controls are hidden. */
+ /* The street/speed row remains active even when map controls are hidden. */
  .map-page.in-navigation .v36-nav-road-row .v43-speedometer{
   width:54px;min-width:54px;height:54px;flex-basis:54px;
  }

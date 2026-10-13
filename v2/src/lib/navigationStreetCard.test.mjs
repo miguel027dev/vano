@@ -11,16 +11,16 @@ test('a single GPS street pill is visible only during active navigation',()=>{
  assert.match(map,/navigationStreetLabel\(currentAddress,hasRecentGpsFix/);
  assert.doesNotMatch(map,/v36-nav-road-pill[^\n]*guidance\?\.street/);
 });
-test('existing report link and unchanged triangle icon moved to right of centered pill',()=>{
+test('existing report link and unchanged triangle icon sit inside the arrival dock',()=>{
  assert.equal(map.split('to="/relatar" title="Registrar alerta"').length-1,1);
  assert.match(map,/className="circle-btn v36-nav-report" to="\/relatar"/);
  assert.match(map,/<AlertTriangle size=\{19\} strokeWidth=\{1\.9\}\/>/);
  const pill=map.indexOf('className="v36-nav-road-pill"');
  const report=map.indexOf('className="circle-btn v36-nav-report"');
  assert.ok(pill>0&&report>pill);
- const nextDock=map.indexOf('className="nav-bottom ',report);
- assert.ok(nextDock>report);
- assert.doesNotMatch(map.slice(report,nextDock),/v36-nav-left|speedometer|veloc[ií]metro/i);
+ const dock=map.indexOf('className="nav-bottom ',pill);
+ assert.ok(dock>pill&&report>dock);
+ assert.doesNotMatch(map.slice(pill,dock),/v36-nav-report/);
 });
 test('real dock height and safe-area reserve room above the end navigation action',()=>{
  assert.match(map,/dock\.offsetHeight/);
@@ -30,6 +30,7 @@ test('real dock height and safe-area reserve room above the end navigation actio
  assert.match(css,/left:50%;\s*transform:translateX\(-50%\)/);
  assert.match(css,/pointer-events:none/);
  assert.match(css,/\.map-page\.in-navigation \.v36-nav-report/);
- assert.match(css,/right:0;\s*top:50%/);
+ assert.match(css,/justify-self:end/);
+ assert.match(css,/bottom:calc\(var\(--v36-nav-dock-height,180px\) \+ 16px\)/);
  assert.match(css,/env\(safe-area-inset-left,0px\)/);
 });
