@@ -37,27 +37,38 @@ export function iconSvg(type){
  const inner=GLYPHS[glyph]||GLYPHS.alert;
  return '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+inner+'</svg>';
 }
-export function selectPublicPins(features=[],project=()=>null,zoom=15,max=52){
- if(!Array.isArray(features)||!Number.isFinite(zoom)||zoom<13.6)return [];
+/** Light zoom-dependent declutter: always give radar and essential services room.
+ * Initial VANO camera is ~12.4, so refusing to fetch before 13.6 hid EVERY pin.
+ */
+export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,viewport=null){
+ if(!Array.isArray(features)||!Number.isFinite(zoom)||zoom<11.6)return [];
  const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]);
  candidates.sort((a,b)=>Number(b.priority||0)-Number(a.priority||0));
- const result=[],occupied=new Set(),size=zoom>=16?35:zoom>=15?42:53;
+ const result=[],occupied=new Set(),counts=new Map();
+ const size=zoom>=16?35:zoom>=14?44:67;
+ const lowZoomCap={radar:25,semaforo:5,lombada:5,hospital:10,saude:6,bombeiros:4,'policia-base':4,
+  obra:4,'relato-acidente':6,'relato-risco':5,combustivel:4,eletroposto:3};
  for(const f of candidates){
   if(result.length>=max)break;
-  if(zoom<14.5&&f.type!=='radar'&&Number(f.priority)<72)continue;
+  if(zoom<14){
+   // In wider views only show meaningful points; ordinary small signs stay hidden.
+   if(Number(f.priority||0)<47)continue;
+   if((counts.get(f.type)||0)>=(lowZoomCap[f.type]??3))continue;
+  }
   const pos=project(f.coords);
   if(!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.y))continue;
+  if(viewport&&Number.isFinite(viewport.width)&&Number.isFinite(viewport.height)&&
+   (pos.x < -24||pos.y < -24||pos.x > viewport.width+24||pos.y > viewport.height+24))continue;
   const cell=Math.floor(pos.x/size)+':'+Math.floor(pos.y/size);
   if(occupied.has(cell))continue;
-  occupied.add(cell);result.push(f);
+  occupied.add(cell);counts.set(f.type,(counts.get(f.type)||0)+1);result.push(f);
  }
  return result;
 }
-
 /** Bound the camera viewport to a small safe geographic query at current zoom. */
 export function mapFeatureBBox(map,backend){
  const zoom=map.getZoom();
- if(!Number.isFinite(zoom)||zoom<13.6)return null;
+ if(!Number.isFinite(zoom)||zoom<11.6)return null;
  const center=map.getCenter(),longitude=Number(center.lng),latitude=Number(center.lat);
  if(!Number.isFinite(longitude)||!Number.isFinite(latitude)||Math.abs(latitude)>84)return null;
  const b=map.getBounds();
