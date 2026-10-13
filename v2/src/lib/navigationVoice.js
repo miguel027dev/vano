@@ -12,7 +12,7 @@ export function speakNavigationVoice(text,language='pt-BR',{
  const locale=VOICE_LOCALE[language]||'pt-BR';
  if(native){
   try{
-   if(sendNative({action:'speak',text:phrase,language:locale})){
+   if(sendNative({action:'speak',text:phrase,lang:locale,language:locale})){
     onStart();return {ok:true,channel:'native'};
    }
   }catch{/* Unavailable native host: fall back to Web Speech. */}
