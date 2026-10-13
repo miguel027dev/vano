@@ -40,7 +40,7 @@ test('one Mapbox vector source yields only the three restrained traffic colors',
   const spec=map.layers.get(id);
   assert.equal(spec.source,TRAFFIC_SOURCE_ID);
   assert.equal(spec['source-layer'],'traffic');
-  assert.equal(spec.paint['line-color'][8],TRAFFIC_PALETTE.heavy);
+  assert.equal(spec.paint['line-color'][9],TRAFFIC_PALETTE.heavy);
   assert.ok(spec.paint['line-width']);
   assert.ok(spec.paint['line-offset']);
   assert.equal(map.adds.find(x=>x.id===id).before,'street-label',
