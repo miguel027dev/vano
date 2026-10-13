@@ -37,7 +37,9 @@ test('Overpass asks only for known tags within an explicitly bounded area',()=>{
  assert.match(query,/traffic_calming/);
  assert.match(query,/amenity/);
  assert.match(query,/railway/);
- assert.match(query,/out body 1500/);
+ assert.match(query,/out body 150;/);
+ assert.match(query,/out body 1250;/);
+ assert.ok(query.indexOf('speed_camera')<query.indexOf('traffic_signals'));
  assert.match(query,/-23\.59000,-46\.69000,-23\.57000,-46\.66000/);
 });
 test('Overpass query is cached and never invents unmapped radars',async()=>{
@@ -62,4 +64,21 @@ test('community incidents render only after verification, within bounds and rece
  assert.deepEqual(visible.map(x=>x.id),['report-yes']);
  assert.equal(visible[0].owner,undefined);
  assert.equal(visible[0].verified,true);
+});
+
+test('dense traffic signals never exhaust hospital and emergency-service feature slots',()=>{
+ const many=Array.from({length:250},(_,i)=>elem(i+100,'traffic_signals'));
+ const hospital={...elem(777,'',-46.68,-23.58),tags:{amenity:'hospital'}};
+ const radar=elem(778,'speed_camera');
+ const result=normalizeOsmElements([...many,hospital,radar]);
+ assert.equal(result[0].type,'radar');
+ assert.ok(result.some(x=>x.type==='hospital'));
+ assert.ok(result.length<=180);
+});
+test('reports no fabricated features when both network sources are unavailable',async()=>{
+ const fetcher=async()=>{throw new Error('simulated timeout');};
+ const response=await queryPublicMap('-46.755,-23.679,-46.739,-23.671',{fetcher});
+ assert.deepEqual(response.features,[]);
+ assert.equal(response.stale,true);
+ assert.match(response.error,/indisponível/);
 });
