@@ -37,7 +37,7 @@ export default function MapPage({active=true}){
   destRef.current=dest;
   useEffect(()=>{if(!tripBooted.current)setChoice(initialChoice);},[initialChoice]);
   useEffect(()=>{try{window.localStorage.setItem('vano-traffic-layer',trafficEnabled?'on':'off');}catch{/* Private-mode storage unavailable. */}},[trafficEnabled]);
-  useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;setDest(value.destination);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
+  useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;setDest(value.destination);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setRouteVehicle(value.vehicle==='moto'?'moto':value.vehicle==='carro'?'carro':preferences?.vehicle==='moto'?'moto':'carro');setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
   useEffect(()=>{
     const status=()=>setVoiceProblem(true);
     const nativeFailure=event=>{
@@ -394,9 +394,9 @@ export default function MapPage({active=true}){
     if(!navMode||!route||!dest)return;
     const options=JSON.stringify([muted,layer,offlineMap.status,spokenRevision]);
     if(lastSaveRoute.current===route&&lastSaveOptions.current===options&&Date.now()-lastSave.current<4000)return;lastSave.current=Date.now();lastSaveRoute.current=route;lastSaveOptions.current=options;
-    const snapshot={version:1,owner:user?.id||'guest',savedAt:Date.now(),destination:dest,route,source:routeData?.source,safetyMessage:routeData?.safetyMessage,layer,muted,mapPrepared:offlineMap.status==='ready',position:userCoords?{coords:userCoords,telemetry}:null,spoken:[...spoken.current]};
+    const snapshot={version:1,owner:user?.id||'guest',savedAt:Date.now(),destination:dest,route,source:routeData?.source,safetyMessage:routeData?.safetyMessage,vehicle:routeVehicle,layer,muted,mapPrepared:offlineMap.status==='ready',position:userCoords?{coords:userCoords,telemetry}:null,spoken:[...spoken.current]};
     writeOffline('active-trip',snapshot).then(setStorageReady);
-  },[navMode,route,dest,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision]);
+  },[navMode,route,dest,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision,routeVehicle]);
   function speakManeuver(text,key=null){
     lastVoiceAttempt.current={text,key};
     const result=speakNavigationVoice(text,language,{
