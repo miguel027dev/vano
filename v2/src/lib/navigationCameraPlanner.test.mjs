@@ -74,3 +74,18 @@ test('invalid or missing provider maneuver must not create any camera choreograp
  assert.equal(planManeuverCamera({navigation:false,route,maneuver:guidance(1,10)}).strength,0);
  assert.equal(planManeuverCamera({navigation:true,route,maneuver:guidance(0,30)}).strength,0);
 });
+
+test('camera never hides free-driving location under a floating address card at speed',()=>{
+ const gps=[-46.68,-23.58];
+ const telemetry={speed:30,heading:90,accuracy:7};
+ const unrestricted=cameraTarget({navigation:true,position:gps,telemetry});
+ const hidden=cameraTarget({navigation:true,position:gps,telemetry,viewportClearancePx:0});
+ const tight=cameraTarget({navigation:true,position:gps,telemetry,viewportClearancePx:18});
+ assert.deepEqual(hidden.center,gps);
+ assert.ok(tight.center[0]>gps[0]);
+ assert.ok(tight.center[0]<unrestricted.center[0]);
+ const metersPerPixel=156543.03392*Math.cos(gps[1]*Math.PI/180)/Math.pow(2,tight.zoom);
+ const earthMetersPerLonDegree=111320*Math.cos(gps[1]*Math.PI/180);
+ const eastMeters=(tight.center[0]-gps[0])*earthMetersPerLonDegree;
+ assert.ok(eastMeters<=18*metersPerPixel*.72,'look-ahead is shorter than the safe projected distance');
+});
