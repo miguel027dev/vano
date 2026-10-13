@@ -6,6 +6,7 @@ import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {startGpsSession} from '../lib/gpsSession';
 import {smoothGpsSpeedSample} from '../lib/mapSpeed.js';
+import {searchGeoBias} from '../lib/searchGeoBias.js';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
@@ -227,11 +228,11 @@ export default function MapPage({active=true}){
     if(!searchOpen){setSearchBusy(false);return;}
     const term=query.trim();
     if(term.length<2){setSuggestions(allPlaces.slice(0,5));setSearchError('');setSearchBusy(false);return;}
-    const nearby=validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'
-      ?'&lng='+encodeURIComponent(userCoords[0])+'&lat='+encodeURIComponent(userCoords[1]):'';
+    // Rounded GPS proximity favors nearby places without restricting worldwide search.
+    const nearby=searchGeoBias(userCoords,{gpsGranted:gpsStatus==='granted',manual:usingManual});
     const cacheKey=language+'|'+term.toLocaleLowerCase()+'|'+nearby;
     const cached=searchCache.current.get(cacheKey);
-    if(cached&&Date.now()-cached.at<30000){
+    if(cached&&Date.now()-cached.at<45000){
       setSuggestions(cached.results);setSearchError('');setSearchBusy(false);return;
     }
     const controller=new AbortController();
@@ -248,7 +249,7 @@ export default function MapPage({active=true}){
         })
         .catch(error=>{if(!controller.signal.aborted){setSuggestions([]);setSearchError(error?.message||'Busca indisponível no momento.');}})
         .finally(()=>{if(!controller.signal.aborted)setSearchBusy(false);});
-    },145);
+    },250);
     return()=>{clearTimeout(timer);controller.abort();};
   },[query,searchOpen,allPlaces,language,usingManual,gpsStatus,userCoords?.[0],userCoords?.[1]]);
   async function calculateRoute(place,departure){
@@ -305,11 +306,11 @@ export default function MapPage({active=true}){
     if(q.length<2){setEditorResults(allPlaces.slice(0,6));setEditorError('');setEditorBusy(false);return;}
     const controller=new AbortController();setEditorError('');setEditorBusy(true);
     const timer=setTimeout(()=>{
-      api(`/search?q=${encodeURIComponent(q)}&lang=${encodeURIComponent(language)}${validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'?`&lng=${encodeURIComponent(userCoords[0])}&lat=${encodeURIComponent(userCoords[1])}`:''}`, {signal:controller.signal})
+      api(`/search?q=${encodeURIComponent(q)}&lang=${encodeURIComponent(language)}${searchGeoBias(userCoords,{gpsGranted:gpsStatus==='granted',manual:usingManual})}`, {signal:controller.signal})
       .then(items=>{if(!controller.signal.aborted)setEditorResults(Array.isArray(items)?items:[]);})
       .catch(error=>{if(!controller.signal.aborted){setEditorResults([]);setEditorError(error?.message||'Busca indisponível no momento.');}})
       .finally(()=>{if(!controller.signal.aborted)setEditorBusy(false);});
-    },145);
+    },250);
     return()=>{clearTimeout(timer);controller.abort()};
   },[editor,editorQuery,allPlaces,language,usingManual,gpsStatus,userCoords?.[0],userCoords?.[1]]);
   function clickShortcut(s){
