@@ -10,8 +10,9 @@ test('a single real-GPS speedometer moves left of the street pill in navigation'
  assert.equal(page.split('className="v43-speedometer"').length-1,1,
   'speedometer JSX and speed source must be shared, not duplicated');
  assert.match(page,/const speedometer=<output className="v43-speedometer"/);
- assert.match(page,/gpsSpeedKmh\(telemetry\.speed,/);
- assert.match(page,/<div className="map-controls">\{!navMode&&speedometer\}/);
+ assert.match(page,/smoothGpsSpeedSample\(speedSampleRef\.current,result\.speed,/);
+ assert.doesNotMatch(page,/<div className="map-controls">\{!navMode&&speedometer\}/);
+ assert.match(page,/<div className="map-controls"><button type="button"/);
  const row=page.indexOf('navMode&&<div className="v36-nav-road-row"');
  const dial=page.indexOf('{speedometer}',row);
  const street=page.indexOf('className="v36-nav-road-pill"',row);
@@ -47,5 +48,5 @@ test('do not change physical speedometer size, style or speed-reading behavior',
  assert.doesNotMatch(css,/conic-gradient|stroke-dasharray|@keyframes|progress-ring|orange-ring/i);
  assert.match(page,/speedKmh===null\?'—':speedKmh/);
  assert.match(page,/<small>km\/h<\/small>/);
- assert.match(page,/hasRecentGpsFix\(lastGpsFix\.current,Date\.now\(\),18000\)/);
+ assert.match(page,/Date\.now\(\)-speedSample\.sourceAt<18000/);
 });
