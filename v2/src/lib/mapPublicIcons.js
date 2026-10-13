@@ -53,3 +53,16 @@ export function selectPublicPins(features=[],project=()=>null,zoom=15,max=52){
  }
  return result;
 }
+
+/** Bound the camera viewport to a small safe geographic query at current zoom. */
+export function mapFeatureBBox(map,backend){
+ const zoom=map.getZoom();
+ if(!Number.isFinite(zoom)||zoom<13.6)return null;
+ const center=map.getCenter(),longitude=Number(center.lng),latitude=Number(center.lat);
+ if(!Number.isFinite(longitude)||!Number.isFinite(latitude)||Math.abs(latitude)>84)return null;
+ const b=map.getBounds();
+ const spanLon=Math.min(.028,(Number(b.getEast())-Number(b.getWest()))/2+.003);
+ const spanLat=Math.min(.025,(Number(b.getNorth())-Number(b.getSouth()))/2+.003);
+ if(!(spanLat>0&&spanLon>0))return null;
+ return [longitude-spanLon,latitude-spanLat,longitude+spanLon,latitude+spanLat].map(n=>+n.toFixed(5));
+}
