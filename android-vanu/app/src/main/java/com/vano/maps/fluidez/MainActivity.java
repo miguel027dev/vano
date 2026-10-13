@@ -1,6 +1,11 @@
 package com.vano.maps.fluidez;
 
 import android.Manifest;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.media.AudioManager;
+import org.json.JSONArray;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 import java.util.Collections;
@@ -30,6 +35,16 @@ public final class MainActivity extends Activity {
     private static final int GEO_REQUEST=10, FILE_REQUEST=11;
     private final ExecutorService network=Executors.newSingleThreadExecutor();
     private WebView web;
+    private OfflineCache offlineCache;
+    private LocalVoice voice;
+    private LocationManager gps;
+    private boolean routeTracking=false;
+    private final LocationListener gpsListener=new LocationListener(){
+        @Override public void onLocationChanged(Location fix){dispatchPosition(fix);}
+        @Override public void onStatusChanged(String provider,int status,Bundle extras){}
+        @Override public void onProviderEnabled(String provider){}
+        @Override public void onProviderDisabled(String provider){}
+    };
     private FrameLayout root;
     private LinearLayout loadingPanel;
     private TextView loadingText;
@@ -52,6 +67,8 @@ public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         launchAt=SystemClock.elapsedRealtime();
+        offlineCache=new OfflineCache(this,"vanu-73xu.onrender.com");
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         root=new FrameLayout(this);root.setBackgroundColor(Color.rgb(244,245,248));setContentView(root);
         if(Build.VERSION.SDK_INT>=30){
@@ -83,7 +100,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false); // Spoken navigation follows the explicit start-trip action.
-        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.0.0-vanu");
+        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.0-offline");
         settings.setSupportMultipleWindows(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
@@ -92,7 +109,7 @@ public final class MainActivity extends Activity {
         if(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)){
             WebViewCompat.addWebMessageListener(web,"VanoHost",Collections.singleton(BASE),(view,message,origin,mainFrame,reply)->{
                 if(mainFrame&&trusted(origin)&&trusted(view.getUrl())){
-                    try{String value=message.getData();if(value!=null&&value.length()<=16000)handleNative(view,new JSONObject(value));}catch(Exception ignored){}
+                    try{String value=message.getData();if(value!=null&&value.length()<=130000)handleNative(view,new JSONObject(value));}catch(Exception ignored){}
                 }
             });
         }
@@ -101,6 +118,7 @@ public final class MainActivity extends Activity {
         }
         root.addView(web,new FrameLayout.LayoutParams(-1,-1));
         web.setWebViewClient(new WebViewClient(){
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){return offlineCache.intercept(request);}
             @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest r){
                 if(!r.isForMainFrame())return !trusted(r.getUrl());
                 return navigate(r.getUrl());
@@ -143,9 +161,9 @@ public final class MainActivity extends Activity {
                 if(!"VANO_NATIVE".equals(message))return false;
                 if(!trusted(url)||!trusted(view.getUrl())){result.cancel();return true;}
                 try{
-                    if(defaultValue==null||defaultValue.length()>16000)throw new IllegalArgumentException();
+                    if(defaultValue==null||defaultValue.length()>130000)throw new IllegalArgumentException();
                     JSONObject data=new JSONObject(defaultValue);String action=data.optString("action");
-                    if("firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)){
+                    if("firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)||"speak".equals(action)||"stopSpeech".equals(action)||"navigation".equals(action)||"prepareMap".equals(action)||"voiceSettings".equals(action)||"session".equals(action)){
                         handleNative(view,data);result.confirm("ok");
                     }else result.cancel();
                 }catch(Exception e){result.cancel();}
@@ -189,12 +207,35 @@ public final class MainActivity extends Activity {
             if(!"/mapa".equals(path)||firstFrameSeen)revealReady(view);
         }else if("wake".equals(action)){
             navigationActive=data.optBoolean("active");syncScreenAwake();
-        }else if("google".equals(action))beginGoogleLogin();
+        }else if("session".equals(action)){CookieManager.getInstance().flush();}
+        else if("voiceSettings".equals(action)){try{startActivity(new Intent("com.android.settings.TTS_SETTINGS"));}catch(ActivityNotFoundException e){startActivity(new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS));}}
+        else if("prepareMap".equals(action)){
+            try{JSONArray points=data.getJSONArray("points");if(points.length()<2||points.length()>2048)return;
+                double[][] coords=new double[points.length()][2];for(int i=0;i<points.length();i++){JSONArray p=points.getJSONArray(i);coords[i][0]=p.getDouble(0);coords[i][1]=p.getDouble(1);}
+                int id=data.optInt("id");offlineCache.prepare(coords,count->runOnUiThread(()->{try{dispatch("vano:offline-map",new JSONObject().put("id",id).put("ok",count>=0).put("tiles",Math.max(0,count)));}catch(Exception ignored){}}));
+            }catch(Exception ignored){}
+        }else if("navigation".equals(action)){
+            routeTracking=data.optBoolean("active");if(routeTracking){ensureVoice();startGps();}else{stopGps();if(voice!=null)voice.stop();}
+        }else if("speak".equals(action)){ensureVoice();voice.speak(data.optString("text"),data.optString("language","pt-BR"));}
+        else if("stopSpeech".equals(action)){if(voice!=null)voice.stop();}
+        else if("google".equals(action))beginGoogleLogin();
         else if("share".equals(action)){
             Intent share=new Intent(Intent.ACTION_SEND).setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,data.optString("text")+"\n"+data.optString("url"));
             try{startActivity(Intent.createChooser(share,"Compartilhar"));}catch(ActivityNotFoundException ignored){}
         }
     }
+    private void dispatch(String event,JSONObject detail){if(!destroyed&&web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new CustomEvent("+JSONObject.quote(event)+",{detail:"+detail.toString()+"}));",null);}
+    private void ensureVoice(){if(voice==null)voice=new LocalVoice(this,status->runOnUiThread(()->{try{dispatch("vano:voice-status",new JSONObject().put("status",status));}catch(Exception ignored){}}));}
+    private void dispatchPosition(Location fix){
+        if(!routeTracking||fix==null||fix.getTime()<=0)return;
+        try{JSONObject coords=new JSONObject().put("latitude",fix.getLatitude()).put("longitude",fix.getLongitude()).put("accuracy",fix.getAccuracy()).put("heading",fix.hasBearing()?fix.getBearing():JSONObject.NULL).put("speed",fix.hasSpeed()?fix.getSpeed():JSONObject.NULL);dispatch("vano:native-position",new JSONObject().put("coords",coords).put("timestamp",fix.getTime()));}catch(Exception ignored){}
+    }
+    private void startGps(){
+        if(!routeTracking||!locationGranted())return;
+        if(gps==null)gps=(LocationManager)getSystemService(LOCATION_SERVICE);
+        try{gps.removeUpdates(gpsListener);if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED&&gps.isProviderEnabled(LocationManager.GPS_PROVIDER))gps.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,gpsListener,Looper.getMainLooper());if(gps.isProviderEnabled(LocationManager.NETWORK_PROVIDER))gps.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,0,gpsListener,Looper.getMainLooper());}catch(Exception ignored){}
+    }
+    private void stopGps(){try{if(gps!=null)gps.removeUpdates(gpsListener);}catch(Exception ignored){}}
     private void syncScreenAwake(){
         if(navigationActive&&hasWindowFocus())getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -237,7 +278,7 @@ public final class MainActivity extends Activity {
     }
     private boolean locationGranted(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
     private void finishGeo(boolean allow){if(geoCallback!=null){geoCallback.invoke(geoOrigin,allow,false);geoCallback=null;geoOrigin=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST)finishGeo(locationGranted());}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());startGps();}}
 
     @Override public void onActivityResult(int req,int result,Intent data){
         super.onActivityResult(req,result,data);
@@ -303,7 +344,7 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed(){handleBack();}
     @Override protected void onSaveInstanceState(Bundle state){if(web!=null){Bundle saved=new Bundle();web.saveState(saved);state.putBundle("web",saved);}super.onSaveInstanceState(state);}
     @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);root.requestApplyInsets();if(web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);}
-    @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();syncScreenAwake();}
-    @Override protected void onPause(){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);if(web!=null)web.onPause();CookieManager.getInstance().flush();super.onPause();}
-    @Override protected void onDestroy(){destroyed=true;handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();syncScreenAwake();startGps();}
+    @Override protected void onPause(){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();super.onPause();}
+    @Override protected void onDestroy(){destroyed=true;stopGps();if(voice!=null)voice.close();if(offlineCache!=null)offlineCache.close();handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
 }

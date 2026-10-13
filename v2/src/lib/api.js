@@ -1,3 +1,4 @@
+import {readOffline,writeOffline,cachedBootstrap} from './offlineStore.js';
 const BASE = import.meta.env.VITE_API_URL || '/api';
 let csrfToken = '';
 let csrfBootstrap = null;
@@ -11,12 +12,18 @@ async function initializeCsrf(){
 }
 export async function api(path, opts = {}) {
   const write = Boolean(opts.method && opts.method.toUpperCase() !== 'GET');
-  if (write) await initializeCsrf();
+  if (write){try{await initializeCsrf();}catch(cause){const failure=new Error('Este recurso precisa de conexão. Seu trajeto atual continua salvo.');failure.offline=true;throw failure;}}
   const init = { credentials:'include', ...opts, headers: { ...(opts.body ? {'Content-Type':'application/json'} : {}), ...(write ? {'X-VANO-CSRF':csrfToken} : {}), ...opts.headers } };
   if (init.body && typeof init.body !== 'string') init.body = JSON.stringify(init.body);
-  const res = await fetch(`${BASE}${path}`, init);
+  let res;
+  try{res=await fetch(`${BASE}${path}`,init);}catch(error){
+    if(!write&&['/bootstrap','/places'].includes(path)){const cached=await readOffline(path.slice(1));if(cached)return path==='/bootstrap'?{...cached,offline:true}:cached;}
+    const failure=new Error('Este recurso precisa de conexão. Seu trajeto atual continua salvo.');failure.offline=true;throw failure;
+  }
+  if(!write&&res.status>=500&&['/bootstrap','/places'].includes(path)){const cached=await readOffline(path.slice(1));if(cached)return path==='/bootstrap'?{...cached,offline:true}:cached;}
   const data = await res.json().catch(()=>({ error: 'O servidor retornou uma resposta inválida.' }));
   if (data.csrfToken) csrfToken = data.csrfToken;
+  if(res.ok&&!write&&['/bootstrap','/places'].includes(path))await writeOffline(path.slice(1),path==='/bootstrap'?cachedBootstrap(data):data);
   if (!res.ok) { if(res.status === 403 && String(data.error || '').includes('segurança')) csrfToken=''; throw new Error(data.error || `Erro ${res.status}`); }
   return data;
 }

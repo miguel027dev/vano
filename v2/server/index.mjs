@@ -28,6 +28,7 @@ const production = process.env.NODE_ENV === 'production';
 const origin = process.env.VANO_PUBLIC_ORIGIN || '';
 const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.VANO_EMAIL_FROM);
 const startupMs = Date.now();
+const SESSION_MAX_AGE=90*86400;
 const runtimeMetrics = { requests:0,routeRequests:0,routeErrors:0,routeLatencyMs:0,pageViews:Object.create(null) };
 const googleReady = googleConfigured(process.env);
 if (production) {
@@ -134,9 +135,11 @@ function adoptGuest(req, userId) {
     for (const record of db[key]) if (record.owner === previous) record.owner = userId;
 }
 function createSession(userId) {
-  db.sessions = db.sessions.filter(s => s.expires > now() && s.userId !== userId);
+  db.sessions = db.sessions.filter(s => s.expires > now());
+  const own=db.sessions.filter(s=>s.userId===userId).sort((a,b)=>a.expires-b.expires);
+  if(own.length>=10){const oldest=new Set(own.slice(0,own.length-9));db.sessions=db.sessions.filter(s=>!oldest.has(s));}
   const raw = token();
-  db.sessions.push({ tokenHash: sha256(raw), userId, expires: now() + 604800000, createdAt: stamp() });
+  db.sessions.push({ tokenHash: sha256(raw), userId, expires: now() + SESSION_MAX_AGE*1000, createdAt: stamp() });
   return raw;
 }
 function passwordHash(password, salt = hex(16)) { return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; }
@@ -318,7 +321,11 @@ async function route(req, res) {
     if(pathname==='/api/admin/users')return json(res,200,adminUsers(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit')}));
     return json(res,200,adminMetrics(db,runtimeMetrics,{now:Date.now(),startedAt:startupMs,status:{google:googleReady,mapbox:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,v1Router:!!process.env.VANO_V1_API_URL,email:mailReady,persistentDb:false,storage:'JSON da instância atual — dados podem desaparecer com reinícios no Render Free'}}));
   }
-  if (pathname === '/api/bootstrap' && req.method === 'GET') { const newGuest=guestCookie(req);return json(res,200,bootstrap(req),newGuest?{'Set-Cookie':newGuest}:{}); }
+  if (pathname === '/api/bootstrap' && req.method === 'GET') {
+    const session=userSession(req);let refreshCookie=null;
+    if(session){const stored=db.sessions.find(s=>s.tokenHash===session.hash);if(stored&&stored.expires<now()+(SESSION_MAX_AGE-86400)*1000){stored.expires=now()+SESSION_MAX_AGE*1000;persist();refreshCookie=setCookie('vano_session',cookie(req,'vano_session'),SESSION_MAX_AGE);}}
+    const newGuest=guestCookie(req);return json(res,200,bootstrap(req),(refreshCookie||newGuest)?{'Set-Cookie':refreshCookie||newGuest}:{});
+  }
   if (pathname === '/api/auth/google/start' && req.method === 'GET') {
     if(!googleReady)return err(res,503,'Login Google ainda não configurado.');
     if(!limits(req,res,'google-start',15,300000))return;
@@ -370,7 +377,7 @@ async function route(req, res) {
       if(record.native){const code=nativeGrants.issue(user.id,record.native);persist();res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':mobileCallback(record.native.state,code),'Set-Cookie':drop});res.end();return;}
       const raw=createSession(user.id);persist();
       const complete=prefFor(user.id).onboardingComplete;
-      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':complete?'/mapa':'/personalizar','Set-Cookie':[drop,setCookie('vano_session',raw,604800)]});res.end();return;
+      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':complete?'/mapa':'/personalizar','Set-Cookie':[drop,setCookie('vano_session',raw,SESSION_MAX_AGE)]});res.end();return;
     }catch(e){console.error('Google OAuth falhou:',e?.message||String(e));failed();return;}
   }
   if (pathname === '/api/auth/verify' && req.method === 'GET') {
@@ -386,7 +393,7 @@ async function route(req, res) {
     const user=uid&&db.users.find(x=>x.id===uid);
     if(!user)return err(res,401,'Retorno de login inválido ou expirado.');
     const raw=createSession(user.id);persist();
-    return json(res,200,{ok:true,cookieName:'vano_session',sessionToken:raw,maxAge:604800,next:prefFor(user.id).onboardingComplete?'/mapa':'/personalizar'});
+    return json(res,200,{ok:true,cookieName:'vano_session',sessionToken:raw,maxAge:SESSION_MAX_AGE,next:prefFor(user.id).onboardingComplete?'/mapa':'/personalizar'});
   }
   if (req.method !== 'GET' && !protectedWrite(req,res)) return;
   if(!production && !secured && /^\/api\/(auth\/(login|signup|forgot|reset|resend-verification)|profile)/.test(pathname)){
@@ -445,7 +452,7 @@ async function route(req, res) {
       try {await emailAction(user,'verify');persist();return json(res,201,{verificationRequired:true,message:'Verifique sua caixa de entrada para confirmar o e-mail.'});}
       catch {db.users=db.users.filter(x=>x.id!==user.id);db.preferences=db.preferences.filter(x=>x.owner!==user.id);db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);return err(res,503,'Não foi possível enviar a confirmação. Tente novamente.');}
     }
-    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,201,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,604800)});
+    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,201,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,SESSION_MAX_AGE)});
   }
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     if (!limits(req,res,'login',12,900000))return;
@@ -454,7 +461,7 @@ async function route(req, res) {
     const user=db.users.find(x=>x.email===em);
     if(!passwordMatches(body.password,user?.passwordHash||dummyHash)||!user)return err(res,401,'E-mail ou senha incorretos.');
     if(!user.verifiedAt || (production && user.verificationMethod!=='email'))return err(res,403,'Confirme seu e-mail para acessar a conta.');
-    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,604800)});
+    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,SESSION_MAX_AGE)});
   }
   if (pathname === '/api/auth/resend-verification' && req.method === 'POST') {
     if(!limits(req,res,'verify-email',3,3600000))return;
