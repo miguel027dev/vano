@@ -10,6 +10,7 @@ import path from 'node:path';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
+import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
@@ -37,6 +38,7 @@ const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.VANO_EMAIL_F
 const startupMs = Date.now();
 const SESSION_MAX_AGE=90*86400;
 const runtimeMetrics = { requests:0,routeRequests:0,routeErrors:0,routeLatencyMs:0,pageViews:Object.create(null) };
+let benchmarkInFlight=0;
 const googleStatus = googleOAuthStatus(process.env);
 const googleReady = googleStatus.ready;
 console.info('VANO Google OAuth:', googleReady ? 'configurado' : googleStatus.reason);
@@ -307,6 +309,43 @@ function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ow
 async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
+  // Public agent/human benchmarking: same real route engine, no account, no writes.
+  if((pathname==='/api/benchmark/v1/capabilities'||pathname==='/.well-known/vano-benchmark.json')&&req.method==='GET'){
+    const enabled=process.env.VANO_PUBLIC_BENCHMARK_ENABLED!=='0';
+    return json(res,enabled?200:503,benchmarkCapabilities({
+      originalEngine:Boolean(process.env.VANO_V1_API_URL?.trim()),
+      baseUrl:origin||'http://localhost:5174',enabled
+    }));
+  }
+  if(pathname==='/api/benchmark/v1/scenarios'&&req.method==='GET'){
+    if(process.env.VANO_PUBLIC_BENCHMARK_ENABLED==='0')return err(res,503,'Benchmark temporariamente desativado.');
+    if(!limits(req,res,'public-benchmark-scenarios',25,60000))return;
+    const value=u.searchParams.get('limit')??'8';
+    if(!/^([1-8])$/.test(value))return err(res,400,'limit deve estar entre 1 e 8.');
+    const scenarios=benchmarkScenarios(Number(value));
+    return json(res,200,{ok:true,protocol:'vano-route-benchmark',version:'2.0',count:scenarios.length,scenarios});
+  }
+  if(pathname==='/api/benchmark/v1/route'&&req.method==='GET'){
+    if(process.env.VANO_PUBLIC_BENCHMARK_ENABLED==='0')return err(res,503,'Benchmark temporariamente desativado.');
+    const benchmark=parseBenchmarkParams(u.searchParams,{originalEngine:Boolean(process.env.VANO_V1_API_URL?.trim())});
+    if(benchmark.error)return json(res,benchmark.status,{ok:false,error:benchmark.error,message:benchmark.message});
+    if(!limits(req,res,'public-benchmark-route',PUBLIC_BENCHMARK_RATE,60000))return;
+    if(benchmarkInFlight>=2)return json(res,429,{ok:false,error:'busy',message:'Servidor ocupado. Repita o teste em alguns instantes.'},{'Retry-After':'10'});
+    benchmarkInFlight++;
+    const started=performance.now(),requestId=randomBytes(8).toString('hex');
+    try{
+      const result=await directions(benchmark.origin,benchmark.destination,benchmark.vehicle,{},'pt-BR',{
+        adaptive:benchmark.adaptive,variantBudget:benchmark.variantBudget,
+        includeAdvanced:['smart','quietest'].includes(benchmark.mode),
+        avoidTolls:benchmark.avoid_tolls,avoidFerries:benchmark.avoid_ferries,
+        avoidUnpaved:benchmark.avoid_unpaved
+      });
+      if(result.source==='demonstracao')return json(res,503,{ok:false,error:'provider_unavailable',message:'Benchmark requer rotas reais; dados de demonstração não são aceitos.'});
+      const report=summarizeBenchmark(result,benchmark,{requestId,elapsedMs:performance.now()-started});
+      if(report.error)return json(res,report.status,{ok:false,error:report.error,message:report.message});
+      return json(res,200,report);
+    }finally{benchmarkInFlight--;}
+  }
   if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,googleIssue:googleStatus.reason,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady,storage:store.kind||'json-ephemeral',persistentDb:store.persistent===true});
   if (pathname === '/api/engine/status' && req.method === 'GET') {
     const configured=Boolean(process.env.VANO_V1_API_URL?.trim());
@@ -658,7 +697,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     // Google OAuth legacy callback must reach the API controller, not the React SPA fallback.
     // Otherwise React redirects /login/google/callback to /inicio before a session is created.
     const requestPath=new URL(req.url||'/','http://localhost').pathname;
-    if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'){
+    if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'||requestPath==='/.well-known/vano-benchmark.json'){
       store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
