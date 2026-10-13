@@ -22,15 +22,24 @@ export function adminMetrics(data,stats,{now=Date.now(),startedAt=Date.now(),sta
  const users=Array.isArray(data.users)?data.users:[];
  const reports=Array.isArray(data.reports)?data.reports:[];
  const current=now-86400000;
+ const past7d=now-7*86400000,past30d=now-30*86400000;
+ const validDates=(rows,since)=>rows.filter(x=>{
+   const time=Date.parse(x.createdAt||'');
+   return Number.isFinite(time)&&time<=now&&time>=since;
+ });
+ const new7d=validDates(users,past7d).length,new30d=validDates(users,past30d).length;
+ const routes7d=validDates(h,past7d).length,reports24h=validDates(reports,current).length;
  const last24=h.filter(x=>new Date(x.createdAt||0).getTime()>=current);
  const mins=last24.map(r=>Number(r.duration)).filter(x=>Number.isFinite(x)&&x>0);
  const modes={safe:h.filter(r=>r.routeType==='safe').length,fast:h.filter(r=>r.routeType==='fast').length};
  return {
    since:new Date(startedAt).toISOString(),uptimeSeconds:Math.max(0,Math.floor((now-startedAt)/1000)),
    usersTotal:users.length,usersVerified:users.filter(u=>Boolean(u.verifiedAt)).length,usersGoogle:users.filter(u=>Boolean(u.googleSub)).length,
+   signups7d:new7d,signups30d:new30d,
+   verificationRate:users.length?Math.round(users.filter(u=>Boolean(u.verifiedAt)).length/users.length*100):null,
     signupsEmail:users.filter(u=>signupMethod(u).startsWith('E-mail')).length,
     signupsGoogle:users.filter(u=>signupMethod(u).startsWith('Google')).length,
-   routesTotal:h.length,routes24h:last24.length,avgDuration24h:mins.length?Math.round(mins.reduce((s,x)=>s+x,0)/mins.length):null,modes,
+   routesTotal:h.length,routes24h:last24.length,routes7d,reports24h,avgDuration24h:mins.length?Math.round(mins.reduce((s,x)=>s+x,0)/mins.length):null,modes,
    reportsTotal:reports.length,reportsUnverified:reports.filter(r=>r.status!=='verificado').length,
    favoritesTotal:(data.favorites||[]).length,routinesTotal:(data.routines||[]).length,
    pageViewsTotal:Object.values(stats.pageViews||{}).reduce((a,b)=>a+Number(b||0),0),popularPages:Object.entries(stats.pageViews||{}).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([path,views])=>({path,views})),
