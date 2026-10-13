@@ -104,10 +104,11 @@ export function attachPublicMapOverlay(map,backend){
  function updateVectorPoi(){
   if(done||backend!=='mapbox')return;
   const local=readMapboxPoiFeatures(map);
-  if(!local.length)return;
-  const changed=rememberMapFeatures(stableTileCache,local);
-  if(!changed)return; // Repeated idle events must not remount/move markers.
-  mapTilesItems=cachedMapFeatures(stableTileCache);
+  // A revisited viewport may contain ONLY already-known points. Always
+  // recompute what's in view from the retained cache, even without discoveries.
+  if(local.length&&rememberMapFeatures(stableTileCache,local))
+    mapTilesItems=cachedMapFeatures(stableTileCache);
+  if(!mapTilesItems.length)return;
   mergeSources();render();
  }
  function schedule(){
