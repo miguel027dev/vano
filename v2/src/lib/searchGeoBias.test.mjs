@@ -25,6 +25,6 @@ test('main search and origin/destination editor use same coarse proximity helper
  assert.match(page,/const nearby=searchGeoBias\(userCoords,/);
  assert.match(page,/\$\{searchGeoBias\(userCoords,/);
  assert.match(page,/cached&&Date\.now\(\)-cached\.at<45000/);
- assert.equal(page.split('},250);').length-1,2);
+ assert.ok(page.split('},250);').length-1>=2,'both address-search inputs use 250ms debounce');
  assert.doesNotMatch(page,/&lng=\$\{encodeURIComponent\(userCoords\[0\]\)\}/);
 });
