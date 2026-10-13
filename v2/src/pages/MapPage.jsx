@@ -1,7 +1,8 @@
 import React,{useEffect,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Bike, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
+import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {startGpsSession} from '../lib/gpsSession';
@@ -37,7 +38,7 @@ export default function MapPage({active=true}){
   destRef.current=dest;
   useEffect(()=>{if(!tripBooted.current)setChoice(initialChoice);},[initialChoice]);
   useEffect(()=>{try{window.localStorage.setItem('vano-traffic-layer',trafficEnabled?'on':'off');}catch{/* Private-mode storage unavailable. */}},[trafficEnabled]);
-  useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;setDest(value.destination);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setRouteVehicle(value.vehicle==='moto'?'moto':value.vehicle==='carro'?'carro':preferences?.vehicle==='moto'?'moto':'carro');setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
+  useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;setDest(value.destination);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setRouteVehicle(['carro','moto','a-pe'].includes(value.vehicle)?value.vehicle:preferences?.vehicle==='moto'?'moto':'carro');setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
   useEffect(()=>{
     const status=()=>setVoiceProblem(true);
     const nativeFailure=event=>{
@@ -295,13 +296,13 @@ export default function MapPage({active=true}){
     setLoadingRoute(true);setSheetOpen(true);setRouteData(null);
     try{
       const data=await api('/route',{method:'POST',body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}})});
-      if(epoch===routeEpoch.current){setRouteData(data);setChoice(initialChoice);}
+      if(epoch===routeEpoch.current){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
     }catch(e){if(epoch===routeEpoch.current)setToast(e.message);}
     finally{if(epoch===routeEpoch.current)setLoadingRoute(false);}
   }
   routeCalculator.current=calculateRoute;
   function chooseRouteVehicle(vehicle){
-    if(!['carro','moto'].includes(vehicle)||vehicle===routeVehicle)return;
+    if(!['carro','moto','a-pe'].includes(vehicle)||vehicle===routeVehicle)return;
     setRouteVehicle(vehicle);
     // Invalidate an earlier request immediately: stale car routes must never
     // appear under a selected motorcycle toggle (and vice versa).
@@ -560,23 +561,24 @@ export default function MapPage({active=true}){
       <button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
     </div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
-      <div className="v47-route-vehicle" aria-label="Tipo de veículo para calcular a rota">
-        <span className="v47-route-vehicle-caption">Veículo</span>
-        <div className={`v47-route-vehicle-switch ${routeVehicle==='moto'?'is-moto':''}`} role="group" aria-label="Selecionar carro ou moto" aria-busy={loadingRoute}>
+      <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
+        <span className="v47-route-vehicle-caption">{t('Modo')}</span>
+        <div className={`v47-route-vehicle-switch ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label="Selecionar carro, moto ou a pé" aria-busy={loadingRoute}>
           <button type="button" className={routeVehicle==='carro'?'is-selected':''} onClick={()=>chooseRouteVehicle('carro')}
             aria-pressed={routeVehicle==='carro'} aria-label="Calcular rota de carro">
             <CarFront size={18} strokeWidth={2} aria-hidden="true"/><span>{t('Carro')}</span>
           </button>
           <button type="button" className={routeVehicle==='moto'?'is-selected':''} onClick={()=>chooseRouteVehicle('moto')}
             aria-pressed={routeVehicle==='moto'} aria-label="Calcular rota de moto">
-            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/>
-              <path d="M6 17l3.2-7.5h4.2l3.9 7.5M9.2 9.5l-1.8-2M13.4 9.5h3.3l1.8 2M12 13.2h3.1M8.8 7.4H6.5"/>
-            </svg><span>{t('Moto')}</span>
+            <MotorcycleIcon size={22}/><span>{t('Moto')}</span>
+          </button>
+          <button type="button" className={routeVehicle==='a-pe'?'is-selected':''} onClick={()=>chooseRouteVehicle('a-pe')}
+            aria-pressed={routeVehicle==='a-pe'} aria-label="Calcular rota a pé">
+            <Footprints size={19} strokeWidth={2} aria-hidden="true"/><span>{t('A pé')}</span>
           </button>
         </div>
       </div>
-      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><span className="sr-only" role="status">{offlineMap.status==='saving'?'Salvando o mapa do trajeto no celular…':offlineMap.status==='ready'?'Mapa do trajeto salvo no celular':isNativeShell()?'Rota disponível; download do mapa incompleto':''}</span><button className="btn btn-primary start-btn" onClick={begin} disabled={preparingStart}><Navigation size={20}/> {preparingStart?'Preparando para seguir sem internet…':t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
+      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><span className="sr-only" role="status">{offlineMap.status==='saving'?'Salvando o mapa do trajeto no celular…':offlineMap.status==='ready'?'Mapa do trajeto salvo no celular':isNativeShell()?'Rota disponível; download do mapa incompleto':''}</span><button className="btn btn-primary start-btn" onClick={begin} disabled={preparingStart}><Navigation size={20}/> {preparingStart?'Preparando para seguir sem internet…':t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
     {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">

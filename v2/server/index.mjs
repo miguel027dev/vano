@@ -14,6 +14,7 @@ import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
+import { calculateWalkingRoute } from './walking-route.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
@@ -257,7 +258,13 @@ async function search(query,language='pt-BR',proximity=null) {
 }
 async function directions(originPoint, destination, vehicle = 'carro', telemetry = {}, language = 'pt-BR', options = {}) {
   if (!pointOK(originPoint) || !pointOK(destination)) throw new HttpError(400, 'Coordenadas inválidas.');
-  if (!['carro', 'moto'].includes(vehicle)) throw new HttpError(400, 'Veículo inválido.');
+  if (!['carro', 'moto', 'a-pe'].includes(vehicle)) throw new HttpError(400, 'Veículo inválido.');
+  if (vehicle==='a-pe') {
+    const token=process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+    if(!token)throw new HttpError(503,'Roteamento a pé não configurado.');
+    try{return await calculateWalkingRoute(originPoint,destination,LANGUAGES.has(language)?language:'pt-BR',options,token);}
+    catch{throw new HttpError(503,'Não foi possível calcular uma rota a pé. Tente novamente.');}
+  }
   if (process.env.VANO_V1_API_URL?.trim()) return directionsFromV1(process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry, { ...options, timeoutMs: Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS) || 65000 });
   const access = process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
   if (access) {
@@ -474,7 +481,7 @@ async function route(req, res) {
   if (pathname === '/api/route' && req.method === 'POST') {
     if (!limits(req,res,'route',10,60000)) return;
     const id=owner(req);const body=await getBody(req);
-    if (!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto',undefined].includes(body.vehicle))return err(res,400,'Origem, destino ou veículo inválido.');
+    if (!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto','a-pe',undefined].includes(body.vehicle))return err(res,400,'Origem, destino ou veículo inválido.');
     const t=body.telemetry&&typeof body.telemetry==='object'?body.telemetry:{};
     const telemetry={ bearing:typeof t.bearing==='number'&&t.bearing>=0&&t.bearing<360?t.bearing:null, speed:typeof t.speed==='number'&&t.speed>=0&&t.speed<90?t.speed:null };
     const language=normalizeLocale(body.language)||prefFor(id,getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language).language;

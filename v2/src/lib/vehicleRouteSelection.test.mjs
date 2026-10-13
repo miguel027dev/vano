@@ -6,22 +6,22 @@ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
 const css=readFileSync(new URL('../v47-route-vehicle.css',import.meta.url),'utf8');
 const imports=readFileSync(new URL('../main.jsx',import.meta.url),'utf8');
 
-test('route sheet exposes exactly Carro and Moto accessible buttons',()=>{
+test('route sheet exposes Carro, Moto and A pé accessible buttons',()=>{
  const section=page.slice(page.indexOf('className="v47-route-vehicle"'),page.indexOf('{loadingRoute?<div className="route-loader"'));
  assert.ok(section.length>200,'mode choice must appear above options');
- assert.match(section,/role="group" aria-label="Selecionar carro ou moto"/);
+ assert.match(section,/role="group" aria-label="Selecionar carro, moto ou a pé"/);
  assert.match(section,/onClick=\{\(\)=>chooseRouteVehicle\('carro'\)\}/);
  assert.match(section,/onClick=\{\(\)=>chooseRouteVehicle\('moto'\)\}/);
  assert.match(section,/aria-pressed=\{routeVehicle==='carro'\}/);
  assert.match(section,/aria-pressed=\{routeVehicle==='moto'\}/);
  assert.match(section,/CarFront/);
- assert.match(section,/viewBox="0 0 24 24"/,'motorcycle, not bicycle, icon');
+ assert.match(section,/MotorcycleIcon/,'dedicated motorcycle icon');
  assert.doesNotMatch(section,/onClick=\{\(\)=>chooseRouteVehicle\('bicicleta'\)\}/);
 });
 test('vehicle picker changes real API route parameter and never leaves stale alternatives',()=>{
  assert.match(page,/async function calculateRoute\(place,departure,vehicle=routeVehicle\)/);
  assert.match(page,/vehicle,language,telemetry:/);
- assert.match(page,/if\(epoch===routeEpoch\.current\)\{setRouteData\(data\);setChoice\(initialChoice\);\}/);
+ assert.match(page,/if\(epoch===routeEpoch\.current\)\{setRouteData\(data\);setChoice\(vehicle==='a-pe'\?'fast':initialChoice\);\}/);
  assert.match(page,/routeEpoch\.current\+\+;/);
  assert.match(page,/setRouteData\(null\);setLoadingRoute\(true\);setSheetOpen\(true\)/);
  assert.match(page,/calculateRoute\(dest,origin,vehicle\)/);
