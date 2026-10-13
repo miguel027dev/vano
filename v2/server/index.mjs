@@ -376,7 +376,7 @@ async function route(req, res) {
         if(db.users.some(x=>x.email===id.email)){
           failed('conta-existente');return;
         }
-        user={id:hex(12),name:id.name,email:id.email,googleSub:id.googleSub,passwordHash:passwordHash(newOAuthToken()),createdAt:stamp(),verifiedAt:stamp(),verificationMethod:'google'};
+        user={id:hex(12),name:id.name,email:id.email,googleSub:id.googleSub,passwordHash:passwordHash(newOAuthToken()),createdAt:stamp(),signupMethod:'google',verifiedAt:stamp(),verificationMethod:'google'};
         db.users.push(user);
         const chosen=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
         db.preferences.push({...prefFor(user.id,chosen),owner:user.id,language:chosen,languageConfirmed:false});
@@ -485,7 +485,7 @@ async function route(req, res) {
     if(!isEmail(em)||!validName(body.name)||!validPassword(body.password)) return err(res,400,'Informe nome, e-mail válido e senha exclusiva de 12 a 128 caracteres.');
     if(db.users.length>=50000) return err(res,503,'Limite de contas deste servidor atingido.');
     if(db.users.some(x=>x.email===em)) return err(res,409,'E-mail já cadastrado.');
-    const user={id:hex(12),name:cleanText(body.name,80),email:em,passwordHash:passwordHash(body.password),createdAt:stamp(),verifiedAt:mailReady?null:stamp(),verificationMethod:mailReady?'pending':'dev'};
+    const user={id:hex(12),name:cleanText(body.name,80),email:em,passwordHash:passwordHash(body.password),createdAt:stamp(),signupMethod:'email',verifiedAt:mailReady?null:stamp(),verificationMethod:mailReady?'pending':'dev'};
     db.users.push(user);
     const chosenLanguage=body.language||getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
     db.preferences=db.preferences.filter(x=>x.owner!==user.id);
