@@ -7,6 +7,7 @@ import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
+import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -105,10 +106,12 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
       paintLeaflet(map,latest.current);
       map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.([e.latlng.lng,e.latlng.lat]);});
     }
+    // Independent POI pins survive style changes without altering GPS or route layers.
+    const detachPublicPins=attachPublicMapOverlay(map,backend.current);
     if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation)motion.current?.recenter();else if(validPoint(latest.current.userCoords))map.flyTo({center:latest.current.userCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.userCoords))map.panTo(ll(latest.current.motionCoords||latest.current.userCoords),{animate:true});},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt()};
     function visibility(){if(document.hidden)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
+    return()=>{deleted=true;detachPublicPins?.();document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token]);
   // If GPS arrives before Mapbox is ready, the style.load handler performs
   // this same recenter as soon as the map can accept camera operations.
