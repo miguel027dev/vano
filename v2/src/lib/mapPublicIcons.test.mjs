@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {iconSvg,ICON_THEME,selectPublicPins} from './mapPublicIcons.js';
-import {mapFeatureBBox} from './mapPublicOverlay.js';
+import {iconSvg,ICON_THEME,selectPublicPins,mapFeatureBBox} from './mapPublicIcons.js';
 
 test('every supported map category has a static safe icon for light mode',()=>{
  assert.ok(Object.keys(ICON_THEME).length>=17);
