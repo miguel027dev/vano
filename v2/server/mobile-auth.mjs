@@ -18,3 +18,6 @@ export function mobileGrants(clock=Date.now){
   };
 }
 export function mobileCallback(state,code,error){const u=new URL('vano-vanu://auth/callback');u.searchParams.set('state',state);if(code)u.searchParams.set('code',code);else u.searchParams.set('error',error||'erro');return u.toString();}
+
+/** Keep the validated app return request across the trusted OAuth-host redirect. */
+export function canonicalMobileStart(canonical,request){const url=new URL(canonical);if(request){url.searchParams.set('native_state',request.state);url.searchParams.set('native_challenge',request.challenge);}return url.toString();}

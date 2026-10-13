@@ -3,7 +3,7 @@
  * This small local store is deliberately NOT a multi-instance database.
  */
 import http from 'node:http';
-import {readMobileRequest,mobileGrants,mobileCallback} from './mobile-auth.mjs';
+import {readMobileRequest,mobileGrants,mobileCallback,canonicalMobileStart} from './mobile-auth.mjs';
 import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -336,7 +336,7 @@ async function route(req, res) {
     const canonical=canonicalGoogleStart(req.headers.host,process.env);
     if(canonical){
       if(linking)return err(res,409,'Para vincular o Google, entre na sua conta pelo endereço oficial deste serviço.');
-      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':canonical});
+      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':canonicalMobileStart(canonical,native)});
       res.end();return;
     }
     const state=newOAuthToken(), verifier=newOAuthToken(48);
