@@ -8,7 +8,7 @@ const tabs=[{to:'/mapa',label:'Mapa',icon:Map},{to:'/rotas',label:'Rotas',icon:R
 export function BottomNav(){const {t}=useVano();const navigation=<nav className="bottom-nav v5-bottom-nav" aria-label="Navegação principal">{tabs.map(x=><NavLink key={x.to} to={x.to} end={x.to==='/mapa'} className={({isActive})=>`nav-tab ${isActive?'active':''}`}><x.icon size={20} strokeWidth={1.95}/><span>{t(x.label)}</span></NavLink>)}</nav>;return typeof document==='undefined'?navigation:createPortal(navigation,document.body);}
 export function SideNav(){
  const {t,user}=useVano(),location=useLocation();
- const profilePaths=new Set(['/perfil','/conta','/configuracoes','/privacidade']);
+ const profilePaths=new Set(['/perfil','/conta','/privacidade']);
  const routePaths=new Set(['/rotas','/atividade','/rotinas']);
  return <aside className="side-nav" aria-label="Menu lateral">
    <Brand/>
