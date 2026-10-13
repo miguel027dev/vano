@@ -69,7 +69,7 @@ test('bad source is recoverable and does not silently retain a 130-second blank-
  const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
  assert.match(overlay,/v41-public-status/);
  assert.match(overlay,/Dados públicos indisponíveis/);
- assert.match(overlay,/Falha ao carregar pontos/);
+ assert.match(overlay,/Radares e sinalização indisponíveis/);
  assert.match(overlay,/lastRead=0;latestKey=''/);
  assert.match(overlay,/selectPublicPins\(items,project,zoom,55,\{width:/);
 });
