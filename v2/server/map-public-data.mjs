@@ -45,7 +45,18 @@ export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
    source:'OpenStreetMap',sourceId:el.type+'/'+el.id,verified:false});
  }
  items.sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
- return items.slice(0,Math.max(1,Math.min(MAX_FEATURES,limit)));
+ // Dense cities may have thousands of signals/stops. Reserve slots for
+ // hospitals and other services instead of allowing one tag to occupy all 180.
+ const quota={radar:70,semaforo:35,lombada:25,pare:12,preferencia:10,placa:8,travessia:12,
+  ferrovia:10,obra:15,hospital:22,saude:14,bombeiros:10,'policia-base':12,
+  combustivel:14,estacionamento:9,eletroposto:12};
+ const selected=[],counts=new Map(),cap=Math.max(1,Math.min(MAX_FEATURES,limit));
+ for(const item of items){
+  if(selected.length>=cap)break;
+  if((counts.get(item.type)||0)>=(quota[item.type]||10))continue;
+  selected.push(item);counts.set(item.type,(counts.get(item.type)||0)+1);
+ }
+ return selected;
 }
 export function overpassQuery(bbox){
  if(!Array.isArray(bbox)||bbox.length!==4)throw Error('bbox required');
