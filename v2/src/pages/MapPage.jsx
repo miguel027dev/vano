@@ -472,7 +472,7 @@ export default function MapPage({active=true}){
     index,valid:lane?.valid===true,symbols:laneVariants(lane),
   })).filter(lane=>lane.symbols.length):[];
 
-  return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
+  return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
     <VanoMap active={active} userCoords={userCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(origin)} onNavigationProgress={setGuidance} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
