@@ -91,3 +91,22 @@ test('signage remains when no POI labels exist in loaded vector tiles',()=>{
  assert.deepEqual(out.map(x=>x.type),['semaforo']);
  assert.deepEqual(calls,['road','poi_label']);
 });
+
+test('older Mapbox source query rejects an expression filter but still supplies real signal points',()=>{
+ const methods=[];
+ const map={
+  isStyleLoaded:()=>true,
+  getStyle:()=>({sources:{s:{type:'vector',url:'mapbox://mapbox.mapbox-streets-v8'}}}),
+  querySourceFeatures:(_,options)=>{
+   methods.push(options.sourceLayer+(options.filter?'-filtered':'-all'));
+   if(options.sourceLayer==='poi_label')return [];
+   if(options.filter)throw new Error('Unsupported filter');
+   return [
+    {geometry:{type:'LineString',coordinates:[[-46.681,-23.581],[-46.679,-23.580]]},properties:{class:'primary'}},
+    {geometry:{type:'Point',coordinates:[-46.681,-23.581]},properties:{class:'traffic_signals'}}
+   ];
+  }
+ };
+ assert.deepEqual(readMapboxPoiFeatures(map).map(x=>x.type),['semaforo']);
+ assert.deepEqual(methods,['road-filtered','road-all','poi_label-all']);
+});
