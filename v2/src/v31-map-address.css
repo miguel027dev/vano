@@ -347,3 +347,119 @@
   .map-page.in-navigation .v36-nav-road-row{bottom:calc(var(--v36-nav-dock-height,180px) + 8px)}
   .map-page.in-navigation .v36-nav-road-pill{min-height:48px}
 }
+
+/* VANO Arrival Dock 3.7 — light mode. The ETA is centered relative to the
+   viewport, with a single 48px close target at left and equal empty space at right.
+   No extra route-option controls are invented while navigation is active. */
+.map-page.in-navigation .nav-bottom.v37-nav-bottom{
+  background:#fff;
+  color:#1c242b;
+  border-radius:29px 29px 0 0;
+  border:1px solid #e9ecea;
+  border-bottom:0;
+  padding:15px clamp(16px,4vw,26px) calc(env(safe-area-inset-bottom,0px) + 23px);
+  box-shadow:0 -9px 36px #22312d1c,0 -2px 7px #26332908;
+}
+.map-page.in-navigation .v37-nav-handle{
+  display:block;
+  width:52px;
+  height:5px;
+  border-radius:999px;
+  background:#cdd2d5;
+  margin:0 auto 11px;
+}
+.map-page.in-navigation .nav-summary.v37-nav-summary{
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr) 48px;
+  column-gap:clamp(6px,2.3vw,16px);
+  align-items:center;
+  min-height:98px;
+  margin:0;
+}
+.map-page.in-navigation .v37-nav-end{
+  width:48px;
+  min-width:48px;
+  height:48px;
+  border:1px solid #e9ebeb;
+  border-radius:50%;
+  background:#f8f9f8;
+  color:#24302d;
+  box-shadow:0 3px 12px #1b302717;
+}
+.map-page.in-navigation .v37-nav-end:focus-visible{
+  outline:3px solid #f0aa82;
+  outline-offset:3px;
+}
+.map-page.in-navigation .v37-nav-center{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  min-width:0;
+  gap:10px;
+  text-align:center;
+}
+.map-page.in-navigation .v37-nav-arrival{
+  display:block;
+  color:#17221f;
+  font:800 clamp(37px,9.2vw,51px)/1 Manrope,'DM Sans',sans-serif;
+  letter-spacing:-.06em;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.map-page.in-navigation .v37-nav-meta{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(7px,2.2vw,13px);
+  min-width:0;
+  color:#59635f;
+  font-size:clamp(12px,3.3vw,16px);
+  font-weight:650;
+  line-height:1.25;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.map-page.in-navigation .v37-nav-bullet{
+  flex:0 0 5px;
+  width:5px;
+  height:5px;
+  background:#aab3b0;
+  border-radius:50%;
+}
+.map-page.in-navigation .v37-nav-balance{
+  display:block;
+  width:48px;
+  height:48px;
+  pointer-events:none;
+}
+.map-page.in-navigation .v37-nav-bottom .nav-demo,
+.map-page.in-navigation .nav-bottom.v37-nav-bottom .nav-demo{
+  margin:9px 3px 0;
+}
+@media(max-width:360px){
+  .map-page.in-navigation .nav-bottom.v37-nav-bottom{
+    padding-right:12px;
+    padding-left:12px;
+  }
+  .map-page.in-navigation .nav-summary.v37-nav-summary{
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    column-gap:4px;
+  }
+  .map-page.in-navigation .v37-nav-end,
+  .map-page.in-navigation .v37-nav-balance{width:44px;min-width:44px;height:44px}
+  .map-page.in-navigation .v37-nav-center{gap:8px}
+  .map-page.in-navigation .v37-nav-meta{font-size:12px;gap:7px}
+}
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.in-navigation .nav-bottom.v37-nav-bottom{
+    padding-top:9px;
+    padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
+  }
+  .map-page.in-navigation .nav-summary.v37-nav-summary{min-height:64px}
+  .map-page.in-navigation .v37-nav-arrival{font-size:33px}
+  .map-page.in-navigation .v37-nav-center{gap:4px}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page.in-navigation .v37-nav-end{transition:none}
+}
