@@ -12,7 +12,7 @@ import { navigationSummary,arrivalClock } from '../lib/navigationSummary';
 import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
 import {spokenCue} from '../lib/offlineGuidance';
-import {corridorPoints} from '../lib/offlineCorridor';
+import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
@@ -20,8 +20,8 @@ export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
-  const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[preparingStart,setPreparingStart]=useState(false),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
-  const offlineGeneration=useRef(0),spoken=useRef(new Set()),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
+  const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
+  const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
   destRef.current=dest;
@@ -298,19 +298,32 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  cachePosition.current=userCoords;
   useEffect(()=>{if(!navMode||!hasLiveGPS||!route?.geometry)return;const timeline=buildRouteTimeline(route.geometry);if(!timeline.total)return;const meters=distanceOnRoute(timeline,userCoords);setGuidance({...nextManeuver(route,timeline,meters),progress:meters/timeline.total,preview:false,finished:false});},[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
   // remaining minutes and kilometers shrink only as route progress is reported.
   const navigationStats=navMode?navigationSummary(route,guidance,Date.now()):null;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
   useEffect(()=>{
-    if(!route||navigator.onLine===false||!isNativeShell())return;
-    const id=++offlineGeneration.current;
-    setOfflineMap({status:'saving',key:route.id});
-    const timer=setTimeout(()=>{try{if(!notifyNative({action:'prepareMap',id,points:corridorPoints(route.geometry)}))setOfflineMap({status:'partial',key:route.id});}catch{setOfflineMap({status:'partial',key:route.id});}},250);
-    const timeout=setTimeout(()=>{setOfflineMap(v=>v.status==='saving'?{...v,status:'partial'}:v);},180000);
-    return()=>{clearTimeout(timer);clearTimeout(timeout);};
-  },[route?.id,route?.geometry,layer]);
+    if(!navMode||!route?.geometry||!isNativeShell())return;
+    let stopped=false,lastSection=-1;
+    const prepareAhead=()=>{
+      if(stopped||!active||navigator.onLine===false)return;
+      const {points,section}=upcomingCorridor(route.geometry,cachePosition.current);
+      if(points.length<2||section<0||section===lastSection)return;
+      lastSection=section;
+      const id=++offlineGeneration.current;
+      setOfflineMap({status:'saving',key:route.id});
+      try{
+        if(!notifyNative({action:'prepareMap',id,points}))
+          setOfflineMap({status:'partial',key:route.id});
+      }catch{setOfflineMap({status:'partial',key:route.id});}
+    };
+    // Navigation starts on the same tap; optional tile downloads begin AFTER the HUD.
+    const start=setTimeout(prepareAhead,1600);
+    const pulse=setInterval(prepareAhead,14000);
+    return()=>{stopped=true;clearTimeout(start);clearInterval(pulse);};
+  },[navMode,route?.id,route?.geometry,layer,active]);
   useEffect(()=>{
     if(!navMode||!route||!dest)return;
     const options=JSON.stringify([muted,layer,offlineMap.status,spokenRevision]);
@@ -328,17 +341,15 @@ export default function MapPage({active=true}){
   },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language]);
   async function begin(){
     if(!route||!dest)return;
-    if(isNativeShell()&&offlineMap.status==='saving'){setPreparingStart(true);return;}
     spoken.current.clear();
     // A manual origin only plans a route: navigation needs a recent real GPS fix.
     if(!hasLiveGPS){requestGPS(true);return;}
     setGuidance(null);setNavMode(true);setSheetOpen(false);
-    if(isNativeShell()&&offlineMap.status!=='ready')setToast('O mapa não terminou de baixar. Áreas ainda não salvas podem exigir conexão.');
-    try{await saveTrip({destination:dest,routeType:choice,duration:route.duration,distance:route.distance,proof:route.proof});}
-    catch(e){console.warn('VANO navigation history:',e?.message||e);}
+    // Persist history asynchronously, without blocking GPS, camera, or the navigation HUD.
+    void saveTrip({destination:dest,routeType:choice,duration:route.duration,distance:route.distance,proof:route.proof})
+      .catch(e=>console.warn('VANO navigation history:',e?.message||e));
   }
-  function reset(){deleteOffline('active-trip');notifyNative({action:'stopSpeech'});setPreparingStart(false);spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
-  useEffect(()=>{if(preparingStart&&offlineMap.status!=='saving'){setPreparingStart(false);begin();}},[preparingStart,offlineMap.status]);
+  function reset(){deleteOffline('active-trip');notifyNative({action:'stopSpeech'});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Debounced deviation reroute: only on good GPS with sustained off-route signal.
   useEffect(()=>{
@@ -410,7 +421,7 @@ export default function MapPage({active=true}){
     </div>}
     {!searchOpen&&<div className="map-controls"><button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button><button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>{navMode&&<button title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}</div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
-      {loadingRoute?<div className="route-loader"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><p className="route-caution"><Info size={16}/>{t(routeData.safetyMessage)}</p><p className="route-offline-status" role="status">{offlineMap.status==='saving'?'Salvando o mapa do trajeto no celular…':offlineMap.status==='ready'?'Mapa do trajeto salvo no celular':isNativeShell()?'Rota disponível; download do mapa incompleto':''}</p><button className="btn btn-primary start-btn" onClick={begin} disabled={preparingStart}><Navigation size={20}/> {preparingStart?'Preparando para seguir sem internet…':t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
+      {loadingRoute?<div className="route-loader"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><p className="route-caution"><Info size={16}/>{t(routeData.safetyMessage)}</p><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
     {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">

@@ -1,6 +1,8 @@
 package com.vano.maps.fluidez;
 import android.content.Context;
 import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.NetworkCapabilities;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import org.json.*;
@@ -11,6 +13,7 @@ import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.*;
 import java.util.zip.GZIPInputStream;
 
@@ -21,14 +24,16 @@ public final class OfflineCache {
     private static final long LIMIT=256L*1024*1024;
     private final File dir;
     private final String host;
+    private final Context context;
     private final Set<String> pinned=Collections.newSetFromMap(new ConcurrentHashMap<String,Boolean>());
     private final ConcurrentHashMap<String,Object> locks=new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String,Integer> tileTemplates=new ConcurrentHashMap<>();
     private final AtomicInteger failures=new AtomicInteger();
+    private final AtomicBoolean preparationBusy=new AtomicBoolean(false);
     private final ExecutorService coordinator=Executors.newSingleThreadExecutor();
-    private final ExecutorService downloads=Executors.newFixedThreadPool(4);
+    private final ExecutorService downloads=Executors.newSingleThreadExecutor();
     private static final Pattern TILE=Pattern.compile("/(\\d+)/(\\d+)/(\\d+)([^/]*\\.(?:pbf|webp|png|jpg[^/?]*))(?:\\?|$)");
-    public OfflineCache(Context context,String host){this.host=host;dir=new File(context.getFilesDir(),"map-resources-v1");dir.mkdirs();loadPins();}
+    public OfflineCache(Context context,String host){this.context=context;this.host=host;dir=new File(context.getFilesDir(),"map-resources-v1");dir.mkdirs();loadPins();}
     static String canonical(String raw){
         URI uri=URI.create(raw);
         if("api.mapbox.com".equals(uri.getHost())){
@@ -46,9 +51,65 @@ public final class OfflineCache {
         if("fonts.googleapis.com".equals(h)||"fonts.gstatic.com".equals(h))return true;
         return "api.mapbox.com".equals(h)&&!p.startsWith("/events")&&(p.startsWith("/v4/")||p.startsWith("/styles/v1/")||p.startsWith("/fonts/v1/"));
     }
+    private boolean isDisconnected(){
+        try{
+            ConnectivityManager cm=(ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if(cm==null)return false;
+            android.net.Network network=cm.getActiveNetwork();
+            NetworkCapabilities caps=network==null?null:cm.getNetworkCapabilities(network);
+            return caps==null||!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        }catch(Exception e){return false;}
+    }
+    private WebResourceResponse savedShell(Uri uri){
+        if(!host.equals(uri.getHost())||!"https".equalsIgnoreCase(uri.getScheme()))return null;
+        String path=uri.getPath();
+        if(path==null||(!path.equals("/")&&!SHELL_PATHS.contains(path)))return null;
+        try{
+            for(String candidate:new String[]{uri.toString(),"https://"+host+"/","https://"+host+"/mapa"}){
+                String id=key(candidate);
+                JSONObject m=metadata(id);
+                if(m!=null && "text/html".equalsIgnoreCase(m.optString("mime")))return read(id,m);
+            }
+        }catch(Exception ignored){}
+        return null;
+    }
+    public void primeShell(){
+        coordinator.execute(()->{
+            // A SPA requires JavaScript/CSS as well as HTML to resume offline.
+            Set<String> assets=new LinkedHashSet<>();
+            Pattern refs=Pattern.compile("(?:src|href)=[\\\"'](/(?:assets|vano-)[A-Za-z0-9_./-]+)[\\\"']");
+            for(String page:new String[]{"/","/mapa"}){
+                WebResourceResponse response=load("https://"+host+page,Collections.emptyMap(),false);
+                if(response==null)continue;
+                try{
+                    String html=new String(bytes(response.getData(),2*1024*1024),StandardCharsets.UTF_8);
+                    Matcher m=refs.matcher(html);
+                    while(m.find()&&assets.size()<24)assets.add(m.group(1));
+                }catch(Exception ignored){}
+            }
+            for(String asset:assets){
+                WebResourceResponse resource=load("https://"+host+asset,Collections.emptyMap(),false);
+                if(resource!=null)try{resource.getData().close();}catch(Exception ignored){}
+            }
+        });
+    }
     public WebResourceResponse intercept(WebResourceRequest request){
-        if(!"GET".equals(request.getMethod())||!eligible(request.getUrl()))return null;
-        return load(request.getUrl().toString(),request.getRequestHeaders(),false);
+        if(!"GET".equals(request.getMethod()))return null;
+        if(request.isForMainFrame()){
+            // Online HTML navigation belongs to WebView so OAuth and session cookies
+            // follow Chromium's normal redirect and origin policy.
+            return isDisconnected()?savedShell(request.getUrl()):null;
+        }
+        if(!eligible(request.getUrl()))return null;
+        String url=request.getUrl().toString();
+        // Observe the real Mapbox requests so the asynchronous corridor cache
+        // knows each permitted tile template. Never block the WebView renderer.
+        if(url.contains("/v4/"))observeTiles(url,"",new byte[0]);
+        if(!isDisconnected())return null;
+        try{
+            String id=key(url);JSONObject metadata=metadata(id);
+            return metadata==null?null:cached(id,metadata,url,false);
+        }catch(Exception e){return null;}
     }
     private WebResourceResponse load(String url,Map<String,String> requestHeaders,boolean preparation){
         HttpURLConnection connection=null;String id;
@@ -102,16 +163,34 @@ public final class OfflineCache {
         if(mime.contains("json")){try{JSONObject data=new JSONObject(new String(body,StandardCharsets.UTF_8));if(data.has("tilejson")){JSONArray tiles=data.optJSONArray("tiles");if(tiles!=null)for(int i=0;i<tiles.length();i++){String t=tiles.getString(i);if(t.startsWith("https://api.mapbox.com/")&&!t.contains("{sku"))tileTemplates.put(t,data.optInt("maxzoom",14));}}}catch(Exception ignored){}}
     }
     public void prepare(double[][] points,PreparationListener done){
+        // A new GPS fix must never queue hundreds of outstanding downloads.
+        if(!preparationBusy.compareAndSet(false,true)){done.accept(-1);return;}
         coordinator.execute(()->{
-            failures.set(0);pinned.clear();
-            // Preserve every downloaded app/style/font resource, not only new corridor tiles.
-            File[] existing=dir.listFiles((d,n)->n.endsWith(".body"));if(existing!=null)for(File f:existing)if(metadata(f.getName().replace(".body",""))!=null&&metadata(f.getName().replace(".body","" )).optBoolean("essential"))pinned.add(f.getName().replace(".body",""));
-            Map<String,Integer> templates=new HashMap<>(tileTemplates);
-            if(templates.isEmpty()){done.accept(-1);return;}
-            Set<String> urls=new LinkedHashSet<>();try{for(Map.Entry<String,Integer> e:templates.entrySet())for(String tile:TileCorridor.tiles(points,e.getValue(),1200)){String[] at=tile.split("/");urls.add(e.getKey().replace("{z}",at[0]).replace("{x}",at[1]).replace("{y}",at[2]));}if(urls.size()>1600)throw new IllegalArgumentException();}catch(Exception e){done.accept(-1);return;}
-            List<Future<Boolean>> tasks=new ArrayList<>();for(String url:urls)tasks.add(downloads.submit(()->{WebResourceResponse r=load(url,new HashMap<String,String>(){{put("Referer","https://"+host+"/mapa");put("Origin","https://"+host);}},true);if(r==null)return false;try{r.getData().close();}catch(Exception ignored){}return true;}));
-            boolean complete=true;for(Future<Boolean> future:tasks)try{complete&=future.get(180,TimeUnit.SECONDS);}catch(Exception e){complete=false;}
-            savePins();done.accept(complete&&failures.get()==0?urls.size():-1);
+            try{
+                failures.set(0);
+                Map<String,Integer> templates=new HashMap<>(tileTemplates);
+                if(templates.isEmpty()){done.accept(-1);return;}
+                // Small, bounded, lower-priority corridor. Renderer connections
+                // always run in Chromium; this work occupies only one downloader.
+                Set<String> urls=new LinkedHashSet<>();
+                int each=Math.max(8,64/Math.max(1,templates.size()));
+                for(Map.Entry<String,Integer> e:templates.entrySet()){
+                    for(String tile:TileCorridor.progressiveTiles(points,e.getValue(),each)){
+                        String[] at=tile.split("/");
+                        urls.add(e.getKey().replace("{z}",at[0]).replace("{x}",at[1]).replace("{y}",at[2]));
+                    }
+                }
+                boolean complete=true;int cached=0;
+                for(String url:urls){
+                    if(Thread.currentThread().isInterrupted())break;
+                    WebResourceResponse r=load(url,Collections.singletonMap("Referer","https://"+host+"/mapa"),true);
+                    if(r!=null){cached++;try{r.getData().close();}catch(Exception ignored){}}
+                    else complete=false;
+                }
+                savePins();
+                done.accept(complete&&failures.get()==0?cached:-1);
+            }catch(Exception ignored){done.accept(-1);}
+            finally{preparationBusy.set(false);}
         });
     }
     public void close(){coordinator.shutdownNow();downloads.shutdownNow();}
