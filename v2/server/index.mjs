@@ -11,7 +11,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
-import { queryPlaces, queryNearbyCategory } from './search-provider.mjs';
+import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
@@ -283,18 +283,6 @@ async function directions(originPoint, destination, vehicle = 'carro', telemetry
   if (production) throw new HttpError(503, 'Roteamento não configurado.');
   return demoRoutes(originPoint, destination, vehicle);
 }
-async function previewDirections(originPoint,destination,telemetry,language,options={}){
-  const vehicles=['carro','moto','a-pe'];
-  const settled=await Promise.allSettled(vehicles.map(async vehicle=>[vehicle,await directions(originPoint,destination,vehicle,telemetry,language,options)]));
-  const modes={};
-  settled.forEach((entry,index)=>{
-    const vehicle=vehicles[index];
-    modes[vehicle]=entry.status==='fulfilled'
-      ?{status:'ready',data:entry.value}
-      :{status:'unavailable',message:'Não foi possível calcular esta opção agora.'};
-  });
-  return {modes};
-}
 function signedRouteProof(route, dest, ownerId) {
   if (!['fast','safe'].includes(route.id) || !Number.isFinite(route.duration) || route.duration<=0 || route.duration>10080 || !Number.isFinite(route.distance) || route.distance<=0 || route.distance>3000) return null;
   return signedToken(secret, {type:'trip',nonce:hex(12),user:ownerId,kind:route.id,dest,mins:route.duration,km:route.distance,expires:now()+10*60*1000});
@@ -529,19 +517,6 @@ async function route(req, res) {
     const proximity=u.searchParams.has('lng')&&u.searchParams.has('lat')&&pointOK([lon,lat])?[lon,lat]:null;
     return json(res,200,await search(u.searchParams.get('q'),lang,proximity));
   }
-  if (pathname === '/api/nearby' && req.method === 'GET') {
-    if (!limits(req,res,'nearby-category',24,60000)) return;
-    const category=u.searchParams.get('category');
-    const lon=Number(u.searchParams.get('lng')),lat=Number(u.searchParams.get('lat'));
-    if(!pointOK([lon,lat]))return err(res,400,'Localização inválida para busca próxima.');
-    const access=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
-    if(!access)return err(res,503,'Busca de lugares próximos indisponível nesta instância.');
-    const detected=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1');
-    const lang=normalizeLocale(u.searchParams.get('lang'))||prefFor(owner(req),detected.language).language;
-    const result=await queryNearbyCategory(category,[lon,lat],{token:access,language:lang,limit:5,radiusMeters:15000});
-    if(!result.providerOk)return err(res,503,'Não foi possível encontrar lugares próximos agora.');
-    return json(res,200,result.results,{'Cache-Control':'private, max-age=30'});
-  }
   if (pathname === '/api/route' && req.method === 'POST') {
     if (!limits(req,res,'route',10,60000)) return;
     const id=owner(req);const body=await getBody(req);
@@ -568,24 +543,6 @@ async function route(req, res) {
     catch(e){runtimeMetrics.routeErrors+=1;throw e;}
     finally {runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
-    return json(res,200,result);
-  }
-  if (pathname === '/api/route-preview' && req.method === 'POST') {
-    if (!limits(req,res,'route-preview',6,60000)) return;
-    const id=owner(req),body=await getBody(req);
-    if (!pointOK(body.origin)||!pointOK(body.destination)) return err(res,400,'Origem ou destino inválidos.');
-    const t=body.telemetry&&typeof body.telemetry==='object'?body.telemetry:{};
-    const telemetry={bearing:typeof t.bearing==='number'&&t.bearing>=0&&t.bearing<360?t.bearing:null,speed:typeof t.speed==='number'&&t.speed>=0&&t.speed<90?t.speed:null};
-    const language=normalizeLocale(body.language)||prefFor(id,getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language).language;
-    runtimeMetrics.routeRequests+=3;
-    const routeStarted=performance.now();
-    let result;
-    try{result=await previewDirections(body.origin,body.destination,telemetry,language,{adaptive:true,variantBudget:4});}
-    catch(e){runtimeMetrics.routeErrors+=1;throw e;}
-    finally{runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
-    Object.values(result.modes).forEach(mode=>{
-      if(mode.status==='ready'&&mode.data?.source!=='demonstracao') for(const route of mode.data.routes||[]) route.proof=signedRouteProof(route,body.destination,id);
-    });
     return json(res,200,result);
   }
   if (pathname === '/api/auth/signup' && req.method === 'POST') {

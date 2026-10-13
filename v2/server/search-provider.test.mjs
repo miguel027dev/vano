@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isBrazilianCep,cepToSearchAddress,normalizedPlaces,queryPlaces,queryNearbyCategory} from './search-provider.mjs';
+import {isBrazilianCep,cepToSearchAddress,normalizedPlaces,queryPlaces} from './search-provider.mjs';
 const feature=(name,id,lng=-46.72,lat=-23.58,street='São Paulo')=>({type:'Feature',properties:{name,mapbox_id:id,place_formatted:street},geometry:{type:'Point',coordinates:[lng,lat]}});
 test('CEP parser only accepts complete eight-digit Brazilian postcodes',()=>{
   assert.equal(isBrazilianCep('05659-000'),true);
@@ -30,14 +30,4 @@ test('shop names are ranked behind an exact matching shopping center',async()=>{
 });
 test('provider response without coordinates is not selectable',()=>{
   assert.deepEqual(normalizedPlaces({features:[{properties:{name:'Nothing'},geometry:{coordinates:null}}]}),[]);
-});
-test('nearby category returns only places inside the requested local radius',async()=>{
-  const fetcher=async url=>({ok:true,json:async()=>({features:[
-    feature('Hospital perto','near',-46.720,-23.580,'São Paulo'),
-    feature('Hospital distante','far',-46.200,-23.580,'Outra cidade')
-  ]})});
-  const result=await queryNearbyCategory('hospital',[-46.72,-23.58],{token:'pk.test',radiusMeters:15000,fetcher});
-  assert.equal(result.providerOk,true);
-  assert.deepEqual(result.results.map(x=>x.name),['Hospital perto']);
-  assert.match(String(result.results[0].distanceMeters),/^0$/);
 });
