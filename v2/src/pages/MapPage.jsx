@@ -8,6 +8,7 @@ import {startGpsSession} from '../lib/gpsSession';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
+import { navigationSummary,arrivalClock } from '../lib/navigationSummary';
 import { useVano } from '../context';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage(){
@@ -282,6 +283,10 @@ export default function MapPage(){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  // The map supplies actual on-route GPS progress. Clock time follows the local device,
+  // remaining minutes and kilometers shrink only as route progress is reported.
+  const navigationStats=navMode?navigationSummary(route,guidance,Date.now()):null;
+  const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
   async function begin(){
     if(!route||!dest)return;
     // A manual origin only plans a route: navigation needs a recent real GPS fix.
@@ -371,7 +376,25 @@ export default function MapPage(){
       </div>
       <Link className="circle-btn v36-nav-report" to="/relatar" title="Registrar alerta" aria-label="Registrar alerta"><AlertTriangle size={19} strokeWidth={1.9}/></Link>
     </div>}
-    {navMode&&<div className="nav-bottom"><div className="nav-summary"><span><strong>{fmtTime(route?.duration)}</strong><small>{fmtKm(route?.distance,language)} · {t(choice==='safe'?'Mais segura':'Mais rápida')}</small></span></div>{recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}{!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}{demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}<button className="btn btn-primary" onClick={reset}><X size={18}/> {t('Encerrar navegação')}</button></div>}
+    {navMode&&<div className="nav-bottom v37-nav-bottom" aria-label="Resumo da navegação">
+      <span className="v37-nav-handle" aria-hidden="true"/>
+      <div className="nav-summary v37-nav-summary">
+        <button type="button" className="circle-btn v37-nav-end" onClick={reset} aria-label="Encerrar navegação" title="Encerrar navegação"><X size={22} strokeWidth={2}/></button>
+        <div className="v37-nav-center">
+          <span className="sr-only">Previsão de chegada</span>
+          <time className="v37-nav-arrival" dateTime={navigationStats?.arrivalAt?.toISOString()}>{estimatedArrival}</time>
+          <div className="v37-nav-meta" aria-label="Tempo e distância restantes">
+            <span>{navigationStats?fmtTime(navigationStats.remainingMinutes):'-- min'}</span>
+            <span className="v37-nav-bullet" aria-hidden="true"/>
+            <span>{navigationStats?fmtKm(navigationStats.remainingKm,language):'-- km'}</span>
+          </div>
+        </div>
+        <span className="v37-nav-balance" aria-hidden="true"/>
+      </div>
+      {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
+      {!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
+      {demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}
+    </div>}
     
   </div>
 }
