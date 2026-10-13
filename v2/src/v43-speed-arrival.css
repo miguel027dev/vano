@@ -1,0 +1,87 @@
+/* VANO Map 4.3 — no gauge arc, no unnecessary speed readout animation.
+   Reuses the existing right-hand control stack / measured bottom clearance. */
+.map-page .map-controls .v43-speedometer{
+ box-sizing:border-box;
+ flex:0 0 66px;
+ align-self:center;
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:0;
+ width:66px;
+ min-width:66px;
+ height:66px;
+ margin:0;
+ padding:5px 3px;
+ border-radius:50%;
+ border:1px solid #e4e9e6;
+ background:#fff;
+ color:#1a2b33;
+ box-shadow:0 4px 16px #172b3425,0 1px 3px #172b340b;
+ pointer-events:none;
+ user-select:none;
+ font-variant-numeric:tabular-nums lining-nums;
+ font-family:'DM Sans',system-ui,-apple-system,sans-serif;
+}
+.map-page .map-controls .v43-speedometer strong{
+ display:block;
+ margin:0;
+ font-size:clamp(22px,5.8vw,27px);
+ line-height:1.04;
+ font-weight:800;
+ letter-spacing:-.06em;
+ color:#182632;
+}
+.map-page .map-controls .v43-speedometer small{
+ display:block;
+ margin-top:2px;
+ font-size:10px;
+ line-height:1.15;
+ font-weight:700;
+ letter-spacing:.005em;
+ color:#76838b;
+}
+.map-page .map-controls{align-items:center}
+.map-page .map-pin-destination.vano-arrival-marker{
+ position:relative;
+ display:block;
+ box-sizing:border-box;
+ width:52px;
+ height:64px;
+ min-width:52px;
+ padding:0;
+ border:0;
+ border-radius:0;
+ background:none;
+ line-height:normal;
+ font-size:0;
+ color:inherit;
+ text-align:initial;
+ box-shadow:none;
+ pointer-events:none;
+ filter:drop-shadow(0 3px 4px #25323d30);
+}
+.map-page .map-pin-destination.vano-arrival-marker::before,
+.map-page .map-pin-destination.vano-arrival-marker::after{content:none;display:none}
+.map-page .vano-arrival-marker .vano-arrival-svg{display:block;width:52px;height:64px;max-width:none}
+.vano-arrival-leaflet-icon{background:none!important;border:0!important;overflow:visible!important}
+@media(max-width:390px){
+ .map-page .map-controls .v43-speedometer{
+  width:60px;min-width:60px;height:60px;flex-basis:60px;
+ }
+ .map-page .map-controls .v43-speedometer strong{font-size:23px}
+ .map-page .map-controls .v43-speedometer small{font-size:9px}
+}
+@media(max-height:540px) and (orientation:landscape){
+ /* Existing map controls are hidden in short landscape navigation views.
+    Keep this tiny speed indication only, without restoring bulky controls. */
+ .map-page.in-navigation .map-controls{display:flex}
+ .map-page.in-navigation .map-controls>.circle-btn{display:none}
+ .map-page.in-navigation .map-controls .v43-speedometer{
+  width:54px;min-width:54px;height:54px;flex-basis:54px;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .map-page .v43-speedometer,.map-page .vano-arrival-marker{animation:none;transition:none}
+}
