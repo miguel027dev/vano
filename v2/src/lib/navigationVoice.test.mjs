@@ -31,7 +31,7 @@ test('native bridge is primary; broken Android bridge falls back to browser audi
   sendNative:message=>{commands.push(message);return true;},scope});
  assert.equal(native.channel,'native');
  assert.equal(synth.spoken.length,0,'avoid double audio on native device');
- assert.deepEqual(commands[0],{action:'speak',text:'À droite.',language:'fr-FR'});
+ assert.deepEqual(commands[0],{action:'speak',text:'À droite.',lang:'fr-FR',language:'fr-FR'});
  const fallback=speakNavigationVoice('Turn left.','en-US',{
   native:true,sendNative:()=>false,scope});
  assert.equal(fallback.channel,'web');
