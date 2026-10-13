@@ -22,8 +22,12 @@ export function computeSafeViewport({width,height,overlays=[],navigation=false,m
   const horizontal=clamp(w*.06,14,28);
   const padding={top:Math.round(top),bottom:Math.round(bottom),left:Math.round(horizontal),right:Math.round(horizontal)};
   const centerY=(padding.top+h-padding.bottom)/2;
-  return {padding,centerY,compact:h-padding.top-padding.bottom<170,
-    markerRadius:guard,mode:navigation?'navigating':'free'};
+  const visibleHeight=Math.max(0,h-padding.top-padding.bottom);
+  // Pixel clearance behind the projected GPS arrow. Camera look-ahead is
+  // bounded by this, preventing high-speed follow from pushing it under cards.
+  const maxBehindPx=Math.max(0,visibleHeight/2-guard);
+  return {padding,centerY,visibleHeight,maxBehindPx,
+    compact:visibleHeight<170,markerRadius:guard,mode:navigation?'navigating':'free'};
 }
 
 /** Monitor projected marker vs. interface obstacles without adjusting GPS coordinates. */
