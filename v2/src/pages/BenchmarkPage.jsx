@@ -64,7 +64,9 @@ function BenchmarkMap({rows}){
    if(cancelled||!root.current)return;
    const L=module.default||module;
    const map=L.map(root.current,{zoomControl:true,scrollWheelZoom:false,attributionControl:true}).setView([-23.586,-46.675],11);
-   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+   const publicToken=import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+   const mapTiles=publicToken?'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/512/{z}/{x}/{y}?access_token='+encodeURIComponent(publicToken):'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+   L.tileLayer(mapTiles,{maxZoom:19,...(publicToken?{tileSize:512,zoomOffset:-1}:{}),attribution:publicToken?'&copy; Mapbox &copy; OpenStreetMap contributors':'&copy; OpenStreetMap contributors'}).addTo(map);
    const layer=L.featureGroup().addTo(map);
    instance.current={L,map,layer};setReady(true);
   }).catch(()=>{if(!cancelled)setFailed(true);});
