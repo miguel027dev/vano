@@ -57,7 +57,8 @@ test('map layer retains tile discoveries and only displays outage when no source
  assert.match(overlay,/const stableTileCache=new Map\(\)/);
  assert.match(overlay,/rememberMapFeatures\(stableTileCache,local\)/);
  assert.match(overlay,/cachedMapFeatures\(stableTileCache\)/);
- assert.match(overlay,/if\(!changed\)return/);
+ assert.match(overlay,/if\(!mapTilesItems\.length\)return/);
+ assert.match(overlay,/mergeSources\(\);render\(\)/);
  assert.match(overlay,/setNotice\(data\?\.error&&items\.length===0/);
  assert.match(overlay,/setNotice\(items\.length===0\?/);
  assert.match(overlay,/stableTileCache\.clear\(\)/);
