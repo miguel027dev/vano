@@ -283,7 +283,7 @@
 
 /* VANO navigation street capsule — white-mode refinement.
    Street label is centered on the VIEWPORT, not centered between two controls.
-   The existing report action is on the right; no left-hand control is added.
+   Speed stays on the left; map controls use the space on the right.
    Height of the bottom dock comes from ResizeObserver in MapPage. */
 .map-page.in-navigation .v36-nav-road-row{
   position:absolute;
@@ -327,17 +327,13 @@
   letter-spacing:-.025em;
 }
 .map-page.in-navigation .v36-nav-report{
-  position:absolute;
-  right:0;
-  top:50%;
-  translate:0 -50%;
-  pointer-events:auto;
-  /* Keep the existing circle-btn theme, 19px AlertTriangle and /relatar action. */
+  justify-self:end;
+  /* The report action shares the ETA grid with the end-navigation button. */
 }
 .map-page.in-navigation .map-controls{
-  /* Leave a gap above the street capsule so the three existing map controls
-     never cover the reporting button during navigation. */
-  bottom:calc(var(--v36-nav-dock-height,180px) + 13px + 58px + 16px);
+  /* The lowest control uses the vacated right-hand side of the street row.
+     Follow the measured dock height, including GPS and voice notices. */
+  bottom:calc(var(--v36-nav-dock-height,180px) + 16px);
 }
 @media(max-width:360px){
   .map-page.in-navigation .v36-nav-road-pill{padding:8px 10px}
@@ -349,7 +345,7 @@
 }
 
 /* VANO Arrival Dock 3.7 — light mode. The ETA is centered relative to the
-   viewport, with a single 48px close target at left and equal empty space at right.
+   viewport, with matching 48px end and report targets on either side.
    No extra route-option controls are invented while navigation is active. */
 .map-page.in-navigation .nav-bottom.v37-nav-bottom{
   background:#fff;
@@ -377,7 +373,8 @@
   min-height:82px;
   margin:0;
 }
-.map-page.in-navigation .v37-nav-end{
+.map-page.in-navigation .v37-nav-end,
+.map-page.in-navigation .v36-nav-report{
   width:48px;
   min-width:48px;
   height:48px;
@@ -387,7 +384,8 @@
   color:#24302d;
   box-shadow:0 3px 12px #1b302717;
 }
-.map-page.in-navigation .v37-nav-end:focus-visible{
+.map-page.in-navigation .v37-nav-end:focus-visible,
+.map-page.in-navigation .v36-nav-report:focus-visible{
   outline:3px solid #f0aa82;
   outline-offset:3px;
 }
@@ -428,12 +426,6 @@
   background:#aab3b0;
   border-radius:50%;
 }
-.map-page.in-navigation .v37-nav-balance{
-  display:block;
-  width:48px;
-  height:48px;
-  pointer-events:none;
-}
 .map-page.in-navigation .v37-nav-bottom .nav-demo,
 .map-page.in-navigation .nav-bottom.v37-nav-bottom .nav-demo{
   margin:9px 3px 0;
@@ -448,7 +440,7 @@
     column-gap:4px;
   }
   .map-page.in-navigation .v37-nav-end,
-  .map-page.in-navigation .v37-nav-balance{width:44px;min-width:44px;height:44px}
+  .map-page.in-navigation .v36-nav-report{width:44px;min-width:44px;height:44px}
   .map-page.in-navigation .v37-nav-center{gap:8px}
   .map-page.in-navigation .v37-nav-meta{font-size:12px;gap:7px}
 }
@@ -462,7 +454,8 @@
   .map-page.in-navigation .v37-nav-center{gap:4px}
 }
 @media(prefers-reduced-motion:reduce){
-  .map-page.in-navigation .v37-nav-end{transition:none}
+  .map-page.in-navigation .v37-nav-end,
+  .map-page.in-navigation .v36-nav-report{transition:none}
 }
 
 /* VANO Atlas 3.8 — first GPS fix is private and doesn't pan from a demo city.

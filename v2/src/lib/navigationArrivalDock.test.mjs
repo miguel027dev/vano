@@ -21,8 +21,8 @@ test('the only end-navigation control is an accessible X on the left of the ETA'
  assert.ok(start>0&&end>start);
  const close=segment.indexOf('className="circle-btn v37-nav-end"');
  const center=segment.indexOf('className="v37-nav-center"');
- const balance=segment.indexOf('className="v37-nav-balance"');
- assert.ok(close>0&&center>close&&balance>center);
+ const report=segment.indexOf('className="circle-btn v36-nav-report"');
+ assert.ok(close>0&&center>close&&report>center);
  assert.match(segment,/onClick=\{reset\} aria-label="Encerrar navegação"/);
  assert.equal(view.split('aria-label="Encerrar navegação"').length-1,1);
  assert.ok(!segment.includes('btn btn-primary'));
