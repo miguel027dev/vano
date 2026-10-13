@@ -3,7 +3,7 @@ import android.content.Context;import android.net.Uri;import android.webkit.*;im
 public class OfflineCacheTest {
  static boolean offline=false;static int connections=0;static String control="no-cache";
  static class Connection extends HttpURLConnection {Connection(URL u){super(u);}public void connect(){}public void disconnect(){}public boolean usingProxy(){return false;}public int getResponseCode()throws IOException{connections++;if(offline)throw new IOException("no network");return 200;}public String getContentType(){return "application/javascript";}public String getHeaderField(String k){return k.equals("Cache-Control")?control:null;}public Map<String,List<String>> getHeaderFields(){return Map.of("Cache-Control",List.of(control));}public InputStream getInputStream(){return new ByteArrayInputStream(("content:"+url.getPath()).getBytes());}}
- static WebResourceRequest request(String url){return new WebResourceRequest(){public String getMethod(){return "GET";}public Uri getUrl(){return Uri.parse(url);}public Map<String,String> getRequestHeaders(){return Map.of();}};}
+ static WebResourceRequest request(String url){return new WebResourceRequest(){public boolean isForMainFrame(){return false;}public String getMethod(){return "GET";}public Uri getUrl(){return Uri.parse(url);}public Map<String,String> getRequestHeaders(){return Map.of();}};}
  static String read(WebResourceResponse r)throws Exception{if(r==null)throw new AssertionError("Expected cached resource");try(InputStream in=r.getData()){return new String(in.readAllBytes());}}
  static void check(boolean result,String message){if(!result)throw new AssertionError(message);}
  public static void main(String[] args)throws Exception{
