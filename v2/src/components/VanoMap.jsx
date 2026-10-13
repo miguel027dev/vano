@@ -4,6 +4,8 @@ import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,nearestOnRoute,nextRouteBearing,shouldFollowLocation,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
+import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
+import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
@@ -43,12 +45,16 @@ function motionController(map,latest,status){
   const following=()=>{const d=latest.current;return shouldFollowLocation({navigation:d.navigation,destination:d.destination,pickingOrigin:d.pickingOrigin,manualOrigin:d.manualOrigin,position:d.gpsCoords});};
   function target(){
     const d=latest.current;
-    const userHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry?.speed>1.5?d.motionBearing:null;
+    const userHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry?.speed>1.5&&d.telemetry?.accuracy<=75?d.motionBearing:null;
+    const route=d.navigation?(d.routes?.find(r=>r.id===d.selectedRoute)||d.routes?.[0]):null;
+    const viewport=d.viewport||{padding:{top:100,bottom:100,left:20,right:20},compact:false};
+    const maneuverPlan=planManeuverCamera({navigation:d.navigation,maneuver:d.guidance,route,
+      speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced});
     return cameraTarget({position:d.motionCoords||d.gpsCoords,
       destination:d.navigation?d.destination?.coords:null,
-      route:d.navigation?d.routes?.find(r=>r.id===d.selectedRoute):null,
+      route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),reducedMotion:reduced});
+      vehicle:d.vehicle,navigation:following(),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact});
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target();if(!t)return;const cameraHalfLife=reduced?85:300,pointHalfLife=reduced?90:360;
     const nextCenter=blendPoint(pose.center,t.center,dt,pointHalfLife);
@@ -56,10 +62,10 @@ function motionController(map,latest,status){
     const nextBearing=t.bearing==null?pose.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(reduced?90:320)));
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
     pose={center:nextCenter,zoom:nextZoom,pitch:nextPitch,bearing:nextBearing};
-    try{map.jumpTo({...pose,padding:{top:latest.current.navigation?135:60,bottom:latest.current.navigation?225:85,left:20,right:20}});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
+    try{map.jumpTo({...pose,padding:latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20}});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
     if(error>.005||now<completeAt){frame=requestAnimationFrame(draw);}else{active=false;status.current=t.state;}
   }
-  function start(){if(suspended||freeLook||!following())return;active=true;completeAt=performance.now()+650;if(!frame)frame=requestAnimationFrame(draw);}
+  function start(){if(suspended||freeLook||!following())return;if(!active)completeAt=performance.now()+650;active=true;if(!frame)frame=requestAnimationFrame(draw);}
   function setFree(){freeLook=true;active=false;cancelAnimationFrame(frame);frame=0;status.current=CAMERA_STATES.FREE;}
   function recenter(){freeLook=false;pose={center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()};status.current=CAMERA_STATES.RECENTER;previous=0;start();}
   function preview(){if(latest.current.navigation||freeLook)return;const d=latest.current;if(!d.destination?.coords||!d.routes?.length||!isLoaded(map))return;const selected=d.routes.find(x=>x.id===d.selectedRoute)||d.routes[0];const points=selected?.geometry?.coordinates||[coord(d.userCoords),d.destination.coords];if(!points.length)return;const bounds=new mapboxgl.LngLatBounds();points.filter(validPoint).forEach(p=>bounds.extend(p));if(!bounds.isEmpty()){map.stop();map.fitBounds(bounds,{padding:{top:180,bottom:Math.round(window.innerHeight*.4),left:55,right:55},maxZoom:14.8,duration:reduced?0:600});status.current=CAMERA_STATES.PREVIEW;}}
@@ -71,9 +77,10 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,awaitingInitialGps=false}){
+export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,guidance=null,awaitingInitialGps=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null);
+  const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
   function centerOnFirstGpsFix(){
     const map=mapRef.current,d=latest.current;
     if(!map||d.navigation||d.destination||validPoint(d.manualOrigin)||!validPoint(d.gpsCoords)||firstGpsCenter.current||motion.current?.freeLook||map._vanoFreeLook)return;
@@ -94,7 +101,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   }
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null;const initial=coord(latest.current.userCoords);
@@ -154,6 +161,43 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   // If GPS arrives before Mapbox is ready, the style.load handler performs
   // this same recenter as soon as the map can accept camera operations.
   useEffect(()=>{centerOnFirstGpsFix();},[userCoords?.[0],userCoords?.[1],telemetry?.accuracy,navigation,destination?.id]);
+
+  // Read overlays only on layout/ResizeObserver changes, never in the camera RAF.
+  // The viewport belongs to the MAP; a street card must not overlap the GPS arrow.
+  useEffect(()=>{
+    const mapEl=root.current,parent=mapEl?.closest('.map-page');
+    if(!mapEl||!parent)return;
+    const targets=navigation
+      ?[['.nav-instruction','top'],['.v36-nav-road-row','bottom'],['.nav-bottom','bottom']]
+      :[['.map-top','top'],['.v31-location-card','bottom']];
+    const nodes=targets.map(([selector,edge])=>({node:parent.querySelector(selector),edge})).filter(x=>x.node);
+    const measure=()=>{
+      if(!mapEl.isConnected)return;
+      const frame=mapEl.getBoundingClientRect();
+      if(frame.width<1||frame.height<1)return;
+      const overlays=nodes.filter(x=>{
+        const style=window.getComputedStyle?.(x.node);
+        return x.node.isConnected && style?.display!=='none' && style?.visibility!=='hidden';
+      }).map(({node,edge})=>{
+        const b=node.getBoundingClientRect();
+        return {edge,top:b.top-frame.top,bottom:b.bottom-frame.top};
+      });
+      const next=computeSafeViewport({width:frame.width,height:frame.height,overlays,navigation});
+      const prior=viewportRef.current;
+      const unchanged=prior?.compact===next.compact&&Object.keys(next.padding).every(k=>prior.padding[k]===next.padding[k]);
+      if(unchanged)return;
+      viewportRef.current=next;
+      latest.current.viewport=next;
+      motion.current?.start();
+    };
+    measure();
+    const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
+    observer?.observe(mapEl);
+    nodes.forEach(x=>observer?.observe(x.node));
+    window.addEventListener('resize',measure,{passive:true});
+    window.addEventListener('orientationchange',measure,{passive:true});
+    return()=>{observer?.disconnect();window.removeEventListener('resize',measure);window.removeEventListener('orientationchange',measure);};
+  },[navigation,Boolean(destination),Boolean(manualOrigin),pickingOrigin]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox')return;
@@ -255,8 +299,11 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
           if(arrow)arrow.style.transform='rotate('+(state.bearing||0)+'deg)';
           if(now-state.lastPaint>120&&!map._vanoFreeLook){
             state.lastPaint=now;
-            if(map.distance(map.getCenter(),L.latLng(ll(point)))>1.3)
-              map.panTo(ll(point),{animate:false});
+            const viewport=d.viewport?.padding||{top:0,bottom:0};
+            const offset=(viewport.bottom-viewport.top)/2;
+            const projected=map.project(L.latLng(ll(point)),map.getZoom());
+            const center=map.unproject(projected.add([0,offset]),map.getZoom());
+            if(map.distance(map.getCenter(),center)>1.3)map.panTo(center,{animate:false});
           }
         }else{
           if(map._vanoVehicleMarker){map._vanoVehicleMarker.remove();map._vanoVehicleMarker=null;}
