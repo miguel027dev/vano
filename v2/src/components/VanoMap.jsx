@@ -8,6 +8,7 @@ import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} 
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
+import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
 
 const START=[-46.6808,-23.5857];
@@ -17,7 +18,11 @@ const feature=r=>r?.geometry?.type==='LineString'&&r.geometry.coordinates?.lengt
 const geo=features=>({type:'FeatureCollection',features:features.filter(Boolean)});
 const markerElement=(kind,vehicle='carro')=>{
  const el=document.createElement('div');el.className=`map-pin map-pin-${kind}`;
- if(kind==='destination')el.textContent='⌖';
+ if(kind==='destination'){
+  // A single fixed SVG across Mapbox and Leaflet, anchored at the exact GPS destination.
+  el.className='map-pin-destination vano-arrival-marker';
+  el.innerHTML=arrivalMarkerSvg();
+ }
  if(kind==='vehicle') {
   // Procedural extruded SVG: a consistent 3D marker at every heading.
   // Both Mapbox and Leaflet reuse this single visual definition.
@@ -243,7 +248,14 @@ function paintLeaflet(map,data){
     if(flowPoints?.length>1)map._vanoFlowLine=L.polyline(flowPoints,{color:'#fff2df',weight:2,opacity:.62,dashArray:STATIC_LEAFLET_DASH,lineCap:'butt',interactive:false,className:'vano-v35-flow-leaflet'}).addTo(map);
   }
   map._vanoFlowLine?.bringToFront();
-  if(validPoint(data.destination?.coords))L.marker(ll(data.destination.coords),{icon:L.divIcon({className:'',html:'<div class="map-pin map-pin-destination">⌖</div>',iconSize:[30,30]})}).addTo(map._vanoLayer);
+  if(validPoint(data.destination?.coords)){
+    if(!map._vanoDestMarker){
+      map._vanoDestMarker=L.marker(ll(data.destination.coords),{interactive:false,icon:L.divIcon({
+        className:'vano-arrival-leaflet-icon',html:markerElement('destination').outerHTML,
+        iconSize:[ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT],iconAnchor:ARRIVAL_PIN_ANCHOR
+      })}).addTo(map);
+    }else map._vanoDestMarker.setLatLng(ll(data.destination.coords));
+  }else if(map._vanoDestMarker){map._vanoDestMarker.remove();map._vanoDestMarker=null;}
   if(data.destination?.coords&&data.routes?.length&&!data.navigation&&map._vanoFit!==data.destination.id){map._vanoFit=data.destination.id;const selected=data.routes.find(r=>r.id===data.selectedRoute)||data.routes[0];const pts=selected.geometry?.coordinates?.filter(validPoint);if(pts?.length)map.fitBounds(L.latLngBounds(pts.map(ll)),{padding:[60,60],maxZoom:14,animate:true});}
   if(!data.destination)map._vanoFit='';
 }
@@ -282,7 +294,7 @@ function paintMapbox(map,data,selection){
     map._vanoTraveledCleared=true;
   }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
-  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const type=key==='current'?(data.navigation?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:'center',rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
+  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const type=key==='current'?(data.navigation?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
   marker('current',data.motionCoords||data.userCoords);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
 }
