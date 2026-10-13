@@ -45,7 +45,8 @@ test('UI keeps local POIs on Overpass failure and refreshes tiles after camera i
  const app=readFileSync(new URL('../App.jsx',import.meta.url),'utf8');
  const html=readFileSync(new URL('../../index.html',import.meta.url),'utf8');
  assert.match(overlay,/readMapboxPoiFeatures\(map\)/);
- assert.match(overlay,/mapTilesItems=local;mergeSources\(\);render\(\)/);
+ assert.match(overlay,/rememberMapFeatures\(stableTileCache,local\)/);
+ assert.match(overlay,/mapTilesItems=cachedMapFeatures\(stableTileCache\)/);
  assert.match(overlay,/map\.on\('idle',updateVectorPoi\)/);
  assert.match(overlay,/map\.off\('idle',updateVectorPoi\)/);
  assert.match(overlay,/remoteItems=Array\.isArray/);
