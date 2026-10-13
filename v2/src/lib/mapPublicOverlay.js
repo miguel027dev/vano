@@ -38,6 +38,14 @@ export function attachPublicMapOverlay(map,backend){
  credit.rel='noopener noreferrer';credit.target='_blank';
  credit.textContent='© OpenStreetMap contributors · ODbL';
  credit.hidden=true;map.getContainer().append(credit);
+ const notice=document.createElement('button');
+ notice.type='button';
+ notice.className='v41-public-status';
+ notice.hidden=true;
+ notice.setAttribute('aria-label','Tentar carregar os pontos públicos novamente');
+ notice.addEventListener('click',()=>{latestKey='';lastRead=0;schedule();});
+ map.getContainer().append(notice);
+ function setNotice(message){notice.textContent=message;notice.hidden=!message;}
  function clear(){
   for(const entry of markers.values())entry.marker.remove();
   markers.clear();
@@ -50,7 +58,8 @@ export function attachPublicMapOverlay(map,backend){
  function render(){
   if(done)return;
   const zoom=map.getZoom();
-  const allowed=selectPublicPins(items,project,zoom,55);
+  const node=map.getContainer();
+  const allowed=selectPublicPins(items,project,zoom,55,{width:node.clientWidth,height:node.clientHeight});
   const current=new Set(allowed.map(x=>x.id));
   for(const [id,entry] of markers)if(!current.has(id)){entry.marker.remove();markers.delete(id);}
   for(const item of allowed){
@@ -78,7 +87,7 @@ export function attachPublicMapOverlay(map,backend){
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
-  if(!bbox){items=[];latestKey='';clear();credit.hidden=true;return;}
+  if(!bbox){items=[];latestKey='';clear();credit.hidden=true;setNotice('');return;}
   render();
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
@@ -90,10 +99,16 @@ export function attachPublicMapOverlay(map,backend){
    const data=await response.json();
    if(done||signal.signal.aborted)return;
    items=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
+   // Never silently show an empty map when the external data provider failed.
+   setNotice(data?.error?'Dados públicos indisponíveis · tentar novamente':'');
    latestKey=key;lastRead=Date.now();
    render();
   }catch(error){
-   if(error.name!=='AbortError'){lastRead=Date.now();latestKey=key;render();}
+   if(error.name!=='AbortError'){
+    // Do not suppress retries for 130 seconds after a transient failure.
+    lastRead=0;latestKey='';setNotice('Falha ao carregar pontos · tentar novamente');
+    console.warn('VANO public map:',error?.message||String(error));render();
+   }
   }
  }
  function visibility(){if(!document.hidden)schedule();}
@@ -110,6 +125,6 @@ export function attachPublicMapOverlay(map,backend){
   map.off('zoomend',schedule);
   if(backend==='mapbox')map.off('load',schedule);
   document.removeEventListener('visibilitychange',visibility);
-  clear();credit.remove();
+  clear();credit.remove();notice.remove();
  };
 }
