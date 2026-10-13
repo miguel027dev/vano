@@ -37,7 +37,8 @@ test('municipal feed includes only verified-fresh and accurately geolocated road
    geometry:{type:'Point',coordinates:[-46.71,-23.6]}}
  ]};
  const out=normalizeMunicipalTraffic(data,{bbox,now});
- assert.deepEqual(out.features.map(x=>x.properties.congestion),['low','moderate','heavy','severe']);
+ assert.deepEqual(out.features.map(x=>x.properties.congestion),['moderate','heavy','severe']);
+ assert.ok(out.features.every(x=>x.properties.congestion!=='low'), 'free-flow road segments are not displayed');
  assert.ok(out.features.every(x=>x.properties.source==='Fonte pública verificada'));
  assert.ok(out.features.every(x=>x.geometry.type==='LineString'));
  assert.ok(!JSON.stringify(out).includes('unknown'));
