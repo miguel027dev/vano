@@ -10,6 +10,7 @@ import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers'
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
+import {ensureTrafficLayers,setTrafficVisibility,TRAFFIC_SOURCE_ID} from '../lib/trafficLayers.js';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -60,7 +61,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,awaitingInitialGps=false}){
+export default function VanoMap({active=true,userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,awaitingInitialGps=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0);
   function centerOnFirstGpsFix(){
@@ -80,11 +81,20 @@ export default function VanoMap({active=true,userCoords,destination,routes=[],se
   }
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,userCoords,destination,routes,selectedRoute,navigation,layer,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,userCoords,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null;const initial=coord(latest.current.userCoords);
-    const report=e=>{if(!deleted){const message=e?.error?.message||e?.message||'';if(/Unauthorized|Forbidden|Invalid Token|Style not found/i.test(message))setError('Não foi possível carregar o estilo Mapbox. Verifique o token.');console.warn('Mapbox:',message);}};
+    const report=e=>{if(!deleted){
+   const message=e?.error?.message||e?.message||'';
+   const source=e?.sourceId||e?.source?.id||'';
+   if(source===TRAFFIC_SOURCE_ID||/mapbox-traffic-v1/i.test(message)){
+     latest.current.onTrafficStatus?.('unavailable');
+     return;
+   }
+   if(/Unauthorized|Forbidden|Invalid Token|Style not found/i.test(message))setError('Não foi possível carregar o estilo Mapbox. Verifique o token.');
+   console.warn('Mapbox:',message);
+ }};
     if(token){
       try{
         mapboxgl.accessToken=token;
@@ -93,7 +103,11 @@ export default function VanoMap({active=true,userCoords,destination,routes=[],se
         map.on('error',report);
         backend.current='mapbox';mapRef.current=map;
         motion.current=motionController(map,latest,status);
-        const update=()=>{if(deleted||!isLoaded(map))return;setError('');paintMapbox(map,latest.current,lastSelection);centerOnFirstGpsFix();if(latest.current.navigation)motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
+        const update=()=>{
+  if(deleted)return;
+  ensureTrafficLayers(map,{enabled:latest.current.trafficEnabled,onStatus:latest.current.onTrafficStatus});
+  if(!isLoaded(map))return;
+  setError('');paintMapbox(map,latest.current,lastSelection);centerOnFirstGpsFix();if(latest.current.navigation)motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
         map.on('style.load',update);
         map.on('load',()=>{update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
@@ -107,6 +121,7 @@ export default function VanoMap({active=true,userCoords,destination,routes=[],se
       const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
       tiles.once('load',()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'leaflet'});}));map._vanoTiles=tiles;map._vanoLayer=L.layerGroup().addTo(map);
       backend.current='leaflet';mapRef.current=map;
+       latest.current.onTrafficStatus?.('unavailable');
       paintLeaflet(map,latest.current);
       map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.([e.latlng.lng,e.latlng.lat]);});
     }
@@ -120,6 +135,12 @@ export default function VanoMap({active=true,userCoords,destination,routes=[],se
   // If GPS arrives before Mapbox is ready, the style.load handler performs
   // this same recenter as soon as the map can accept camera operations.
   useEffect(()=>{centerOnFirstGpsFix();},[userCoords?.[0],userCoords?.[1],telemetry?.accuracy,navigation,destination?.id]);
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||backend.current!=='mapbox')return;
+    if(!map.getSource?.(TRAFFIC_SOURCE_ID))ensureTrafficLayers(map,{enabled:trafficEnabled,onStatus:onTrafficStatus});
+    else setTrafficVisibility(map,trafficEnabled);
+  },[trafficEnabled]);
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(!active)motion.current?.suspend();else{if(backend.current==='mapbox')map.resize();else map.invalidateSize({animate:false});motion.current?.resume();}},[active]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(navigation)motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
