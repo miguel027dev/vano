@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Bike, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, CornerUpRight, Info, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, CornerUpLeft, ArrowUp, RotateCcw } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Bike, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, Info, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, RotateCcw } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
@@ -17,6 +17,8 @@ import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import {corridorPoints} from '../lib/offlineCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
+import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
+import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
@@ -443,6 +445,11 @@ export default function MapPage({active=true}){
   // Never render it on the initial map or next to the location card.
   const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`} aria-live="off" title={speedKmh===null?'Aguardando velocidade informada pelo GPS':'Velocidade medida pelo GPS'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small></output>;
 
+  const nextTurnText=maneuverText(guidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
+  const visualLanes=Array.isArray(guidance?.lanes)?guidance.lanes.map((lane,index)=>({
+    index,valid:lane?.valid===true,symbols:laneVariants(lane),
+  })).filter(lane=>lane.symbols.length):[];
+
   return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
     <VanoMap active={active} userCoords={origin} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(origin)} onNavigationProgress={setGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={preferences.vehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
@@ -468,7 +475,24 @@ export default function MapPage({active=true}){
         <button type="button" className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button>
       </div>
       </div></>}
-    </div> : <div className="nav-instruction v28-nav-instruction" aria-live="polite"><div className="turn-icon v28-turn-icon">{/left/.test(guidance?.modifier||'')?<CornerUpLeft size={35}/>: /right/.test(guidance?.modifier||'')?<CornerUpRight size={35}/>:<ArrowUp size={34}/>}</div><div className="v28-nav-copy" key={guidance?.instruction||'iniciar'}><strong>{guidance?.instruction||route?.steps?.[0]?.instruction||t('Continue até o destino')}</strong><span>{guidance?.distance>15?`${Math.round(guidance.distance)} m até a próxima indicação`:'Acompanhe a sinalização real'}</span>{guidance?.lanes?.length>0&&<div className="v28-lane-guidance" aria-label="Orientação de faixas disponível na rota">{guidance.lanes.map((lane,i)=><span key={i} className={lane.valid?'suggested':''} title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}>{lane.indications?.some(v=>v.includes('left'))?'↰':lane.indications?.some(v=>v.includes('right'))?'↱':'↑'}</span>)}</div>}</div><button className="circle-btn" onClick={toggleVoice} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button></div>}
+    </div> : <div className="nav-instruction v28-nav-instruction" aria-label="Instrução da próxima manobra">
+      <div className="turn-icon v28-turn-icon">
+        <ManeuverGlyph variant={maneuverVariant(guidance)} size={37}/>
+      </div>
+      <div className="v28-nav-copy" key={`${guidance?.stepIndex??'inicio'}:${guidance?.instruction||''}`}>
+        <strong className="v46-nav-distance" aria-live="off">{displayManeuverDistance(guidance?.distance,language)}</strong>
+        <span className="v46-nav-instruction-text" aria-live="polite">{nextTurnText.instruction}</span>
+        {nextTurnText.street&&<span className="v46-nav-street">{nextTurnText.street}</span>}
+        {visualLanes.length>0&&<div className="v28-lane-guidance" role="group" aria-label="Orientação de faixas da rota">
+          {visualLanes.map(lane=><span key={lane.index} className={`v46-lane ${lane.valid?'suggested':''}`}
+            title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}
+            role="img" aria-label={`Faixa ${lane.index+1}${lane.valid?', recomendada':''}: ${lane.symbols.join(' ou ')}`}>
+            {lane.symbols.map((symbol,index)=><ManeuverGlyph key={index} variant={symbol} size={21}/>)}
+          </span>)}
+        </div>}
+      </div>
+      <button className="circle-btn" onClick={toggleVoice} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
+    </div>}
     {!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking" role="status">
       <div className="gps-banner-heading"><MapPin size={20}/><strong>{t('Escolha sua origem')}</strong></div>
       <p>Toque em qualquer rua no mapa para marcar seu ponto de partida.</p>
