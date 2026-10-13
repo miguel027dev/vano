@@ -2,7 +2,7 @@
  * Rects use map-relative CSS pixels and an explicit top/bottom edge.
  */
 const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
-export function computeSafeViewport({width,height,overlays=[],navigation=false,markerRadius=42}={}) {
+export function computeSafeViewport({width,height,overlays=[],navigation=false,motorcycle=false,markerRadius=42}={}) {
   const w=Number.isFinite(width)?Math.max(1,width):360;
   const h=Number.isFinite(height)?Math.max(1,height):640;
   const guard=clamp(markerRadius+12,30,68);
@@ -20,6 +20,13 @@ export function computeSafeViewport({width,height,overlays=[],navigation=false,m
     top*=ratio;bottom*=ratio;
   }
   const horizontal=clamp(w*.06,14,28);
+  // Moto Focus anchors the rider slightly lower in the AVAILABLE map area,
+  // never in the raw viewport that also contains navigation overlays.
+  if(motorcycle){
+    const usable=h-top-bottom;
+    const extra=Math.max(0,usable-minCenter);
+    top+=Math.min(usable*.22,extra);
+  }
   const padding={top:Math.round(top),bottom:Math.round(bottom),left:Math.round(horizontal),right:Math.round(horizontal)};
   const centerY=(padding.top+h-padding.bottom)/2;
   const visibleHeight=Math.max(0,h-padding.top-padding.bottom);
