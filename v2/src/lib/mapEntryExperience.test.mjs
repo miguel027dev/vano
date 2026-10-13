@@ -26,9 +26,9 @@ test('first real GPS camera placement is immediate, with no animated flight from
  assert.match(center,/map\.setView\(ll\(d\.gpsCoords\).*animate:false/);
  assert.match(center,/motion\.current\?\.recenter/);
 });
-test('initial GPS wait does not put a giant warning banner over search',()=>{
+test('GPS wait keeps search usable and a failed location does not show a competing address card',()=>{
  assert.match(page,/!validPoint\(origin\)&&gpsStatus!=='checking'&&<div className="gps-banner"/);
- assert.match(page,/\(validPoint\(userCoords\)\|\|gpsStatus!=='checking'\)&&<div className="v31-location-card"/);
+ assert.match(page,/!nearbyCategory&&!pickOriginMode&&validPoint\(userCoords\)&&<div className="v31-location-card"/);
  assert.match(page,/className="map-search v31-search"/);
 });
 test('arrival dock is reduced in height and desktop width without hiding GPS warnings',()=>{
