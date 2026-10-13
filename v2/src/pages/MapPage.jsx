@@ -5,7 +5,7 @@ import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {startGpsSession} from '../lib/gpsSession';
-import {shouldRefreshAddress} from '../lib/addressCard';
+import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
 import { useVano } from '../context';
@@ -41,6 +41,25 @@ export default function MapPage(){
       root.style.removeProperty('--v33-panel-clearance');
     };
   },[sheetOpen,navMode,searchOpen,Boolean(dest),loadingRoute]);
+
+  // The dock may grow with GPS/route warnings. Measure its actual height so
+  // the road-name pill never covers 'Encerrar navegação' on small phones.
+  useEffect(()=>{
+    if(!navMode)return;
+    const root=mapPageRef.current;
+    const dock=root?.querySelector('.nav-bottom');
+    if(!root||!dock)return;
+    const measure=()=>root.style.setProperty('--v36-nav-dock-height',Math.ceil(dock.offsetHeight)+'px');
+    measure();
+    const observer=typeof ResizeObserver==='function'?new ResizeObserver(measure):null;
+    observer?.observe(dock);
+    window.addEventListener('resize',measure,{passive:true});
+    return()=>{
+      observer?.disconnect();
+      window.removeEventListener('resize',measure);
+      root.style.removeProperty('--v36-nav-dock-height');
+    };
+  },[navMode]);
 
   useEffect(()=>{api('/places').then(setAllPlaces).catch(()=>{});},[]);
   useEffect(()=>{
@@ -346,7 +365,13 @@ export default function MapPage(){
       {loadingRoute?<div className="route-loader"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><p className="route-caution"><Info size={16}/>{t(routeData.safetyMessage)}</p><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
-    {navMode&&<div className="nav-bottom"><div className="nav-summary"><span><strong>{fmtTime(route?.duration)}</strong><small>{fmtKm(route?.distance,language)} · {t(choice==='safe'?'Mais segura':'Mais rápida')}</small></span><Link className="circle-btn" to="/relatar" title="Registrar alerta" aria-label="Registrar alerta"><AlertTriangle size={19} strokeWidth={1.9}/></Link></div>{recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}{!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}{demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}<button className="btn btn-primary" onClick={reset}><X size={18}/> {t('Encerrar navegação')}</button></div>}
+    {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
+      <div className="v36-nav-road-pill" title={navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}>
+        <strong>{navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}</strong>
+      </div>
+      <Link className="circle-btn v36-nav-report" to="/relatar" title="Registrar alerta" aria-label="Registrar alerta"><AlertTriangle size={19} strokeWidth={1.9}/></Link>
+    </div>}
+    {navMode&&<div className="nav-bottom"><div className="nav-summary"><span><strong>{fmtTime(route?.duration)}</strong><small>{fmtKm(route?.distance,language)} · {t(choice==='safe'?'Mais segura':'Mais rápida')}</small></span></div>{recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}{!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}{demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}<button className="btn btn-primary" onClick={reset}><X size={18}/> {t('Encerrar navegação')}</button></div>}
     
   </div>
 }
