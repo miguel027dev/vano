@@ -54,7 +54,7 @@ function motionController(map,latest,status){
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact});
+      vehicle:d.vehicle,navigation:following(),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target();if(!t)return;const cameraHalfLife=reduced?85:300,pointHalfLife=reduced?90:360;
     const nextCenter=blendPoint(pose.center,t.center,dt,pointHalfLife);
