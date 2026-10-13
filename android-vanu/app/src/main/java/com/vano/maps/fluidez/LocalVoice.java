@@ -30,7 +30,7 @@ public final class LocalVoice {
         if(text==null||text.length()==0||text.length()>1200||failed)return;
         if(!ready){pendingText=text;pendingLanguage=language;return;}
         pendingText=null;Locale locale=Locale.forLanguageTag(language==null?"pt-BR":language);Voice best=null;
-        try{if(tts.getVoices()!=null)for(Voice v:tts.getVoices())if(!v.isNetworkConnectionRequired()&&v.getLocale().getLanguage().equals(locale.getLanguage())){if(best==null||v.getLocale().equals(locale)||v.getQuality()>best.getQuality())best=v;}}
+        try{if(tts.getVoices()!=null)for(Voice v:tts.getVoices())if(!v.isNetworkConnectionRequired()&&v.getLocale().getLanguage().equals(locale.getLanguage())){if(best==null||(v.getLocale().equals(locale)&&!best.getLocale().equals(locale))||(v.getLocale().equals(locale)==best.getLocale().equals(locale)&&v.getQuality()>best.getQuality()))best=v;}}
         catch(Exception ignored){}
         if(best==null){status.accept("missing-language");return;}
         if(tts.setVoice(best)!=TextToSpeech.SUCCESS){status.accept("missing-language");return;}

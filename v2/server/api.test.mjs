@@ -239,3 +239,18 @@ test('persistent 90-day sessions survive a second device login and logout revoke
   assert.equal((await a.call('/api/bootstrap')).data.user,null);assert.ok((await b.call('/api/bootstrap')).data.user);
  }finally{await s.stop();}
 });
+
+test('Mapas públicos: catálogo real, atribuição, caixa geográfica limitada e nenhuma posição inventada',async()=>{
+ const server=await start();
+ const clientPublic=client(server.origin);
+ try{
+  const sources=await clientPublic.call('/api/map-features/sources');
+  assert.equal(sources.status,200);
+  assert.ok(sources.data.sources.some(x=>x.id==='osm-overpass'&&x.active===true));
+  assert.ok(sources.data.sources.some(x=>x.id==='overture-places'&&x.active===false));
+  for(const bad of ['-180,-90,180,90','0,0,0,0','0,0,200,0','abc']){
+    const result=await clientPublic.call('/api/map-features?bbox='+encodeURIComponent(bad));
+    assert.equal(result.status,400);
+  }
+ }finally{await server.stop();}
+});

@@ -1,0 +1,482 @@
+/* VANO Atlas 3.1 — a quiet map-first interface. Never obscure Mapbox/OSM attribution. */
+/* Reserve a visible top buffer beyond each device's safe-area / browser chrome. */
+.map-page{--v31-top-gap:18px}
+.map-page .map-top.v31-map-top{
+  max-width:960px;
+  padding:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap))
+          max(12px,env(safe-area-inset-right,0px))
+          0 max(12px,env(safe-area-inset-left,0px));
+}
+.map-page .map-search.v31-search{
+  display:flex;align-items:center;gap:12px;
+  height:64px;min-height:64px;padding:6px 7px 6px 19px;
+  background:rgba(255,255,255,.985);border:1px solid #e9ece8;
+  border-radius:22px;
+  box-shadow:0 12px 36px #1e30251e,0 2px 6px #16282012;
+  -webkit-backdrop-filter:blur(13px);backdrop-filter:blur(13px);
+}
+.map-page .v31-search>svg:first-child{width:22px;height:22px;color:#506359;flex:none}
+.map-page .v31-search input{flex:1;min-width:0;color:#1b2924;font-size:16px;letter-spacing:-.025em;line-height:1.3}
+.map-page .v31-search input::placeholder{color:#87948b;opacity:1}
+.map-page .v31-profile-button{
+  width:48px;height:48px;min-width:48px;flex:none;border-radius:17px;
+  background:#f6f8f4;border:1px solid #ecf0eb;color:#33463c;
+  display:grid;place-items:center;
+  transition:background .2s ease,color .2s ease,transform .2s ease;
+}
+.map-page .v31-profile-button:hover{background:#fff1e8;color:#e36329}
+.map-page .v31-profile-button:active{transform:scale(.965)}
+.map-page .v31-profile-button:focus-visible,
+.map-page .v31-route-profile:focus-visible{outline:3px solid #ee875f;outline-offset:2px}
+.map-page .quick-scroll.v31-shortcuts{padding:10px 1px 4px;gap:8px;scrollbar-width:none;scroll-snap-type:x proximity}
+.map-page .v31-shortcuts .quick-chip{
+  min-height:39px;flex:none;padding:8px 13px;gap:8px;
+  background:#fff;border:1px solid #e9ece7;border-radius:14px;
+  font-size:.78rem;color:#405248;box-shadow:0 5px 19px #17281b13;
+  scroll-snap-align:start;white-space:nowrap;
+}
+.map-page .v31-shortcuts .quick-chip:hover{border-color:#e8be9c;background:#fffaf7}
+.map-page .v31-shortcuts .quick-chip svg{width:16px;height:16px;color:#e96c33}
+.map-page .v31-route-header{
+  justify-content:flex-end;gap:8px;min-height:45px;margin:0 0 9px;
+}
+.map-page .v31-route-header .circle-btn{width:44px;height:44px;min-width:44px;border-radius:15px}
+.map-page .v31-route-profile{background:rgba(255,255,255,.97)}
+.map-page .search-results{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 75px);width:calc(100% - 24px);max-width:934px}
+.map-page .gps-banner:not(.gps-picking),
+.map-page .gps-picking{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 137px)}
+.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 137px)}
+/* Mapbox wordmark is explicitly placed bottom-right; the card can align near the bottom-left without covering legal credit. */
+.map-page .v31-location-card{
+  position:absolute;z-index:450;
+  left:calc(env(safe-area-inset-left,0px) + 12px);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 11px);
+  display:flex;align-items:center;gap:12px;
+  width:min(325px,calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 125px));
+  min-width:0;min-height:75px;padding:12px 14px;
+  border:1px solid rgba(222,229,221,.96);border-radius:19px;
+  background:rgba(255,255,255,.97);color:#26392e;
+  box-shadow:0 12px 32px #1d33201d,0 2px 6px #20372612;
+  -webkit-backdrop-filter:blur(15px);backdrop-filter:blur(15px);
+  pointer-events:none;animation:v31-card-in .26s ease-out both;
+}
+.map-page .v31-location-symbol{
+  display:grid;place-items:center;flex:none;width:40px;height:40px;
+  border-radius:13px;color:#e86a2d;background:#fff1e7;border:1px solid #f5e3d4;
+}
+.map-page .v31-location-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.map-page .v31-location-eyebrow{
+  display:flex;align-items:center;gap:6px;
+  color:#738378;text-transform:uppercase;letter-spacing:.085em;
+  font-size:9px;font-weight:800;line-height:1.15;
+}
+.map-page .v31-gps-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#a1a9a4}
+.map-page .v31-gps-dot.is-live{background:#23a673;box-shadow:0 0 0 3px #23a67315}
+.map-page .v31-location-copy strong{font-size:13px;font-weight:790;letter-spacing:-.02em;color:#26362d;line-height:1.24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.map-page .v31-location-copy small{font-size:10.5px;color:#8a978f;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes v31-card-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+[data-theme='dark'] .map-page .v31-search,[data-theme='dark'] .map-page .v31-location-card{background:rgba(31,39,35,.97);border-color:#415047;color:#e7eee7}
+[data-theme='dark'] .map-page .v31-search input,[data-theme='dark'] .map-page .v31-location-copy strong{color:#f3f7f2}
+[data-theme='dark'] .map-page .v31-profile-button{color:#e8f2e9;background:#34433a;border-color:#49564a}
+[data-theme='dark'] .map-page .v31-shortcuts .quick-chip{background:#27372d;border-color:#435347;color:#f0f1e9}
+[data-theme='dark'] .map-page .v31-location-symbol{background:#4f372c;border-color:#624536}
+[data-theme='dark'] .map-page .v31-location-eyebrow,[data-theme='dark'] .map-page .v31-location-copy small{color:#abbab0}
+@media(max-width:600px){
+  .map-page{--v31-top-gap:24px}
+  .map-page .map-top.v31-map-top{padding:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap)) max(10px,env(safe-area-inset-right,0px)) 0 max(10px,env(safe-area-inset-left,0px))}
+  .map-page .map-search.v31-search{height:60px;min-height:60px;border-radius:19px;padding:5px 6px 5px 15px;gap:10px}
+  .map-page .v31-profile-button{height:46px;width:46px;min-width:46px;border-radius:15px}
+  .map-page .quick-scroll.v31-shortcuts{padding-top:9px;gap:7px}
+  .map-page .v31-shortcuts .quick-chip{min-height:38px;padding:7px 11px;font-size:.74rem}
+  .map-page .search-results{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 65px);width:calc(100% - 20px)}
+  .map-page .gps-banner:not(.gps-picking),.map-page .gps-picking,.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 128px)}
+  .map-page .v31-location-card{bottom:calc(env(safe-area-inset-bottom,0px) + 10px);min-height:72px;padding:10px 11px;gap:9px;border-radius:17px}
+  .map-page .v31-location-symbol{width:36px;height:36px;border-radius:12px}
+}
+@media(max-width:375px){
+  .map-page .v31-search>svg:first-child{width:19px;height:19px}
+  .map-page .v31-search input{font-size:14px}
+  .map-page .v31-profile-button{width:42px;height:42px;min-width:42px}
+  .map-page .v31-location-card{gap:7px}
+  .map-page .v31-location-copy strong{font-size:12px}
+  .map-page .v31-location-eyebrow{font-size:8px}
+}
+@media(max-height:530px) and (orientation:landscape){
+  .map-page .v31-location-card{min-height:60px;padding:8px 11px;bottom:calc(env(safe-area-inset-bottom,0px) + 9px)}
+  .map-page .v31-location-symbol{width:32px;height:32px}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page .v31-location-card{animation:none}
+  .map-page .v31-profile-button{transition:none}
+}
+
+
+/* VANO Atlas 3.2: 21st.dev Origin UI / combobox-inspired search, without template chrome.
+   Palette: VANO orange #E95B22, ink #202B24, slate #69776F, white #FFF,
+   whisper #F7F8F5, stroke #E6EBE6. Keyboard-first and reduced-motion-safe. */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.map-page .map-search.v31-search{
+  background:#fff;border:1px solid #e5e9e4;border-radius:21px;
+  box-shadow:0 7px 25px rgba(21,35,26,.10),0 1px 3px rgba(21,35,26,.035);
+  transition:border-color .18s ease,box-shadow .18s ease;
+}
+.map-page .map-search.v31-search:focus-within{
+  border-color:#efa983;box-shadow:0 8px 28px rgba(21,35,26,.12),0 0 0 3px rgba(233,91,34,.09)
+}
+.map-page .v31-search input{font-size:16px;font-weight:500;letter-spacing:-.015em;caret-color:#e95b22}
+.map-page .v31-search input::placeholder{color:#7d8b81}
+.map-page .v31-search>svg:first-child{color:#607168}
+.map-page .v31-profile-button{border-radius:15px;background:#f7f8f5;border-color:transparent}
+.map-page .v32-search-spinner{height:17px;width:17px;flex:none;border:2px solid #eeded4;border-top-color:#e95b22;border-radius:50%;animation:v32-rotate .65s linear infinite}
+@keyframes v32-rotate{to{transform:rotate(360deg)}}
+.map-page .search-results.v32-results{
+  padding:8px;max-height:min(60dvh,460px);background:#fff;
+  border:1px solid #e7ebe6;border-radius:20px;
+  box-shadow:0 16px 40px rgba(28,42,32,.14),0 2px 5px rgba(28,42,32,.04);
+  overscroll-behavior:contain
+}
+.map-page .v32-results .search-results-head{
+  padding:11px 12px 9px;color:#6b776e;font-size:11px;font-weight:740;letter-spacing:.06em;
+  text-transform:uppercase
+}
+.map-page .v32-results .search-results-head button{border-radius:9px}
+.map-page .v32-results .search-results-head button:hover{background:#f3f5f2}
+.map-page .v32-results .v32-suggestion{
+  min-height:66px;display:flex;gap:12px;align-items:center;
+  padding:9px 11px;border-radius:12px;color:#202b24;
+  transition:background .14s ease
+}
+.map-page .v32-results .v32-suggestion + .v32-suggestion{border-top:1px solid #f0f2ef;border-top-left-radius:0;border-top-right-radius:0}
+.map-page .v32-results .v32-suggestion:hover,
+.map-page .v32-results .v32-suggestion:focus-visible{background:#fff6f0}
+.map-page .v32-results .v32-suggestion:focus-visible{outline:2px solid #e95b22;outline-offset:-2px}
+.map-page .v32-results .v32-result-icon{
+  display:grid;place-items:center;flex:none;width:38px;height:38px;
+  color:#e16a36;background:#fff2e9;border:1px solid #fbebdf;border-radius:12px
+}
+.map-page .v32-results .v32-suggestion>span:nth-child(2){flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.map-page .v32-results .v32-suggestion strong{font-size:14px;font-weight:730;letter-spacing:-.018em;line-height:1.3}
+.map-page .v32-results .v32-suggestion small{font-size:12px;color:#748078;line-height:1.3}
+.map-page .v32-results .v32-suggestion>svg:last-child{flex:none;color:#98a39c}
+.map-page .v32-results .search-blank{padding:16px 12px 22px;font-size:13px;color:#69776f}
+.map-page .v31-location-card{
+  min-height:74px;padding:11px 13px;gap:12px;
+  background:rgba(255,255,255,.98);border:1px solid #e7ebe6;border-radius:18px;
+  box-shadow:0 6px 22px rgba(28,43,31,.12),0 1px 2px rgba(28,43,31,.045);
+  backdrop-filter:blur(10px)
+}
+.map-page .v31-location-symbol{
+  width:39px;height:39px;border-radius:13px;
+  background:#fff5ed;border:1px solid #f8e7d7;color:#e95b22
+}
+.map-page .v31-location-eyebrow{font-size:10px;letter-spacing:.045em;font-weight:720;color:#66786a}
+.map-page .v31-location-copy{gap:4px}
+.map-page .v31-location-copy strong{font-size:14px;font-weight:750;color:#1c2a21;letter-spacing:-.02em}
+.map-page .v31-location-copy small{font-size:11.5px;color:#758178}
+[data-theme='dark'] .map-page .map-search.v31-search,
+[data-theme='dark'] .map-page .search-results.v32-results,
+[data-theme='dark'] .map-page .v31-location-card{background:#222c26;color:#edf4ee;border-color:#415046}
+[data-theme='dark'] .map-page .v32-results .v32-suggestion{color:#edf4ee}
+[data-theme='dark'] .map-page .v32-results .v32-suggestion + .v32-suggestion{border-color:#39483e}
+[data-theme='dark'] .map-page .v32-results .v32-suggestion:hover,
+[data-theme='dark'] .map-page .v32-results .v32-suggestion:focus-visible{background:#37443b}
+[data-theme='dark'] .map-page .v32-results .v32-result-icon{background:#48362d;border-color:#624638}
+[data-theme='dark'] .map-page .v32-results .v32-suggestion small{color:#afc0b4}
+@media(max-width:600px){
+  .map-page .map-search.v31-search{border-radius:19px}
+  .map-page .search-results.v32-results{border-radius:17px;padding:6px}
+  .map-page .v32-results .v32-suggestion{min-height:63px;padding:8px}
+  .map-page .v31-location-card{min-height:72px;padding:9px 11px;gap:9px;border-radius:16px}
+  .map-page .v31-location-copy strong{font-size:13px}
+  .map-page .v31-location-copy small{font-size:11px}
+}
+@media(max-width:375px){
+  .map-page .v31-location-symbol{width:34px;height:34px}
+  .map-page .v31-location-copy strong{font-size:12px}
+  .map-page .v31-location-eyebrow{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page .v32-search-spinner{animation:none;border-color:#e95b22}
+  .map-page .map-search.v31-search,.map-page .v32-results .v32-suggestion{transition:none}
+}
+
+
+/* VANO Atlas 3.3 — route actions aligned to the existing origin/destination card.
+   Keep the card's contents, dimensions, spacing and action icons unchanged. */
+.map-page .map-top.v31-map-top.v32-route-top{
+  /* Route card + profile/X group: lift another 16px, while respecting the safe-area.
+     Retain enough space below the device's status-bar/safe area. */
+  padding-top:calc(env(safe-area-inset-top,0px) + var(--v31-top-gap) + 11px);
+}
+.map-page .v32-route-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 44px;
+  align-items:stretch;
+  column-gap:10px;
+  width:100%;
+  min-width:0;
+}
+.map-page .v32-route-layout>.v5-route-box{min-width:0}
+.map-page .v32-route-actions{
+  display:flex;
+  flex-direction:column;
+  /* Group both existing 44px controls around the card midpoint (the swap
+     button remains at top:50% inside the untouched route card).
+     112px desktop card: (112 - 44*2 - 6)/2 = 9px balanced insets;
+     106px mobile card: (106 - 44*2 - 6)/2 = 6px balanced insets. */
+  justify-content:center;
+  align-items:center;
+  gap:6px;
+  width:44px;
+  min-width:44px;
+  height:100%;
+}
+.map-page .v32-route-actions .circle-btn{
+  display:grid;
+  place-items:center;
+  flex:0 0 44px;
+  width:44px;
+  height:44px;
+  min-width:44px;
+  padding:0;
+  border-radius:15px;
+  box-shadow:0 4px 13px #172b3220;
+}
+.map-page .v32-route-actions .circle-btn:focus-visible{
+  outline:3px solid #ee875f;
+  outline-offset:2px;
+}
+@media(max-width:600px){
+  .map-page .v32-route-layout{column-gap:8px}
+}
+@media(max-width:360px){
+  .map-page .v32-route-layout{column-gap:7px}
+}
+
+/* VANO Atlas 3.4 — deliberate floating control positions.
+   The actual route panel/collapsed-card clearance is measured in MapPage,
+   rather than treating a max-height as the panel's current height. */
+.map-page .map-controls{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 70px);
+  transition:bottom .18s ease;
+}
+.map-page.has-sheet .map-controls{
+  /* Conservative fallback before ResizeObserver's first panel measurement. */
+  bottom:var(--v33-panel-clearance,calc(min(66dvh,570px) + 12px));
+}
+.map-page.has-collapsed-route .map-controls{
+  bottom:var(--v33-panel-clearance,112px);
+}
+/* Preserve separation from the live navigation instruction dock. */
+/* Bring the three navigation controls slightly closer to the lower dock (19px). */
+.map-page.in-navigation .map-controls{bottom:226px}
+@media(max-width:720px){
+  .map-page .map-controls{bottom:calc(env(safe-area-inset-bottom,0px) + 62px)}
+}
+@media(max-height:560px) and (orientation:landscape){
+  /* Expanded panels leave insufficient room for another two controls. */
+  .map-page.has-sheet .map-controls{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page .map-controls{transition:none}
+}
+
+/* VANO navigation street capsule — white-mode refinement.
+   Street label is centered on the VIEWPORT, not centered between two controls.
+   The existing report action is on the right; no left-hand control is added.
+   Height of the bottom dock comes from ResizeObserver in MapPage. */
+.map-page.in-navigation .v36-nav-road-row{
+  position:absolute;
+  z-index:520;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(var(--v36-nav-dock-height,180px) + 13px);
+  width:min(700px,calc(100% - 28px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));
+  min-height:58px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  pointer-events:none;
+}
+.map-page.in-navigation .v36-nav-road-pill{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:min(420px,calc(100% - 132px));
+  min-width:0;
+  min-height:58px;
+  padding:9px 16px;
+  border:1px solid #e7eae6;
+  border-radius:999px;
+  background:#fff;
+  color:#182620;
+  box-shadow:0 7px 26px #192f2324,0 2px 5px #192f230c;
+  text-align:center;
+}
+.map-page.in-navigation .v36-nav-road-pill strong{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  overflow-wrap:anywhere;
+  max-width:100%;
+  color:inherit;
+  font-weight:800;
+  font-size:clamp(13px,3.9vw,18px);
+  line-height:1.24;
+  letter-spacing:-.025em;
+}
+.map-page.in-navigation .v36-nav-report{
+  position:absolute;
+  right:0;
+  top:50%;
+  translate:0 -50%;
+  pointer-events:auto;
+  /* Keep the existing circle-btn theme, 19px AlertTriangle and /relatar action. */
+}
+.map-page.in-navigation .map-controls{
+  /* Leave a gap above the street capsule so the three existing map controls
+     never cover the reporting button during navigation. */
+  bottom:calc(var(--v36-nav-dock-height,180px) + 13px + 58px + 16px);
+}
+@media(max-width:360px){
+  .map-page.in-navigation .v36-nav-road-pill{padding:8px 10px}
+}
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.in-navigation .map-controls{display:none}
+  .map-page.in-navigation .v36-nav-road-row{bottom:calc(var(--v36-nav-dock-height,180px) + 8px)}
+  .map-page.in-navigation .v36-nav-road-pill{min-height:48px}
+}
+
+/* VANO Arrival Dock 3.7 — light mode. The ETA is centered relative to the
+   viewport, with a single 48px close target at left and equal empty space at right.
+   No extra route-option controls are invented while navigation is active. */
+.map-page.in-navigation .nav-bottom.v37-nav-bottom{
+  background:#fff;
+  color:#1c242b;
+  border-radius:25px 25px 0 0;
+  border:1px solid #e9ecea;
+  border-bottom:0;
+  max-width:540px;
+  padding:11px clamp(14px,3vw,22px) calc(env(safe-area-inset-bottom,0px) + 16px);
+  box-shadow:0 -9px 36px #22312d1c,0 -2px 7px #26332908;
+}
+.map-page.in-navigation .v37-nav-handle{
+  display:block;
+  width:44px;
+  height:4px;
+  border-radius:999px;
+  background:#cdd2d5;
+  margin:0 auto 8px;
+}
+.map-page.in-navigation .nav-summary.v37-nav-summary{
+  display:grid;
+  grid-template-columns:48px minmax(0,1fr) 48px;
+  column-gap:clamp(6px,2.3vw,16px);
+  align-items:center;
+  min-height:82px;
+  margin:0;
+}
+.map-page.in-navigation .v37-nav-end{
+  width:48px;
+  min-width:48px;
+  height:48px;
+  border:1px solid #e9ebeb;
+  border-radius:50%;
+  background:#f8f9f8;
+  color:#24302d;
+  box-shadow:0 3px 12px #1b302717;
+}
+.map-page.in-navigation .v37-nav-end:focus-visible{
+  outline:3px solid #f0aa82;
+  outline-offset:3px;
+}
+.map-page.in-navigation .v37-nav-center{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  min-width:0;
+  gap:6px;
+  text-align:center;
+}
+.map-page.in-navigation .v37-nav-arrival{
+  display:block;
+  color:#17221f;
+  font:800 clamp(35px,8.8vw,46px)/1 Manrope,'DM Sans',sans-serif;
+  letter-spacing:-.06em;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.map-page.in-navigation .v37-nav-meta{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(7px,2.2vw,11px);
+  min-width:0;
+  color:#59635f;
+  font-size:clamp(12px,3.25vw,15px);
+  font-weight:650;
+  line-height:1.25;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.map-page.in-navigation .v37-nav-bullet{
+  flex:0 0 5px;
+  width:5px;
+  height:5px;
+  background:#aab3b0;
+  border-radius:50%;
+}
+.map-page.in-navigation .v37-nav-balance{
+  display:block;
+  width:48px;
+  height:48px;
+  pointer-events:none;
+}
+.map-page.in-navigation .v37-nav-bottom .nav-demo,
+.map-page.in-navigation .nav-bottom.v37-nav-bottom .nav-demo{
+  margin:9px 3px 0;
+}
+@media(max-width:360px){
+  .map-page.in-navigation .nav-bottom.v37-nav-bottom{
+    padding-right:12px;
+    padding-left:12px;
+  }
+  .map-page.in-navigation .nav-summary.v37-nav-summary{
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    column-gap:4px;
+  }
+  .map-page.in-navigation .v37-nav-end,
+  .map-page.in-navigation .v37-nav-balance{width:44px;min-width:44px;height:44px}
+  .map-page.in-navigation .v37-nav-center{gap:8px}
+  .map-page.in-navigation .v37-nav-meta{font-size:12px;gap:7px}
+}
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.in-navigation .nav-bottom.v37-nav-bottom{
+    padding-top:9px;
+    padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
+  }
+  .map-page.in-navigation .nav-summary.v37-nav-summary{min-height:64px}
+  .map-page.in-navigation .v37-nav-arrival{font-size:33px}
+  .map-page.in-navigation .v37-nav-center{gap:4px}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page.in-navigation .v37-nav-end{transition:none}
+}
+
+/* VANO Atlas 3.8 — first GPS fix is private and doesn't pan from a demo city.
+   The map is already loading behind this static surface, so search and the
+   accessibility controls remain available and usable without delay. */
+.map-page .v38-map-first-fix-mask{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 62% 37%,rgba(255,255,255,.67),transparent 68%),
+    linear-gradient(135deg,#edf2ec 0%,#e7efea 54%,#eef2ec 100%);
+}
+@media(max-width:720px){
+  .map-page.in-navigation .nav-bottom.v37-nav-bottom{width:100%;max-width:100%}
+}

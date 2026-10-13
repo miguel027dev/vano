@@ -1,20 +1,19 @@
-# VANO Android — VANU
+# VANO Android — VANU 3.1
 
-Aplicativo Android que carrega a aplicação remota de https://vanu-73xu.onrender.com/mapa.
-Android 6 ou superior. O pacote com.vano.maps.vanu instala separadamente de versões antigas do VANO.
+WebView Android 6+ que carrega https://vanu-73xu.onrender.com/mapa. Pacote com.vano.maps.vanu; atualização assinada com a mesma chave da entrega 3.0.
 
-## Arquitetura
-Uma Activity e uma WebView com aceleração de hardware. Interface, mapa, autenticação e rotas são fornecidos pelo VANU. O host adiciona localização, compartilhamento, retorno do login Google, tratamento do botão Voltar e abertura sincronizada com a renderização do mapa.
-As alterações em v2 do servidor preservam o MapPage ao navegar entre telas. O mapa fica invisível e inativo, mas continua montado; GPS e animações são suspensos fora do mapa. A troca de conta limpa esse estado. A Activity preserva a WebView nas rotações e em retornos do segundo plano; o Android ainda pode encerrar o processo em condições de pouca memória.
-A primeira abertura precisa baixar e inicializar o mapa. Não há promessa de carregamento instantâneo ou de navegação completa offline. O cache HTTP segue os cabeçalhos do servidor.
+## Continuidade offline
+Prepare o trajeto conectado. O Android salva os recursos públicos do mapa e as peças ao redor da linha percorrida, em armazenamento privado limitado a 256 MiB. O início aguarda o preparo por até 3 minutos; um download incompleto é informado. Nenhuma resposta de autenticação/API é salva no cache HTTP nativo.
+A página salva conta sem credenciais/CSRF ou privilégios administrativos offline, preferências, favoritos e trajeto ativo em IndexedDB. Ao reabrir, o trajeto da mesma conta pode ser retomado por até 24 horas; a posição salva nunca vale como GPS atual.
+GPS local alimenta as instruções mesmo sem rede. A voz usa somente vozes embarcadas instaladas no Android, com preferência pelo idioma escolhido. O botão de som interrompe a fala. Sinal antigo/inexato não gera orientação fictícia. Um túnel pode bloquear tanto internet quanto GPS; neste caso é mantida a última posição e a voz aguarda uma nova localização confiável.
+Nova rota, recálculo, busca, alertas públicos e alterações da conta precisam de internet. O mapa salvo cobre o corredor preparado, não todo o país. GPS e voz funcionam com o aplicativo em primeiro plano; ainda não há serviço de navegação com tela bloqueada/segundo plano. Há limite de distância/peças/espaço; trajetos longos podem resultar em preparo parcial.
 
-## Compilar
-Instale JDK 17 e Android SDK 35. Configure ANDROID_HOME e execute ./gradlew :app:assembleRelease. O resultado sem chave é app/build/outputs/apk/release/app-release-unsigned.apk.
-Para atualizações do APK entregue, assine com a mesma chave fornecida separadamente; nunca faça commit dessa chave nem da senha. O APK entregue usa assinatura própria para instalação direta, não a chave de publicação existente na Play Store.
+## Sessões e servidor
+Cookies privados são gravados ao concluir o login e ao sair do primeiro plano. Sessões no servidor duram 90 dias, renovadas durante o uso; entrar em outro aparelho não derruba a sessão atual. Sair revoga somente aquela sessão, e troca de senha revoga as sessões conforme as regras de segurança. Fechar o aplicativo preserva o login. Isso exige o armazenamento PostgreSQL persistente já adotado pelo VANU.
+Uma Activity/WebView preserva o mapa entre telas, suspende a renderização quando oculto e usa transição após o primeiro frame. Durante um trajeto, GPS e instruções continuam também nas telas internas. O processo pode ser encerrado pelo Android; a retomada depende dos arquivos salvos.
+Google abre no navegador padrão, retorna por vano-vanu://auth/callback e troca um código curto de uso único com PKCE. HTTPS e origem do frame principal são obrigatórios; erros TLS são bloqueados.
 
-## Integração do servidor
-A versão do VANU deve incluir src/lib/nativeShell.js, retenção do mapa em App.jsx e server/mobile-auth.mjs. O login Google usa o navegador padrão e retorna por vano-vanu://auth/callback, com código de uso único protegido por PKCE. O código não é uma sessão e expira em 2 minutos; a requisição OAuth expira em 10 minutos.
-A origem de mensagens nativas é restrita ao VANU e ao frame principal. Links externos abrem no navegador; HTTP misto e erros TLS são bloqueados.
-
-## Verificações
-Build release, lint de release e assinatura validados. Testes da API e do retorno PKCE aprovados. Teste React confirmou que o mapa é preservado entre telas e reinicia ao trocar de conta. Nenhum aparelho ou emulador Android estava conectado; GPS, desempenho e login com credenciais reais ainda precisam de validação num celular.
+## Compilar e verificar
+Use JDK 17 e SDK 35. Execute `./gradlew :app:assembleRelease :app:lintRelease`. Assine app/build/outputs/apk/release/app-release-unsigned.apk com a chave entregue separadamente. Nunca publique a chave/senha.
+No diretório v2, `npm test` e `npm run build` verificam integração, sessões, rotas, GPS e armazenamento. Os testes de cache nativo em tests/offline-cache usam JDK e org.json:json:20250107; as classes android desse diretório são dublês de teste e não entram no APK. Verificam persistência após reinício sem rede, exclusão da API, separação por token, HTTPS, cabeçalhos e limites de download.
+Compilação, lint, assinatura, cache e integração React foram verificados. Nenhum aparelho/emulador Android estava conectado: fala real, GPS em estrada, modo avião, consumo de bateria e fluidez em dispositivo precisam de validação no celular.

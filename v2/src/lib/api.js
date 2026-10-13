@@ -1,4 +1,5 @@
 import {readOffline,writeOffline,cachedBootstrap} from './offlineStore.js';
+import { formatTravelTime } from './formatTime.mjs';
 const BASE = import.meta.env.VITE_API_URL || '/api';
 let csrfToken = '';
 let csrfBootstrap = null;
@@ -32,4 +33,4 @@ export const patch = (path,body) => api(path, { method:'PATCH',body });
 export const remove = (path,body = {}) => api(path, {method:'DELETE',body});
 export function timeAgo(iso,locale='pt-BR') { const d=Date.now()-new Date(iso).getTime(), mins=Math.max(0,Math.floor(d/60000)); if(mins<1)return locale==='fr-FR'?'à l’instant':locale==='en-US'?'just now':'agora'; if(mins<60)return locale==='fr-FR'?`il y a ${mins} min`:locale==='en-US'?`${mins} min ago`:`há ${mins} min`; if(mins<1440)return locale==='fr-FR'?`il y a ${Math.floor(mins/60)} h`:locale==='en-US'?`${Math.floor(mins/60)} h ago`:`há ${Math.floor(mins/60)} h`; return new Date(iso).toLocaleDateString(locale); }
 export const fmtKm = (n,locale='pt-BR') => `${Number(n || 0).toLocaleString(locale,{maximumFractionDigits:1})} km`;
-export const fmtTime = n => `${Math.round(Number(n)||0)} min`;
+export const fmtTime = formatTravelTime;

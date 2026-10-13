@@ -1,0 +1,60 @@
+/* VANO Atlas 3D — the GPS arrow belongs to the map, not to the viewport.
+   Mapbox's pitchAlignment:'map' projects this procedural, layered object
+   into the ground plane as the camera tilts. No raster/angle sprite downloads. */
+.vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker{
+  width:70px;
+  height:82px;
+  display:grid;
+  place-items:center;
+  transform-origin:50% 50%;
+  pointer-events:none;
+  filter:none;
+}
+.vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker::before{
+  width:52px;
+  height:52px;
+  top:48%;
+  border:1px solid #f27d3b30;
+  border-radius:50%;
+  background:radial-gradient(circle,#ffffff47 0 34%,#ff810c22 52%,transparent 70%);
+  box-shadow:0 0 0 6px #ff7b1012;
+  z-index:0;
+}
+.vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker .vano-arrow3d-svg{
+  display:block;
+  position:relative;
+  z-index:1;
+  width:64px;
+  height:80px;
+  max-width:100%;
+  overflow:visible;
+  filter:drop-shadow(0 3px 3px #27343a30);
+  backface-visibility:hidden;
+}
+.vano-3d-nav-marker .vano-arrow3d-rim,
+.vano-3d-nav-marker .vano-arrow3d-extrusion,
+.vano-3d-nav-marker .vano-arrow3d-face{
+  vector-effect:non-scaling-stroke;
+}
+.vano-vehicle-moto.vano-3d-nav-marker .vano-arrow3d-svg{
+  width:60px;
+  height:75px;
+}
+.vano-leaflet-vehicle .vano-3d-nav-marker{
+  width:70px;
+  height:82px;
+}
+@media(max-width:390px){
+  .vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker .vano-arrow3d-svg{
+    width:60px;
+    height:75px;
+  }
+}
+/* No spinning, pulsing or fabricated user motion. Map/GPS rotation remains
+   controlled by the existing location and camera animation pipeline. */
+@media(prefers-reduced-motion:reduce){
+  .vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker .vano-arrow3d-svg{
+    transition:none!important;
+    animation:none!important;
+  }
+}

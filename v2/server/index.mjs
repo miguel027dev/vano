@@ -10,12 +10,17 @@ import path from 'node:path';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
+import { queryPlaces } from './search-provider.mjs';
+import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
+import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
+import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
-import { googleConfigured, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
+import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
+import { openPostgresStore } from './storage-pg.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,12 +35,14 @@ const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.VANO_EMAIL_F
 const startupMs = Date.now();
 const SESSION_MAX_AGE=90*86400;
 const runtimeMetrics = { requests:0,routeRequests:0,routeErrors:0,routeLatencyMs:0,pageViews:Object.create(null) };
-const googleReady = googleConfigured(process.env);
+const googleStatus = googleOAuthStatus(process.env);
+const googleReady = googleStatus.ready;
+console.info('VANO Google OAuth:', googleReady ? 'configurado' : googleStatus.reason);
 if (production) {
   let publicUrl;try{publicUrl=new URL(origin);}catch{throw Error('VANO_PUBLIC_ORIGIN inválida.');}
   if (!origin || publicUrl.protocol !== 'https:' || publicUrl.origin !== origin || publicUrl.username || publicUrl.password) throw Error('Produção exige VANO_PUBLIC_ORIGIN=https://seu-dominio');
   if (!process.env.VANO_SECURITY_SECRET || process.env.VANO_SECURITY_SECRET.length < 32) throw Error('Produção exige VANO_SECURITY_SECRET com no mínimo 32 caracteres.');
-  if (process.env.VANO_ALLOW_SINGLE_INSTANCE_JSON !== '1') throw Error('Use banco transacional externo ou autorize explicitamente JSON single-instance com VANO_ALLOW_SINGLE_INSTANCE_JSON=1.');
+  if (!process.env.DATABASE_URL && process.env.VANO_ALLOW_SINGLE_INSTANCE_JSON !== '1') throw Error('Produção exige DATABASE_URL PostgreSQL ou autorização explícita de JSON single-instance.');
   if (!mailReady || process.env.RESEND_API_KEY.startsWith('REPLACE_') || !process.env.VANO_EMAIL_FROM.includes('@')) throw Error('Produção exige e-mail verificado: RESEND_API_KEY e VANO_EMAIL_FROM reais.');
   if (process.env.VANO_SECURITY_SECRET.startsWith('REPLACE_')) throw Error('Substitua o segredo de exemplo antes da produção.');
   if (!process.env.VITE_MAPBOX_PUBLIC_TOKEN?.startsWith('pk.')) throw Error('Produção exige token público Mapbox válido no build e no servidor.');
@@ -49,9 +56,11 @@ if (production) {
 const port = Number(process.env.PORT || process.env.API_PORT || 8878);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('API_PORT inválida.');
 const file = process.env.VANO_DATA_FILE ? path.resolve(root, process.env.VANO_DATA_FILE) : path.join(root, 'data', 'store.json');
-const store = openStore(file);
+if(process.env.VANO_REQUIRE_POSTGRES==='1' && !process.env.DATABASE_URL)throw Error('VANO_REQUIRE_POSTGRES ativo mas DATABASE_URL ausente.');
+const store = process.env.DATABASE_URL ? await openPostgresStore(process.env.DATABASE_URL) : openStore(file);
+console.info('VANO V2 storage:',store.kind||'json-ephemeral');
 const db = store.data;
-const persist = opts => {
+const persist = async opts => {
   const time=Date.now();
   db.sessions=db.sessions.filter(x=>x.expires>time);
   db.emailTokens=db.emailTokens.filter(x=>x.expires>time);
@@ -59,7 +68,7 @@ const persist = opts => {
   db.usedProofs=db.usedProofs.filter(x=>x.expires>time).slice(-3000);
   // Unverified incident reports expire after 30 days; verified community data after 180 days.
   db.reports=db.reports.filter(x=>new Date(x.createdAt).getTime()>(time-(x.status==='verificado'?180:30)*86400000));
-  store.save(opts);
+  await store.save(opts);
 };
 // Invalidate legacy plaintext sessions once, without leaving a plaintext backup.
 let migrated = false;
@@ -75,7 +84,7 @@ for (const u of db.users) {
 function stampLegacy(){return new Date().toISOString();}
 if (migrated) {
   try { fs.rmSync(file + '.bak', { force: true }); } catch { /* best effort */ }
-  persist({ backup: false });
+  await persist({ backup: false });
 }
 const secret = process.env.VANO_SECURITY_SECRET || hex(32);
 const limiter = createLimiter();
@@ -95,7 +104,7 @@ function cookie(req, key) {
   const pair = (req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith(`${key}=`));
   return pair?.slice(key.length + 1) || '';
 }
-const secured = production || process.env.VANO_DEV_HTTPS === '1';
+const secured = production || process.env.VANO_DEV_HTTPS === '1' || googleStatus.callbackOrigin?.startsWith('https://') === true;
 function setCookie(key, value, maxAge) {
   return `${key}=${value}; Path=/; HttpOnly; SameSite=Lax; ${secured ? 'Secure; ' : ''}Max-Age=${maxAge}`;
 }
@@ -233,25 +242,17 @@ async function emailAction(user, kind) {
   catch (e) { db.emailTokens=db.emailTokens.filter(x=>!(x.userId===user.id&&x.kind===kind)).concat(previous);throw e; }
   return true;
 }
-async function search(query,language='pt-BR',country=null) {
-  const text = safeStr(query, 256);
-  if (text.length < 2) return [];
-  const access = process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
-  if (access) {
-    try {
-      const u = new URL('https://api.mapbox.com/search/geocode/v6/forward');
-      u.searchParams.set('q', text);
-      if(['FR','PT','BR'].includes(country))u.searchParams.set('country',country);
-      // Do not restrict international searches to Brazil or bias to São Paulo.
-      if(country==='BR')u.searchParams.set('proximity','-46.67,-23.58');
-      u.searchParams.set('language', language); u.searchParams.set('limit', '6'); u.searchParams.set('access_token', access);
-      const response = await fetch(u, { signal: AbortSignal.timeout(6500) });
-      if (!response.ok) throw Error(`Mapbox HTTP ${response.status}`);
-      const result = await response.json();
-      return (result.features || []).slice(0,6).map((f, i) => ({ id:f.properties?.mapbox_id || 'map-'+i, name:f.properties?.name || f.properties?.full_address || text, address:f.properties?.full_address || f.properties?.place_formatted || '', coords:f.geometry?.coordinates })).filter(x => pointOK(x.coords));
-    } catch { /* hide provider/token details from users */ }
+async function search(query,language='pt-BR',proximity=null) {
+  const text=safeStr(query,256).trim();
+  if(text.length<2)return [];
+  const access=process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+  if(!access){
+    if(production)throw new HttpError(503,'A busca de endereços está temporariamente indisponível.');
+    return places.filter(x=>x.name.toLocaleLowerCase().includes(text.toLocaleLowerCase())).slice(0,6);
   }
-  return places.filter(x => `${x.name} ${x.address}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())).slice(0,6);
+  const outcome=await queryPlaces(text,{token:access,language,proximity});
+  if(!outcome.providerOk)throw new HttpError(503,'O serviço de endereços não respondeu. Tente novamente.');
+  return outcome.results;
 }
 async function directions(originPoint, destination, vehicle = 'carro', telemetry = {}, language = 'pt-BR', options = {}) {
   if (!pointOK(originPoint) || !pointOK(destination)) throw new HttpError(400, 'Coordenadas inválidas.');
@@ -259,18 +260,15 @@ async function directions(originPoint, destination, vehicle = 'carro', telemetry
   if (process.env.VANO_V1_API_URL?.trim()) return directionsFromV1(process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry, { ...options, timeoutMs: Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS) || 65000 });
   const access = process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
   if (access) {
-    const profile = 'mapbox/driving-traffic';
-    const u = new URL(`https://api.mapbox.com/directions/v5/${profile}/${originPoint.join(',')};${destination.join(',')}`);
-    u.searchParams.set('alternatives','true');u.searchParams.set('geometries','geojson');u.searchParams.set('overview','full');u.searchParams.set('steps','true');u.searchParams.set('language',LANGUAGES.has(language)?language:'pt-BR');u.searchParams.set('access_token',access);
-    let response;
-    try { response = await fetch(u, { signal:AbortSignal.timeout(10000) }); } catch { throw new HttpError(503,'Serviço de rotas indisponível.'); }
-    if (!response.ok) throw new HttpError(503, 'Serviço de rotas indisponível.');
-    const data = await response.json();
-    if (!data.routes?.length) throw new HttpError(404, 'Nenhuma rota encontrada.');
-    const byTime = data.routes.slice().sort((a,b)=>a.duration-b.duration);
-    const fastest=byTime[0], other=byTime[1] || fastest;
-    const norm=(r,kind)=>({id:kind,label:kind==='safe'?'Mais segura':'Mais rápida',duration:Math.max(1,Math.round(r.duration/60)),distance:Math.round(r.distance/100)/10,geometry:r.geometry,steps:r.legs?.flatMap(l=>l.steps.map(s=>({instruction:s.maneuver?.instruction || s.name || 'Siga em frente', distance:s.distance, location:s.maneuver?.location,modifier:s.maneuver?.modifier||'straight',type:s.maneuver?.type||'',street:s.name||'',lanes:(s.intersections||[]).find(i=>Array.isArray(i.lanes))?.lanes?.slice(0,8).map(l=>({valid:l.valid===true,indications:Array.isArray(l.indications)?l.indications.filter(v=>['left','right','straight','slight left','slight right','sharp left','sharp right'].includes(v)).slice(0,3):[]}))||[]})))||[],verifiedSafety:false});
-    return {routes:[norm(other,'safe'),norm(fastest,'fast')],source:'mapbox',microRoutingActive:false,safetyMessage:'Alternativas Mapbox. O motor de micro-rotas V1 não está conectado; não há avaliação de segurança validada.'};
+    try {
+      // Preserve the audited V1 order: base traffic routes, conditional adaptive
+      // candidates, bounded parallel micro-bypasses, exact dedupe, minimum ETA.
+      return await calculateMapboxV1Candidates(originPoint,destination,vehicle,telemetry,
+        LANGUAGES.has(language)?language:'pt-BR',options,access);
+    } catch (error) {
+      console.warn('VANO Mapbox candidate engine unavailable:',error?.message||String(error));
+      throw new HttpError(503,'Serviço de rotas indisponível. Tente novamente.');
+    }
   }
   if (production) throw new HttpError(503, 'Roteamento não configurado.');
   return demoRoutes(originPoint, destination, vehicle);
@@ -301,7 +299,7 @@ function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ow
 async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
-  if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady});
+  if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,googleIssue:googleStatus.reason,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady,storage:store.kind||'json-ephemeral',persistentDb:store.persistent===true});
   if (pathname === '/api/engine/status' && req.method === 'GET') {
     const configured=Boolean(process.env.VANO_V1_API_URL?.trim());
     if(!configured)return json(res,200,{configured:false,online:false,mode:'mapbox-fallback'});
@@ -319,35 +317,44 @@ async function route(req, res) {
     if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
     if(!limits(req,res,'admin-console',30,60000))return;
     if(pathname==='/api/admin/users')return json(res,200,adminUsers(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit')}));
-    return json(res,200,adminMetrics(db,runtimeMetrics,{now:Date.now(),startedAt:startupMs,status:{google:googleReady,mapbox:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,v1Router:!!process.env.VANO_V1_API_URL,email:mailReady,persistentDb:false,storage:'JSON da instância atual — dados podem desaparecer com reinícios no Render Free'}}));
+    return json(res,200,adminMetrics(db,runtimeMetrics,{now:Date.now(),startedAt:startupMs,status:{google:googleReady,mapbox:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,v1Router:!!process.env.VANO_V1_API_URL,email:mailReady,persistentDb:store.persistent===true,storage:store.persistent?'PostgreSQL (vano_v2.app_state)':'JSON da instância atual — dados podem desaparecer com reinícios no Render Free'}}));
   }
   if (pathname === '/api/bootstrap' && req.method === 'GET') {
     const session=userSession(req);let refreshCookie=null;
-    if(session){const stored=db.sessions.find(s=>s.tokenHash===session.hash);if(stored&&stored.expires<now()+(SESSION_MAX_AGE-86400)*1000){stored.expires=now()+SESSION_MAX_AGE*1000;persist();refreshCookie=setCookie('vano_session',cookie(req,'vano_session'),SESSION_MAX_AGE);}}
+    if(session){const stored=db.sessions.find(s=>s.tokenHash===session.hash);if(stored&&stored.expires<now()+(SESSION_MAX_AGE-86400)*1000){stored.expires=now()+SESSION_MAX_AGE*1000;await persist();refreshCookie=setCookie('vano_session',cookie(req,'vano_session'),SESSION_MAX_AGE);}}
     const newGuest=guestCookie(req);return json(res,200,bootstrap(req),(refreshCookie||newGuest)?{'Set-Cookie':refreshCookie||newGuest}:{});
   }
   if (pathname === '/api/auth/google/start' && req.method === 'GET') {
     if(!googleReady)return err(res,503,'Login Google ainda não configurado.');
     if(!limits(req,res,'google-start',15,300000))return;
     let native;try{native=readMobileRequest(u.searchParams);}catch(e){return err(res,400,e.message);}
-    const state=newOAuthToken(), verifier=newOAuthToken(48);
     const linking=u.searchParams.get('link')==='1';
     if(native&&linking)return err(res,400,'Entre com e-mail para conectar o Google nas configurações da conta.');
+    // The Google callback must share the cookie's exact hostname.
+    // Example: vanomaps.online -> vanu-73xu.onrender.com before setting the state cookie.
+    // Redirect destination is from trusted server configuration, never request Host.
+    const canonical=canonicalGoogleStart(req.headers.host,process.env);
+    if(canonical){
+      if(linking)return err(res,409,'Para vincular o Google, entre na sua conta pelo endereço oficial deste serviço.');
+      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':canonical});
+      res.end();return;
+    }
+    const state=newOAuthToken(), verifier=newOAuthToken(48);
     const session=linking?userSession(req):null;
     if(linking&&!session)return err(res,401,'Entre na conta VANO antes de conectar o Google.');
     db.oauthStates.push({native,stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:session?.user.id||null,linkSessionHash:session?.hash||null});
     db.oauthStates=db.oauthStates.filter(x=>x.expires>now()).slice(-100);
-    persist();
+    await persist();
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':googleAuthUrl(process.env,state,verifier),'Set-Cookie':setCookie('vano_oauth',state,600)});
     res.end();return;
   }
-  if (pathname === '/api/auth/google/callback' && req.method === 'GET') {
+  if ((pathname === '/api/auth/google/callback' || pathname === '/login/google/callback') && req.method === 'GET') {
     const state=u.searchParams.get('state')||'', source=cookie(req,'vano_oauth');
     const record=(state.length>=20 && state.length<=200 && safeEqual(state,source)) ? db.oauthStates.find(x=>x.stateHash===hashState(state)&&x.expires>now()) : null;
     const drop=setCookie('vano_oauth','',0);
     const failed=(error='erro')=>{res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':record?.native?mobileCallback(record.native.state,null,error):`/entrar?google=${error}`,'Set-Cookie':drop});res.end();};
-    if(!record || u.searchParams.has('error')){failed();return;}
-    db.oauthStates=db.oauthStates.filter(x=>x!==record);persist();
+    if(u.searchParams.has('error')){failed('cancelado');return;}if(!record){console.warn('VANO OAuth: estado ausente, expirado ou cookie de callback não recebido.');failed('estado-expirado');return;}
+    db.oauthStates=db.oauthStates.filter(x=>x!==record);await persist();
     try {
       const id=await fetchGoogleIdentity(process.env,u.searchParams.get('code')||'',record.verifier);
       if(record.linkUserId){
@@ -360,7 +367,7 @@ async function route(req, res) {
           res.writeHead(302,{...headers,'Location':'/conta?google=email-divergente','Set-Cookie':drop});res.end();return;
         }
         session.user.googleSub=id.googleSub;
-        persist();
+        await persist();
         res.writeHead(302,{...headers,'Location':'/conta?google=vinculado','Set-Cookie':drop});res.end();return;
       }
       let user=db.users.find(x=>x.googleSub===id.googleSub);
@@ -374,15 +381,15 @@ async function route(req, res) {
         const chosen=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
         db.preferences.push({...prefFor(user.id,chosen),owner:user.id,language:chosen,languageConfirmed:false});
       }
-      if(record.native){const code=nativeGrants.issue(user.id,record.native);persist();res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':mobileCallback(record.native.state,code),'Set-Cookie':drop});res.end();return;}
-      const raw=createSession(user.id);persist();
+      if(record.native){const code=nativeGrants.issue(user.id,record.native);await persist();res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':mobileCallback(record.native.state,code),'Set-Cookie':drop});res.end();return;}
+      const raw=createSession(user.id);await persist();
       const complete=prefFor(user.id).onboardingComplete;
       res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':complete?'/mapa':'/personalizar','Set-Cookie':[drop,setCookie('vano_session',raw,SESSION_MAX_AGE)]});res.end();return;
     }catch(e){console.error('Google OAuth falhou:',e?.message||String(e));failed();return;}
   }
   if (pathname === '/api/auth/verify' && req.method === 'GET') {
     const raw = u.searchParams.get('token');const record = db.emailTokens.find(x=>x.kind==='verify'&&x.tokenHash===sha256(raw||'')&&x.expires>now());
-    if (record) { const user=db.users.find(x=>x.id===record.userId);if(user){user.verifiedAt=stamp();user.verificationMethod='email';}db.emailTokens=db.emailTokens.filter(x=>x!==record);persist(); }
+    if (record) { const user=db.users.find(x=>x.id===record.userId);if(user){user.verifiedAt=stamp();user.verificationMethod='email';}db.emailTokens=db.emailTokens.filter(x=>x!==record);await persist(); }
     const where=record?'/entrar?verificado=1':'/entrar?verificado=0';
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':where});res.end();return;
   }
@@ -392,7 +399,7 @@ async function route(req, res) {
     const body=await getBody(req),uid=nativeGrants.redeem(body);
     const user=uid&&db.users.find(x=>x.id===uid);
     if(!user)return err(res,401,'Retorno de login inválido ou expirado.');
-    const raw=createSession(user.id);persist();
+    const raw=createSession(user.id);await persist();
     return json(res,200,{ok:true,cookieName:'vano_session',sessionToken:raw,maxAge:SESSION_MAX_AGE,next:prefFor(user.id).onboardingComplete?'/mapa':'/personalizar'});
   }
   if (req.method !== 'GET' && !protectedWrite(req,res)) return;
@@ -400,12 +407,47 @@ async function route(req, res) {
     const hostname = String(req.headers.host||'').split(':')[0];
     if(!['localhost','127.0.0.1','[::1]'].includes(hostname))return err(res,426,'Para usar contas pelo celular, habilite HTTPS confiável.');
   }
+  // Open mapped infrastructure within the CURRENT viewport only.
+  // OSM is neither exhaustive nor a real-time incident reporting service.
+  if(pathname==='/api/map-features/sources'&&req.method==='GET')return json(res,200,{sources:PUBLIC_MAP_SOURCES});
+  if(pathname==='/api/map-features'&&req.method==='GET'){
+    if(!limits(req,res,'public-map-features',22,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'));
+    if(!bbox)return err(res,400,'Área do mapa inválida ou grande demais.');
+    const publicData=await queryPublicMap(bbox);
+    const verified=filterVerifiedReports(db.reports,bbox);
+    return json(res,200,{...publicData,features:[...publicData.features,...verified],verifiedReports:verified.length},
+      {'Cache-Control':'public, max-age=65'});
+  }
   if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
+  // Address lookup only after location permission; no coordinates are persisted.
+  // A strict request limit prevents GPS jitter from exhausting provider quotas.
+  if (pathname === '/api/reverse' && req.method === 'GET') {
+    if (!limits(req,res,'reverse-geocode',12,60000)) return;
+    const point=parseReverseCoords(u.searchParams);
+    if(!point)return err(res,400,'Coordenadas inválidas.');
+    const access=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+    if(!access)return err(res,503,'Endereços indisponíveis nesta instância.');
+    const language=normalizeLocale(u.searchParams.get('lang'))||'pt-BR';
+    const request=new URL('https://api.mapbox.com/search/geocode/v6/reverse');
+    request.searchParams.set('longitude',String(point.lon));
+    request.searchParams.set('latitude',String(point.lat));
+    request.searchParams.set('language',language);
+    request.searchParams.set('access_token',access);
+    try{
+      const response=await fetch(request,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(6500)});
+      if(!response.ok)return err(res,502,'Não foi possível identificar o endereço agora.');
+      const result=normalizedReverseAddress(await response.json());
+      return json(res,200,{found:Boolean(result),address:result});
+    }catch{return err(res,503,'Serviço de endereços temporariamente indisponível.');}
+  }
   if (pathname === '/api/search' && req.method === 'GET') {
-    if (!limits(req,res,'search',25,60000)) return;
+    if (!limits(req,res,'search',90,60000)) return;
     const detected=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1');
     const lang=normalizeLocale(u.searchParams.get('lang'))||prefFor(owner(req),detected.language).language;
-    return json(res,200,await search(u.searchParams.get('q'),lang,detected.country));
+    const lon=Number(u.searchParams.get('lng')),lat=Number(u.searchParams.get('lat'));
+    const proximity=u.searchParams.has('lng')&&u.searchParams.has('lat')&&pointOK([lon,lat])?[lon,lat]:null;
+    return json(res,200,await search(u.searchParams.get('q'),lang,proximity));
   }
   if (pathname === '/api/route' && req.method === 'POST') {
     if (!limits(req,res,'route',10,60000)) return;
@@ -449,10 +491,10 @@ async function route(req, res) {
     db.preferences=db.preferences.filter(x=>x.owner!==user.id);
     db.preferences.push({...prefFor(user.id,chosenLanguage),owner:user.id,language:chosenLanguage,languageConfirmed:true});
     if(mailReady){
-      try {await emailAction(user,'verify');persist();return json(res,201,{verificationRequired:true,message:'Verifique sua caixa de entrada para confirmar o e-mail.'});}
+      try {await emailAction(user,'verify');await persist();return json(res,201,{verificationRequired:true,message:'Verifique sua caixa de entrada para confirmar o e-mail.'});}
       catch {db.users=db.users.filter(x=>x.id!==user.id);db.preferences=db.preferences.filter(x=>x.owner!==user.id);db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);return err(res,503,'Não foi possível enviar a confirmação. Tente novamente.');}
     }
-    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,201,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,SESSION_MAX_AGE)});
+    adoptGuest(req,user.id);const raw=createSession(user.id);await persist();return json(res,201,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,SESSION_MAX_AGE)});
   }
   if (pathname === '/api/auth/login' && req.method === 'POST') {
     if (!limits(req,res,'login',12,900000))return;
@@ -461,14 +503,14 @@ async function route(req, res) {
     const user=db.users.find(x=>x.email===em);
     if(!passwordMatches(body.password,user?.passwordHash||dummyHash)||!user)return err(res,401,'E-mail ou senha incorretos.');
     if(!user.verifiedAt || (production && user.verificationMethod!=='email'))return err(res,403,'Confirme seu e-mail para acessar a conta.');
-    adoptGuest(req,user.id);const raw=createSession(user.id);persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,SESSION_MAX_AGE)});
+    adoptGuest(req,user.id);const raw=createSession(user.id);await persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,SESSION_MAX_AGE)});
   }
   if (pathname === '/api/auth/resend-verification' && req.method === 'POST') {
     if(!limits(req,res,'verify-email',3,3600000))return;
     const b=await getBody(req),em=normEmail(b.email);
     if(!limitAccount(res,'verify-email',em,3,3600000))return;
     const user=db.users.find(x=>x.email===em&&!x.verifiedAt);
-    if(user&&mailReady){try{await emailAction(user,'verify');persist();}catch{ /* generic response */ }}
+    if(user&&mailReady){try{await emailAction(user,'verify');await persist();}catch{ /* generic response */ }}
     return json(res,200,{ok:true,message:'Se a conta precisar de confirmação, enviaremos as instruções.'});
   }
   if (pathname === '/api/auth/forgot' && req.method === 'POST') {
@@ -476,7 +518,7 @@ async function route(req, res) {
     const b=await getBody(req),em=normEmail(b.email);
     if(!limitAccount(res,'forgot',em,3,3600000))return;
     const user=db.users.find(x=>x.email===em);
-    if(user&&mailReady){try{await emailAction(user,'reset');persist();}catch{ /* generic response */ }}
+    if(user&&mailReady){try{await emailAction(user,'reset');await persist();}catch{ /* generic response */ }}
     return json(res,200,{ok:true,message:'Se o e-mail estiver cadastrado, você receberá as instruções.'});
   }
   if (pathname === '/api/auth/reset' && req.method === 'POST') {
@@ -486,10 +528,10 @@ async function route(req, res) {
     if(!rec)return err(res,400,'Link expirado ou inválido.');
     const user=db.users.find(x=>x.id===rec.userId);if(!user)return err(res,400,'Link inválido.');
     user.passwordHash=passwordHash(b.password);user.verifiedAt=stamp();user.verificationMethod='email';db.sessions=db.sessions.filter(x=>x.userId!==user.id);
-    db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);persist();return json(res,200,{ok:true});
+    db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);await persist();return json(res,200,{ok:true});
   }
   if (pathname === '/api/auth/logout' && req.method === 'POST') {
-    const key=sha256(cookie(req,'vano_session'));db.sessions=db.sessions.filter(x=>x.tokenHash!==key);persist();
+    const key=sha256(cookie(req,'vano_session'));db.sessions=db.sessions.filter(x=>x.tokenHash!==key);await persist();
     return json(res,200,{ok:true}, {'Set-Cookie':setCookie('vano_session','',0)});
   }
   if(pathname==='/api/profile/export'&&req.method==='GET'){
@@ -501,7 +543,7 @@ async function route(req, res) {
   if(pathname==='/api/profile'&&req.method==='PATCH'){
     const account=requireAccount(req,res);if(!account)return;
     const b=await getBody(req);if(!validName(b.name))return err(res,400,'Nome inválido.');
-    const rec=db.users.find(x=>x.id===account.id);rec.name=cleanText(b.name,80);persist();return json(res,200,{user:safeUser(rec)});
+    const rec=db.users.find(x=>x.id===account.id);rec.name=cleanText(b.name,80);await persist();return json(res,200,{user:safeUser(rec)});
   }
   if(pathname==='/api/profile'&&req.method==='DELETE'){
     const account=requireAccount(req,res);if(!account)return;
@@ -510,7 +552,7 @@ async function route(req, res) {
     if(!passwordMatches(b.password,rec.passwordHash))return err(res,401,'Confirme sua senha atual para excluir a conta.');
     db.users=db.users.filter(x=>x.id!==account.id);db.sessions=db.sessions.filter(x=>x.userId!==account.id);
     for(const key of ['favorites','history','routines','preferences','reports'])db[key]=db[key].filter(x=>x.owner!==account.id);
-    db.emailTokens=db.emailTokens.filter(x=>x.userId!==account.id);persist();return json(res,200,{ok:true},{'Set-Cookie':setCookie('vano_session','',0)});
+    db.emailTokens=db.emailTokens.filter(x=>x.userId!==account.id);await persist();return json(res,200,{ok:true},{'Set-Cookie':setCookie('vano_session','',0)});
   }
   if(pathname==='/api/preferences'&&req.method==='PATCH'){
     if(!limits(req,res,'writes',90,60000))return;
@@ -522,16 +564,16 @@ async function route(req, res) {
     if(p.alerts!==undefined){if(typeof p.alerts!=='boolean')return err(res,400,'Alertas inválidos.');next.alerts=p.alerts;}
     if(p.routineTags!==undefined){if(!Array.isArray(p.routineTags))return err(res,400,'Rotina inválida.');const allowed=new Set(['Casa','Trabalho','Faculdade','Academia','Mercado']);next.routineTags=[...new Set(p.routineTags.filter(x=>allowed.has(x)))].slice(0,5);}
     if(p.onboardingComplete!==undefined){if(typeof p.onboardingComplete!=='boolean')return err(res,400,'Preferência inválida.');next.onboardingComplete=p.onboardingComplete;}
-    db.preferences=db.preferences.filter(x=>x.owner!==id);db.preferences.push(next);persist();const {owner:_privateOwner,...publicPref}=next;return json(res,200,publicPref);
+    db.preferences=db.preferences.filter(x=>x.owner!==id);db.preferences.push(next);await persist();const {owner:_privateOwner,...publicPref}=next;return json(res,200,publicPref);
   }
   if(pathname==='/api/favorites'&&req.method==='POST'){
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);if(!cleanText(b.name,90)||!pointOK(b.coords))return err(res,400,'Local inválido.');
     if(!listCap(db.favorites,id,100))return err(res,429,'Limite de lugares favoritos atingido.');
-    const rec={id:hex(8),owner:id,name:cleanText(b.name,90),address:cleanText(b.address,180),category:cleanText(b.category,30),coords:b.coords,createdAt:stamp()};db.favorites.push(rec);persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
+    const rec={id:hex(8),owner:id,name:cleanText(b.name,90),address:cleanText(b.address,180),category:cleanText(b.category,30),coords:b.coords,createdAt:stamp()};db.favorites.push(rec);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/favorites/')&&req.method==='DELETE'){
-    const id=pathname.split('/').pop(),own=owner(req);db.favorites=db.favorites.filter(x=>!(x.id===id&&x.owner===own));persist();return json(res,200,{ok:true});
+    const id=pathname.split('/').pop(),own=owner(req);db.favorites=db.favorites.filter(x=>!(x.id===id&&x.owner===own));await persist();return json(res,200,{ok:true});
   }
   if(pathname==='/api/history'&&req.method==='POST'){
     if(!limits(req,res,'history',20,3600000))return;
@@ -540,7 +582,7 @@ async function route(req, res) {
     if(!proof)return err(res,422,'Histórico exige uma rota validada pelo servidor. Calcule novamente.');
     const rec={id:hex(8),owner:id,destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
     db.history.push(rec);db.usedProofs.push({hash:sha256(b.proof),expires:proof.expires});
-    db.history=db.history.slice(-10000);db.usedProofs=db.usedProofs.filter(x=>x.expires>now()).slice(-3000);persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
+    db.history=db.history.slice(-10000);db.usedProofs=db.usedProofs.filter(x=>x.expires>now()).slice(-3000);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
   if(pathname==='/api/reports'&&req.method==='POST'){
     if(!limits(req,res,'reports',6,3600000))return;
@@ -548,17 +590,17 @@ async function route(req, res) {
     if(!pointOK(b.coords)||!['transito','obra','acidente','risco','radar'].includes(b.type))return err(res,400,'Dados da ocorrência inválidos.');
     if(!listCap(db.reports,id,40))return err(res,429,'Limite de relatos desta conta atingido.');
     const record={id:hex(8),type:b.type,description:cleanText(b.description,280),coords:b.coords,createdAt:stamp(),status:'nao_verificado',owner:id};
-    db.reports.push(record);persist();return json(res,201,reportPublic(record));
+    db.reports.push(record);await persist();return json(res,201,reportPublic(record));
   }
   if(pathname==='/api/routines'&&req.method==='POST'){
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);
     if(!cleanText(b.name,80)||!cleanText(b.destination,80)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time||''))return err(res,400,'Rotina inválida.');
     if(!listCap(db.routines,id,50))return err(res,429,'Limite de rotinas atingido.');
-    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp()};db.routines.push(item);persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
+    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp()};db.routines.push(item);await persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/routines/')&&req.method==='DELETE'){
-    const id=pathname.split('/').pop(),own=owner(req);db.routines=db.routines.filter(x=>!(x.id===id&&x.owner===own));persist();return json(res,200,{ok:true});
+    const id=pathname.split('/').pop(),own=owner(req);db.routines=db.routines.filter(x=>!(x.id===id&&x.owner===own));await persist();return json(res,200,{ok:true});
   }
   if(pathname.startsWith('/api/admin'))return err(res,404,'Recurso administrativo não encontrado.');
   return err(res,404,'Rota não encontrada.');
@@ -571,7 +613,12 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     if(!['GET','POST','PATCH','DELETE','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     if(!requestHTTPS(req,res))return;
     if(!limits(req,res,'all',240,60000))return;
-    if((req.url||'').startsWith('/api/')){runtimeMetrics.requests+=1;return await route(req,res);}
+    // Google OAuth legacy callback must reach the API controller, not the React SPA fallback.
+    // Otherwise React redirects /login/google/callback to /inicio before a session is created.
+    const requestPath=new URL(req.url||'/','http://localhost').pathname;
+    if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'){
+      store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
+    }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     const dist=path.join(root,'dist');
     let name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);

@@ -1,0 +1,67 @@
+/* VANO Global Public Map — compact and legible, never animated over the driver. */
+.v40-public-touch{
+ width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+ cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+ pointer-events:auto;
+}
+.v40-public-touch:focus-visible{outline:3px solid #ff8d45;outline-offset:0;border-radius:14px}
+.v40-public-pin{
+ width:32px;height:32px;display:grid;place-items:center;position:relative;
+ background:#fff;border:1px solid #e4e9e6;border-radius:13px;
+ box-shadow:0 3px 10px #1b252327,0 1px 2px #1b252312;
+ color:#293c45;
+}
+.v40-public-pin svg{display:block;flex-shrink:0}
+.v40-public-pin.is-radar{width:34px;height:34px;border:1.5px solid #f4bc9a;background:#fff6ef;box-shadow:0 4px 13px #ae4d2128}
+.v40-public-pin.is-report{background:#fff6f5;border-color:#f6ccc9}
+.v40-leaflet-pin{border:none!important;background:transparent!important}
+.v40-public-popup{display:flex;flex-direction:column;gap:5px;color:#25312c;font:600 12px/1.35 system-ui,sans-serif;max-width:220px}
+.v40-public-popup strong{font-size:14px;font-weight:760}
+.v40-public-popup small{font-size:11px;color:#66726d}
+.v40-public-popup p{margin:3px 0 0;font-weight:450;font-size:12px;overflow-wrap:anywhere}
+.v40-map-credit{
+ position:absolute;left:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 33px);
+ z-index:30;text-decoration:none;font:500 10px/1.1 system-ui,sans-serif;
+ color:#485750;background:#fffffff0;border:1px solid #dee8e4;
+ border-radius:7px;padding:3px 5px;box-shadow:0 1px 4px #24332918;
+}
+.v40-map-credit[hidden]{display:none!important}
+.v40-map-credit:hover,.v40-map-credit:focus-visible{text-decoration:underline}
+.map-page.in-navigation .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 87px)}
+.map-page.has-sheet .v40-map-credit{bottom:calc(min(66dvh,570px) + 17px)}
+@media(max-width:370px){
+ .v40-public-pin{width:29px;height:29px;border-radius:11px}
+ .v40-public-pin.is-radar{width:33px;height:33px}
+ .v40-public-pin svg{width:19px;height:19px}
+}
+@media(prefers-reduced-motion:reduce){
+ .v40-public-touch,.v40-public-pin{animation:none!important;transition:none!important}
+}
+
+/* Recoverable diagnostics, only visible when public map data could not load. */
+.v41-public-status{
+ position:absolute;
+ z-index:31;
+ left:50%;
+ bottom:calc(env(safe-area-inset-bottom,0px) + 62px);
+ transform:translateX(-50%);
+ padding:9px 13px;
+ width:max-content;
+ max-width:calc(100% - 48px);
+ border-radius:999px;
+ border:1px solid #e5e9e7;
+ background:#fff;
+ color:#3d4844;
+ box-shadow:0 4px 14px #24352d22;
+ font:600 12px/1.25 system-ui,sans-serif;
+ cursor:pointer;
+ pointer-events:auto;
+}
+.v41-public-status[hidden]{display:none!important}
+.v41-public-status:focus-visible{outline:3px solid #ff8d45;outline-offset:2px}
+.map-page.in-navigation .v41-public-status{
+ bottom:calc(var(--v36-nav-dock-height,180px) + 84px);
+}
+.map-page.has-sheet .v41-public-status{
+ bottom:calc(min(66dvh,570px) + 50px);
+}

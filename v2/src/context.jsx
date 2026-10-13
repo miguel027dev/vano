@@ -24,6 +24,6 @@ export function VanoProvider({children}) {
   const login=async(path,values)=>{const response=await post(`/auth/${path}`,values);if(response.verificationRequired){setToast(response.message);return {verificationRequired:true};}const state=await refresh();notifyNative({action:'session'});setToast(translate('Você entrou no VANO',state?.preferences?.language));return {onboardingComplete:!!state?.preferences?.onboardingComplete};};
   const logout=async()=>{await post('/auth/logout',{});await clearPrivateOffline();setData(defaults);notifyNative({action:'session'});await refresh();setToast(translate('Você saiu da conta',data.preferences?.language));};
   const t=useCallback((key,vars)=>translate(key,data.preferences?.language||browserLocale(),vars),[data.preferences?.language]);
-  return <Ctx.Provider value={{...data,t,language:data.preferences?.language||'pt-BR',loading,error,toast,setToast,refresh,savePreference,saveFavorite,deleteFavorite,saveTrip,report,login,logout}}>{children}{toast&&<div className="toast" role="status">{toast}</div>}</Ctx.Provider>;
+  return <Ctx.Provider value={{...data,t,language:data.preferences?.language||'pt-BR',loading,error,toast,setToast,refresh,savePreference,saveFavorite,deleteFavorite,saveTrip,report,login,logout}}>{children}{toast&&<span className="sr-only" role="status" aria-live="polite">{toast}</span>}</Ctx.Provider>;
 }
 export const useVano=()=>useContext(Ctx);
