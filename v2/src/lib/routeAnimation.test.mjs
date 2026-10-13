@@ -26,3 +26,19 @@ test('maneuvers and lanes only use provider data',()=>{
  const start=nextManeuver(route,timeline,0);assert.equal(start.instruction,'Vire à esquerda');assert.equal(start.lanes.length,2);
  assert.deepEqual(nextManeuver({steps:[]},timeline,10).lanes,[]);
 });
+
+test('step index stays aligned with provider even when an earlier step has no coordinates',()=>{
+ const route={steps:[
+   {instruction:'Saída sem ponto',location:null},
+   {location:points[0],instruction:'Siga em frente',modifier:'straight'},
+   {location:points[1],instruction:'Rotatória',type:'roundabout',modifier:'right'}
+ ]};
+ const step=nextManeuver(route,timeline,0);
+ assert.equal(step.stepIndex,2);
+ assert.equal(step.kind,'roundabout');
+});
+test('locationless provider instructions are preserved without an invented distance',()=>{
+ const step=nextManeuver({steps:[{instruction:'Acompanhe a sinalização'}]},timeline,0);
+ assert.equal(step.instruction,'Acompanhe a sinalização');
+ assert.equal(step.distance,null);
+});
