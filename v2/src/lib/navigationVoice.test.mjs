@@ -66,6 +66,10 @@ test('application integrates speech on real maneuver, navigation start, unmute a
  assert.match(page,/function toggleVoice\(\)/);
  assert.match(page,/onClick=\{toggleVoice\}/);
  assert.match(page,/Testar voz/);
+ assert.match(page,/window.addEventListener\('vano:native-dictation',nativeFailure\)/);
+ assert.match(page,/voz offline indisponível\|instale uma voz local/);
+ assert.match(page,/native:false,/);
+ assert.match(page,/lastVoiceAttempt.current=\{text,key\}/);
  assert.match(page,/stopNavigationVoice\(\{native:isNativeShell\(\),sendNative:notifyNative\}\)/);
  assert.doesNotMatch(page,/spoken\.current\.add\(cue\.key\);setSpokenRevision\(v=>v\+1\);notifyNative/);
 });
