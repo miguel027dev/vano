@@ -123,10 +123,18 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
     const fastest=pool[0];
     // The other route remains an alternative, NOT a verified safety assessment.
     const other=pool.find(r=>r!==fastest&&overlap(r,fastest)<.985)||pool.find(r=>r!==fastest)||fastest;
+    // Economy is an honest distance proxy, not a fabricated fuel-price claim.
+    const economical=pool.reduce((best,next)=>next.distance<best.distance?next:best,fastest);
     const candidates=pool.slice(0,6).map(r=>({durationSeconds:r.duration,distanceMeters:r.distance,
       signature:signature(r),microRoute:r._microRoute===true,microStrategy:r._microStrategy||'',
       etaGainSeconds:r._etaGainSeconds||0}));
-    return {routes:[present(other,'safe'),present(fastest,'fast')],
+    const chosen=[['safe',other],['fast',fastest],['economic',economical]];
+    const shown=[];
+    for(const [id,candidate] of chosen){
+      if(!candidate||shown.some(route=>signature(route)===signature(candidate)))continue;
+      shown.push({...present(candidate,id),label:id==='economic'?'Mais econômica':id==='fast'?'Mais rápida':'Mais segura'});
+    }
+    return {routes:shown,
       source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),
       safetyMessage:'Rota rápida selecionada pelo menor ETA do provedor após avaliar alternativas e micro-desvios. A outra rota é uma alternativa sem avaliação de segurança verificada.',
       candidateEngine:{version:'v1-eta-candidate-port',provider:usedProfile,

@@ -25,6 +25,36 @@ export function normalizedPlaces(data,provider='mapbox'){
       coords,category:p.feature_type||p.type||'local'};
   }).filter(Boolean);
 }
+const nearbyCategoryIds=Object.freeze({hospital:'hospital',restaurant:'restaurant',commerce:'shopping'});
+const radians=value=>value*Math.PI/180;
+export function distanceMeters(from,to){
+ if(!pointOK(from)||!pointOK(to))return Infinity;
+ const dLat=radians(to[1]-from[1]),dLon=radians(to[0]-from[0]);
+ const a=Math.sin(dLat/2)**2+Math.cos(radians(from[1]))*Math.cos(radians(to[1]))*Math.sin(dLon/2)**2;
+ return 6371000*2*Math.asin(Math.min(1,Math.sqrt(a)));
+}
+/** Category shortcuts deliberately differ from ordinary typed search: a
+ * nearby hospital/restaurant/commerce request must never surface the world. */
+export async function queryNearbyCategory(category,proximity,{token,language='pt-BR',limit=5,radiusMeters=15000,fetcher=fetch}={}){
+ const canonical=nearbyCategoryIds[category];
+ if(!canonical||!pointOK(proximity)||!token)return {results:[],providerOk:false};
+ const url=new URL('https://api.mapbox.com/search/searchbox/v1/category/'+canonical);
+ url.searchParams.set('access_token',token);
+ url.searchParams.set('language',(language||'pt-BR').split('-')[0]);
+ url.searchParams.set('limit',String(Math.max(1,Math.min(10,limit))));
+ url.searchParams.set('proximity',proximity.join(','));
+ // Mapbox radius is expressed in degrees; the server performs the exact meter
+ // check below before returning anything to the browser.
+ url.searchParams.set('radius',String(Math.min(10,Math.max(.001,radiusMeters/111000))));
+ try{
+  const payload=await fetchJson(url.toString(),fetcher);
+  const results=normalizedPlaces(payload,'nearby-'+category).map(item=>({
+   ...item,distanceMeters:Math.round(distanceMeters(proximity,item.coords))
+  })).filter(item=>Number.isFinite(item.distanceMeters)&&item.distanceMeters<=radiusMeters)
+    .sort((a,b)=>a.distanceMeters-b.distanceMeters).slice(0,Math.max(1,Math.min(10,limit)));
+  return {results,providerOk:true};
+ }catch{return {results:[],providerOk:false};}
+}
 const fetchJson=async(url,fetcher)=>{
   const response=await fetcher(url,{signal:AbortSignal.timeout(4800),headers:{Accept:'application/json'}});
   if(!response.ok)throw Error('provider-http-'+response.status);

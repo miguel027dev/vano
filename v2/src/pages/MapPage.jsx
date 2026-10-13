@@ -23,6 +23,19 @@ import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from 
 import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
+const nearbyShortcutCategory=Object.freeze({Hospitais:'hospital',Restaurantes:'restaurant'});
+const nearbyTitle=Object.freeze({hospital:'Hospitais perto de você',restaurant:'Restaurantes perto de você',commerce:'Comércios perto de você'});
+const nearbyIcon=Object.freeze({hospital:Cross,restaurant:Utensils,commerce:MapPin});
+const nearbyDistance=meters=>meters<1000?`${meters} m`:`${(meters/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})} km`;
+const cityFromDetail=detail=>String(detail||'').split(' · ').filter(Boolean).at(-1)||'sua cidade';
+const nearbyCategoryFromQuery=value=>{
+ const text=String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+ if(/^(hospital|hospitais)$/.test(text))return 'hospital';
+ if(/^(restaurante|restaurantes)$/.test(text))return 'restaurant';
+ if(/^(comercio|comercios|loja|lojas)$/.test(text))return 'commerce';
+ return null;
+};
+const preferredRouteChoice=(data,vehicle,preferred)=>vehicle==='a-pe'?'fast':data?.routes?.some(route=>route.id===preferred)?preferred:data?.routes?.[0]?.id||preferred;
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
@@ -35,7 +48,7 @@ export default function MapPage({active=true}){
   }
   useEffect(()=>{const flush=()=>syncMeasuredDistance(true);window.addEventListener('pagehide',flush);return()=>{window.removeEventListener('pagehide',flush);flush();};},[]);
   useEffect(()=>{if(!active)syncMeasuredDistance(true);},[active]);
-  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
+  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[nearbyCategory,setNearbyCategory]=useState(null),[nearbyPlaces,setNearbyPlaces]=useState([]),[nearbyBusy,setNearbyBusy]=useState(false),[nearbyError,setNearbyError]=useState(''),[nearbyCity,setNearbyCity]=useState(''),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[previewData,setPreviewData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
@@ -186,7 +199,7 @@ export default function MapPage({active=true}){
     if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=100){
       const coords=lastGpsFix.current.coords;
       setManualCoords(null);setPickOriginMode(false);setGpsStatus('granted');setGpsMessage('');
-      if(destRef.current)calculateRoute(destRef.current,coords);
+      if(destRef.current)calculatePreview(destRef.current,coords);
       mapControl.current?.center?.();
       return;
     }
@@ -200,7 +213,7 @@ export default function MapPage({active=true}){
       const fix=onPosition(p);
       if(switchToGPS&&fix){
         awaitingGpsDestination.current=false;setManualCoords(null);setPickOriginMode(false);
-        if(destRef.current&&!waiting)calculateRoute(destRef.current,fix.coords);
+        if(destRef.current&&!waiting)calculatePreview(destRef.current,fix.coords);
       }
     };
     const failed=e=>{
@@ -302,6 +315,38 @@ export default function MapPage({active=true}){
     },250);
     return()=>{clearTimeout(timer);controller.abort();};
   },[query,searchOpen,allPlaces,language,usingManual,gpsStatus,userCoords?.[0],userCoords?.[1]]);
+  useEffect(()=>{
+    if(!nearbyCategory)return;
+    const point=usingManual?manualCoords:userCoords;
+    if(!validPoint(point)){
+      setNearbyPlaces([]);setNearbyError('Ative sua localização ou escolha uma origem para ver lugares perto de você.');setNearbyBusy(false);return;
+    }
+    const controller=new AbortController();setNearbyBusy(true);setNearbyError('');setNearbyPlaces([]);
+    const query=`/nearby?category=${encodeURIComponent(nearbyCategory)}&lng=${point[0]}&lat=${point[1]}&lang=${encodeURIComponent(language)}`;
+    Promise.all([
+      api(query,{signal:controller.signal}),
+      api(`/reverse?longitude=${point[0].toFixed(5)}&latitude=${point[1].toFixed(5)}&lang=${encodeURIComponent(language)}`,{signal:controller.signal}).catch(()=>null)
+    ]).then(([places,reverse])=>{
+      if(controller.signal.aborted)return;
+      setNearbyPlaces(Array.isArray(places)?places:[]);
+      setNearbyCity(cityFromDetail(reverse?.address?.detail||currentAddress?.detail));
+    }).catch(error=>{if(!controller.signal.aborted)setNearbyError(error?.message||'Não foi possível encontrar lugares próximos agora.');})
+      .finally(()=>{if(!controller.signal.aborted)setNearbyBusy(false);});
+    return()=>controller.abort();
+  },[nearbyCategory,usingManual,manualCoords?.[0],manualCoords?.[1],userCoords?.[0],userCoords?.[1],language]);
+  async function calculatePreview(place,departure){
+    if(!validPoint(departure)||!validPoint(place?.coords))return;
+    const epoch=++routeEpoch.current;
+    setLoadingRoute(true);setSheetOpen(true);setRouteData(null);setPreviewData(null);
+    try{
+      const result=await api('/route-preview',{method:'POST',body:{origin:departure,destination:place.coords,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}}});
+      if(epoch!==routeEpoch.current)return;
+      setPreviewData(result.modes||{});
+      const current=result.modes?.[routeVehicle];
+      if(current?.status==='ready'){setRouteData(current.data);setChoice(preferredRouteChoice(current.data,routeVehicle,initialChoice));}
+    }catch(error){if(epoch===routeEpoch.current)setToast(error.message);}
+    finally{if(epoch===routeEpoch.current)setLoadingRoute(false);}
+  }
   async function calculateRoute(place,departure,vehicle=routeVehicle){
     // Any new route request supersedes a pending vehicle-change debounce.
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
@@ -314,7 +359,7 @@ export default function MapPage({active=true}){
     }catch(e){if(epoch===routeEpoch.current)setToast(e.message);}
     finally{if(epoch===routeEpoch.current)setLoadingRoute(false);}
   }
-  routeCalculator.current=calculateRoute;
+  routeCalculator.current=calculatePreview;
   function chooseRouteVehicle(vehicle){
     if(!['carro','moto','a-pe'].includes(vehicle)||vehicle===routeVehicle)return;
     setRouteVehicle(vehicle);
@@ -322,6 +367,10 @@ export default function MapPage({active=true}){
     // appear under a selected motorcycle toggle (and vice versa).
     routeEpoch.current++;
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
+    const warmed=previewData?.[vehicle];
+    if(warmed?.status==='ready'){
+      setRouteData(warmed.data);setChoice(preferredRouteChoice(warmed.data,vehicle,initialChoice));return;
+    }
     if(!dest||!validPoint(origin)){setRouteData(null);return;}
     setRouteData(null);setLoadingRoute(true);setSheetOpen(true);
     // Combine fast successive taps into one provider request (API quota).
@@ -332,7 +381,7 @@ export default function MapPage({active=true}){
   }
   function pick(place){
     if(!validPoint(place.coords)){setToast('Este destino ainda não tem coordenadas.');return;}
-    setDest(place);setQuery('');setSearchOpen(false);setEditor(null);setPointMenu(null);setNavMode(false);setGuidance(null);setRouteData(null);
+    setDest(place);setQuery('');setSearchOpen(false);setNearbyCategory(null);setEditor(null);setPointMenu(null);setNavMode(false);setGuidance(null);setRouteData(null);setPreviewData(null);
     if(!validPoint(origin)){
       awaitingGpsDestination.current=true;
       routeEpoch.current++;
@@ -341,7 +390,7 @@ export default function MapPage({active=true}){
       return;
     }
     awaitingGpsDestination.current=false;setPickOriginMode(false);
-    calculateRoute(place,origin);
+    calculatePreview(place,origin);
   }
   function chooseOrigin(coords,label='Origem selecionada no mapa'){
     if(!validPoint(coords))return;
@@ -383,6 +432,8 @@ export default function MapPage({active=true}){
   function clickShortcut(s){
     if(s.name==='Rotina'){navigate('/rotinas');return;}
     if(s.name==='Casa'||s.name==='Trabalho'){const f=favorites.find(f=>f.category===s.name||f.name.toLowerCase()===s.name.toLowerCase());if(f)pick(f);else navigate(`/favoritos?new=${encodeURIComponent(s.name)}`);return;}
+    const category=nearbyShortcutCategory[s.name];
+    if(category){setNearbyCategory(category);setSearchOpen(false);return;}
     setQuery(s.name==='Restaurantes'?'restaurante':'hospital');setSearchOpen(true);setTimeout(()=>searchInput.current?.focus(),70);
   }
   useEffect(()=>{
@@ -468,7 +519,7 @@ export default function MapPage({active=true}){
     // Called from the user's Start navigation click: unlock browser audio there.
     if(!muted)speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setPreviewData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setNearbyCategory(null);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
@@ -507,6 +558,7 @@ export default function MapPage({active=true}){
   // The only readout lives beside the street name when a route is ACTIVE.
   // Never render it on the initial map or next to the location card.
   const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`} aria-live="off" title={speedKmh===null?'Aguardando velocidade informada pelo GPS':'Velocidade medida pelo GPS'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small></output>;
+  const NearbyIcon=nearbyIcon[nearbyCategory]||MapPin;
 
   const nextTurnText=maneuverText(guidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
   const visualLanes=Array.isArray(guidance?.lanes)?guidance.lanes.map((lane,index)=>({
@@ -517,7 +569,7 @@ export default function MapPage({active=true}){
     <VanoMap active={active} userCoords={userCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(origin)} onNavigationProgress={setGuidance} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
-      <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
+      <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{const category=nearbyCategoryFromQuery(e.target.value);if(category){setQuery('');setSearchOpen(false);setNearbyCategory(category);return;}setNearbyCategory(null);setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
       {!searchOpen&&<div className="quick-scroll v31-shortcuts" role="group" aria-label="Atalhos de destinos">{shortcuts.map(s=><button type="button" className="quick-chip" key={s.name} onClick={()=>clickShortcut(s)}><s.icon size={16}/>{t(s.name)}</button>)}</div>}
       </>:<><div className="v32-route-layout">
       <div className="v5-route-box" aria-label="Origem e destino da rota">
@@ -561,15 +613,20 @@ export default function MapPage({active=true}){
       <p>Toque em qualquer rua no mapa para marcar seu ponto de partida.</p>
       <div className="gps-actions"><button onClick={()=>setPickOriginMode(false)}>{t('Cancelar')}</button><button className="gps-primary" onClick={()=>requestGPS(true)}>{t('Tentar GPS')}</button></div>
     </div>}
-    {!navMode&&!searchOpen&&!pickOriginMode&&!validPoint(origin)&&gpsStatus!=='checking'&&<div className="gps-banner" role="status">
-      <div className="gps-banner-heading"><AlertTriangle size={19}/><strong>{t(gpsStatus==='checking'?'Buscando sua localização…':'Localização indisponível')}</strong></div>
-      <p>{gpsStatus==='checking'?'Você também pode escolher de onde sair.':gpsMessage||'Não conseguimos acessar seu GPS neste navegador.'}</p>
-      <div className="gps-actions"><button onClick={()=>requestGPS(true)}>{t('Tentar novamente')}</button><button className="gps-primary" onClick={()=>setPickOriginMode(true)}>{t('Escolher origem no mapa')}</button></div>
+    {!navMode&&!searchOpen&&!nearbyCategory&&!pickOriginMode&&!validPoint(origin)&&gpsStatus!=='checking'&&<div className="gps-banner" role="status">
+      <div className="gps-banner-heading"><AlertTriangle size={19}/><strong>{t('Não encontramos sua localização')}</strong></div>
+      <p>{gpsMessage||'Tente novamente ou defina sua origem manualmente.'}</p>
+      <div className="gps-actions"><button onClick={()=>requestGPS(true)}>{t('Tentar novamente')}</button><button className="gps-primary" onClick={()=>setPickOriginMode(true)}>{t('Escolher origem')}</button></div>
     </div>}
     {!navMode&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
     {searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t('Sugestões próximas')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':searchError?searchError:query.trim().length<2?'Digite um lugar, rua ou CEP.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
+    {nearbyCategory&&!dest&&<section className="search-results v32-results nearby-results" aria-label={nearbyTitle[nearbyCategory]}>
+      <div className="search-results-head"><span>{nearbyTitle[nearbyCategory]}</span><button type="button" aria-label="Fechar lugares próximos" onClick={()=>setNearbyCategory(null)}><X size={17}/></button></div>
+      {nearbyCity&&<div className="nearby-city"><LocateFixed size={17}/><span>{nearbyCity}</span></div>}
+      {nearbyBusy?<div className="search-blank" role="status">Buscando lugares próximos…</div>:nearbyError?<div className="search-blank" role="status">{nearbyError}</div>:nearbyPlaces.length?nearbyPlaces.map(place=><button type="button" key={place.id} className="suggestion v32-suggestion" onClick={()=>pick(place)}><span className="v32-result-icon"><NearbyIcon size={18}/></span><span><strong>{place.name}</strong><small>{place.address||nearbyCity}{Number.isFinite(place.distanceMeters)?` · ${nearbyDistance(place.distanceMeters)}`:''}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">Nenhum lugar próximo encontrado.</div>}
+    </section>}
     {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{editorError||t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
-    {!navMode&&!sheetOpen&&!searchOpen&&!pickOriginMode&&(validPoint(userCoords)||gpsStatus!=='checking')&&<div className="v31-location-card" role="status" aria-label="Endereço da localização atual">
+    {!navMode&&!sheetOpen&&!searchOpen&&!nearbyCategory&&!pickOriginMode&&validPoint(userCoords)&&<div className="v31-location-card" role="status" aria-label="Endereço da localização atual">
       <span className="v31-location-symbol" aria-hidden="true"><LocateFixed size={18} strokeWidth={1.9}/></span>
       <span className="v31-location-copy">
         <span className="v31-location-eyebrow"><span className={hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?'v31-gps-dot is-live':'v31-gps-dot'}/>
@@ -603,7 +660,7 @@ export default function MapPage({active=true}){
           </button>
         </div>
       </div>
-      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
+      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:r.id==='economic'?<MapPin size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?'Mais segura':r.id==='economic'?'Mais econômica':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):r.id==='economic'?t('Menor distância estimada'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
     {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
