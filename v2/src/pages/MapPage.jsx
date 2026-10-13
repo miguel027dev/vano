@@ -5,7 +5,7 @@ import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {startGpsSession} from '../lib/gpsSession';
-import {gpsSpeedKmh} from '../lib/mapSpeed.js';
+import {smoothGpsSpeedSample} from '../lib/mapSpeed.js';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
@@ -19,8 +19,8 @@ import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
-  const mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
-  const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
+  const mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[preparingStart,setPreparingStart]=useState(false),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),spoken=useRef(new Set()),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
@@ -89,13 +89,11 @@ export default function MapPage({active=true}){
   const usingManual=validPoint(manualCoords);
   manualCoordsRef.current=manualCoords;
   const hasLiveGPS=validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'&&hasRecentGpsFix(lastGpsFix.current,Date.now(),35000);
-  // A speed readout is NOT the route's ETA/simulation: sensor m/s only.
-  // If a fix is old, manual, inaccurate, or lacks speed, display "—".
-  const speedKmh=gpsSpeedKmh(telemetry.speed,{
-    fresh:hasLiveGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),18000),
-    accuracy:telemetry.accuracy,
-    simulated:demo
-  });
+  // A speed readout is NOT the route's ETA/simulation: it is computed only
+  // from accepted GPS speed samples during active navigation. Stale -> "—".
+  const speedKmh=navMode&&hasLiveGPS&&speedSample&&
+    Date.now()-speedSample.sourceAt<18000&&Date.now()>=speedSample.sourceAt
+      ?speedSample.kmh:null;
   function onPosition(p){
     const result=evaluateGpsPosition(p,lastGpsFix.current);
     if(!result.ok)return null;
@@ -103,6 +101,22 @@ export default function MapPage({active=true}){
     lastGpsFix.current=fix;
     setUserCoords(fix.coords);
     setTelemetry({heading:result.heading,speed:result.speed,accuracy:fix.accuracy});
+    if(navMode){
+      const next=smoothGpsSpeedSample(speedSampleRef.current,result.speed,{
+        sourceAt:fix.sourceAt,accuracy:fix.accuracy,simulated:demo
+      });
+      speedSampleRef.current=next;
+      setSpeedSample(next);
+      if(speedExpiryTimer.current!==null)clearTimeout(speedExpiryTimer.current);
+      speedExpiryTimer.current=null;
+      if(next){
+        const delay=Math.max(1,18000-(Date.now()-next.sourceAt));
+        speedExpiryTimer.current=setTimeout(()=>{
+          speedSampleRef.current=null;setSpeedSample(null);
+          speedExpiryTimer.current=null;
+        },delay);
+      }
+    }
     setGpsStatus(fix.accuracy<=100?'granted':'approximate');setGpsMessage('');
     if(awaitingGpsDestination.current&&!validPoint(manualCoordsRef.current)&&destRef.current){
       awaitingGpsDestination.current=false;setPickOriginMode(false);
@@ -149,6 +163,10 @@ export default function MapPage({active=true}){
     navigator.geolocation.getCurrentPosition(success,failed,
       {enableHighAccuracy:true,timeout:18000,maximumAge:30000});
   }
+  useEffect(()=>{
+    if(!navMode){speedSampleRef.current=null;setSpeedSample(null);}
+    return()=>{if(speedExpiryTimer.current!==null){clearTimeout(speedExpiryTimer.current);speedExpiryTimer.current=null;}};
+  },[navMode]);
   useEffect(()=>{
     const id=setInterval(()=>{
       setGpsClock(x=>x+1);
@@ -367,8 +385,8 @@ export default function MapPage({active=true}){
       .finally(()=>{if(epoch===routeEpoch.current)setRecalculating(false);});
   },[navMode,userCoords?.[0],userCoords?.[1],telemetry?.accuracy,route,dest?.id,recalculating,preferences?.vehicle]);
 
-  // One GPS-driven readout; navigation places it beside the street name,
-  // while browsing keeps the existing floating-control location.
+  // The only readout lives beside the street name when a route is ACTIVE.
+  // Never render it on the initial map or next to the location card.
   const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`} aria-live="off" title={speedKmh===null?'Aguardando velocidade informada pelo GPS':'Velocidade medida pelo GPS'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small></output>;
 
   return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
@@ -420,7 +438,7 @@ export default function MapPage({active=true}){
         <small>{currentAddress?.detail||(!validPoint(userCoords)?'Ative o GPS ou escolha a origem':'Endereço atualizado pelo GPS')}</small>
       </span>
     </div>}
-    {!searchOpen&&<div className="map-controls">{!navMode&&speedometer}<button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button><button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>{navMode&&<button title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}</div>}
+    {!searchOpen&&<div className="map-controls"><button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button><button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>{navMode&&<button title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}</div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       {loadingRoute?<div className="route-loader"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><p className="route-caution"><Info size={16}/>{t(routeData.safetyMessage)}</p><p className="route-offline-status" role="status">{offlineMap.status==='saving'?'Salvando o mapa do trajeto no celular…':offlineMap.status==='ready'?'Mapa do trajeto salvo no celular':isNativeShell()?'Rota disponível; download do mapa incompleto':''}</p><button className="btn btn-primary start-btn" onClick={begin} disabled={preparingStart}><Navigation size={20}/> {preparingStart?'Preparando para seguir sem internet…':t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
