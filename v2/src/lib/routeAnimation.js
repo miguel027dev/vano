@@ -51,9 +51,14 @@ export function previewMetersPerSecond(total,routeMinutes){
 }
 
 export function nextManeuver(route,timeline,progress){
- const steps=route?.steps||[];
- const items=steps.filter(x=>validPoint(x.location)).map((step,i)=>({...step,at:distanceOnRoute(timeline,step.location),originalIndex:i})).sort((a,b)=>a.at-b.at);
- if(!items.length)return {instruction:'Continue pela rota',distance:0,modifier:'straight',lanes:[]};
+ const steps=Array.isArray(route?.steps)?route.steps:[];
+ // Keep the provider's original step index when some steps have no location.
+ const items=steps.map((step,i)=>step&&validPoint(step.location)
+  ? {...step,at:distanceOnRoute(timeline,step.location),originalIndex:i}:null)
+  .filter(Boolean).sort((a,b)=>a.at-b.at);
+ // Do not invent a maneuver distance when provider data has no coordinates.
+ if(!items.length)return {instruction:steps.find(step=>typeof step?.instruction==='string'&&step.instruction.trim())?.instruction||'Continue pela rota',
+  distance:null,modifier:'straight',kind:'continue',street:'',lanes:[],stepIndex:0};
  let next=items.find(x=>x.at>=progress+10);
  // Some providers only have a destination instruction, or duplicate beginning coordinates.
  if(!next)next=items.at(-1);
