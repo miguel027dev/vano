@@ -4,6 +4,7 @@
 import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
 import {iconSvg,selectPublicPins,mapFeatureBBox} from './mapPublicIcons.js';
+import {readMapboxPoiFeatures} from './mapboxPoiFallback.js';
 
 function buildPin(item){
  const element=document.createElement('div');
@@ -30,7 +31,7 @@ function popupBody(item){
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,controller=null,latestKey='',lastRead=0,items=[];
+ let done=false,timer=null,controller=null,latestKey='',lastRead=0,items=[],remoteItems=[],mapTilesItems=[];
  const markers=new Map();
  const credit=document.createElement('a');
  credit.className='v40-map-credit';
@@ -77,7 +78,23 @@ export function attachPublicMapOverlay(map,backend){
    }
    markers.set(item.id,{marker});
   }
-  credit.hidden=items.length===0;
+  credit.hidden=!items.some(item=>item.source==='OpenStreetMap');
+ }
+ function mergeSources(){
+  const combined=[...remoteItems],seen=new Set(combined.map(x=>x.id));
+  for(const item of mapTilesItems){
+   if(seen.has(item.id))continue;
+   const duplicate=combined.some(x=>x.type===item.type&&Array.isArray(x.coords)&&
+    Math.abs(x.coords[0]-item.coords[0])<.00028&&Math.abs(x.coords[1]-item.coords[1])<.00028);
+   if(!duplicate){combined.push(item);seen.add(item.id);}
+  }
+  items=combined;
+ }
+ function updateVectorPoi(){
+  if(done||backend!=='mapbox')return;
+  const local=readMapboxPoiFeatures(map);
+  if(!local.length)return;
+  mapTilesItems=local;mergeSources();render();
  }
  function schedule(){
   if(done||document.hidden)return;
@@ -87,8 +104,8 @@ export function attachPublicMapOverlay(map,backend){
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
-  if(!bbox){items=[];latestKey='';clear();credit.hidden=true;setNotice('');return;}
-  render();
+  if(!bbox){remoteItems=[];mapTilesItems=[];items=[];latestKey='';clear();credit.hidden=true;setNotice('');return;}
+  updateVectorPoi();render();
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
   if(controller)controller.abort();
@@ -98,7 +115,8 @@ export function attachPublicMapOverlay(map,backend){
    if(!response.ok)throw Error('Dados públicos: '+response.status);
    const data=await response.json();
    if(done||signal.signal.aborted)return;
-   items=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
+   remoteItems=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
+   mergeSources();
    // Never silently show an empty map when the external data provider failed.
    setNotice(data?.error?'Dados públicos indisponíveis · tentar novamente':'');
    latestKey=key;lastRead=Date.now();
@@ -106,7 +124,7 @@ export function attachPublicMapOverlay(map,backend){
   }catch(error){
    if(error.name!=='AbortError'){
     // Do not suppress retries for 130 seconds after a transient failure.
-    lastRead=0;latestKey='';setNotice('Falha ao carregar pontos · tentar novamente');
+    lastRead=0;latestKey='';mergeSources();setNotice('Radares e sinalização indisponíveis · tentar novamente');
     console.warn('VANO public map:',error?.message||String(error));render();
    }
   }
@@ -114,7 +132,11 @@ export function attachPublicMapOverlay(map,backend){
  function visibility(){if(!document.hidden)schedule();}
  map.on('moveend',schedule);
  map.on('zoomend',schedule);
- if(backend==='mapbox')map.on('load',schedule);
+ if(backend==='mapbox'){
+    map.on('load',schedule);
+    map.on('idle',updateVectorPoi);
+    map.on('style.load',updateVectorPoi);
+  }
  document.addEventListener('visibilitychange',visibility);
  schedule();
  return ()=>{
@@ -123,7 +145,11 @@ export function attachPublicMapOverlay(map,backend){
   controller?.abort();
   map.off('moveend',schedule);
   map.off('zoomend',schedule);
-  if(backend==='mapbox')map.off('load',schedule);
+  if(backend==='mapbox'){
+    map.off('load',schedule);
+    map.off('idle',updateVectorPoi);
+    map.off('style.load',updateVectorPoi);
+  }
   document.removeEventListener('visibilitychange',visibility);
   clear();credit.remove();notice.remove();
  };

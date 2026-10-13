@@ -473,9 +473,11 @@
   inset:0;
   z-index:3;
   pointer-events:none;
-  background:
-    radial-gradient(ellipse at 62% 37%,rgba(255,255,255,.67),transparent 68%),
-    linear-gradient(135deg,#edf2ec 0%,#e7efea 54%,#eef2ec 100%);
+  background-color:#e4ece8;
+  background-image:
+    repeating-linear-gradient(27deg,transparent 0 65px,#f8faf755 65px 71px,transparent 71px 155px),
+    repeating-linear-gradient(117deg,transparent 0 52px,#ffffff77 52px 57px,transparent 57px 130px),
+    linear-gradient(145deg,#dfe8e2 0%,#eaf0e9 100%);
 }
 @media(max-width:720px){
   .map-page.in-navigation .nav-bottom.v37-nav-bottom{width:100%;max-width:100%}
