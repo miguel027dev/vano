@@ -13,6 +13,7 @@ import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
+import {parseBBox,queryPublicMap,filterVerifiedReports} from './map-public-data.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
@@ -384,6 +385,17 @@ async function route(req, res) {
   if(!production && !secured && /^\/api\/(auth\/(login|signup|forgot|reset|resend-verification)|profile)/.test(pathname)){
     const hostname = String(req.headers.host||'').split(':')[0];
     if(!['localhost','127.0.0.1','[::1]'].includes(hostname))return err(res,426,'Para usar contas pelo celular, habilite HTTPS confiável.');
+  }
+  // Open mapped infrastructure within the CURRENT viewport only.
+  // OSM is neither exhaustive nor a real-time incident reporting service.
+  if(pathname==='/api/map-features'&&req.method==='GET'){
+    if(!limits(req,res,'public-map-features',22,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'));
+    if(!bbox)return err(res,400,'Área do mapa inválida ou grande demais.');
+    const publicData=await queryPublicMap(bbox);
+    const verified=filterVerifiedReports(db.reports,bbox);
+    return json(res,200,{...publicData,features:[...publicData.features,...verified],verifiedReports:verified.length},
+      {'Cache-Control':'public, max-age=65'});
   }
   if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
   // Address lookup only after location permission; no coordinates are persisted.
