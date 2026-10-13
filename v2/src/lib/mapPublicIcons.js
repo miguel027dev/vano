@@ -4,7 +4,7 @@
 export const ICON_THEME=Object.freeze({
  radar:['camera','#ff781e'],semaforo:['signal','#283f52'],lombada:['bump','#f6a000'],pare:['stop','#ed3345'],
  preferencia:['yield','#f6a000'],placa:['sign','#e58d00'],travessia:['crossing','#375d8f'],
- ferrovia:['rail','#de4f43'],obra:['works','#fa8021'],hospital:['medical','#dc3245'],
+ ferrovia:['rail','#de4f43'],rotatoria:['roundabout','#506879'],obra:['works','#fa8021'],hospital:['medical','#dc3245'],
  saude:['medical','#21a469'],bombeiros:['fire','#ec3a35'],'policia-base':['shield','#2279dc'],
  combustivel:['fuel','#ff8a19'],estacionamento:['parking','#2e83d1'],eletroposto:['bolt','#15956b'],
  'relato-transito':['traffic','#d54c3b'],'relato-obra':['works','#fa8021'],
@@ -20,6 +20,7 @@ const GLYPHS={
  sign:'<path d="M12 3v18M6 6h12v8H6z"/><path d="M9 10h6"/>',
  crossing:'<path d="M3 19h18M7 19l3-7 3 2 3-6M10 6a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>',
  rail:'<path d="M4 4l16 16M20 4 4 20M2 10h20M12 2v20"/>',
+ roundabout:'<circle cx="12" cy="12" r="7"/><path d="M13 3l4 2-4 3M21 13l-2 4-3-4M6 18l-1-5 5 2"/>',
  works:'<path d="M8 3h8l5 18H3zM6 15h12M8 10h8"/>',
  medical:'<path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/>',
  fire:'<path d="M12 2q3 6-1 10q5-1 6-5q7 12-4 15Q2 22 5 12q1-4 7-10Z"/>',
@@ -46,7 +47,7 @@ export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,v
  candidates.sort((a,b)=>Number(b.priority||0)-Number(a.priority||0));
  const result=[],occupied=new Set(),counts=new Map();
  const size=zoom>=16?35:zoom>=14?44:67;
- const lowZoomCap={radar:25,semaforo:5,lombada:5,hospital:10,saude:6,bombeiros:4,'policia-base':4,
+ const lowZoomCap={radar:25,semaforo:12,lombada:6,rotatoria:4,hospital:10,saude:6,bombeiros:4,'policia-base':4,
   obra:4,'relato-acidente':6,'relato-risco':5,combustivel:4,eletroposto:3};
  for(const f of candidates){
   if(result.length>=max)break;
