@@ -68,8 +68,8 @@ test('normal VANO launch zoom includes radar and essential services without fill
 test('bad source is recoverable and does not silently retain a 130-second blank-map state',()=>{
  const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
  assert.match(overlay,/v41-public-status/);
- assert.match(overlay,/Dados públicos indisponíveis/);
- assert.match(overlay,/Radares e sinalização indisponíveis/);
+ assert.match(overlay,/Sinalização pública não carregada/);
+ assert.match(overlay,/setNotice\(data\?\.error&&items\.length===0/);
  assert.match(overlay,/lastRead=0;latestKey=''/);
  assert.match(overlay,/selectPublicPins\(items,project,zoom,55,\{width:/);
 });
