@@ -20,7 +20,7 @@ const GLYPHS={
  sign:'<path d="M12 3v18M6 6h12v8H6z"/><path d="M9 10h6"/>',
  crossing:'<path d="M3 19h18M7 19l3-7 3 2 3-6M10 6a2 2 0 1 0 4 0a2 2 0 1 0-4 0"/>',
  rail:'<path d="M4 4l16 16M20 4 4 20M2 10h20M12 2v20"/>',
- roundabout:'<circle cx="12" cy="12" r="7"/><path d="M13 3l4 2-4 3M21 13l-2 4-3-4M6 18l-1-5 5 2"/>',
+ roundabout:'<circle cx="12" cy="12" r="2.2"/><path d="M7.7 5.6a7.7 7.7 0 0 1 10.7 3.1m-.1 0-.3-3.5m.3 3.5-3.5-.6M19 11.8a7.7 7.7 0 0 1-7 7.8m0 0 2.9 2m-2.9-2 2.8-2.1M9 18.8a7.7 7.7 0 0 1-4.2-10m0 0-2.2 2.6m2.2-2.6 2.9 1.7"/>',
  works:'<path d="M8 3h8l5 18H3zM6 15h12M8 10h8"/>',
  medical:'<path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/>',
  fire:'<path d="M12 2q3 6-1 10q5-1 6-5q7 12-4 15Q2 22 5 12q1-4 7-10Z"/>',
@@ -41,27 +41,42 @@ export function iconSvg(type){
 /** Light zoom-dependent declutter: always give radar and essential services room.
  * Initial VANO camera is ~12.4, so refusing to fetch before 13.6 hid EVERY pin.
  */
+/**
+ * Map-fixed clustering: the old screen-pixel grid changed occupants on every
+ * pan/rotation and made icons trade places. World Mercator grid never moves
+ * with the camera. Only genuinely nearby real points may share a cell.
+ */
+export function stableWorldCell(coords,zoom){
+ if(!Array.isArray(coords)||coords.length<2||!coords.every(Number.isFinite))return '';
+ const z=Math.max(11,Math.min(19,Math.floor(zoom)));
+ const lat=Math.max(-85,Math.min(85,coords[1]))*Math.PI/180;
+ const world=512*Math.pow(2,z);
+ const x=(coords[0]+180)/360*world;
+ const merc=Math.log(Math.tan(Math.PI/4+lat/2));
+ const y=(1-merc/Math.PI)/2*world;
+ const cellSize=z>=16?28:z>=14?40:50;
+ return Math.floor(x/cellSize)+':'+Math.floor(y/cellSize);
+}
 export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,viewport=null){
  if(!Array.isArray(features)||!Number.isFinite(zoom)||zoom<11.6)return [];
  const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]);
- candidates.sort((a,b)=>Number(b.priority||0)-Number(a.priority||0));
+ // Sort ties by stable identity, not vector-tile arrival order.
+ candidates.sort((a,b)=>Number(b.priority||0)-Number(a.priority||0)||String(a.id).localeCompare(String(b.id)));
  const result=[],occupied=new Set(),counts=new Map();
- const size=zoom>=16?35:zoom>=14?44:67;
- const lowZoomCap={radar:25,semaforo:12,lombada:6,rotatoria:4,hospital:10,saude:6,bombeiros:4,'policia-base':4,
-  obra:4,'relato-acidente':6,'relato-risco':5,combustivel:4,eletroposto:3};
+ const lowZoomCap={radar:30,semaforo:16,lombada:6,rotatoria:5,hospital:10,saude:7,bombeiros:5,'policia-base':4,
+  obra:4,'relato-acidente':6,'relato-risco':5,combustivel:5,eletroposto:3};
  for(const f of candidates){
   if(result.length>=max)break;
   if(zoom<14){
-   // In wider views only show meaningful points; ordinary small signs stay hidden.
    if(Number(f.priority||0)<47)continue;
    if((counts.get(f.type)||0)>=(lowZoomCap[f.type]??3))continue;
   }
   const pos=project(f.coords);
   if(!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.y))continue;
   if(viewport&&Number.isFinite(viewport.width)&&Number.isFinite(viewport.height)&&
-   (pos.x < -24||pos.y < -24||pos.x > viewport.width+24||pos.y > viewport.height+24))continue;
-  const cell=Math.floor(pos.x/size)+':'+Math.floor(pos.y/size);
-  if(occupied.has(cell))continue;
+   (pos.x < -32||pos.y < -32||pos.x > viewport.width+32||pos.y > viewport.height+32))continue;
+  const cell=stableWorldCell(f.coords,zoom);
+  if(!cell||occupied.has(cell))continue;
   occupied.add(cell);counts.set(f.type,(counts.get(f.type)||0)+1);result.push(f);
  }
  return result;
