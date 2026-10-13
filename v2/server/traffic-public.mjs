@@ -9,7 +9,8 @@ export const TRAFFIC_PROVIDER_CATALOG=Object.freeze([
  {id:'cet-lentidao-historica',name:'CET SP historical congestion 2001–2018',mode:'historical-only',enabled:false},
  {id:'satellite-imagery',name:'Satellite/aerial imagery',mode:'basemap-only',enabled:false}
 ]);
-const statuses=new Set(['low','moderate','heavy','severe']);
+// Live GeoJSON must not color free-flow road segments green.
+const statuses=new Set(['moderate','heavy','severe']);
 const trim=x=>typeof x==='string'?x.trim().slice(0,90):'';
 export function parseTrafficBBox(raw){
  if(typeof raw!=='string'||raw.length>120)return null;
