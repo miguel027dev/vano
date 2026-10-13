@@ -315,7 +315,7 @@ function paintLeaflet(map,data){
       })}).addTo(map);
     }else map._vanoDestMarker.setLatLng(ll(data.destination.coords));
   }else if(map._vanoDestMarker){map._vanoDestMarker.remove();map._vanoDestMarker=null;}
-  if(validPoint(data.manualOrigin)&&validPoint(data.gpsCoords)){
+  if(validPoint(data.manualOrigin)){
     if(!map._vanoManualOriginMarker)map._vanoManualOriginMarker=L.marker(ll(data.manualOrigin),{interactive:false,icon:L.divIcon({
       className:'',html:'<div class="map-pin map-pin-origin"></div>',iconSize:[24,24],iconAnchor:[12,12]
     })}).addTo(map);
