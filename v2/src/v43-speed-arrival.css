@@ -1,6 +1,7 @@
-/* VANO Map 4.3 — no gauge arc, no unnecessary speed readout animation.
-   Reuses the existing right-hand control stack / measured bottom clearance. */
-.map-page .map-controls .v43-speedometer{
+/* VANO Map 4.3 — same circular speedometer, no gauge arc.
+   During navigation it sits to the LEFT of the current-street pill, mirrored
+   against the report action. Outside navigation it stays in map controls. */
+.map-page .v43-speedometer{
  box-sizing:border-box;
  flex:0 0 66px;
  align-self:center;
@@ -24,7 +25,7 @@
  font-variant-numeric:tabular-nums lining-nums;
  font-family:'DM Sans',system-ui,-apple-system,sans-serif;
 }
-.map-page .map-controls .v43-speedometer strong{
+.map-page .v43-speedometer strong{
  display:block;
  margin:0;
  font-size:clamp(22px,5.8vw,27px);
@@ -33,7 +34,7 @@
  letter-spacing:-.06em;
  color:#182632;
 }
-.map-page .map-controls .v43-speedometer small{
+.map-page .v43-speedometer small{
  display:block;
  margin-top:2px;
  font-size:10px;
@@ -43,6 +44,19 @@
  color:#76838b;
 }
 .map-page .map-controls{align-items:center}
+/* Symmetric placement with the existing report icon: no resizing. */
+.map-page.in-navigation .v36-nav-road-row .v43-speedometer{
+ position:absolute;
+ left:0;
+ top:50%;
+ transform:translateY(-50%);
+}
+.map-page.in-navigation .v36-nav-road-pill{
+ /* Keep breathing room around a 66px dial and a 45px report button.
+    The street pill stays independently centered on the viewport. */
+ width:min(420px,calc(100% - 166px));
+}
+
 .map-page .map-pin-destination.vano-arrival-marker{
  position:relative;
  display:block;
@@ -67,18 +81,16 @@
 .map-page .vano-arrival-marker .vano-arrival-svg{display:block;width:52px;height:64px;max-width:none}
 .vano-arrival-leaflet-icon{background:none!important;border:0!important;overflow:visible!important}
 @media(max-width:390px){
- .map-page .map-controls .v43-speedometer{
+ .map-page .v43-speedometer{
   width:60px;min-width:60px;height:60px;flex-basis:60px;
  }
- .map-page .map-controls .v43-speedometer strong{font-size:23px}
- .map-page .map-controls .v43-speedometer small{font-size:9px}
+ .map-page .v43-speedometer strong{font-size:23px}
+ .map-page .v43-speedometer small{font-size:9px}
+ .map-page.in-navigation .v36-nav-road-pill{width:min(420px,calc(100% - 148px))}
 }
 @media(max-height:540px) and (orientation:landscape){
- /* Existing map controls are hidden in short landscape navigation views.
-    Keep this tiny speed indication only, without restoring bulky controls. */
- .map-page.in-navigation .map-controls{display:flex}
- .map-page.in-navigation .map-controls>.circle-btn{display:none}
- .map-page.in-navigation .map-controls .v43-speedometer{
+ /* The street/report row remains active even when map controls are hidden. */
+ .map-page.in-navigation .v36-nav-road-row .v43-speedometer{
   width:54px;min-width:54px;height:54px;flex-basis:54px;
  }
 }
