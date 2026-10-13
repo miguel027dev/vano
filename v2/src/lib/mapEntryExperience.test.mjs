@@ -18,12 +18,13 @@ test('first real GPS camera placement is immediate, with no animated flight from
  const end=map.indexOf("const [error,setError]",begin);
  assert.ok(begin>0&&end>begin);
  const center=map.slice(begin,end);
- assert.match(center,/validPoint\(d\.userCoords\)/);
- assert.match(center,/map\.jumpTo\(\{center:d\.userCoords/);
+ assert.match(center,/validPoint\(d\.gpsCoords\)/);
+ assert.match(center,/map\.jumpTo\(\{center:d\.gpsCoords/);
  assert.doesNotMatch(center,/map\.easeTo|map\.flyTo|duration:550/);
  assert.doesNotMatch(center,/isLoaded\(map\)/);
- assert.doesNotMatch(center,/freeLook/);
- assert.match(center,/map\.setView\(ll\(d\.userCoords\).*animate:false/);
+ assert.match(center,/motion\.current\?\.freeLook/);
+ assert.match(center,/map\.setView\(ll\(d\.gpsCoords\).*animate:false/);
+ assert.match(center,/motion\.current\?\.recenter/);
 });
 test('initial GPS wait does not put a giant warning banner over search',()=>{
  assert.match(page,/!validPoint\(origin\)&&gpsStatus!=='checking'&&<div className="gps-banner"/);
