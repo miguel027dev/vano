@@ -26,7 +26,7 @@ export function classifyMapboxPoi(properties={}){
     return MAKI_TYPES.doctor;
   return null;
 }
-export function normalizeMapboxPois(features=[],max=125){
+export function normalizeMapboxPois(features=[],max=360){
   const result=[],seen=new Set();
   for(const feature of features){
     if(feature?.geometry?.type!=='Point')continue;
@@ -56,7 +56,7 @@ export function classifyMapboxRoadPoint(properties={}){
  const roadType=String(properties.type||'').toLowerCase().trim();
  return ROAD_POINT_TYPES[roadClass]||ROAD_POINT_TYPES[roadType]||null;
 }
-export function normalizeMapboxRoadSignals(features=[],max=170){
+export function normalizeMapboxRoadSignals(features=[],max=460){
  const items=[],seen=new Set();
  for(const feature of features){
   if(feature?.geometry?.type!=='Point')continue; // Never mark a whole road line as a signal.
@@ -78,7 +78,6 @@ export function normalizeMapboxRoadSignals(features=[],max=170){
 export function readMapboxPoiFeatures(map){
   if(typeof map?.querySourceFeatures!=='function'||typeof map?.getStyle!=='function')return [];
   try{
-    if(typeof map.isStyleLoaded==='function'&&!map.isStyleLoaded())return [];
     const sources=map.getStyle()?.sources||{};
     const names=Object.entries(sources).filter(([_,value])=>
       value?.type==='vector'&&/mapbox-streets-v8/i.test(String(value.url||''))).map(([name])=>name);
@@ -89,7 +88,7 @@ export function readMapboxPoiFeatures(map){
           sourceLayer:'road',
           filter:['in',['get','class'],['literal',['traffic_signals','level_crossing','roundabout','mini_roundabout']]]
         });
-        roadFeatures.push(...matches.slice(0,600));
+        roadFeatures.push(...matches.slice(0,1300));
       }catch{
         // Some style versions reject expression filters on source queries;
         // fall back to locally classifying actual Point features, never
@@ -99,12 +98,12 @@ export function readMapboxPoiFeatures(map){
           for(const feature of all){
             if(feature?.geometry?.type==='Point'&&classifyMapboxRoadPoint(feature.properties)){
               roadFeatures.push(feature);
-              if(roadFeatures.length>=600)break;
+              if(roadFeatures.length>=1300)break;
             }
           }
         }catch{/* Source tile not loaded yet; idle event retries. */}
       }
-      try{poiFeatures.push(...map.querySourceFeatures(source,{sourceLayer:'poi_label'}).slice(0,900));}
+      try{poiFeatures.push(...map.querySourceFeatures(source,{sourceLayer:'poi_label'}).slice(0,1600));}
       catch{/* POI vector tiles may not have loaded yet. Retry on camera idle. */}
     }
     // Important road signage goes first; POIs remain available even when
