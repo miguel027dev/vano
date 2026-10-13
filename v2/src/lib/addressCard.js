@@ -13,3 +13,14 @@ export function shouldRefreshAddress(previous,point,now=Date.now(),moving=false)
  if(age<minimum)return false;
  return movedDistanceMeters(previous.point,point)>= (moving?130:65) || age>=180000;
 }
+
+/** The navigation badge only reports the most recently reverse-geocoded GPS road.
+ * Never substitute the upcoming maneuver street or destination for current location.
+ */
+export function navigationStreetLabel(address,hasRecentFix){
+ if(!hasRecentFix)return 'Aguardando localização…';
+ const street=typeof address?.street==='string'?address.street.trim():'';
+ if(!street||street==='Endereço não encontrado'||street==='Localização identificada')
+   return 'Identificando rua…';
+ return street.slice(0,110);
+}
