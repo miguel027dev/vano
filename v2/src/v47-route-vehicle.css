@@ -21,10 +21,10 @@
   position:relative;
   isolation:isolate;
   display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  width:min(225px,100%);
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  width:min(285px,100%);
   min-width:0;
-  flex:0 1 225px;
+  flex:0 1 285px;
   gap:0;
   padding:4px;
   background:#f1f3f0;
@@ -38,7 +38,7 @@
   top:4px;
   bottom:4px;
   left:4px;
-  width:calc((100% - 8px)/2);
+  width:calc((100% - 8px)/3);
   border-radius:12px;
   background:#fff;
   border:1px solid #f1e5dc;
@@ -47,6 +47,7 @@
   transition:transform .27s cubic-bezier(.2,.8,.2,1),box-shadow .2s ease;
 }
 .map-page .v47-route-vehicle-switch.is-moto::before{transform:translateX(100%)}
+.map-page .v47-route-vehicle-switch.is-walking::before{transform:translateX(200%)}
 .map-page .v47-route-vehicle-switch button{
   position:relative;
   min-width:0;
@@ -76,6 +77,7 @@
 .map-page .route-sheet .route-options{
   animation:v47-route-cards-in .24s cubic-bezier(.2,.8,.2,1) both;
 }
+.map-page .route-sheet .route-options>.route-option:only-child{grid-column:1/-1}
 .map-page .route-sheet .start-btn{margin-top:15px;min-height:52px}
 .map-page .route-sheet .route-loader{
   justify-content:center;
@@ -91,7 +93,7 @@
 }
 @media(max-width:375px){
   .map-page .v47-route-vehicle{gap:8px}
-  .map-page .v47-route-vehicle-switch{flex-basis:200px}
+  .map-page .v47-route-vehicle-switch{flex-basis:260px}
   .map-page .v47-route-vehicle-switch button{gap:5px;font-size:12px}
 }
 @media(max-height:500px) and (orientation:landscape){

@@ -36,6 +36,15 @@ function client(origin){
  };
 }
 const coords=[-46.6557,-23.5615];
+test('walking is accepted by the route API and does not fall through to the driving engine',async()=>{
+ const s=await start({MAPBOX_SECRET_TOKEN:'',VITE_MAPBOX_PUBLIC_TOKEN:'',VANO_V1_API_URL:'https://unused.invalid'}),a=client(s.origin);
+ try{
+  await a.call('/api/bootstrap');
+  const result=await a.call('/api/route','POST',{origin:coords,destination:[-46.65,-23.56],vehicle:'a-pe'});
+  assert.equal(result.status,503);
+  assert.match(result.data.error,/a pé não configurado/);
+ }finally{await s.stop();}
+});
 test('Autorização, sessão segura, CSRF, perfil e histórico validado',async()=>{
  const s=await start(),a=client(s.origin),b=client(s.origin);
  try{
