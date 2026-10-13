@@ -885,10 +885,11 @@ async function searchPlaces(q,kind){
 }
 
 
-const VANO_MAP_ICONS={destination:'destination.svg',traffic:'traffic.svg',signal:'traffic-signal.svg',stop:'stop-sign.svg',yield:'yield-sign.svg',roadsign:'road-sign.svg',radar:'speed-camera.svg',alertAccident:'alert-accident-premium.png',alertTraffic:'/static/icons/vano/reports/report-traffic.png',alertBlock:'/static/icons/vano/reports/report-roadblock.png',alertRadar:'/static/icons/vano/reports/report-radar.png',alertHazard:'alert-hazard.svg',alertPothole:'alert-pothole.svg',alertStoppedVehicle:'alert-stopped-vehicle.svg',alertObjectRoad:'alert-object-road.svg',alertBrokenSignal:'alert-broken-signal.svg',alertFlood:'alert-flood.svg',alertConstruction:'alert-construction.svg',alertCrowd:'alert-crowd.svg',alertRobbery:'alert-robbery-premium.png',alertPolice:'/static/icons/vano/reports/report-police.png',alertSecurity:'alert-security.svg',alertLight:'alert-light.svg',alertGeneric:'alert-generic.svg'};
+const VANO_MAP_ICONS={destination:'destination.svg',traffic:'traffic.svg',signal:'traffic-signal.svg',stop:'stop-sign.svg',yield:'yield-sign.svg',roadsign:'road-sign.svg',radar:'speed-camera.svg',alertAccident:'alert-accident-premium.png',alertTraffic:'/static/icons/vano/reports/report-traffic.png',alertBlock:'/static/icons/vano/reports/report-roadblock.png',alertRadar:'/static/icons/vano/reports/report-radar.png',alertHazard:'alert-hazard.svg',alertPothole:'alert-pothole.svg',alertStoppedVehicle:'alert-stopped-vehicle.svg',alertObjectRoad:'alert-object-road.svg',alertBrokenSignal:'alert-broken-signal.svg',alertFlood:'alert-flood.svg',alertConstruction:'alert-construction.svg',alertCrowd:'alert-crowd.svg',alertRobbery:'alert-robbery-premium.png',alertPolice:'/static/icons/vano/reports/report-police.png',alertSecurity:'alert-security.svg',alertLight:'alert-light.svg',alertGeneric:'alert-generic.svg',pedestrianCrossing:'poi-pedestrian-crossing.svg',parking:'poi-parking.svg',railwayCrossing:'poi-railway-crossing.svg',bank:'poi-bank.svg'};
 function loadSparkSvg(name,file){return new Promise(resolve=>{if(map.hasImage(name)){resolve();return}const img=new Image();img.onload=()=>{try{if(!map.hasImage(name))map.addImage(name,img,{pixelRatio:name==='vano-signal'?1.55:2})}catch{}resolve()};img.onerror=()=>resolve();img.src=String(file||'').startsWith('/')?file:'/static/icons/vano/'+file})}
 async function registerSparkMapIcons(){await Promise.all(Object.entries(VANO_MAP_ICONS).map(([name,file])=>loadSparkSvg('vano-'+name,file)))}
 function roadControlIconExpr(){return ['match',['get','type'],'speed_camera','vano-radar','traffic_signal','vano-signal','stop_sign','vano-stop','yield_sign','vano-yield','traffic_sign','vano-roadsign','vano-signal']}
+function secondaryRoadControlIconExpr(){return ['match',['get','type'],'railway_crossing','vano-railwayCrossing','pedestrian_crossing','vano-pedestrianCrossing','vano-pedestrianCrossing']}
 function alertIconExpr(){return ['match',['get','category'],'robbery','vano-alertRobbery','harassment','vano-alertSecurity','poor_lighting','vano-alertLight','accident','vano-alertAccident','traffic','vano-alertTraffic','road_block','vano-alertBlock','blitz','vano-alertPolice','speed_camera','vano-alertRadar','road_hazard','vano-alertHazard','pothole','vano-alertPothole','stopped_vehicle','vano-alertStoppedVehicle','object_on_road','vano-alertObjectRoad','broken_signal','vano-alertBrokenSignal','flood','vano-alertFlood','construction','vano-alertConstruction','crowd','vano-alertCrowd','vano-alertGeneric']}
 
 let lastPresenceSyncAt=0,lastNearbyFetchAt=0,nearbyController=null,lastNearbyDriversCount=0;
@@ -994,8 +995,35 @@ async function installRuntimeLayers(){
   ensureLayer({id:'alerts-marker-symbol',type:'symbol',source:'alerts',filter:unclustered,minzoom:10.8,layout:{'icon-image':alertIconExpr(),'icon-size':['interpolate',['linear'],['zoom'],10.8,.38,13,.47,16,.60,18,.69],'icon-allow-overlap':true,'icon-ignore-placement':true,'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport'}},routeBefore);
   ensureGeoSource('support-points');
   ensureGeoSource('road-controls');
-  ensureLayer({id:'road-controls-pulse',type:'circle',source:'road-controls',minzoom:11.8,layout:{'circle-pitch-alignment':'viewport'},paint:{'circle-radius':['case',['==',['get','type'],'speed_camera'],['interpolate',['linear'],['zoom'],11.8,5.5,15.5,8,18,9],['interpolate',['linear'],['zoom'],11.8,0,13.79,0,13.8,8,18,8]],'circle-color':['match',['get','type'],'speed_camera','#ef4444','traffic_signal','#ffb13b','stop_sign','#ff6166','yield_sign','#ff8b43','traffic_sign','#6db9ff','#ff9a45'],'circle-opacity':['case',['==',['get','type'],'speed_camera'],.15,['interpolate',['linear'],['zoom'],13.79,0,13.8,.13]],'circle-blur':.58}});
-  ensureLayer({id:'road-controls-dot',type:'symbol',source:'road-controls',minzoom:11.8,layout:{'icon-image':roadControlIconExpr(),'icon-size':['case',['==',['get','type'],'speed_camera'],['interpolate',['linear'],['zoom'],11.8,.36,13.4,.48,15.5,.60,18,.74],['interpolate',['linear'],['zoom'],11.8,0,13.79,0,13.8,.48,15.5,.60,18,.74]],'icon-allow-overlap':true,'icon-ignore-placement':true,'symbol-sort-key':['match',['get','type'],'speed_camera',20,'traffic_signal',10,5],'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport'}});
+  // POIs from Streets v8, limited to approved bank and parking glyphs.
+  if(!map.getSource('vano-secondary-pois')){
+    try{map.addSource('vano-secondary-pois',{type:'vector',url:'mapbox://mapbox.mapbox-streets-v8'})}
+    catch(e){console.debug('[VANO MAPS:secondary-pois]',e)}
+  }
+  if(map.getSource('vano-secondary-pois'))ensureLayer({
+    id:'vano-secondary-pois-icons',type:'symbol',source:'vano-secondary-pois','source-layer':'poi_label',minzoom:14.8,
+    filter:['in',['get','maki'],['literal',['parking','parking-garage','bank']]],
+    layout:{
+      'icon-image':['match',['get','maki'],'bank','vano-bank','parking','vano-parking','parking-garage','vano-parking','vano-parking'],
+      'icon-size':['interpolate',['linear'],['zoom'],14.8,.58,16,.72,18,.80],
+      'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
+      'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':4,
+      'symbol-sort-key':['match',['get','maki'],'parking',3,'parking-garage',3,'bank',2,1]
+    }
+  },'route-shadow');
+  ensureLayer({id:'road-controls-pulse',type:'circle',source:'road-controls',minzoom:11.8,filter:['in',['get','type'],['literal',['speed_camera','traffic_signal','stop_sign','yield_sign','traffic_sign']]],layout:{'circle-pitch-alignment':'viewport'},paint:{'circle-radius':['case',['==',['get','type'],'speed_camera'],['interpolate',['linear'],['zoom'],11.8,5.5,15.5,8,18,9],['interpolate',['linear'],['zoom'],11.8,0,13.79,0,13.8,8,18,8]],'circle-color':['match',['get','type'],'speed_camera','#ef4444','traffic_signal','#ffb13b','stop_sign','#ff6166','yield_sign','#ff8b43','traffic_sign','#6db9ff','#ff9a45'],'circle-opacity':['case',['==',['get','type'],'speed_camera'],.15,['interpolate',['linear'],['zoom'],13.79,0,13.8,.13]],'circle-blur':.58}});
+  ensureLayer({id:'road-controls-dot',type:'symbol',source:'road-controls',minzoom:11.8,filter:['in',['get','type'],['literal',['speed_camera','traffic_signal','stop_sign','yield_sign','traffic_sign']]],layout:{'icon-image':roadControlIconExpr(),'icon-size':['case',['==',['get','type'],'speed_camera'],['interpolate',['linear'],['zoom'],11.8,.36,13.4,.48,15.5,.60,18,.74],['interpolate',['linear'],['zoom'],11.8,0,13.79,0,13.8,.48,15.5,.60,18,.74]],'icon-allow-overlap':true,'icon-ignore-placement':true,'symbol-sort-key':['match',['get','type'],'speed_camera',20,'traffic_signal',10,5],'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport'}});
+  ensureLayer({
+    id:'road-controls-secondary-icons',type:'symbol',source:'road-controls',minzoom:15.1,
+    filter:['in',['get','type'],['literal',['pedestrian_crossing','railway_crossing']]],
+    layout:{
+      'icon-image':secondaryRoadControlIconExpr(),
+      'icon-size':['interpolate',['linear'],['zoom'],15.1,.64,16,.73,18,.83],
+      'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
+      'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':4,
+      'symbol-sort-key':['match',['get','type'],'railway_crossing',4,'pedestrian_crossing',2,1]
+    }
+  },'route-shadow');
   ensureGeoSource('nearby-drivers');
   ensureLayer({id:'nearby-drivers',type:'circle',source:'nearby-drivers',minzoom:13,paint:{'circle-radius':['interpolate',['linear'],['zoom'],13,4.5,17,6.5],'circle-color':'#ff7a2d','circle-stroke-color':'#ffffff','circle-stroke-width':2,'circle-opacity':.88}});
   // V25 — viewport traffic ribbon. The provider vector tiles still do the
@@ -1337,15 +1365,16 @@ function radarRadiusForCamera(){
   return Math.max(1600,Math.min(6500,Math.ceil((edge*1.22+350)/100)*100));
 }
 function roadControlTypes(){return new Set(['speed_camera','traffic_signal','stop_sign','yield_sign','traffic_sign'])}
+function mapVisualControlTypes(){return new Set([...roadControlTypes(),'pedestrian_crossing','railway_crossing'])}
 function updateRoadLayer(extra=[]){
   if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;
   if(!map?.getSource('road-controls'))return;
   const signalRadius=signalRadiusForCamera(),radarRadius=radarRadiusForCamera(),center=map.getCenter?.(),bounds=map.getBounds?.();
   if((!signalRadius&&!radarRadius)||!center||!bounds){map.getSource('road-controls').setData(emptyFC());return}
-  const types=roadControlTypes(),base=selectedRoute?.road_controls||[];
+  const types=mapVisualControlTypes(),base=selectedRoute?.road_controls||[];
   const visible=dedupeRoadItems([...base,...roadAwareness,...extra]).filter(x=>{
     const type=String(x.type||'');if(!types.has(type)||!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon))return false;
-    const lon=+x.lon,lat=+x.lat,allowedRadius=type==='speed_camera'?radarRadius:signalRadius;if(!allowedRadius)return false;
+    const lon=+x.lon,lat=+x.lat,allowedRadius=type==='speed_camera'?radarRadius:(type==='pedestrian_crossing'||type==='railway_crossing'?Math.min(signalRadius,1800):signalRadius);if(!allowedRadius)return false;
     // Camera viewport drives visibility. A radar does not require the user or the
     // active route to pass over it; panning the map near it is enough.
     if(!(lon>=bounds.getWest()&&lon<=bounds.getEast()&&lat>=bounds.getSouth()&&lat<=bounds.getNorth()&&hav([center.lng,center.lat],[lon,lat])<=allowedRadius))return false;
@@ -1355,12 +1384,13 @@ function updateRoadLayer(extra=[]){
   const byDistance=(a,b)=>hav([center.lng,center.lat],[+a.lon,+a.lat])-hav([center.lng,center.lat],[+b.lon,+b.lat]);
   const radars=visible.filter(x=>String(x.type)==='speed_camera').sort(byDistance).slice(0,28);
   const signals=visible.filter(x=>String(x.type)==='traffic_signal').sort(byDistance).slice(0,20);
-  const others=visible.filter(x=>!['traffic_signal','speed_camera'].includes(String(x.type))).sort(byDistance).slice(0,22);
-  const shown=[...radars,...signals,...others];
+  const others=visible.filter(x=>!['traffic_signal','speed_camera','pedestrian_crossing','railway_crossing'].includes(String(x.type))).sort(byDistance).slice(0,22);
+  const secondary=map.getZoom()>=15.1?visible.filter(x=>['pedestrian_crossing','railway_crossing'].includes(String(x.type))).sort(byDistance).slice(0,32):[];
+  const shown=[...radars,...signals,...others,...secondary];
   map.getSource('road-controls').setData({type:'FeatureCollection',features:shown.map(x=>({type:'Feature',properties:{type:x.type,label:x.label||roadLabelIcon(x.type),source:x.source||'',official:!!x.official,maxspeed:x.maxspeed||x.speed_limit||'',radar_type:x.radar_type||''},geometry:{type:'Point',coordinates:[+x.lon,+x.lat]}}))});
 }
 function currentSpeedLimit(index){const pts=selectedRoute?.speed_limit_points||[];let best=null;for(const x of pts){if((+x.index||0)<=index)best=x;else break}return best}
-function roadLabelIcon(type){return type==='speed_camera'?'Radar de velocidade':type==='traffic_signal'?'Semáforo':type==='stop_sign'?'Parada obrigatória':type==='yield_sign'?'Dê a preferência':'Sinalização viária'}
+function roadLabelIcon(type){return type==='speed_camera'?'Radar de velocidade':type==='traffic_signal'?'Semáforo':type==='stop_sign'?'Parada obrigatória':type==='yield_sign'?'Dê a preferência':type==='pedestrian_crossing'?'Travessia de pedestres':type==='railway_crossing'?'Cruzamento ferroviário':'Sinalização viária'}
 function upcomingSpeedCamera(along=0,maxAhead=1300){if(!selectedRoute)return null;const all=dedupeRoadItems([...(selectedRoute.road_controls||[]),...roadAwareness]).filter(x=>String(x.type)==='speed_camera'),found=[];for(const x of all){const n=nearestProgress({lat:+x.lat,lon:+x.lon}),ahead=n.distanceAlong-along;if(n.offRoute<=105&&ahead>=-30&&ahead<=maxAhead)found.push({...x,ahead:Math.max(0,ahead),off:n.offRoute})}return found.sort((a,b)=>a.ahead-b.ahead||a.off-b.off)[0]||null}
 function maybeWarnSpeedCamera(camera){if(!camera||!activeNav?.classList.contains('show'))return;const ahead=Math.max(0,+camera.ahead||0),key=`${(+camera.lat).toFixed(5)}:${(+camera.lon).toFixed(5)}:${ahead<=280?'near':'far'}`,now=Date.now();if(key===lastSpeedCameraWarnKey&&now-lastSpeedCameraWarnAt<90000)return;if(ahead<=850){lastSpeedCameraWarnKey=key;lastSpeedCameraWarnAt=now;productTelemetry('safety',ahead<=280?'speed-camera-near':'speed-camera-ahead','radar');if(ahead<=700)speak(`Radar de velocidade ${ahead<=280?'logo à frente':'à frente'}. Respeite o limite da via.`,'speed-camera-'+key)}}
 function renderRoadAwareness(p,m){if(!selectedRoute)return;const types=roadControlTypes(),all=dedupeRoadItems([...(selectedRoute.road_controls||[]),...roadAwareness]).filter(x=>types.has(String(x.type||''))),ahead=[];for(const x of all){const n=nearestProgress({lat:+x.lat,lon:+x.lon}),delta=n.distanceAlong-m.distanceAlong;if(n.offRoute<=105&&delta>=-12&&delta<=1800)ahead.push({...x,ahead:Math.max(0,delta),off:n.offRoute})}ahead.sort((a,b)=>a.ahead-b.ahead||a.off-b.off);const next=ahead[0];$('roadAhead').textContent=next?roadLabelIcon(next.type):'Nenhuma sinalização mapeada logo à frente';$('roadAheadDistance').textContent=next?`${fmtDistance(next.ahead)} à frente · ${next.official?'fonte oficial':(next.source==='openstreetmap'?'OpenStreetMap':'base VANO')}`:'Continuamos verificando o corredor da rota';const lim=currentSpeedLimit(m.index),sign=$('speedSign');if(lim?.speed!=null){currentMappedSpeedLimitKmh=Math.round(+lim.speed);sign.classList.remove('unknown');sign.textContent=currentMappedSpeedLimitKmh;sign.title=`Limite ${lim.speed} ${lim.unit||'km/h'}`}else{currentMappedSpeedLimitKmh=null;sign.classList.add('unknown');sign.textContent='—';sign.title='Limite não mapeado'}updateFloatingSpeedometer(lastDisplayedSpeedKmh);const radar=upcomingSpeedCamera(m.distanceAlong,1400);if(radar)maybeWarnSpeedCamera(radar)}
@@ -1373,7 +1403,7 @@ async function refreshVisibleSignals(force=false){
   // immediately even if the previous request happened a second ago.
   if(!force&&key===lastSignalViewportKey&&now-lastSignalFetchAt<12000){updateRoadLayer();return}
   lastSignalViewportKey=key;lastSignalFetchAt=now;signalController?.abort();signalController=new AbortController();
-  try{const q=new URLSearchParams({lat:c.lat,lon:c.lng,radius,controls_only:'1',viewport:'1'}),r=await fetch('/api/road-awareness?'+q,{signal:signalController.signal,cache:'no-store'}),d=await r.json();if(r.ok){const types=roadControlTypes();roadAwareness=(d.items||[]).filter(x=>types.has(String(x.type||''))).slice(0,180);updateRoadLayer()}}catch(e){if(e?.name!=='AbortError')console.warn('[VANO MAPS:signals]',e)}
+  try{const q=new URLSearchParams({lat:c.lat,lon:c.lng,radius,controls_only:'1',viewport:'1'}),r=await fetch('/api/road-awareness?'+q,{signal:signalController.signal,cache:'no-store'}),d=await r.json();if(r.ok){const types=mapVisualControlTypes();roadAwareness=(d.items||[]).filter(x=>types.has(String(x.type||''))).slice(0,220);updateRoadLayer()}}catch(e){if(e?.name!=='AbortError')console.warn('[VANO MAPS:signals]',e)}
 }
 function scheduleSignalRefresh(force=false){clearTimeout(signalRefreshTimer);signalRefreshTimer=setTimeout(()=>refreshVisibleSignals(force),force?30:260)}
 async function refreshRoadAwareness(p,force=false){scheduleSignalRefresh(force)}
@@ -1633,7 +1663,7 @@ function speak(text,key=text){
   stopVanoVoice();speakAutomatic(String(text));
 }
 function setLayerVisibility(id,visible){try{if(map?.getLayer(id))map.setLayoutProperty(id,'visibility',visible?'visible':'none')}catch{}}
-function applyMapPrefs(){const live=!!mapPrefs.liveSignals;setLayerVisibility('road-controls-dot',live);setLayerVisibility('road-controls-pulse',live);['vano-traffic-probe','vano-traffic-glow','vano-traffic-flow','vano-traffic-core','vano-traffic-hotspot-glow','vano-traffic-hotspot-dot'].forEach(id=>setLayerVisibility(id,live));if(!live){if(map?.getSource('road-controls'))map.getSource('road-controls').setData(emptyFC());if(map?.getSource('vano-traffic-visible'))map.getSource('vano-traffic-visible').setData(emptyFC())}else{scheduleSignalRefresh(true);scheduleTrafficSnapshot(true)}if(map?.getSource('route-alternatives'))map.getSource('route-alternatives').setData(alternativeRoutesFC());renderRouteVariants();updateTrafficRadar(true);if(activeNav?.classList.contains('show'))setNavigationRouteFocus(true)}
+function applyMapPrefs(){const live=!!mapPrefs.liveSignals;setLayerVisibility('road-controls-dot',live);setLayerVisibility('road-controls-secondary-icons',live);setLayerVisibility('road-controls-pulse',live);['vano-traffic-probe','vano-traffic-glow','vano-traffic-flow','vano-traffic-core','vano-traffic-hotspot-glow','vano-traffic-hotspot-dot'].forEach(id=>setLayerVisibility(id,live));if(!live){if(map?.getSource('road-controls'))map.getSource('road-controls').setData(emptyFC());if(map?.getSource('vano-traffic-visible'))map.getSource('vano-traffic-visible').setData(emptyFC())}else{scheduleSignalRefresh(true);scheduleTrafficSnapshot(true)}if(map?.getSource('route-alternatives'))map.getSource('route-alternatives').setData(alternativeRoutesFC());renderRouteVariants();updateTrafficRadar(true);if(activeNav?.classList.contains('show'))setNavigationRouteFocus(true)}
 function syncPrefsUI(){[['prefAdaptive','adaptiveRoutes'],['prefAggressive','aggressiveShortcuts'],['prefAlternatives','showAlternatives'],['prefLiveSignals','liveSignals'],['prefAutoFaster','autoFaster']].forEach(([id,key])=>{const el=$(id);if(el)el.checked=!!mapPrefs[key]})}
 function openPrefsDrawer(force){const d=$('prefsDrawer');if(!d)return;const open=typeof force==='boolean'?force:!d.classList.contains('show');d.classList.toggle('show',open);d.setAttribute('aria-hidden',String(!open));$('prefsBtn')?.classList.toggle('active',open);if(open){openSafetyDrawer(false);syncPrefsUI();populateVoiceSelectors();focusDialogOpen(d,'#prefsCloseBtn,button,select,input')}else focusDialogClose(d)}
 function bindPref(id,key,recalc=false){const el=$(id);if(!el)return;el.addEventListener('change',()=>{mapPrefs[key]=!!el.checked;saveMapPrefs();applyMapPrefs();routeResponseCache.clear();if(recalc&&origin&&destination)calculateRoutes()})}

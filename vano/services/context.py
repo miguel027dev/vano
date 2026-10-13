@@ -310,6 +310,8 @@ def overpass_road_awareness(lat, lon, radius=320):
   node(around:{radius},{float(lat):.6f},{float(lon):.6f})[\"traffic_sign\"];
   node(around:{radius},{float(lat):.6f},{float(lon):.6f})[\"highway\"=\"speed_camera\"];
   nwr(around:{radius},{float(lat):.6f},{float(lon):.6f})[\"enforcement\"~\"^(maxspeed|speed)$\"];
+  node(around:{min(radius, 1600)},{float(lat):.6f},{float(lon):.6f})[\"highway\"=\"crossing\"];
+  node(around:{min(radius, 2500)},{float(lat):.6f},{float(lon):.6f})[\"railway\"~\"^(level_crossing|crossing)$\"];
 );
 out center tags 3000;"""
     try:
@@ -331,6 +333,8 @@ out center tags 3000;"""
         elif highway == "traffic_signals": kind, label = "traffic_signal", "Semáforo"
         elif highway == "stop": kind, label = "stop_sign", "Parada obrigatória"
         elif highway == "give_way": kind, label = "yield_sign", "Dê a preferência"
+        elif highway == "crossing": kind, label = "pedestrian_crossing", "Travessia de pedestres"
+        elif str(tags.get("railway") or "") in {"level_crossing", "crossing"}: kind, label = "railway_crossing", "Cruzamento ferroviário"
         elif tags.get("traffic_sign"): kind, label = "traffic_sign", "Sinalização viária"
         else: continue
         key = (kind, round(float(elat), 6), round(float(elon), 6))
