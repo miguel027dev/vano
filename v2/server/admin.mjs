@@ -1,13 +1,21 @@
 /** VANO read-only operational console. No handle-based privilege escalation. */
-const identityList=s=>new Set(String(s||'').split(/[;,\n]/).map(x=>x.trim().toLowerCase()).filter(Boolean));
-/** Explicit verified identities only. Names/handles are untrusted display strings. */
-export function isAdminAccount(user,env=process.env){
- if(!user||!user.verifiedAt||!['email','google'].includes(user.verificationMethod))return false;
- const emails=identityList(env.VANO_ADMIN_EMAILS);
- const subs=identityList(env.VANO_ADMIN_GOOGLE_SUBS);
- const verifiedEmail=String(user.email||'').trim().toLowerCase();
- const sub=String(user.googleSub||'').trim().toLowerCase();
- return Boolean((verifiedEmail && emails.has(verifiedEmail)) || (sub && user.verificationMethod==='google' && subs.has(sub)));
+/** Exactly one authorized administrator, enforced by the server.
+ * A display name, arbitrary env allowlist, or unrelated Google sub is NOT a
+ * valid grant. The owner must be signed in with verified e-mail/Google identity.
+ */
+export const ADMIN_EMAIL='miguelpinxs@gmail.com';
+export function isAdminAccount(user){
+ return Boolean(user&&user.verifiedAt&&['email','google'].includes(user.verificationMethod)
+  &&String(user.email||'').trim().toLowerCase()===ADMIN_EMAIL);
+}
+export function signupMethod(u){
+ if(u?.signupMethod==='google')return 'Google';
+ if(u?.signupMethod==='email')return 'E-mail e senha';
+ // Legacy rows lack explicit signup metadata; do not guess from a Google
+ // linkage on an account originally made with e-mail/password.
+ if(u?.verificationMethod==='google')return 'Google (registro anterior)';
+ if(u?.verificationMethod==='email')return 'E-mail (registro anterior)';
+ return 'Não registrado';
 }
 export function adminMetrics(data,stats,{now=Date.now(),startedAt=Date.now(),status={}}={}){
  const h=Array.isArray(data.history)?data.history:[];
@@ -20,6 +28,8 @@ export function adminMetrics(data,stats,{now=Date.now(),startedAt=Date.now(),sta
  return {
    since:new Date(startedAt).toISOString(),uptimeSeconds:Math.max(0,Math.floor((now-startedAt)/1000)),
    usersTotal:users.length,usersVerified:users.filter(u=>Boolean(u.verifiedAt)).length,usersGoogle:users.filter(u=>Boolean(u.googleSub)).length,
+    signupsEmail:users.filter(u=>signupMethod(u).startsWith('E-mail')).length,
+    signupsGoogle:users.filter(u=>signupMethod(u).startsWith('Google')).length,
    routesTotal:h.length,routes24h:last24.length,avgDuration24h:mins.length?Math.round(mins.reduce((s,x)=>s+x,0)/mins.length):null,modes,
    reportsTotal:reports.length,reportsUnverified:reports.filter(r=>r.status!=='verificado').length,
    favoritesTotal:(data.favorites||[]).length,routinesTotal:(data.routines||[]).length,
@@ -35,5 +45,5 @@ export function adminUsers(data,{offset=0,limit=25}={}){
  const safeOffset=Math.max(0,Math.min(100000,Math.floor(Number(offset)||0)));
  const safeLimit=Math.max(1,Math.min(50,Math.floor(Number(limit)||25)));
  const recent=users.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
- return {total:users.length,offset:safeOffset,limit:safeLimit,items:recent.slice(safeOffset,safeOffset+safeLimit).map(u=>({id:u.id,name:String(u.name||'').slice(0,80),email:String(u.email||'').slice(0,180),createdAt:u.createdAt||null,verified:Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub)}))};
+ return {total:users.length,offset:safeOffset,limit:safeLimit,items:recent.slice(safeOffset,safeOffset+safeLimit).map(u=>({id:u.id,name:String(u.name||'').slice(0,80),email:String(u.email||'').slice(0,180),createdAt:u.createdAt||null,verified:Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub),signupMethod:signupMethod(u)}))};
 }
