@@ -49,45 +49,63 @@ export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
 }
 export function overpassQuery(bbox){
  if(!Array.isArray(bbox)||bbox.length!==4)throw Error('bbox required');
- const [w,s,e,n]=bbox;
- const area=[s,w,n,e].map(v=>Number(v).toFixed(5)).join(',');
- return '[out:json][timeout:11];('+
- 'node["highway"~"^(speed_camera|traffic_signals|stop|give_way|crossing|construction)$"]('+area+');'+
+ const [w,s,e,n]=bbox,area=[s,w,n,e].map(v=>Number(v).toFixed(5)).join(',');
+ // Guarantee that sparse radars are included BEFORE hundreds of stoplights,
+ // amenities and ordinary signs fill the bounded query response.
+ return '[out:json][timeout:12];'+
+ '(node["highway"="speed_camera"]('+area+');node["enforcement"="maxspeed"]('+area+'););out body 150;'+
+ '(node["amenity"~"^(hospital|clinic|fire_station|police|fuel|parking|charging_station)$"]('+area+');'+
  'node["traffic_calming"~"^(bump|hump|table|dynamic_bump)$"]('+area+');'+
+ 'node["highway"~"^(traffic_signals|stop|give_way|crossing|construction)$"]('+area+');'+
  'node["traffic_sign"]('+area+');'+
- 'node["enforcement"="maxspeed"]('+area+');'+
- 'node["railway"="level_crossing"]('+area+');'+
- 'node["amenity"~"^(hospital|clinic|fire_station|police|fuel|parking|charging_station)$"]('+area+');'+
- ');out body 1500;';
+ 'node["railway"="level_crossing"]('+area+'););out body 1250;';
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function sweep(now){
  for(const [key,value] of cache)if(value.expires<now-60000)cache.delete(key);
  while(cache.size>maxCache)cache.delete(cache.keys().next().value);
 }
+/** Fallback only when the primary OSM host fails.
+ * A custom injected endpoint never falls through to a real network source.
+ */
 export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=ENDPOINT}={}){
  const normalized=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
  if(!normalized)throw new RangeError('Área inválida ou maior que o limite permitido.');
- // Cache by a fine-grained grid, and use exactly the cached area for the query.
- const region=normalized.map(x=>+x.toFixed(3));
- const key=region.join(',');
+ const region=[Math.floor(normalized[0]*1000)/1000,Math.floor(normalized[1]*1000)/1000,
+   Math.ceil(normalized[2]*1000)/1000,Math.ceil(normalized[3]*1000)/1000];
+ const key=region.map(x=>x.toFixed(3)).join(',');
  const old=cache.get(key);
  if(old?.expires>now()&&old.result)return {...old.result,cacheHit:true};
  if(old?.pending)return old.pending;
  if(pending>=3)return {features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,stale:true,error:'Fonte ocupada'};
  pending++;
+ const endpoints=url===ENDPOINT?[ENDPOINT,'https://overpass.private.coffee/api/interpreter']:[url];
  const work=queued.then(async()=>{
    if(Date.now()-quotaWindow>=86400000){quotaWindow=Date.now();quotaUsed=0;}
-   if(quotaUsed>=2400)throw Error('Limite diário de consultas públicas atingido');
-   quotaUsed++;
-   const gap=Date.now()-lastUpstream;if(gap<1500)await pause(1500-gap);
-   lastUpstream=Date.now();
-   const response=await fetcher(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:new URLSearchParams({data:overpassQuery(region)}),signal:AbortSignal.timeout(12500)});
-   if(!response.ok)throw Error('Overpass '+response.status);
-   const data=await response.json();
-   if(!Array.isArray(data?.elements))throw Error('Resposta Overpass inválida');
-   return {features:normalizeOsmElements(data.elements),source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,
-     licenseUrl:'https://www.openstreetmap.org/copyright',fetchedAt:new Date(now()).toISOString(),coverage:'mapeada',stale:false};
+   const query=new URLSearchParams({data:overpassQuery(region)});
+   let lastError=null;
+   for(const [index,endpoint] of endpoints.entries()){
+     if(quotaUsed>=2400)throw Error('Limite diário de consultas públicas atingido');
+     quotaUsed++;
+     const gap=Date.now()-lastUpstream;if(gap<900)await pause(900-gap);
+     lastUpstream=Date.now();
+     try{
+       const response=await fetcher(endpoint,{method:'POST',headers:{
+         'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json',
+         'User-Agent':'VANO Maps public road-safety map (https://vanomaps.online)'
+       },body:query,signal:AbortSignal.timeout(index?8500:7500)});
+       if(!response.ok)throw Error('Overpass status '+response.status);
+       const data=await response.json();
+       if(!Array.isArray(data?.elements))throw Error('Resposta Overpass inválida');
+       return {features:normalizeOsmElements(data.elements),source:'OpenStreetMap',
+         attribution:OSM_ATTRIBUTION,licenseUrl:'https://www.openstreetmap.org/copyright',
+         fetchedAt:new Date(now()).toISOString(),coverage:'mapeada',stale:false};
+     }catch(error){
+       lastError=error;
+       console.warn('VANO public map upstream',index+1,':',error?.message||String(error));
+     }
+   }
+   throw lastError||new Error('Overpass indisponível');
  });
  queued=work.catch(()=>{});
  const pendingResult=work.then(result=>{
@@ -95,7 +113,8 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
  }).catch(error=>{
    if(old?.result){cache.set(key,{expires:now()+60000,result:old.result});return {...old.result,stale:true,error:'Fonte temporariamente indisponível'};}
    cache.delete(key);
-   return {features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,stale:true,error:'Fonte temporariamente indisponível'};
+   return {features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,
+     stale:true,error:'Fonte temporariamente indisponível'};
  }).finally(()=>{pending--});
  cache.set(key,{pending:pendingResult,expires:now()+ttlMs});
  return pendingResult;
