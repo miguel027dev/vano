@@ -13,6 +13,7 @@ import './v29-polish.css';
 import './v30-atlas.css';
 import './v31-map-address.css';
 import './v39-vehicle3d.css';
+import './v40-public-map.css';
 import 'leaflet/dist/leaflet.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);
