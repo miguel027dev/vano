@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark} from './benchmark.mjs';
+const base='start_lat=-23.6223&start_lon=-46.6987&end_lat=-23.5615&end_lon=-46.6557';
+const parse=(s='',originalEngine=false)=>parseBenchmarkParams(new URLSearchParams(base+(s?'&'+s:'')),{originalEngine});
+test('public benchmark discovery is documented and agent-ready',()=>{
+ const payload=benchmarkCapabilities({baseUrl:'https://vanomaps.online',originalEngine:true});
+ assert.equal(payload.public,true);assert.equal(payload.agentReady,true);
+ assert.equal(payload.modes.length,4);assert.match(payload.endpoints.route,/api\/benchmark\/v1\/route$/);
+ assert.equal(benchmarkCapabilities({originalEngine:false}).modes.length,2);
+ assert.equal(benchmarkScenarios(8).length,8);
+ assert.equal(benchmarkScenarios(99).length,8);
+});
+test('strict parameter validation prevents expensive malformed calls',()=>{
+ assert.equal(parse().mode,'fastest');
+ assert.equal(parse('profile=motorcycle').vehicle,'moto');
+ assert.equal(parse('mode=smart').error,'unsupported_mode');
+ assert.equal(parse('mode=smart',true).routeId,'smart');
+ assert.equal(parse('adaptive=2').error,'invalid_parameter');
+ assert.equal(parse('variant_budget=8').error,'invalid_variant_budget');
+ assert.equal(parse('profile=walking').error,'invalid_profile');
+ assert.equal(parseBenchmarkParams(new URLSearchParams('start_lat=NaN&start_lon=0&end_lat=1&end_lon=2')).error,'invalid_coordinates');
+ assert.equal(parseBenchmarkParams(new URLSearchParams('start_lat=90&start_lon=180&end_lat=-90&end_lon=-180')).error,'distance_limit');
+ assert.equal(parseBenchmarkParams(new URLSearchParams('start_lat=-23.5&start_lon=-46.7&end_lat=-23.5&end_lon=-46.7')).error,'same_location');
+});
+test('results never fabricate safety, congestion or geometry',()=>{
+ const request=parse('include_geometry=0');
+ const route={id:'fast',duration:14,distance:7.2,geometry:{type:'LineString',coordinates:[request.origin,request.destination]},verifiedSafety:false};
+ const result=summarizeBenchmark({source:'mapbox-v1-candidates',routes:[route]},request,{elapsedMs:234.3,requestId:'a'});
+ assert.equal(result.ok,true);assert.equal(result.metrics.etaMin,14);
+ assert.equal(result.metrics.trafficScore,null);assert.equal(result.metrics.safetyScore,null);
+ assert.equal(result.metrics.verifiedSafety,false);assert.equal(result.geometry,null);
+ const detail=summarizeBenchmark({routes:[route]},parse('include_geometry=1'));
+ assert.equal(detail.geometry.type,'LineString');
+ assert.equal(summarizeBenchmark({routes:[]},request).error,'missing_route');
+});
