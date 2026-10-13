@@ -42,9 +42,9 @@ export function motorcycleManeuverChain(route){
 function closeFollowingTurn(route,index,limit=180){
   const chain=motorcycleManeuverChain(route);
   const current=chain.find(x=>x.index===index);
-  if(!current)return false;
+  if(!current)return null;
   const upcoming=chain.find(x=>x.index>index&&x.at>=current.at+5);
-  return Boolean(upcoming&&upcoming.at-current.at<=limit);
+  return upcoming&&upcoming.at-current.at<=limit?upcoming:null;
 }
 
 function smoothStrength(value,previous,nowMs){
@@ -60,7 +60,7 @@ export function planMotorcycleCamera({
 }={}){
   const initial={phase:MOTO_CAMERA_PHASES.FOLLOW,category:'continue',strength:0,
     zoomOut:0,pitchDrop:0,lookAheadScale:0.78,threshold:0,
-    stepIndex:-1,route,updatedAt:nowMs,unstable:false,holdNext:false};
+    stepIndex:-1,route,updatedAt:nowMs,unstable:false,holdNext:false,holdChainStep:-1};
   if(!navigation)return initial;
   const confidence=Number.isFinite(accuracy)?accuracy:null;
   const gpsGuard=confidence!==null&&confidence>75;
@@ -80,7 +80,12 @@ export function planMotorcycleCamera({
   if(sameStep&&previous?.strength>0.06)threshold=Math.max(threshold,previous.threshold*.90);
   const t=hasManeuver?smoothstep((threshold-distance)/Math.max(threshold,1)):0;
   let strength=t;
-  const closeNext=hasManeuver&&closeFollowingTurn(route,stepIndex);
+  const nextManeuver=hasManeuver?closeFollowingTurn(route,stepIndex):null;
+  const closeNext=Boolean(nextManeuver);
+  // Persist the chain across the step-index change reported by the provider:
+  // the view must not close between an exit and a second immediate turn.
+  const carriedChain=sameRoute&&previous?.holdChainStep===stepIndex&&hasManeuver
+    &&distance<=Math.max(185,threshold);
   const focusDistance=Math.max(25,velocity*2.3+(confidence!==null?Math.min(confidence,25):0));
   let phase=MOTO_CAMERA_PHASES.FOLLOW;
   if(hasManeuver&&distance<=threshold){
@@ -91,6 +96,10 @@ export function planMotorcycleCamera({
     // following maneuver. Do not close and reopen between adjacent turns.
     if(closeNext&&distance<=Math.max(60,velocity*4.5)){
       strength=Math.max(strength,0.70);
+      phase=MOTO_CAMERA_PHASES.HOLD;
+    }
+    if(carriedChain){
+      strength=Math.max(strength,0.53);
       phase=MOTO_CAMERA_PHASES.HOLD;
     }
   }
@@ -116,8 +125,9 @@ export function planMotorcycleCamera({
   return {
     ...initial,phase,category,strength,threshold,stepIndex,unstable:gpsGuard,
     holdNext:closeNext,
+    holdChainStep:carriedChain?stepIndex:closeNext&&distance<=Math.max(60,velocity*4.5)?nextManeuver.index:-1,
     zoomOut:reducedMotion?0:(cfg?.zoom||0)*strength,
     pitchDrop:reducedMotion?0:(cfg?.pitch||0)*strength,
-    lookAheadScale:0.78-(category==='ramp'?.36:.27)*strength
+    lookAheadScale:0.78-(category==='ramp' ? 0.36 : 0.27)*strength
   };
 }
