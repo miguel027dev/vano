@@ -26,21 +26,26 @@ function mapStub(){
   off:(name,callback)=>{if(events.get(name)===callback)events.delete(name)}
  };
 }
-test('one Mapbox vector source yields only the three restrained traffic colors',()=>{
+test('one Mapbox vector source paints only amber and red congested roads',()=>{
  const map=mapStub(),statuses=[];
  assert.equal(ensureTrafficLayers(map,{enabled:true,onStatus:x=>statuses.push(x)}),true);
  assert.deepEqual(statuses,['available']);
  assert.equal(map.sources.get(TRAFFIC_SOURCE_ID).url,'mapbox://mapbox.mapbox-traffic-v1');
  assert.equal(TRAFFIC_TILESET,'mapbox://mapbox.mapbox-traffic-v1');
  assert.deepEqual(TRAFFIC_PALETTE,{free:'#20B486',moderate:'#E8B04C',heavy:'#DF625C'});
- assert.deepEqual(TRAFFIC_CONGESTION,['low','moderate','heavy','severe']);
+ assert.deepEqual(TRAFFIC_CONGESTION,['moderate','heavy','severe']);
+ assert.ok(!TRAFFIC_CONGESTION.includes('low'));
+ assert.ok(!JSON.stringify(trafficLayerSpec(TRAFFIC_ZOOM_CATEGORIES[0]).paint['line-color']).includes('#20B486'));
+ assert.equal(TRAFFIC_PALETTE.free,'#20B486','the existing traffic button can retain its green stripe');
  assert.deepEqual(TRAFFIC_ZOOM_CATEGORIES.map(x=>x.minzoom),[8.5,11.5,14]);
  assert.equal(map.layers.size,3);
  for(const id of TRAFFIC_LAYER_IDS){
   const spec=map.layers.get(id);
   assert.equal(spec.source,TRAFFIC_SOURCE_ID);
   assert.equal(spec['source-layer'],'traffic');
-  assert.equal(spec.paint['line-color'][9],TRAFFIC_PALETTE.heavy);
+  assert.equal(spec.paint['line-color'][3],TRAFFIC_PALETTE.moderate);
+  assert.equal(spec.paint['line-color'][7],TRAFFIC_PALETTE.heavy);
+  assert.deepEqual(spec.filter[1][2][1],['moderate','heavy','severe']);
   assert.ok(spec.paint['line-width']);
   assert.ok(spec.paint['line-offset']);
   assert.equal(map.adds.find(x=>x.id===id).before,'street-label',
