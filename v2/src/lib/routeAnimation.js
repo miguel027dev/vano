@@ -58,5 +58,5 @@ export function nextManeuver(route,timeline,progress){
  // Some providers only have a destination instruction, or duplicate beginning coordinates.
  if(!next)next=items.at(-1);
  const distance=Math.max(0,next.at-progress);
- return {instruction:next.instruction||'Continue pela rota',distance,modifier:next.modifier||'straight',lanes:Array.isArray(next.lanes)?next.lanes.slice(0,8):[],street:next.street||'',kind:next.type||''};
+ return {instruction:next.instruction||'Continue pela rota',distance,modifier:next.modifier||'straight',lanes:Array.isArray(next.lanes)?next.lanes.slice(0,8):[],street:next.street||'',kind:next.type||'',stepIndex:next.originalIndex};
 }

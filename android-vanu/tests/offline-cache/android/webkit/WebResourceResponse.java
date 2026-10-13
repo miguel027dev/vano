@@ -1,0 +1,1 @@
+package android.webkit;import java.io.InputStream;import java.util.Map;public class WebResourceResponse {private InputStream data;public WebResourceResponse(String m,String e,int s,String r,Map<String,String> h,InputStream d){data=d;}public InputStream getData(){return data;}}

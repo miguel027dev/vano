@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import {isNativeShell} from '../lib/nativeShell';
 
 /** Short visual acknowledgement once per tab; never delays data or navigation. */
 export default function BrandSplash(){
   const [visible, setVisible] = useState(() => {
     try {
+      if (isNativeShell()) return false;
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return false;
       return sessionStorage.getItem('vano-v3-splash-seen') !== '1';
     } catch { return false; }

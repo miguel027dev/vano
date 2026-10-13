@@ -1,0 +1,20 @@
+package com.vano.maps.fluidez;
+import android.content.Context;import android.net.Uri;import android.webkit.*;import java.io.*;import java.net.*;import java.nio.file.*;import java.util.*;import java.util.concurrent.*;
+public class OfflineCacheTest {
+ static boolean offline=false;static int connections=0;static String control="no-cache";
+ static class Connection extends HttpURLConnection {Connection(URL u){super(u);}public void connect(){}public void disconnect(){}public boolean usingProxy(){return false;}public int getResponseCode()throws IOException{connections++;if(offline)throw new IOException("no network");return 200;}public String getContentType(){return "application/javascript";}public String getHeaderField(String k){return k.equals("Cache-Control")?control:null;}public Map<String,List<String>> getHeaderFields(){return Map.of("Cache-Control",List.of(control));}public InputStream getInputStream(){return new ByteArrayInputStream(("content:"+url.getPath()).getBytes());}}
+ static WebResourceRequest request(String url){return new WebResourceRequest(){public String getMethod(){return "GET";}public Uri getUrl(){return Uri.parse(url);}public Map<String,String> getRequestHeaders(){return Map.of();}};}
+ static String read(WebResourceResponse r)throws Exception{if(r==null)throw new AssertionError("Expected cached resource");try(InputStream in=r.getData()){return new String(in.readAllBytes());}}
+ static void check(boolean result,String message){if(!result)throw new AssertionError(message);}
+ public static void main(String[] args)throws Exception{
+ URL.setURLStreamHandlerFactory(protocol->protocol.equals("https")?new URLStreamHandler(){protected URLConnection openConnection(URL u){return new Connection(u);}}:null);
+ File dir=Files.createTempDirectory("vano-cache-test").toFile();OfflineCache cache=new OfflineCache(new Context(dir),"vanu-73xu.onrender.com");
+ String shell="https://vanu-73xu.onrender.com/mapa",asset="https://vanu-73xu.onrender.com/assets/app.js",tile="https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/14/8000/8000.vector.pbf?access_token=token&sku=first";
+ read(cache.intercept(request(shell)));read(cache.intercept(request(asset)));read(cache.intercept(request(tile)));
+ offline=true;check(read(cache.intercept(request(shell))).contains("/mapa"),"shell offline");read(cache.intercept(request(asset)));read(cache.intercept(request(tile.replace("first","second"))));check(cache.intercept(request(tile.replace("token","other")))==null,"tokens must remain separate");
+ check(read(cache.intercept(request("https://vanu-73xu.onrender.com/perfil"))).contains("/mapa"),"SPA fallback");int before=connections;check(cache.intercept(request("https://vanu-73xu.onrender.com/api/bootstrap"))==null,"private API excluded");check(connections==before,"API untouched");check(cache.intercept(request("http://vanu-73xu.onrender.com/mapa"))==null,"HTTPS only");
+ offline=false;control="no-store";check(cache.intercept(request("https://vanu-73xu.onrender.com/assets/private.js"))==null,"no-store respected");offline=true;check(cache.intercept(request("https://vanu-73xu.onrender.com/assets/private.js"))==null,"private not retained");
+ offline=false;control="max-age=86400";CountDownLatch done=new CountDownLatch(1);int[] count={-1};cache.prepare(new double[][]{{-46.63,-23.55},{-46.62,-23.54}},n->{count[0]=n;done.countDown();});check(done.await(15,TimeUnit.SECONDS)&&count[0]>0,"corridor prepared");cache.close();
+ offline=true;OfflineCache reopened=new OfflineCache(new Context(dir),"vanu-73xu.onrender.com");read(reopened.intercept(request(shell)));read(reopened.intercept(request(tile)));CountDownLatch resumed=new CountDownLatch(1);reopened.prepare(new double[][]{{-46.63,-23.55},{-46.62,-23.54}},n->{count[0]=n;resumed.countDown();});check(resumed.await(15,TimeUnit.SECONDS)&&count[0]>0,"prepared tiles survive process restart and network failure");reopened.close();System.out.println("PASS native cache: offline resources, persistent corridor, API exclusion, token separation, cache directives and HTTPS");
+ }
+}

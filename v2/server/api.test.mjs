@@ -226,6 +226,19 @@ test('Preferência automática herdada de versão antiga não vence mudança de 
   }finally{await s.stop();}
 },{timeout:30000});
 
+test('persistent 90-day sessions survive a second device login and logout revokes only that device',async()=>{
+ const s=await start(),a=client(s.origin),b=client(s.origin);
+ try{
+  await a.call('/api/bootstrap');await b.call('/api/bootstrap');
+  const form={name:'Sessão persistente',email:'sessions@example.test',password:'SessionPasswordStrong123!'};
+  const signup=await a.call('/api/auth/signup','POST',form);
+  assert.equal(signup.status,201);assert.match(signup.headers.get('set-cookie'),/Max-Age=7776000/);
+  assert.equal((await b.call('/api/auth/login','POST',form)).status,200);
+  assert.ok((await a.call('/api/bootstrap')).data.user);assert.ok((await b.call('/api/bootstrap')).data.user);
+  assert.equal((await a.call('/api/auth/logout','POST',{})).status,200);
+  assert.equal((await a.call('/api/bootstrap')).data.user,null);assert.ok((await b.call('/api/bootstrap')).data.user);
+ }finally{await s.stop();}
+});
 
 test('Mapas públicos: catálogo real, atribuição, caixa geográfica limitada e nenhuma posição inventada',async()=>{
  const server=await start();
