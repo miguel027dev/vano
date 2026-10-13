@@ -31,7 +31,7 @@ import java.util.concurrent.*;
 
 /** Remote VANO application. No screen streaming, bundled routes or native map. */
 public final class MainActivity extends Activity {
-    private static final String BASE="https://vanu-73xu.onrender.com", ENTRY=BASE+"/mapa";
+    private static final String BASE="https://vanu-73xu.onrender.com", ENTRY=BASE+"/";
     private static final int GEO_REQUEST=10, FILE_REQUEST=11;
     private final ExecutorService network=Executors.newSingleThreadExecutor();
     private WebView web;
@@ -131,6 +131,12 @@ public final class MainActivity extends Activity {
                 if(!trusted(url)||pageFailed)return;
                 recovering=false;hideError();CookieManager.getInstance().flush();
                 injectRuntime();
+                // The non-map entry/auth screens must never depend on map tile render events.
+                // The SPA remains responsible for displaying the correct account screen.
+                String pagePath=Uri.parse(url).getPath();
+                if(!"/mapa".equals(pagePath))view.evaluateJavascript(
+                    "!!document.querySelector(\u0027.v5-landing,.v3-auth-page,.app-shell.shell-auth\u0027)",
+                    result->{if("true".equals(result))revealReady(view);});
             }
             @Override public void onReceivedError(WebView view,WebResourceRequest req,WebResourceError err){
                 if(req.isForMainFrame()){pageFailed=true;showError("Não foi possível conectar ao VANO. Confira sua conexão e tente novamente.");}
