@@ -4,6 +4,9 @@ on:
     branches:
       - fix/vanu-entry-instant-navigation-20261013
   workflow_dispatch:
+  pull_request:
+    branches:
+      - codex/vanu-android-3
 
 jobs:
   web-regression:
