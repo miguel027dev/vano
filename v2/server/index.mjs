@@ -607,11 +607,24 @@ async function route(req, res) {
   if(pathname==='/api/history'&&req.method==='POST'){
     if(!limits(req,res,'history',20,3600000))return;
     const b=await getBody(req),id=owner(req);if(!pointOK(b.destination?.coords))return err(res,400,'Destino inválido.');
+    const journeyId=typeof b.journeyId==='string'&&/^[a-zA-Z0-9-]{16,64}$/.test(b.journeyId)?b.journeyId:null;
+    const existing=journeyId&&db.history.find(r=>r.owner===id&&r.journeyId===journeyId);
+    if(existing){const {owner:_private,...record}=existing;return json(res,200,record);}
     const proof=verifyRouteProof(b.proof,id,b.destination.coords);
     if(!proof)return err(res,422,'Histórico exige uma rota validada pelo servidor. Calcule novamente.');
-    const rec={id:hex(8),owner:id,destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
+    const rec={id:hex(8),owner:id,journeyId,measurementVersion:1,travelledMeters:0,destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
     db.history.push(rec);db.usedProofs.push({hash:sha256(b.proof),expires:proof.expires});
     db.history=db.history.slice(-10000);db.usedProofs=db.usedProofs.filter(x=>x.expires>now()).slice(-3000);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
+  }
+  if(pathname==='/api/history/progress'&&req.method==='POST'){
+    if(!limits(req,res,'history-progress',300,3600000))return;
+    const b=await getBody(req),id=owner(req),record=db.history.find(r=>r.owner===id&&r.journeyId&&r.journeyId===b.journeyId);
+    if(!record)return err(res,404,'Trajeto não encontrado.');
+    const metres=b.travelledMeters;
+    const elapsed=Math.max(0,(now()-Date.parse(record.createdAt))/1000);
+    if(!Number.isFinite(metres)||metres<0||metres>3000000||metres>elapsed*75+100)return err(res,400,'Distância percorrida inválida.');
+    record.measurementVersion=1;record.travelledMeters=Math.max(record.travelledMeters||0,Math.round(metres));
+    await persist();const {owner:_private,...publicRecord}=record;return json(res,200,publicRecord);
   }
   if(pathname==='/api/reports'&&req.method==='POST'){
     if(!limits(req,res,'reports',6,3600000))return;

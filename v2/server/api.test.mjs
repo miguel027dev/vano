@@ -100,8 +100,17 @@ test('Assinatura de rota real bloqueia alteração de métricas e replay',async(
   assert.equal(d.status,200,JSON.stringify(d.data));
   const proof=d.data.routes.find(x=>x.id==='fast').proof;assert.ok(proof);
   assert.equal((await b.call('/api/history','POST',{destination:{name:'MASP',coords},proof})).status,422);
-  const valid=await a.call('/api/history','POST',{destination:{name:'MASP',coords},proof,distance:99999,duration:-1});
+  const journeyId='test-journey-0000001';
+  const valid=await a.call('/api/history','POST',{journeyId,destination:{name:'MASP',coords},proof,distance:99999,duration:-1});
   assert.equal(valid.status,201);assert.equal(valid.data.distance,4.4);assert.equal(valid.data.duration,13);
+  assert.equal(valid.data.travelledMeters,0);
+  assert.equal((await a.call('/api/history','POST',{journeyId,destination:{name:'MASP',coords},proof})).status,200);
+  assert.equal((await b.call('/api/history/progress','POST',{journeyId,travelledMeters:50})).status,404);
+  const checkpoint=await a.call('/api/history/progress','POST',{journeyId,travelledMeters:50});
+  assert.equal(checkpoint.status,200);assert.equal(checkpoint.data.travelledMeters,50);
+  assert.equal((await a.call('/api/history/progress','POST',{journeyId,travelledMeters:50})).data.travelledMeters,50);
+  assert.equal((await a.call('/api/history/progress','POST',{journeyId,travelledMeters:10})).data.travelledMeters,50);
+  assert.equal((await a.call('/api/history/progress','POST',{journeyId,travelledMeters:999999})).status,400);
   assert.equal((await a.call('/api/history','POST',{destination:{name:'MASP',coords},proof})).status,422);
  }finally{await s.stop();await new Promise(r=>mock.close(r));}
 },{timeout:30000});

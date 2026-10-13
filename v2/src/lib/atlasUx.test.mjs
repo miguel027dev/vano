@@ -16,7 +16,7 @@ test('perfil abandonou o cartão preto legado e usa dados do histórico',()=>{
   const profile=source('src/pages/ProfilePage.jsx');
   assert.doesNotMatch(profile,/v2-profile-hero/);
   assert.match(profile,/history\.reduce/);
-  assert.match(profile,/DISTÂNCIA ESTIMADA/);
+  assert.match(profile,/DISTÂNCIA PERCORRIDA/);
   assert.match(profile,/v4-route-feature/);
 });
 
