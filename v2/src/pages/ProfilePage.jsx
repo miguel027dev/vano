@@ -1,10 +1,11 @@
-import React,{useEffect,useState} from 'react';
+import React from 'react';
 import { Link,useNavigate } from 'react-router-dom';
 import { UserRound,Settings2,Navigation,MapPin,Clock3,LogOut,ArrowUpRight,Route,LockKeyhole,CircleHelp,CarFront,Bike,Mail,SlidersHorizontal,ArrowRight,ShieldCheck,Plus,Compass,ChevronRight,History,Check } from 'lucide-react';
 import { useVano } from '../context';
 import { Brand } from '../components/Brand';
 import { BottomNav } from '../components/Navigation';
-import { fmtKm,fmtTime,timeAgo,api } from '../lib/api';
+import {measuredKilometers} from '../lib/travelDistance';
+import { fmtKm,fmtTime,timeAgo } from '../lib/api';
 
 function Action({icon:Icon, title,subtitle,to,value}){
   const {t}=useVano();
@@ -19,10 +20,8 @@ function Action({icon:Icon, title,subtitle,to,value}){
 export default function ProfilePage(){
   const {user,history=[],favorites=[],preferences={},logout,t,language}=useVano();
   const navigate=useNavigate();
-  const [health,setHealth]=useState(null);
-  useEffect(()=>{api('/health').then(setHealth).catch(()=>setHealth(null));},[]);
   const trips=history.length;
-  const kilometers=history.reduce((total,record)=>total+Number(record.distance||0),0);
+  const kilometers=history.reduce((total,record)=>total+measuredKilometers(record),0);
   const initials=(user?.name||'V').trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('').toUpperCase();
   const firstName=user?.name?.trim()?.split(/\s+/)[0]||'Visitante';
   const isMoto=preferences.vehicle==='moto';
@@ -41,7 +40,7 @@ export default function ProfilePage(){
     </section>
     <section className="v4-stat-strip" aria-label="Resumo do histórico de trajetos">
       <div><span>{t('ROTAS INICIADAS')}</span><strong>{trips.toLocaleString(language)}</strong><small>{t('neste dispositivo')}</small></div>
-      <div><span>{t('DISTÂNCIA ESTIMADA')}</span><strong>{fmtKm(kilometers,language)}</strong><small>{t('rotas planejadas')}</small></div>
+      <div><span>{t('DISTÂNCIA PERCORRIDA')}</span><strong>{fmtKm(kilometers,language)}</strong><small>{t('durante a navegação')}</small></div>
       <div><span>{t('LUGARES SALVOS')}</span><strong>{favorites.length}</strong><small>{t('seus atalhos')}</small></div>
     </section>
     {!user&&<section className="v4-signup-note"><span className="v4-note-mark"><UserRound size={24}/></span><div><strong>{t('Seu caminho merece um lugar.')}</strong><p>{t('Crie sua conta para guardar suas preferências.')}</p></div><Link to="/cadastro">{t('Criar conta')} <ArrowRight size={17}/></Link></section>}
@@ -56,9 +55,9 @@ export default function ProfilePage(){
     </section>
     <div className="v4-profile-columns">
       <section className="v4-profile-section"><div className="v4-profile-section-heading"><div><span className="v4-overline">{t('PREFERÊNCIAS')}</span><h2>{t('Sua experiência')}</h2></div></div><div className="v4-action-list"><Action icon={UserRound} title="Dados da conta" subtitle="Nome e informações" to="/conta"/><Action icon={SlidersHorizontal} title="Configurações" subtitle="Rotas, tema e notificações" to="/configuracoes"/><Action icon={ShieldCheck} title="Segurança e privacidade" subtitle="Controle dos seus dados" to="/privacidade"/>{user?.isAdmin===true&&<Action icon={LockKeyhole} title="Admin" subtitle="Painel de administração" to="/admin"/>}</div></section>
-      <section className="v4-profile-section"><div className="v4-profile-section-heading"><div><span className="v4-overline">{t('HISTÓRICO')}</span><h2>{t('Seus trajetos')}</h2></div><Link to="/rotas">{t('Ver todos')} <ArrowUpRight size={17}/></Link></div>{recent.length?<div className="v4-recent-list">{recent.map(item=><div className="v4-recent-trip" key={item.id}><span className="v4-recent-icon"><Navigation size={18}/></span><div><strong>{item.destination?.name||t('Destino')}</strong><small>{timeAgo(item.createdAt,language)} · {fmtTime(item.duration)} · {fmtKm(item.distance,language)}</small></div></div>)}</div>:<Link className="v4-empty-link" to="/mapa"><span><Route size={19}/></span><div><strong>{t('Seu primeiro trajeto começa aqui')}</strong><small>{t('Escolha um destino no mapa')}</small></div><ArrowRight size={18}/></Link>}</section>
+      <section className="v4-profile-section"><div className="v4-profile-section-heading"><div><span className="v4-overline">{t('HISTÓRICO')}</span><h2>{t('Seus trajetos')}</h2></div><Link to="/rotas">{t('Ver todos')} <ArrowUpRight size={17}/></Link></div>{recent.length?<div className="v4-recent-list">{recent.map(item=><div className="v4-recent-trip" key={item.id}><span className="v4-recent-icon"><Navigation size={18}/></span><div><strong>{item.destination?.name||t('Destino')}</strong><small>{timeAgo(item.createdAt,language)} · {fmtTime(item.duration)} · {fmtKm(measuredKilometers(item),language)}</small></div></div>)}</div>:<Link className="v4-empty-link" to="/mapa"><span><Route size={19}/></span><div><strong>{t('Seu primeiro trajeto começa aqui')}</strong><small>{t('Escolha um destino no mapa')}</small></div><ArrowRight size={18}/></Link>}</section>
     </div>
-    <section className="v4-profile-bottom"><Link to="/ajuda"><CircleHelp size={18}/> {t('Ajuda e suporte')} <ChevronRight size={17}/></Link><span className="v4-backend-caption"><span className={health?.v1BridgeConfigured?'is-linked':''}/> {health?.v1BridgeConfigured?'Motor VANO V1 configurado':'Motor V1 não conectado; rotas convencionais'}</span></section>
+    <section className="v4-profile-bottom"><Link to="/ajuda"><CircleHelp size={18}/> {t('Ajuda e suporte')} <ChevronRight size={17}/></Link></section>
     {user&&<button type="button" className="v4-signout" onClick={signOut}><LogOut size={17}/> {t('Sair da conta')}</button>}
     <BottomNav/>
   </main>;
