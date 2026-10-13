@@ -6,6 +6,7 @@ import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnima
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
+import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -16,10 +17,10 @@ const markerElement=(kind,vehicle='carro')=>{
  const el=document.createElement('div');el.className=`map-pin map-pin-${kind}`;
  if(kind==='destination')el.textContent='⌖';
  if(kind==='vehicle') {
-  // Proprietary VANO route arrow: raised orange enamel, extruded side and a soft compass halo.
-  // Static markup only; no untrusted content is interpolated.
-  el.className=`vano-vehicle-marker vano-direction-arrow vano-atlas-direction ${vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car'}`;
-  el.innerHTML='<svg viewBox="0 0 64 80" width="54" height="68" aria-hidden="true" focusable="false"><defs><linearGradient id="vano-atlas-fill" x1=".12" y1="0" x2=".88" y2="1"><stop offset="0" stop-color="#ff9857"/><stop offset=".55" stop-color="#F4682E"/><stop offset="1" stop-color="#DF4F1D"/></linearGradient></defs><path d="M32 8 55 61Q58 68 50 66L32 59 14 66Q6 68 9 61Z" fill="#A63A1B" opacity=".36" transform="translate(0 3)"/><path d="M32 8 55 61Q58 68 50 66L32 59 14 66Q6 68 9 61Z" fill="url(#vano-atlas-fill)" stroke="#fff" stroke-width="3.2" stroke-linejoin="round"/><path d="M32 19V51" stroke="#FFFAF6" stroke-width="2.7" stroke-linecap="round" opacity=".77"/></svg>';
+  // Procedural extruded SVG: a consistent 3D marker at every heading.
+  // Both Mapbox and Leaflet reuse this single visual definition.
+  el.className=`vano-vehicle-marker vano-direction-arrow vano-atlas-direction vano-3d-nav-marker ${vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car'}`;
+  el.innerHTML=navigationArrowSvg();
  }
  return el;
 };
@@ -278,7 +279,7 @@ function paintMapbox(map,data,selection){
     map._vanoTraveledCleared=true;
   }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
-  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const type=key==='current'?(data.navigation?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:'center',rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:'viewport'}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
+  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const type=key==='current'?(data.navigation?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:'center',rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
   marker('current',data.motionCoords||data.userCoords);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
 }
