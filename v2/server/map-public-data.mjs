@@ -6,7 +6,7 @@ export const OSM_ATTRIBUTION='© OpenStreetMap contributors (ODbL)';
 export const MAX_FEATURES=180;
 const ENDPOINT='https://overpass-api.de/api/interpreter';
 const ttlMs=5*60*1000,maxCache=100,cache=new Map();
-let lastUpstream=0,queued=Promise.resolve(),pending=0;
+let lastUpstream=0,queued=Promise.resolve(),pending=0,quotaWindow=Date.now(),quotaUsed=0;
 const finite=Number.isFinite;
 export function parseBBox(raw){
  if(typeof raw!=='string'||raw.length>100)return null;
@@ -77,6 +77,9 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
  if(pending>=3)return {features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,stale:true,error:'Fonte ocupada'};
  pending++;
  const work=queued.then(async()=>{
+   if(Date.now()-quotaWindow>=86400000){quotaWindow=Date.now();quotaUsed=0;}
+   if(quotaUsed>=2400)throw Error('Limite diário de consultas públicas atingido');
+   quotaUsed++;
    const gap=Date.now()-lastUpstream;if(gap<1500)await pause(1500-gap);
    lastUpstream=Date.now();
    const response=await fetcher(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json'},body:new URLSearchParams({data:overpassQuery(region)}),signal:AbortSignal.timeout(12500)});
@@ -108,3 +111,13 @@ export function filterVerifiedReports(reports=[],bbox=[],now=Date.now()){
     source:'Comunidade VANO',createdAt:r.createdAt,verified:true
   }));
 }
+
+/** Documented open sources. Only active sources are queried automatically. */
+export const PUBLIC_MAP_SOURCES=Object.freeze([
+ {id:'osm-overpass',name:'OpenStreetMap / Overpass',coverage:'mundial, incompleta',mode:'live-bounded',
+   active:true,license:'ODbL 1.0',url:'https://www.openstreetmap.org/copyright'},
+ {id:'overture-places',name:'Overture Maps Places',coverage:'mundial, variável',mode:'ETL de arquivos GeoParquet',
+   active:false,license:'CDLA-Permissive / Apache',url:'https://docs.overturemaps.org/guides/places/'},
+ {id:'overture-transport',name:'Overture Maps Transportation',coverage:'mundial, variável',mode:'ETL de arquivos GeoParquet',
+   active:false,license:'CDLA-Permissive / ODbL conforme origem',url:'https://docs.overturemaps.org/guides/transportation/'}
+]);
