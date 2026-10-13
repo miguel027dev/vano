@@ -76,7 +76,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null);
   function centerOnFirstGpsFix(){
     const map=mapRef.current,d=latest.current;
-    if(!map||d.navigation||d.destination||validPoint(d.manualOrigin)||!validPoint(d.gpsCoords)||firstGpsCenter.current)return;
+    if(!map||d.navigation||d.destination||validPoint(d.manualOrigin)||!validPoint(d.gpsCoords)||firstGpsCenter.current||motion.current?.freeLook||map._vanoFreeLook)return;
     // The map may not have finished loading its vector tiles when GPS answers.
     // The camera must center immediately; waiting for isStyleLoaded() was
     // trapping users behind a permanent loading grid.
@@ -88,6 +88,9 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       map.setView(ll(d.gpsCoords),Math.max(map.getZoom(),14.5),{animate:false});
     }
     firstGpsCenter.current=1;
+    // Rebase the eased camera after the initial instant fix: never animate back
+    // to the fallback map center.
+    if(backend.current==='mapbox')motion.current?.recenter();
   }
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
@@ -186,9 +189,11 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   },[layer]);
   useEffect(()=>{
     if(!navigation){status.current=CAMERA_STATES.IDLE;lastFit.current='';}
-    // Entering the normal map or starting guidance reenables follow after any free look.
-    if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))
+    // Switching modes reenables tracking, including after Leaflet free-look.
+    if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords})){
+      if(backend.current==='leaflet'&&mapRef.current)mapRef.current._vanoFreeLook=false;
       motion.current?.recenter();
+    }
   },[navigation]);
   // A single animation clock paints the freshest real GPS point and its traced progress.
   // There is no route simulation, velocity extrapolation, or fabricated GPS input.
@@ -248,7 +253,11 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
           map._vanoVehicleMarker.setLatLng(ll(point));
           const arrow=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
           if(arrow)arrow.style.transform='rotate('+(state.bearing||0)+'deg)';
-          if(now-state.lastPaint>100&&!map._vanoFreeLook){state.lastPaint=now;map.panTo(ll(point),{animate:false});}
+          if(now-state.lastPaint>120&&!map._vanoFreeLook){
+            state.lastPaint=now;
+            if(map.distance(map.getCenter(),L.latLng(ll(point)))>1.3)
+              map.panTo(ll(point),{animate:false});
+          }
         }else{
           if(map._vanoVehicleMarker){map._vanoVehicleMarker.remove();map._vanoVehicleMarker=null;}
           if(!map._vanoOriginMarker)map._vanoOriginMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({
