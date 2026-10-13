@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Bike, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, RotateCcw } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Bike, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
@@ -444,8 +444,8 @@ export default function MapPage({active=true}){
   function reset(){rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});setPreparingStart(false);spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   useEffect(()=>{if(preparingStart&&offlineMap.status!=='saving'){setPreparingStart(false);begin();}},[preparingStart,offlineMap.status]);
   const demoRoute=routeData?.source==='demonstracao';
-  // Manual and deviation reroutes keep the current journey until a newer
-  // route succeeds. The ref blocks repeated taps before React re-renders.
+  // Deviation reroutes keep the current journey until a newer
+  // route succeeds. The ref blocks duplicate requests before React re-renders.
   async function recalculateNavigationRoute(){
     if(rerouteRequest.current||!navMode||!dest||!route?.geometry)return;
     if(navigator.onLine===false){setToast('Conecte-se à internet para recalcular. A rota atual foi mantida.');return;}
@@ -554,11 +554,10 @@ export default function MapPage({active=true}){
       </span>
     </div>}
     {!searchOpen&&<div className="map-controls">
-      {navMode?<button type="button" title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>:
-        <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>}
+      <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
+      {navMode&&<button type="button" title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}
       <button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>
       <button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
-      {navMode&&<button type="button" className="circle-btn v49-reroute-control" title={recalculating?'Recalculando sua rota…':'Recalcular rota'} aria-label={recalculating?'Recalculando rota':'Recalcular rota'} aria-busy={recalculating} disabled={recalculating} onClick={()=>void recalculateNavigationRoute()}><RotateCcw size={21} strokeWidth={2} aria-hidden="true"/></button>}
     </div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       <div className="v47-route-vehicle" aria-label="Tipo de veículo para calcular a rota">
