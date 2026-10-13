@@ -354,26 +354,27 @@
 .map-page.in-navigation .nav-bottom.v37-nav-bottom{
   background:#fff;
   color:#1c242b;
-  border-radius:29px 29px 0 0;
+  border-radius:25px 25px 0 0;
   border:1px solid #e9ecea;
   border-bottom:0;
-  padding:15px clamp(16px,4vw,26px) calc(env(safe-area-inset-bottom,0px) + 23px);
+  max-width:540px;
+  padding:11px clamp(14px,3vw,22px) calc(env(safe-area-inset-bottom,0px) + 16px);
   box-shadow:0 -9px 36px #22312d1c,0 -2px 7px #26332908;
 }
 .map-page.in-navigation .v37-nav-handle{
   display:block;
-  width:52px;
-  height:5px;
+  width:44px;
+  height:4px;
   border-radius:999px;
   background:#cdd2d5;
-  margin:0 auto 11px;
+  margin:0 auto 8px;
 }
 .map-page.in-navigation .nav-summary.v37-nav-summary{
   display:grid;
   grid-template-columns:48px minmax(0,1fr) 48px;
   column-gap:clamp(6px,2.3vw,16px);
   align-items:center;
-  min-height:98px;
+  min-height:82px;
   margin:0;
 }
 .map-page.in-navigation .v37-nav-end{
@@ -396,13 +397,13 @@
   justify-content:center;
   flex-direction:column;
   min-width:0;
-  gap:10px;
+  gap:6px;
   text-align:center;
 }
 .map-page.in-navigation .v37-nav-arrival{
   display:block;
   color:#17221f;
-  font:800 clamp(37px,9.2vw,51px)/1 Manrope,'DM Sans',sans-serif;
+  font:800 clamp(35px,8.8vw,46px)/1 Manrope,'DM Sans',sans-serif;
   letter-spacing:-.06em;
   font-variant-numeric:tabular-nums;
   white-space:nowrap;
@@ -411,10 +412,10 @@
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:clamp(7px,2.2vw,13px);
+  gap:clamp(7px,2.2vw,11px);
   min-width:0;
   color:#59635f;
-  font-size:clamp(12px,3.3vw,16px);
+  font-size:clamp(12px,3.25vw,15px);
   font-weight:650;
   line-height:1.25;
   font-variant-numeric:tabular-nums;
@@ -462,4 +463,20 @@
 }
 @media(prefers-reduced-motion:reduce){
   .map-page.in-navigation .v37-nav-end{transition:none}
+}
+
+/* VANO Atlas 3.8 — first GPS fix is private and doesn't pan from a demo city.
+   The map is already loading behind this static surface, so search and the
+   accessibility controls remain available and usable without delay. */
+.map-page .v38-map-first-fix-mask{
+  position:absolute;
+  inset:0;
+  z-index:3;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 62% 37%,rgba(255,255,255,.67),transparent 68%),
+    linear-gradient(135deg,#edf2ec 0%,#e7efea 54%,#eef2ec 100%);
+}
+@media(max-width:720px){
+  .map-page.in-navigation .nav-bottom.v37-nav-bottom{width:100%;max-width:100%}
 }
