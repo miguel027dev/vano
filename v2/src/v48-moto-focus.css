@@ -1,0 +1,107 @@
+/* Vanu Moto Focus: restrained, high-contrast guidance for motorcycles.
+   HUD changes never move the GPS coordinate, route line or manual controls. */
+.map-page.is-moto-navigation .nav-instruction.v28-nav-instruction{
+  background:#1b2425;
+  border:1px solid #344243;
+  color:#fff;
+  box-shadow:0 9px 28px #111a2038,0 1px 4px #10171822;
+  border-radius:19px;
+  gap:12px;
+}
+.map-page.is-moto-navigation .nav-instruction .v28-turn-icon{
+  background:#f46520;
+  color:#fff;
+  border-radius:15px;
+  width:55px;
+  height:56px;
+  flex-basis:55px;
+}
+.map-page.is-moto-navigation .nav-instruction .v28-nav-copy strong.v46-nav-distance{
+  font-size:clamp(1.35rem,5.3vw,1.76rem);
+  line-height:1.08;
+  color:#fff;
+  font-weight:850;
+  font-variant-numeric:tabular-nums;
+}
+.map-page.is-moto-navigation .nav-instruction .v28-nav-copy .v46-nav-instruction-text{
+  color:#f4f6f4;
+  font-weight:780;
+  font-size:clamp(.87rem,3.4vw,1.02rem);
+}
+.map-page.is-moto-navigation .nav-instruction .v28-nav-copy .v46-nav-street{
+  color:#b4c0bd;
+}
+.map-page.is-moto-navigation .nav-instruction>.circle-btn{
+  background:#313d3d;
+  color:#f9fafa;
+  border-color:#475655;
+  box-shadow:none;
+}
+.map-page.is-moto-navigation .v28-lane-guidance>.v46-lane{
+  color:#cad5d3;
+  background:#303b3c;
+  border-color:transparent;
+}
+.map-page.is-moto-navigation .v28-lane-guidance>.v46-lane.suggested{
+  color:#fff;
+  background:#b64e20;
+  border-color:#f2814d;
+}
+.map-page.is-moto-navigation .v36-nav-road-pill{
+  border-color:#e5e7e4;
+  box-shadow:0 4px 19px #10191e26;
+}
+.map-page.is-moto-navigation .nav-bottom.v37-nav-bottom{
+  border-top:2px solid #f2d1bf;
+  box-shadow:0 -7px 26px #1920261c;
+}
+/* The compact rider arrow stays above road paint and below the HUD. No
+   swinging/leaning/bobbing animations: only the real GPS bearing rotates it. */
+.vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker.vano-vehicle-moto{
+  width:64px;
+  height:72px;
+  filter:none;
+}
+.vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker.vano-vehicle-moto::before{
+  width:47px;
+  height:47px;
+  border:1.5px solid #fff9;
+  box-shadow:0 0 0 4px #ff79101c,0 4px 13px #0d18182a;
+  background:radial-gradient(circle,#fffdf0a8 0 34%,#ff741d35 57%,transparent 77%);
+  top:49%;
+}
+.vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker.vano-vehicle-moto .vano-arrow3d-svg{
+  width:55px;
+  height:68px;
+  filter:drop-shadow(0 3px 3px #19232c55);
+}
+@media(max-width:375px){
+  .map-page.is-moto-navigation .nav-instruction.v28-nav-instruction{
+    gap:8px;padding:10px 9px;
+  }
+  .map-page.is-moto-navigation .nav-instruction .v28-turn-icon{
+    width:43px;height:45px;flex-basis:43px;border-radius:12px;
+  }
+  .map-page.is-moto-navigation .nav-instruction .v28-nav-copy strong.v46-nav-distance{
+    font-size:1.32rem;
+  }
+  .map-page.is-moto-navigation .nav-instruction .v28-nav-copy .v46-nav-instruction-text{
+    font-size:.82rem;
+  }
+  .vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker.vano-vehicle-moto .vano-arrow3d-svg{
+    width:51px;height:64px;
+  }
+}
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.is-moto-navigation .nav-instruction.v28-nav-instruction{
+    padding:8px 10px;border-radius:14px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page.is-moto-navigation .nav-instruction,
+  .vano-atlas-direction.vano-vehicle-moto,
+  .vano-atlas-direction.vano-vehicle-moto .vano-arrow3d-svg{
+    animation:none!important;
+    transition:none!important;
+  }
+}
