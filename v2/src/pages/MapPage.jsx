@@ -12,7 +12,7 @@ import { navigationSummary,arrivalClock } from '../lib/navigationSummary';
 import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
 import {spokenCue} from '../lib/offlineGuidance';
-import {corridorPoints} from '../lib/offlineCorridor';
+import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
@@ -21,7 +21,7 @@ export default function MapPage({active=true}){
   const mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const [telemetry,setTelemetry]=useState({}),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
-  const offlineGeneration=useRef(0),spoken=useRef(new Set()),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
+  const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
   destRef.current=dest;
@@ -298,19 +298,32 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  cachePosition.current=userCoords;
   useEffect(()=>{if(!navMode||!hasLiveGPS||!route?.geometry)return;const timeline=buildRouteTimeline(route.geometry);if(!timeline.total)return;const meters=distanceOnRoute(timeline,userCoords);setGuidance({...nextManeuver(route,timeline,meters),progress:meters/timeline.total,preview:false,finished:false});},[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
   // remaining minutes and kilometers shrink only as route progress is reported.
   const navigationStats=navMode?navigationSummary(route,guidance,Date.now()):null;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
   useEffect(()=>{
-    if(!route||navigator.onLine===false||!isNativeShell())return;
-    const id=++offlineGeneration.current;
-    setOfflineMap({status:'saving',key:route.id});
-    const timer=setTimeout(()=>{try{if(!notifyNative({action:'prepareMap',id,points:corridorPoints(route.geometry)}))setOfflineMap({status:'partial',key:route.id});}catch{setOfflineMap({status:'partial',key:route.id});}},250);
-    const timeout=setTimeout(()=>{setOfflineMap(v=>v.status==='saving'?{...v,status:'partial'}:v);},180000);
-    return()=>{clearTimeout(timer);clearTimeout(timeout);};
-  },[route?.id,route?.geometry,layer]);
+    if(!navMode||!route?.geometry||!isNativeShell())return;
+    let stopped=false,lastSection=-1;
+    const prepareAhead=()=>{
+      if(stopped||!active||navigator.onLine===false)return;
+      const {points,section}=upcomingCorridor(route.geometry,cachePosition.current);
+      if(points.length<2||section<0||section===lastSection)return;
+      lastSection=section;
+      const id=++offlineGeneration.current;
+      setOfflineMap({status:'saving',key:route.id});
+      try{
+        if(!notifyNative({action:'prepareMap',id,points}))
+          setOfflineMap({status:'partial',key:route.id});
+      }catch{setOfflineMap({status:'partial',key:route.id});}
+    };
+    // Navigation starts on the same tap; optional tile downloads begin AFTER the HUD.
+    const start=setTimeout(prepareAhead,1600);
+    const pulse=setInterval(prepareAhead,14000);
+    return()=>{stopped=true;clearTimeout(start);clearInterval(pulse);};
+  },[navMode,route?.id,route?.geometry,layer,active]);
   useEffect(()=>{
     if(!navMode||!route||!dest)return;
     const options=JSON.stringify([muted,layer,offlineMap.status,spokenRevision]);
