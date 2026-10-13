@@ -1,0 +1,97 @@
+/* VANO Desktop 4.4 — one consistent workspace after leaving the map.
+   Side navigation owns 230px; all other pages stay inside the remaining
+   viewport. Mobile navigation is never converted into a desktop block.
+ */
+@media(min-width:1110px){
+ .bottom-nav.v5-bottom-nav{display:none!important}
+ .app-shell:not(.shell-map):not(.shell-auth) .content-page,
+ .app-shell:not(.shell-map):not(.shell-auth) .content-page.v4-profile{
+   box-sizing:border-box;
+   width:min(940px,calc(100vw - 230px - 72px));
+   max-width:940px;
+   margin-left:calc(230px + (100vw - 230px - min(940px,100vw - 230px - 72px))/2);
+   margin-right:0;
+   padding-bottom:74px;
+ }
+ .app-shell:not(.shell-map):not(.shell-auth) .v3-admin{
+   width:calc(100% - 230px);
+   max-width:calc(100vw - 230px);
+   min-width:0;
+   margin-left:230px;
+ }
+ .app-shell:not(.shell-map):not(.shell-auth) .side-nav{
+   box-sizing:border-box;
+   overflow-y:auto;
+   overflow-x:hidden;
+   scrollbar-width:thin;
+   display:flex;
+   gap:5px;
+   padding:28px 14px 22px;
+ }
+ .side-nav .brand{margin:0 13px 25px}
+ .side-nav .v44-side-heading{
+   margin:13px 13px 5px;
+   font-size:10px;
+   line-height:1.5;
+   font-weight:800;
+   color:#89948c;
+   letter-spacing:.12em;
+ }
+ .side-nav .v44-side-group{
+   display:grid;
+   gap:4px;
+   min-width:0;
+ }
+ .side-nav .side-link{
+   display:flex;
+   min-height:46px;
+   align-items:center;
+   gap:13px;
+   font-size:13px;
+   line-height:1.2;
+   font-weight:690;
+   transition:background-color .15s,color .15s;
+ }
+ .side-nav .side-link.active{
+   background:#f2eee9;
+   color:#c45121;
+   font-weight:800;
+   box-shadow:inset 3px 0 #ed712f;
+ }
+ .side-nav .side-link:not(.active):hover{
+   transform:none;
+   color:#263a30;
+   background:#f4f6f2;
+ }
+ .side-nav .side-foot{
+   margin-top:auto;
+   padding-top:24px;
+   font-size:11px;
+   color:#9ba69c;
+ }
+ .content-page .page-header{
+   align-items:center;
+   gap:15px;
+   min-width:0;
+ }
+ .content-page .page-header>div{min-width:0}
+ .content-page .page-header h1{overflow-wrap:anywhere}
+ .content-page .place-grid,.content-page .profile-grid,
+ .content-page .activity-hero,.content-page .report-split{
+   min-width:0;
+ }
+ .content-page .list-card,.content-page .form-panel{
+   min-width:0;
+ }
+}
+@media(min-width:1110px) and (max-width:1300px){
+ .app-shell:not(.shell-map):not(.shell-auth) .content-page,
+ .app-shell:not(.shell-map):not(.shell-auth) .content-page.v4-profile{padding-top:25px}
+}
+@media(max-width:1109px){
+ .app-shell .side-nav{display:none}
+ .bottom-nav.v5-bottom-nav{display:grid}
+}
+@media(prefers-reduced-motion:reduce){
+ .side-nav .side-link{transition:none}
+}
