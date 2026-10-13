@@ -32,7 +32,7 @@ function popupBody(item){
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,controller=null,latestKey='',lastRead=0,items=[],remoteItems=[],mapTilesItems=[];
+ let done=false,timer=null,vectorTimer=null,controller=null,latestKey='',lastRead=0,items=[],remoteItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
  const markers=new Map();
  const credit=document.createElement('a');
@@ -62,7 +62,9 @@ export function attachPublicMapOverlay(map,backend){
   if(done)return;
   const zoom=map.getZoom();
   const node=map.getContainer();
-  const allowed=selectPublicPins(items,project,zoom,zoom>=15?120:75,{width:node.clientWidth,height:node.clientHeight});
+  // Bound DOM work by viewport area, not by arbitrary zoom / icon category.
+  const markerBudget=Math.max(100,Math.min(300,Math.round(node.clientWidth*node.clientHeight/2300)));
+  const allowed=selectPublicPins(items,project,zoom,markerBudget,{width:node.clientWidth,height:node.clientHeight});
   const current=new Set(allowed.map(x=>x.id));
   for(const [id,entry] of markers)if(!current.has(id)){entry.marker.remove();markers.delete(id);}
   for(const item of allowed){
@@ -111,15 +113,29 @@ export function attachPublicMapOverlay(map,backend){
   if(!mapTilesItems.length)return;
   mergeSources();render();
  }
+ function scheduleVectorUpdate(){
+  if(done||document.hidden||backend!=='mapbox'||vectorTimer!==null)return;
+  // Tiles arrive independently while the user pans. Wait for the next batch,
+  // but don't wait for camera idle or a network fetch to show new services.
+  vectorTimer=setTimeout(()=>{
+   vectorTimer=null;
+   updateVectorPoi();
+  },160);
+ }
  function schedule(){
   if(done||document.hidden)return;
   if(timer!==null)clearTimeout(timer);
-  timer=setTimeout(refresh,750);
+  scheduleVectorUpdate();
+  timer=setTimeout(refresh,540);
  }
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
-  if(!bbox){remoteItems=[];items=[];latestKey='';clear();credit.hidden=true;setNotice('');return;}
+  if(!bbox){
+   // The Overpass API only serves small high-zoom bboxes, but previously
+   // loaded vector POIs are still real and must not disappear on zoom-out.
+   remoteItems=[];latestKey='';updateVectorPoi();mergeSources();render();setNotice('');return;
+  }
   updateVectorPoi();render();
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
@@ -155,12 +171,14 @@ export function attachPublicMapOverlay(map,backend){
     map.on('load',schedule);
     map.on('idle',updateVectorPoi);
     map.on('style.load',updateVectorPoi);
+    map.on('sourcedata',scheduleVectorUpdate);
   }
  document.addEventListener('visibilitychange',visibility);
  schedule();
  return ()=>{
   done=true;
   if(timer!==null)clearTimeout(timer);
+  if(vectorTimer!==null)clearTimeout(vectorTimer);
   controller?.abort();
   map.off('moveend',schedule);
   map.off('zoomend',schedule);
@@ -168,6 +186,7 @@ export function attachPublicMapOverlay(map,backend){
     map.off('load',schedule);
     map.off('idle',updateVectorPoi);
     map.off('style.load',updateVectorPoi);
+    map.off('sourcedata',scheduleVectorUpdate);
   }
   document.removeEventListener('visibilitychange',visibility);
   clear();stableTileCache.clear();credit.remove();notice.remove();
