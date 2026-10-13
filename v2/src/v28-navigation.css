@@ -4,20 +4,63 @@
 .vano-vehicle-marker svg{width:42px;height:55px;overflow:visible}
 .vano-vehicle-moto svg{width:34px;height:49px}
 .vano-leaflet-vehicle,.vano-leaflet-vehicle .vano-vehicle-marker{background:transparent;border:0}
-.v28-nav-instruction{gap:11px;padding:12px 14px;border-radius:18px;border:1px solid #ece9e6;box-shadow:0 5px 19px #1419231c,0 1px 3px #1419230a}
-.v28-nav-copy{animation:v28-guidance-in .28s ease both;min-width:0}
-.v28-nav-copy strong{display:block;font-size:clamp(.94rem,3.5vw,1.15rem);line-height:1.28}
-.v28-nav-copy>span{display:block;margin-top:5px;font-weight:650;font-size:.71rem;letter-spacing:.015em;color:#777b7f}
-.v28-turn-icon{flex:0 0 44px;width:44px;height:44px;border-radius:14px;background:#fff2e9;color:#e65c24}
-.v28-lane-guidance{display:flex;gap:6px;margin-top:9px}
-.v28-lane-guidance>span{min-width:29px;height:27px;display:grid;place-items:center;border-radius:8px;background:#f0f0ef;color:#818589;font-size:1.25rem}
-.v28-lane-guidance>span.suggested{color:#e95b22;background:#fff0e7;outline:1px solid #efb994}
+/* Vanu navigation HUD: identical external position, redesigned content and SVG system. */
+.v28-nav-instruction{
+  gap:12px;padding:12px 14px;border-radius:18px;
+  border:1px solid var(--border,#ece9e6);background:var(--panel,#fff);color:var(--ink,#161c27);
+  box-shadow:0 5px 19px #1419231c,0 1px 3px #1419230a;
+}
+.v28-nav-instruction>.circle-btn{flex:0 0 45px;margin-left:auto;align-self:center;}
+.v28-nav-copy{flex:1;min-width:0;animation:v28-guidance-in .22s ease both;overflow-wrap:anywhere;}
+.v28-nav-copy strong.v46-nav-distance{
+  display:block;font-size:clamp(1.22rem,4.6vw,1.48rem);line-height:1.1;
+  font-weight:850;letter-spacing:-.045em;color:var(--ink,#161c27);
+}
+.nav-instruction .v28-nav-copy .v46-nav-instruction-text{
+  display:block;font-size:clamp(.87rem,3.2vw,1.02rem);line-height:1.32;
+  font-weight:740;color:var(--ink,#161c27);margin-top:4px;
+}
+.nav-instruction .v28-nav-copy .v46-nav-street{
+  display:block;font-size:.75rem;line-height:1.32;font-weight:570;
+  margin-top:4px;color:var(--muted,#6e7784);
+}
+.v28-turn-icon{
+  flex:0 0 54px;width:54px;height:54px;align-self:flex-start;
+  display:grid;place-items:center;border-radius:15px;background:#fff2e9;color:#ff5a0a;
+}
+.v46-maneuver-svg{display:block;flex:none;overflow:visible;max-width:100%;max-height:100%;}
+.v28-lane-guidance{
+  display:flex;gap:5px;max-width:100%;min-width:0;margin-top:9px;
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+  overscroll-behavior-inline:contain;
+}
+.v28-lane-guidance::-webkit-scrollbar{display:none;}
+.nav-instruction .v28-lane-guidance>.v46-lane{
+  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  gap:1px;min-width:28px;height:31px;padding:0 3px;margin-top:0;
+  border-radius:9px;background:#f0f1f3;color:#89929e;border:1px solid transparent;
+}
+.nav-instruction .v28-lane-guidance>.v46-lane.suggested{
+  color:#ef5a0a;background:#fff0e7;border-color:#efb994;
+}
+.nav-instruction .v28-lane-guidance>.v46-lane .v46-maneuver-svg{width:21px;height:21px;}
+[data-theme="dark"] .v28-turn-icon{background:#36271f;color:#ff8648;}
+[data-theme="dark"] .nav-instruction .v28-lane-guidance>.v46-lane{background:#293241;color:#a6afbf;}
+[data-theme="dark"] .nav-instruction .v28-lane-guidance>.v46-lane.suggested{background:#3c2b21;color:#ff995f;border-color:#7a4b36;}
 .v28-simulation-note{display:flex;gap:7px;align-items:center;color:#8c4a24;font-weight:650;line-height:1.4}
 .v28-preview-track{height:5px;background:#eee5df;border-radius:20px;margin:6px 0 12px;overflow:hidden}
 .v28-preview-track>span{display:block;height:100%;background:#f46b34;border-radius:20px;transition:width .3s linear}
 .v28-preview-replay{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:9px;border-radius:11px;color:#d35720;background:#fff4eb;font-weight:750;margin-bottom:10px}
 @keyframes v28-guidance-in{from{opacity:.25;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:390px){.v28-nav-instruction{gap:8px;padding:10px}.v28-turn-icon{width:39px;height:39px;flex-basis:39px}.v28-nav-copy strong{font-size:.9rem}.v28-nav-copy>span{font-size:.68rem}}
+@media(max-width:390px){
+  .v28-nav-instruction{gap:8px;padding:10px;}
+  .v28-turn-icon{width:42px;height:44px;flex-basis:42px;border-radius:12px;}
+  .v28-turn-icon>.v46-maneuver-svg{width:32px;height:32px;}
+  .v28-nav-copy strong.v46-nav-distance{font-size:1.19rem;}
+  .nav-instruction .v28-nav-copy .v46-nav-instruction-text{font-size:.83rem;}
+  .nav-instruction .v28-nav-copy .v46-nav-street{font-size:.69rem;}
+  .v28-nav-instruction>.circle-btn{flex-basis:40px;width:40px;height:40px;min-width:40px;}
+}
 @media(prefers-reduced-motion:reduce){.v28-nav-copy{animation:none}.v28-preview-track>span{transition:none}}
 
 .v28-google-unavailable .v3-google-action{width:100%;margin-top:16px;opacity:.62;cursor:not-allowed}.v28-google-unavailable>small,.v28-auth-not-configured{display:block;color:#8c7772;font-size:.73rem;line-height:1.5;margin-top:8px}.v28-account-google{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#fff;border:1px solid #e9e4df;border-radius:18px;padding:20px}.v28-account-google>div{display:flex;flex-direction:column;gap:5px}.v28-account-google small{color:#777e81;max-width:440px;line-height:1.4}
