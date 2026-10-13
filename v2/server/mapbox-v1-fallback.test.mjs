@@ -66,7 +66,7 @@ test('missing traffic mode falls back to driving without pretending to have cong
   const calls=[];
   const fetcher=async input=>{
     const u=new URL(input);calls.push(u);
-    if(u.pathname.endsWith('/driving-traffic/'+origin.join(',')+';'+destination.join(',')))throw Error('Traffic provider unavailable');
+    if(u.pathname.includes('/driving-traffic/'))throw Error('Traffic provider unavailable');
     return response([makeRoute(500,0,0)]);
   };
   const result=await calculateMapboxV1Candidates(origin,[-46.669,-23.581],'moto',{},'pt-BR',
