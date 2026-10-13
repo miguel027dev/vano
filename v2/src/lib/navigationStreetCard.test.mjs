@@ -18,7 +18,7 @@ test('existing report link and unchanged triangle icon moved to right of centere
  const pill=map.indexOf('className="v36-nav-road-pill"');
  const report=map.indexOf('className="circle-btn v36-nav-report"');
  assert.ok(pill>0&&report>pill);
- const nextDock=map.indexOf('className="nav-bottom"',report);
+ const nextDock=map.indexOf('className="nav-bottom ',report);
  assert.ok(nextDock>report);
  assert.doesNotMatch(map.slice(report,nextDock),/v36-nav-left|speedometer|veloc[ií]metro/i);
 });
