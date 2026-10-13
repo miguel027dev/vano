@@ -231,3 +231,4 @@ export default function BenchmarkPage(){
    <footer className="vb-footer"><strong>VANO MAPS</strong><span>Resultados medidos, sem promessas inventadas.</span><Link to="/mapa">Abrir navegação <ArrowRight size={15}/></Link></footer>
   </div>
  </main>;
+}
