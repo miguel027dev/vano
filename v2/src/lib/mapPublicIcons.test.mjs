@@ -27,7 +27,7 @@ test('low zoom hides clutter but does not fabricate or replace source data',()=>
   {id:'p',type:'estacionamento',priority:22,coords:[1,1]}];
  const project=c=>({x:c[0]*100,y:c[1]*100});
  assert.deepEqual(selectPublicPins(features,project,12).map(x=>x.id),['radar']);
- assert.deepEqual(selectPublicPins(features,project,14).map(x=>x.id),['radar']);
+ assert.deepEqual(selectPublicPins(features,project,14).map(x=>x.id),['radar','p']);
  assert.deepEqual(selectPublicPins(features,project,16).map(x=>x.id),['radar','p']);
 });
 test('mobile pin coordinates are bounded to a safe viewport query',()=>{
