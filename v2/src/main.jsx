@@ -18,6 +18,7 @@ import './v43-speed-arrival.css';
 import './v44-desktop-workspace.css';
 import './v45-traffic.css';
 import './v47-route-vehicle.css';
+import './v48-moto-focus.css';
 import './native-shell.css';
 import 'leaflet/dist/leaflet.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
