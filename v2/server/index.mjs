@@ -79,7 +79,7 @@ if (db.sessions.some(s => Object.hasOwn(s, 'token') || !s.tokenHash)) {
 for (const u of db.users) {
   if (!Object.hasOwn(u,'verifiedAt')) {u.verifiedAt=production?null:(u.createdAt||stampLegacy());migrated=true;}
   if (!Object.hasOwn(u,'verificationMethod')) {u.verificationMethod='legacy';migrated=true;}
-  if (production && u.verificationMethod!=='email' && u.verifiedAt) {u.verifiedAt=null;migrated=true;}
+  if (production && !['email','google'].includes(u.verificationMethod) && u.verifiedAt) {u.verifiedAt=null;migrated=true;}
 }
 function stampLegacy(){return new Date().toISOString();}
 if (migrated) {
@@ -371,6 +371,12 @@ async function route(req, res) {
         res.writeHead(302,{...headers,'Location':'/conta?google=vinculado','Set-Cookie':drop});res.end();return;
       }
       let user=db.users.find(x=>x.googleSub===id.googleSub);
+      // Successful OIDC exchange re-verifies this existing Google identity.
+      // Older migrations incorrectly cleared verifiedAt on Google accounts.
+      if(user&&user.email===id.email){
+        user.verifiedAt ||= stamp();
+        user.verificationMethod='google';
+      }
       if(!user){
         // A matching password account requires explicit linking after password login.
         if(db.users.some(x=>x.email===id.email)){
