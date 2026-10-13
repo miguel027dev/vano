@@ -22,11 +22,11 @@ test('safety critical radar appears first even amid overlapping less important f
  const selected=selectPublicPins(features,coords=>({x:coords[0]*100,y:coords[1]*100}),15,20);
  assert.deepEqual(selected.map(x=>x.id),['radar','work']);
 });
-test('low zoom hides clutter but does not fabricate or replace source data',()=>{
+test('all mapped categories remain available independently of zoom',()=>{
  const features=[{id:'radar',type:'radar',priority:100,coords:[0,0]},
   {id:'p',type:'estacionamento',priority:22,coords:[1,1]}];
  const project=c=>({x:c[0]*100,y:c[1]*100});
- assert.deepEqual(selectPublicPins(features,project,12).map(x=>x.id),['radar']);
+ assert.deepEqual(selectPublicPins(features,project,12).map(x=>x.id),['radar','p']);
  assert.deepEqual(selectPublicPins(features,project,14).map(x=>x.id),['radar','p']);
  assert.deepEqual(selectPublicPins(features,project,16).map(x=>x.id),['radar','p']);
 });
@@ -63,7 +63,7 @@ test('normal VANO launch zoom includes radar and essential services without fill
   {id:'estacionamento',type:'estacionamento',priority:22,coords:[3,0]}];
  const project=coords=>({x:coords[0]*120+20,y:120});
  assert.deepEqual(selectPublicPins(points,project,12.4,20,{width:400,height:250}).map(x=>x.id),
-  ['radar','hospital','bombeiros']);
+  ['radar','hospital','bombeiros','estacionamento']);
 });
 test('bad source is recoverable and does not silently retain a 130-second blank-map state',()=>{
  const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
@@ -71,5 +71,5 @@ test('bad source is recoverable and does not silently retain a 130-second blank-
  assert.match(overlay,/Sinalização pública não carregada/);
  assert.match(overlay,/setNotice\(data\?\.error&&items\.length===0/);
  assert.match(overlay,/lastRead=0;latestKey=''/);
- assert.match(overlay,/selectPublicPins\(items,project,zoom,zoom>=15\?120:75,\{width:/);
+ assert.match(overlay,/selectPublicPins\(items,project,zoom,markerBudget,\{width:/);
 });
