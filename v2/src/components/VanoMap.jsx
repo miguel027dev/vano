@@ -52,25 +52,25 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress}){
+export default function VanoMap({userCoords,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,awaitingInitialGps=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0);
+  const [initialMapLocated,setInitialMapLocated]=useState(false);
   function centerOnFirstGpsFix(){
     const map=mapRef.current,d=latest.current;
-    if(!map||d.navigation||d.destination||!validPoint(d.userCoords)||firstGpsCenter.current>=2)return;
+    if(!map||d.navigation||d.destination||!validPoint(d.userCoords)||firstGpsCenter.current)return;
     if(motion.current?.freeLook||map._vanoFreeLook)return;
-    const accurate=Number.isFinite(d.telemetry?.accuracy)&&d.telemetry.accuracy<=120;
-    if(firstGpsCenter.current===1&&!accurate)return;
-    // Mapbox may still be loading when GPS first answers. Do not consume
-    // the first-fix recenter until the map is ready. style.load retries.
+    // Mapbox may still be loading when GPS first answers. Keep the neutral
+    // map surface until the map and the real GPS center are both ready.
     if(backend.current==='mapbox'&&!isLoaded(map))return;
-    firstGpsCenter.current=accurate?2:1;
     if(backend.current==='mapbox'){
       map.stop();
-      map.easeTo({center:d.userCoords,zoom:Math.max(map.getZoom(),14.5),duration:550,essential:true});
+      map.jumpTo({center:d.userCoords,zoom:Math.max(map.getZoom(),14.5)});
     }else if(backend.current==='leaflet'){
       map.setView(ll(d.userCoords),Math.max(map.getZoom(),14.5),{animate:false});
     }
+    firstGpsCenter.current=1;
+    setInitialMapLocated(true);
   }
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
@@ -220,7 +220,11 @@ export default function VanoMap({userCoords,destination,routes=[],selectedRoute=
     };
   },[navigation,selectedRoute,routes,token]);
   useEffect(()=>{onMotionState?.(status.current);},[navigation]);
-  return <><div className={`map-container ${pickingOrigin?'choosing-origin':''}`} ref={root} role="region" aria-label="Mapa interativo de rotas"/>{error&&<div className="vano-map-alert" role="status">{error}</div>}</>;
+  // No arbitrary city flashes before first GPS: the quiet surface is removed
+  // only after the first instantaneous real-position camera placement.
+  const maskInitialMap=!error&&!navigation&&!pickingOrigin&&!destination?.coords
+    &&(awaitingInitialGps||(validPoint(userCoords)&&!initialMapLocated));
+  return <><div className={`map-container ${pickingOrigin?'choosing-origin':''}`} ref={root} role="region" aria-label="Mapa interativo de rotas"/>{maskInitialMap&&<div className="v38-map-first-fix-mask" aria-hidden="true"/>}{error&&<div className="vano-map-alert" role="status">{error}</div>}</>;
 }
 function paintLeaflet(map,data){
   if(!map._vanoLayer)return;map._vanoLayer.clearLayers();
