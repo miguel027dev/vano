@@ -1,6 +1,7 @@
-/** Read already-loaded Mapbox Streets v8 POI vector tiles for IN-MAP fallback.
- * Uses existing style sources, sends no location to an additional endpoint,
- * and never invents radar/traffic-control points not present in the dataset.
+/** Read already-loaded Mapbox Streets v8 POI and road-point vector tiles.
+ * Uses existing style sources; never fabricates signage or radar locations.
+ * Mapbox Streets v8 road class includes traffic_signals, level_crossing,
+ * roundabout, and mini_roundabout as POINT geometries (Mapbox Tileset docs).
  */
 const MAKI_TYPES=Object.freeze({
   hospital:['hospital',58,'Hospital'],doctor:['saude',48,'Serviço de saúde'],
@@ -44,6 +45,36 @@ export function normalizeMapboxPois(features=[],max=125){
   }
   return result.sort((a,b)=>b.priority-a.priority);
 }
+const ROAD_POINT_TYPES=Object.freeze({
+ traffic_signals:['semaforo',88,'Semáforo'],
+ level_crossing:['ferrovia',78,'Passagem de nível'],
+ roundabout:['rotatoria',59,'Rotatória'],
+ mini_roundabout:['rotatoria',59,'Mini-rotatória']
+});
+export function classifyMapboxRoadPoint(properties={}){
+ const roadClass=String(properties.class||'').toLowerCase().trim();
+ const roadType=String(properties.type||'').toLowerCase().trim();
+ return ROAD_POINT_TYPES[roadClass]||ROAD_POINT_TYPES[roadType]||null;
+}
+export function normalizeMapboxRoadSignals(features=[],max=170){
+ const items=[],seen=new Set();
+ for(const feature of features){
+  if(feature?.geometry?.type!=='Point')continue; // Never mark a whole road line as a signal.
+  const coords=feature.geometry.coordinates;
+  if(!Array.isArray(coords)||coords.length<2||!coords.slice(0,2).every(Number.isFinite))continue;
+  const [lon,lat]=coords;
+  if(Math.abs(lon)>180||Math.abs(lat)>85)continue;
+  const kind=classifyMapboxRoadPoint(feature.properties||{});
+  if(!kind)continue;
+  const id='mapbox-road-'+kind[0]+'-'+lon.toFixed(5)+'-'+lat.toFixed(5);
+  if(seen.has(id))continue;seen.add(id);
+  items.push({id,type:kind[0],coords:[lon,lat],priority:kind[1],
+   name:kind[2],description:'Sinalização cadastrada no mapa',source:'Mapbox Streets',
+   sourceId:String(feature.id||'').slice(0,32),verified:false});
+  if(items.length>=max)break;
+ }
+ return items.sort((a,b)=>b.priority-a.priority);
+}
 export function readMapboxPoiFeatures(map){
   if(typeof map?.querySourceFeatures!=='function'||typeof map?.getStyle!=='function')return [];
   try{
@@ -51,11 +82,18 @@ export function readMapboxPoiFeatures(map){
     const sources=map.getStyle()?.sources||{};
     const names=Object.entries(sources).filter(([_,value])=>
       value?.type==='vector'&&/mapbox-streets-v8/i.test(String(value.url||''))).map(([name])=>name);
-    const features=[];
+    const poiFeatures=[],roadFeatures=[];
     for(const source of names){
-      try{features.push(...map.querySourceFeatures(source,{sourceLayer:'poi_label'}).slice(0,900));}
-      catch{/* Style source may not have loaded its POI tiles yet. */}
+      try{roadFeatures.push(...map.querySourceFeatures(source,{
+        sourceLayer:'road',
+        filter:['in',['get','class'],['literal',['traffic_signals','level_crossing','roundabout','mini_roundabout']]]
+      }).slice(0,1200));}
+      catch{/* Road vector tiles may not have loaded yet. Retry on camera idle. */}
+      try{poiFeatures.push(...map.querySourceFeatures(source,{sourceLayer:'poi_label'}).slice(0,900));}
+      catch{/* POI vector tiles may not have loaded yet. Retry on camera idle. */}
     }
-    return normalizeMapboxPois(features);
+    // Important road signage goes first; POIs remain available even when
+    // external Overpass is down.
+    return [...normalizeMapboxRoadSignals(roadFeatures),...normalizeMapboxPois(poiFeatures)];
   }catch{return [];}
 }
