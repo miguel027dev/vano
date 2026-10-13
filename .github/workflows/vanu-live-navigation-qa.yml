@@ -1,0 +1,22 @@
+name: VANU live navigation validation
+on:
+  push:
+    branches: [fix/vanu-live-progressive-navigation]
+  pull_request:
+    branches: [preview/vano-react-v2-7]
+  workflow_dispatch:
+jobs:
+  web-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
