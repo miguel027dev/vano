@@ -47,6 +47,10 @@ public final class OfflineCache {
         return "api.mapbox.com".equals(h)&&!p.startsWith("/events")&&(p.startsWith("/v4/")||p.startsWith("/styles/v1/")||p.startsWith("/fonts/v1/"));
     }
     public WebResourceResponse intercept(WebResourceRequest request){
+        // Keep top-level page loads in the System WebView: native HTTP intercepts do not
+        // carry WebView cookies or correctly follow the login/session redirect flow.
+        // Only public, non-main-frame resources are eligible for offline caching.
+        if(request.isForMainFrame())return null;
         if(!"GET".equals(request.getMethod())||!eligible(request.getUrl()))return null;
         return load(request.getUrl().toString(),request.getRequestHeaders(),false);
     }
