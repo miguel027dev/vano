@@ -14,6 +14,7 @@ import { navigationSummary,arrivalClock } from '../lib/navigationSummary';
 import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
 import {spokenCue} from '../lib/offlineGuidance';
+import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import {corridorPoints} from '../lib/offlineCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
@@ -345,14 +346,36 @@ export default function MapPage({active=true}){
     const snapshot={version:1,owner:user?.id||'guest',savedAt:Date.now(),destination:dest,route,source:routeData?.source,safetyMessage:routeData?.safetyMessage,layer,muted,mapPrepared:offlineMap.status==='ready',position:userCoords?{coords:userCoords,telemetry}:null,spoken:[...spoken.current]};
     writeOffline('active-trip',snapshot).then(setStorageReady);
   },[navMode,route,dest,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision]);
+  function speakManeuver(text,key=null){
+    const result=speakNavigationVoice(text,language,{
+      native:isNativeShell(),sendNative:notifyNative,
+      onStart:()=>setVoiceProblem(false),
+      onFailure:()=>{
+        if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
+        setVoiceProblem(true);
+      }
+    });
+    // A missing browser speech API must NEVER mark a maneuver as spoken.
+    if(result.ok&&key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
+    return result.ok;
+  }
   useEffect(()=>{
-    if(!navMode)return;
-    const cue=spokenCue(guidance,{fresh:hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(100,(telemetry.accuracy||0)*2),preview:false,muted,speed:telemetry.speed,language});
-    if(cue&&!spoken.current.has(cue.key)){
-      spoken.current.add(cue.key);setSpokenRevision(v=>v+1);notifyNative({action:'speak',text:cue.text,language});
+    if(!active||!navMode||muted||voiceProblem)return;
+    const fresh=hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(100,(telemetry.accuracy||0)*2);
+    const cue=spokenCue(guidance,{fresh,preview:false,muted,speed:telemetry.speed,language});
+    if(cue&&!spoken.current.has(cue.key))speakManeuver(cue.text,cue.key);
+  },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem]);
+  useEffect(()=>{
+    if(!navMode||muted)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
+    return()=>{if(navMode)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});};
+  },[navMode,muted]);
+  function toggleVoice(){
+    if(!muted){setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});}
+    else{
+      setMuted(false);setVoiceProblem(false);spoken.current.clear();
+      speakManeuver(language==='fr-FR'?'Instructions vocales activées.':language==='en-US'?'Voice guidance enabled.':'Instruções por voz ativadas.');
     }
-    if(muted||!hasLiveGPS)notifyNative({action:'stopSpeech'});
-  },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language]);
+  }
   async function begin(){
     if(!route||!dest)return;
     if(isNativeShell()&&offlineMap.status==='saving'){setPreparingStart(true);return;}
@@ -360,11 +383,13 @@ export default function MapPage({active=true}){
     // A manual origin only plans a route: navigation needs a recent real GPS fix.
     if(!hasLiveGPS){requestGPS(true);return;}
     setGuidance(null);setNavMode(true);setSheetOpen(false);
+    // Called from the user's Start navigation click: unlock browser audio there.
+    if(!muted)speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
     if(isNativeShell()&&offlineMap.status!=='ready')setToast('O mapa não terminou de baixar. Áreas ainda não salvas podem exigir conexão.');
     try{await saveTrip({destination:dest,routeType:choice,duration:route.duration,distance:route.distance,proof:route.proof});}
     catch(e){console.warn('VANO navigation history:',e?.message||e);}
   }
-  function reset(){deleteOffline('active-trip');notifyNative({action:'stopSpeech'});setPreparingStart(false);spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});setPreparingStart(false);spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   useEffect(()=>{if(preparingStart&&offlineMap.status!=='saving'){setPreparingStart(false);begin();}},[preparingStart,offlineMap.status]);
   const demoRoute=routeData?.source==='demonstracao';
   // Debounced deviation reroute: only on good GPS with sustained off-route signal.
@@ -415,7 +440,7 @@ export default function MapPage({active=true}){
         <button type="button" className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button>
       </div>
       </div></>}
-    </div> : <div className="nav-instruction v28-nav-instruction" aria-live="polite"><div className="turn-icon v28-turn-icon">{/left/.test(guidance?.modifier||'')?<CornerUpLeft size={35}/>: /right/.test(guidance?.modifier||'')?<CornerUpRight size={35}/>:<ArrowUp size={34}/>}</div><div className="v28-nav-copy" key={guidance?.instruction||'iniciar'}><strong>{guidance?.instruction||route?.steps?.[0]?.instruction||t('Continue até o destino')}</strong><span>{guidance?.distance>15?`${Math.round(guidance.distance)} m até a próxima indicação`:'Acompanhe a sinalização real'}</span>{guidance?.lanes?.length>0&&<div className="v28-lane-guidance" aria-label="Orientação de faixas disponível na rota">{guidance.lanes.map((lane,i)=><span key={i} className={lane.valid?'suggested':''} title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}>{lane.indications?.some(v=>v.includes('left'))?'↰':lane.indications?.some(v=>v.includes('right'))?'↱':'↑'}</span>)}</div>}</div><button className="circle-btn" onClick={()=>setMuted(!muted)} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button></div>}
+    </div> : <div className="nav-instruction v28-nav-instruction" aria-live="polite"><div className="turn-icon v28-turn-icon">{/left/.test(guidance?.modifier||'')?<CornerUpLeft size={35}/>: /right/.test(guidance?.modifier||'')?<CornerUpRight size={35}/>:<ArrowUp size={34}/>}</div><div className="v28-nav-copy" key={guidance?.instruction||'iniciar'}><strong>{guidance?.instruction||route?.steps?.[0]?.instruction||t('Continue até o destino')}</strong><span>{guidance?.distance>15?`${Math.round(guidance.distance)} m até a próxima indicação`:'Acompanhe a sinalização real'}</span>{guidance?.lanes?.length>0&&<div className="v28-lane-guidance" aria-label="Orientação de faixas disponível na rota">{guidance.lanes.map((lane,i)=><span key={i} className={lane.valid?'suggested':''} title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}>{lane.indications?.some(v=>v.includes('left'))?'↰':lane.indications?.some(v=>v.includes('right'))?'↱':'↑'}</span>)}</div>}</div><button className="circle-btn" onClick={toggleVoice} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button></div>}
     {!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking" role="status">
       <div className="gps-banner-heading"><MapPin size={20}/><strong>{t('Escolha sua origem')}</strong></div>
       <p>Toque em qualquer rua no mapa para marcar seu ponto de partida.</p>
@@ -466,7 +491,7 @@ export default function MapPage({active=true}){
         </div>
         <span className="v37-nav-balance" aria-hidden="true"/>
       </div>
-      {voiceProblem&&<p className="nav-demo" role="status">Instale uma voz offline do idioma escolhido no celular. <button onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button></p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
+      {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Voz de navegação indisponível no aparelho.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
       {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
       {!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
       {demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}
