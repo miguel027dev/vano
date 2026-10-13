@@ -38,7 +38,7 @@ test('reads loaded Mapbox Streets v8 vector source without fetching another netw
  assert.equal(out[0].type,'semaforo');
  assert.equal(out[0].name,'Semáforo');
  assert.equal(out[1].name,'UPA Exemplo');
- assert.deepEqual(readMapboxPoiFeatures({...map,isStyleLoaded:()=>false}),[]);
+ assert.equal(readMapboxPoiFeatures({...map,isStyleLoaded:()=>false}).length,2,'partially loaded styles may already expose real POIs');
 });
 test('UI keeps local POIs on Overpass failure and refreshes tiles after camera idle',()=>{
  const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
