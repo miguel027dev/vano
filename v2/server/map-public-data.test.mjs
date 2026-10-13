@@ -82,3 +82,13 @@ test('reports no fabricated features when both network sources are unavailable',
  assert.equal(response.stale,true);
  assert.match(response.error,/indisponível/);
 });
+
+
+test('banks are real mapped public POIs, while crossings retain distinct types',()=>{
+ assert.equal(classifyOsm({amenity:'bank'})[0],'banco');
+ assert.equal(classifyOsm({highway:'crossing'})[0],'travessia');
+ assert.equal(classifyOsm({railway:'level_crossing'})[0],'ferrovia');
+ assert.match(overpassQuery(parseBBox(bbox)),/bank/);
+ const features=normalizeOsmElements([{type:'node',id:888,lon:-46.68,lat:-23.58,tags:{amenity:'bank'}}]);
+ assert.equal(features[0].type,'banco');
+});

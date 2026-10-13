@@ -111,3 +111,10 @@ test('older Mapbox source query rejects an expression filter but still supplies 
  assert.deepEqual(readMapboxPoiFeatures(map).map(x=>x.type),['semaforo']);
  assert.deepEqual(methods,['road-filtered','road-all','poi_label-all']);
 });
+
+
+test('bank and parking garage vector POIs render via mapped categories',()=>{
+ assert.equal(classifyMapboxPoi({maki:'bank'})[0],'banco');
+ assert.equal(classifyMapboxPoi({maki:'parking-garage'})[0],'estacionamento');
+ assert.equal(classifyMapboxPoi({type:'bank'})[0],'banco');
+});

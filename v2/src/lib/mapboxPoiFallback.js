@@ -7,7 +7,7 @@ const MAKI_TYPES=Object.freeze({
   hospital:['hospital',58,'Hospital'],doctor:['saude',48,'Serviço de saúde'],
   pharmacy:['saude',46,'Farmácia'],dentist:['saude',44,'Atendimento de saúde'],
   'fire-station':['bombeiros',56,'Bombeiros'],police:['policia-base',50,'Base policial'],
-  fuel:['combustivel',37,'Posto de combustível'],parking:['estacionamento',30,'Estacionamento'],
+  fuel:['combustivel',37,'Posto de combustível'],parking:['estacionamento',30,'Estacionamento'],'parking-garage':['estacionamento',30,'Estacionamento'],bank:['banco',26,'Banco'],
   'charging-station':['eletroposto',38,'Eletroposto']
 });
 const clean=x=>typeof x==='string'?x.replace(/[<>\u0000-\u001f\u007f]/g,'').trim().slice(0,96):'';
@@ -20,7 +20,8 @@ export function classifyMapboxPoi(properties={}){
   if(type==='fuel'||type==='petrol station')return MAKI_TYPES.fuel;
   if(type==='police')return MAKI_TYPES.police;
   if(type==='fire station')return MAKI_TYPES['fire-station'];
-  if(type==='parking')return MAKI_TYPES.parking;
+  if(type==='parking'||type==='parking-garage')return MAKI_TYPES.parking;
+  if(type==='bank')return MAKI_TYPES.bank;
   if(type==='pharmacy'||type==='clinic'||type==='doctor')return MAKI_TYPES.doctor;
   if(cls==='medical'&&/hospital|clinic|doctor|health|emergency/.test(type))
     return MAKI_TYPES.doctor;

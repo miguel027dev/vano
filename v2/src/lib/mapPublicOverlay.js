@@ -15,7 +15,8 @@ function buildPin(item){
  element.setAttribute('aria-label',item.name+', fonte '+item.source);
  element.title=item.name;
  const chip=document.createElement('span');
- chip.className='v40-public-pin '+(item.type==='radar'?'is-radar':item.type.startsWith('relato-')?'is-report':'');
+ const secondaryStyle={travessia:'is-crossing',estacionamento:'is-parking',ferrovia:'is-rail',banco:'is-bank'}[item.type]||'';
+ chip.className='v40-public-pin '+(item.type==='radar'?'is-radar':item.type.startsWith('relato-')?'is-report':'')+(secondaryStyle?' '+secondaryStyle:'');
  // Closed enum only. No remote text is inserted as HTML.
  chip.innerHTML=iconSvg(item.type);
  element.append(chip);

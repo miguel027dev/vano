@@ -28,7 +28,7 @@ export function classifyOsm(t={}){
  if(h==='construction')return ['obra',62,'Obra na via'];
  if(s)return ['placa',40,'Sinalização'];
  if(h==='crossing')return ['travessia',45,'Travessia de pedestres'];
- const amenities={hospital:['hospital',58,'Hospital'],clinic:['saude',45,'Unidade de saúde'],fire_station:['bombeiros',56,'Bombeiros'],police:['policia-base',50,'Base policial'],fuel:['combustivel',37,'Posto de combustível'],parking:['estacionamento',22,'Estacionamento'],charging_station:['eletroposto',34,'Eletroposto']};
+ const amenities={hospital:['hospital',58,'Hospital'],clinic:['saude',45,'Unidade de saúde'],fire_station:['bombeiros',56,'Bombeiros'],police:['policia-base',50,'Base policial'],fuel:['combustivel',37,'Posto de combustível'],parking:['estacionamento',22,'Estacionamento'],bank:['banco',26,'Banco'],charging_station:['eletroposto',34,'Eletroposto']};
  return amenities[t.amenity]||null;
 }
 export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
@@ -49,7 +49,7 @@ export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
  // hospitals and other services instead of allowing one tag to occupy all 180.
  const quota={radar:70,semaforo:35,lombada:25,pare:12,preferencia:10,placa:8,travessia:12,
   ferrovia:10,obra:15,hospital:22,saude:14,bombeiros:10,'policia-base':12,
-  combustivel:14,estacionamento:9,eletroposto:12};
+  combustivel:14,estacionamento:9,banco:12,eletroposto:12};
  const selected=[],counts=new Map(),cap=Math.max(1,Math.min(MAX_FEATURES,limit));
  for(const item of items){
   if(selected.length>=cap)break;
@@ -65,7 +65,7 @@ export function overpassQuery(bbox){
  // amenities and ordinary signs fill the bounded query response.
  return '[out:json][timeout:12];'+
  '(node["highway"="speed_camera"]('+area+');node["enforcement"="maxspeed"]('+area+'););out body 150;'+
- '(node["amenity"~"^(hospital|clinic|fire_station|police|fuel|parking|charging_station)$"]('+area+');'+
+ '(node["amenity"~"^(hospital|clinic|fire_station|police|fuel|parking|bank|charging_station)$"]('+area+');'+
  'node["traffic_calming"~"^(bump|hump|table|dynamic_bump)$"]('+area+');'+
  'node["highway"~"^(traffic_signals|stop|give_way|crossing|construction)$"]('+area+');'+
  'node["traffic_sign"]('+area+');'+

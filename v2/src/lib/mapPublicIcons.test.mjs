@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {iconSvg,ICON_THEME,selectPublicPins,mapFeatureBBox} from './mapPublicIcons.js';
+import {iconSvg,iconMeta,ICON_THEME,selectPublicPins,mapFeatureBBox} from './mapPublicIcons.js';
 
 test('every supported map category has a static safe icon for light mode',()=>{
  assert.ok(Object.keys(ICON_THEME).length>=17);
@@ -72,4 +72,18 @@ test('bad source is recoverable and does not silently retain a 130-second blank-
  assert.match(overlay,/setNotice\(data\?\.error&&items\.length===0/);
  assert.match(overlay,/lastRead=0;latestKey=''/);
  assert.match(overlay,/selectPublicPins\(items,project,zoom,markerBudget,\{width:/);
+});
+
+
+test('four custom VANO secondary icons use the exact Lucide outlines and colors',()=>{
+ const glyphs={
+  travessia:['#283440','m9 20 3-6 3 6'],
+  estacionamento:['#3979BC','M9 17V7h4'],
+  ferrovia:['#CB713E','M8 3.1V7'],
+  banco:['#596675','M10 18v-7']
+ };
+ for(const [type,[color,path]]of Object.entries(glyphs)){
+  assert.equal(iconMeta(type)[1],color);
+  assert.ok(iconSvg(type).includes(path),type);
+ }
 });

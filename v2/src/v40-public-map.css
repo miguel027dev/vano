@@ -14,6 +14,11 @@
 .v40-public-pin svg{display:block;flex-shrink:0}
 .v40-public-pin.is-radar{width:34px;height:34px;border:1.5px solid #f4bc9a;background:#fff6ef;box-shadow:0 4px 13px #ae4d2128}
 .v40-public-pin.is-report{background:#fff6f5;border-color:#f6ccc9}
+/* Exact four preview surfaces: white, ice blue, peach and neutral grey. */
+.v40-public-pin.is-crossing{background:#FFFFFF;border-color:#EDF0F3}
+.v40-public-pin.is-parking{background:#EAF2FB;border-color:#D9E7F6}
+.v40-public-pin.is-rail{background:#FFF0E7;border-color:#F2DACB}
+.v40-public-pin.is-bank{background:#EDF0F3;border-color:#DBE1E7}
 .v40-leaflet-pin{border:none!important;background:transparent!important}
 .v40-public-popup{display:flex;flex-direction:column;gap:5px;color:#25312c;font:600 12px/1.35 system-ui,sans-serif;max-width:220px}
 .v40-public-popup strong{font-size:14px;font-weight:760}
