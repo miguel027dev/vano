@@ -48,7 +48,7 @@ public final class MainActivity extends Activity {
     private FrameLayout root;
     private LinearLayout loadingPanel;
     private TextView loadingText;
-    private boolean navigationActive=false,firstFrameSeen=false;
+    private boolean navigationActive=false,firstFrameSeen=false,shellPrefetchQueued=false;
     private long loadGeneration=0,launchAt;
     private final Runnable slowLoading=()->{if(loadingText!=null)loadingText.setText("A conexão está levando mais tempo. Você pode tentar novamente.");};
     private LinearLayout errorPanel;
@@ -252,6 +252,7 @@ public final class MainActivity extends Activity {
         view.postVisualStateCallback(generation,new WebView.VisualStateCallback(){@Override public void onComplete(long id){
             if(!destroyed&&generation==loadGeneration&&view==web&&!pageFailed){
                 handler.removeCallbacks(slowLoading);hideError();
+                if(!shellPrefetchQueued){shellPrefetchQueued=true;handler.postDelayed(()->{if(!destroyed&&offlineCache!=null)offlineCache.primeShell();},4000);}
                 if(loadingPanel!=null){final LinearLayout panel=loadingPanel;loadingPanel=null;loadingText=null;
                     float scale=android.provider.Settings.Global.getFloat(getContentResolver(),android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,1);
                     panel.animate().alpha(0).setDuration(scale==0?0:160).withEndAction(()->root.removeView(panel)).start();}
