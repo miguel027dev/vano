@@ -26,13 +26,15 @@ test('missing, stale, simulated, inaccurate or implausible data NEVER displays a
  assert.equal(gpsSpeedKmh(1,{fresh:true,accuracy:100}),4);
 });
 test('speed is from real telemetry and expires with GPS; never route ETA or map movement',()=>{
- assert.match(page,/gpsSpeedKmh\(telemetry\.speed,/);
- assert.match(page,/hasRecentGpsFix\(lastGpsFix\.current,Date\.now\(\),18000\)/);
+ assert.match(page,/smoothGpsSpeedSample\(speedSampleRef\.current,result\.speed,/);
+ assert.match(page,/Date\.now\(\)-speedSample\.sourceAt<18000/);
  assert.match(page,/simulated:demo/);
  assert.match(page,/speedKmh===null\?'—':speedKmh/);
  assert.match(page,/className="v43-speedometer"/);
  assert.match(page,/<small>km\/h<\/small>/);
  assert.match(page,/setTelemetry\(\{heading:result\.heading,speed:result\.speed,accuracy:fix\.accuracy\}\)/);
+ assert.match(page,/speedSampleRef\.current=next/);
+ assert.match(page,/setSpeedSample\(null\)/);
 });
 test('destination pin is a small static white/navy graphic with orange flag',()=>{
  const svg=arrivalMarkerSvg();
