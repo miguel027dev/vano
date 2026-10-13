@@ -475,3 +475,19 @@
 @media(max-width:720px){
   .map-page.in-navigation .nav-bottom.v37-nav-bottom{width:100%;max-width:100%}
 }
+
+/* Navigation utilities: camera first, reroute last, consistent touch targets. */
+.map-page .v49-reroute-control:focus-visible{
+  outline:3px solid #f0aa82;
+  outline-offset:3px;
+}
+.map-page .v49-reroute-control:disabled{
+  cursor:wait;
+  opacity:.65;
+}
+.map-page .v49-reroute-control[aria-busy="true"] svg{
+  animation:spin 1s linear infinite;
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page .v49-reroute-control[aria-busy="true"] svg{animation:none}
+}

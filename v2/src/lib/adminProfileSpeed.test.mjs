@@ -24,7 +24,7 @@ test('profile entry requires server-authorized verified admin, not local email t
 });
 
 test('speed display renders only with navigation, never in location browsing',()=>{
- assert.match(page,/<div className="map-controls"><button type="button"/);
+ assert.match(page,/<div className="map-controls">/);
  assert.doesNotMatch(page,/<div className="map-controls">\{!navMode&&speedometer\}/);
  const row=page.indexOf('{navMode&&<div className="v36-nav-road-row"');
  assert.ok(row>0);

@@ -23,7 +23,7 @@ import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
-  const routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
@@ -441,26 +441,41 @@ export default function MapPage({active=true}){
     try{await saveTrip({destination:dest,routeType:choice,duration:route.duration,distance:route.distance,proof:route.proof});}
     catch(e){console.warn('VANO navigation history:',e?.message||e);}
   }
-  function reset(){if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});setPreparingStart(false);spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});setPreparingStart(false);spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   useEffect(()=>{if(preparingStart&&offlineMap.status!=='saving'){setPreparingStart(false);begin();}},[preparingStart,offlineMap.status]);
   const demoRoute=routeData?.source==='demonstracao';
+  // Manual and deviation reroutes keep the current journey until a newer
+  // route succeeds. The ref blocks repeated taps before React re-renders.
+  async function recalculateNavigationRoute(){
+    if(rerouteRequest.current||!navMode||!dest||!route?.geometry)return;
+    if(navigator.onLine===false){setToast('Conecte-se à internet para recalcular. A rota atual foi mantida.');return;}
+    if(!hasLiveGPS||!hasRecentGpsFix(lastGpsFix.current,Date.now(),15000)||!Number.isFinite(telemetry.accuracy)||telemetry.accuracy>35){
+      setToast('Aguarde um sinal GPS preciso para recalcular. A rota atual foi mantida.');return;
+    }
+    const epoch=++routeEpoch.current;
+    rerouteRequest.current=epoch;
+    rerouteState.current.outsideSince=0;rerouteState.current.lastAttempt=Date.now();
+    setRecalculating(true);
+    try{
+      const next=await api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},reroute:true})});
+      if(epoch===routeEpoch.current){spoken.current.clear();setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');}
+    }catch(e){
+      if(epoch===routeEpoch.current)setToast(`Rota atual mantida: ${e.message}`);
+    }finally{
+      if(rerouteRequest.current===epoch){rerouteRequest.current=null;setRecalculating(false);}
+    }
+  }
   // Debounced deviation reroute: only on good GPS with sustained off-route signal.
   useEffect(()=>{
     if(navigator.onLine===false||!active||!navMode||!hasLiveGPS||!route?.geometry||demoRoute||recalculating||!dest)return;
     const now=Date.now(),state=rerouteState.current;
     const accuracy=telemetry.accuracy;
-    if(!hasRecentGpsFix(lastGpsFix.current,Date.now(),15000)||!Number.isFinite(accuracy)||accuracy>35){state.outsideSince=0;return;}
+    if(!hasRecentGpsFix(lastGpsFix.current,now,15000)||!Number.isFinite(accuracy)||accuracy>35){state.outsideSince=0;return;}
     const deviation=nearestOnRoute(userCoords,route.geometry).distance;
     if(deviation<75){state.outsideSince=0;return;}
     if(!state.outsideSince){state.outsideSince=now;return;}
     if(now-state.outsideSince<2200||now-state.lastAttempt<25000)return;
-    state.outsideSince=0;state.lastAttempt=now;
-    const epoch=++routeEpoch.current;
-    setRecalculating(true);
-    api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},reroute:true})})
-      .then(next=>{if(epoch===routeEpoch.current){setRouteData(next);setToast('Rota recalculada conforme sua posição.');}})
-      .catch(e=>{if(epoch===routeEpoch.current&&!e.offline)setToast(`Rota atual mantida: ${e.message}`);})
-      .finally(()=>{if(epoch===routeEpoch.current)setRecalculating(false);});
+    void recalculateNavigationRoute();
   },[navMode,userCoords?.[0],userCoords?.[1],telemetry?.accuracy,route,dest?.id,recalculating,routeVehicle]);
 
   // The only readout lives beside the street name when a route is ACTIVE.
@@ -538,7 +553,13 @@ export default function MapPage({active=true}){
         <small>{currentAddress?.detail||(!validPoint(userCoords)?'Ative o GPS ou escolha a origem':'Endereço atualizado pelo GPS')}</small>
       </span>
     </div>}
-    {!searchOpen&&<div className="map-controls"><button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button><button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button><button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>{navMode&&<button title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}</div>}
+    {!searchOpen&&<div className="map-controls">
+      {navMode?<button type="button" title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>:
+        <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>}
+      <button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>
+      <button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
+      {navMode&&<button type="button" className="circle-btn v49-reroute-control" title={recalculating?'Recalculando sua rota…':'Recalcular rota'} aria-label={recalculating?'Recalculando rota':'Recalcular rota'} aria-busy={recalculating} disabled={recalculating} onClick={()=>void recalculateNavigationRoute()}><RotateCcw size={21} strokeWidth={2} aria-hidden="true"/></button>}
+    </div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       <div className="v47-route-vehicle" aria-label="Tipo de veículo para calcular a rota">
         <span className="v47-route-vehicle-caption">Veículo</span>
