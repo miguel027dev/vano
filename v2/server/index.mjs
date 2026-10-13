@@ -12,6 +12,7 @@ import { places, demoRoutes, pointOK } from './routing.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
+import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
@@ -253,18 +254,15 @@ async function directions(originPoint, destination, vehicle = 'carro', telemetry
   if (process.env.VANO_V1_API_URL?.trim()) return directionsFromV1(process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry, { ...options, timeoutMs: Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS) || 65000 });
   const access = process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
   if (access) {
-    const profile = 'mapbox/driving-traffic';
-    const u = new URL(`https://api.mapbox.com/directions/v5/${profile}/${originPoint.join(',')};${destination.join(',')}`);
-    u.searchParams.set('alternatives','true');u.searchParams.set('geometries','geojson');u.searchParams.set('overview','full');u.searchParams.set('steps','true');u.searchParams.set('language',LANGUAGES.has(language)?language:'pt-BR');u.searchParams.set('access_token',access);
-    let response;
-    try { response = await fetch(u, { signal:AbortSignal.timeout(10000) }); } catch { throw new HttpError(503,'Serviço de rotas indisponível.'); }
-    if (!response.ok) throw new HttpError(503, 'Serviço de rotas indisponível.');
-    const data = await response.json();
-    if (!data.routes?.length) throw new HttpError(404, 'Nenhuma rota encontrada.');
-    const byTime = data.routes.slice().sort((a,b)=>a.duration-b.duration);
-    const fastest=byTime[0], other=byTime[1] || fastest;
-    const norm=(r,kind)=>({id:kind,label:kind==='safe'?'Mais segura':'Mais rápida',duration:Math.max(1,Math.round(r.duration/60)),distance:Math.round(r.distance/100)/10,geometry:r.geometry,steps:r.legs?.flatMap(l=>l.steps.map(s=>({instruction:s.maneuver?.instruction || s.name || 'Siga em frente', distance:s.distance, location:s.maneuver?.location,modifier:s.maneuver?.modifier||'straight',type:s.maneuver?.type||'',street:s.name||'',lanes:(s.intersections||[]).find(i=>Array.isArray(i.lanes))?.lanes?.slice(0,8).map(l=>({valid:l.valid===true,indications:Array.isArray(l.indications)?l.indications.filter(v=>['left','right','straight','slight left','slight right','sharp left','sharp right'].includes(v)).slice(0,3):[]}))||[]})))||[],verifiedSafety:false});
-    return {routes:[norm(other,'safe'),norm(fastest,'fast')],source:'mapbox',microRoutingActive:false,safetyMessage:'Alternativas Mapbox. O motor de micro-rotas V1 não está conectado; não há avaliação de segurança validada.'};
+    try {
+      // Preserve the audited V1 order: base traffic routes, conditional adaptive
+      // candidates, bounded parallel micro-bypasses, exact dedupe, minimum ETA.
+      return await calculateMapboxV1Candidates(originPoint,destination,vehicle,telemetry,
+        LANGUAGES.has(language)?language:'pt-BR',options,access);
+    } catch (error) {
+      console.warn('VANO Mapbox candidate engine unavailable:',error?.message||String(error));
+      throw new HttpError(503,'Serviço de rotas indisponível. Tente novamente.');
+    }
   }
   if (production) throw new HttpError(503, 'Roteamento não configurado.');
   return demoRoutes(originPoint, destination, vehicle);
