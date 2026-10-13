@@ -75,9 +75,21 @@ public final class OfflineCache {
     }
     public void primeShell(){
         coordinator.execute(()->{
+            // A SPA requires JavaScript/CSS as well as HTML to resume offline.
+            Set<String> assets=new LinkedHashSet<>();
+            Pattern refs=Pattern.compile("(?:src|href)=[\\\"'](/(?:assets|vano-)[A-Za-z0-9_./-]+)[\\\"']");
             for(String page:new String[]{"/","/mapa"}){
                 WebResourceResponse response=load("https://"+host+page,Collections.emptyMap(),false);
-                if(response!=null)try{response.getData().close();}catch(Exception ignored){}
+                if(response==null)continue;
+                try{
+                    String html=new String(bytes(response.getData(),2*1024*1024),StandardCharsets.UTF_8);
+                    Matcher m=refs.matcher(html);
+                    while(m.find()&&assets.size()<24)assets.add(m.group(1));
+                }catch(Exception ignored){}
+            }
+            for(String asset:assets){
+                WebResourceResponse resource=load("https://"+host+asset,Collections.emptyMap(),false);
+                if(resource!=null)try{resource.getData().close();}catch(Exception ignored){}
             }
         });
     }
