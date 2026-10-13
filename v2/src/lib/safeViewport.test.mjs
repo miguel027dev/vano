@@ -45,3 +45,14 @@ test('collision detector accounts for rendered arrow footprint, not only GPS poi
  assert.equal(markerIntersectsOverlay([NaN,130],banner),false);
  assert.equal(markerIntersectsOverlay([180,120],null),false);
 });
+
+test('live camera clearance remains bounded on 320px handsets and landscape',()=>{
+ for(const [w,h] of [[320,568],[360,640],[390,844],[568,280],[844,390],[1024,768]]){
+  const v=computeSafeViewport({width:w,height:h,overlays:[
+   {edge:'top',top:0,bottom:h<500?125:160},
+   {edge:'bottom',top:h-(h<500?135:180),bottom:h}
+  ],navigation:true});
+  assert.ok(v.maxBehindPx>=0&&v.maxBehindPx<=v.visibleHeight/2);
+  assert.equal(v.visibleHeight,Math.max(0,h-v.padding.top-v.padding.bottom));
+ }
+});
