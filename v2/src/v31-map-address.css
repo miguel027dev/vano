@@ -280,3 +280,70 @@
 @media(prefers-reduced-motion:reduce){
   .map-page .map-controls{transition:none}
 }
+
+/* VANO navigation street capsule — white-mode refinement.
+   Street label is centered on the VIEWPORT, not centered between two controls.
+   The existing report action is on the right; no left-hand control is added.
+   Height of the bottom dock comes from ResizeObserver in MapPage. */
+.map-page.in-navigation .v36-nav-road-row{
+  position:absolute;
+  z-index:520;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(var(--v36-nav-dock-height,180px) + 13px);
+  width:min(700px,calc(100% - 28px - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px)));
+  min-height:58px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  pointer-events:none;
+}
+.map-page.in-navigation .v36-nav-road-pill{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:min(420px,calc(100% - 132px));
+  min-width:0;
+  min-height:58px;
+  padding:9px 16px;
+  border:1px solid #e7eae6;
+  border-radius:999px;
+  background:#fff;
+  color:#182620;
+  box-shadow:0 7px 26px #192f2324,0 2px 5px #192f230c;
+  text-align:center;
+}
+.map-page.in-navigation .v36-nav-road-pill strong{
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+  overflow-wrap:anywhere;
+  max-width:100%;
+  color:inherit;
+  font-weight:800;
+  font-size:clamp(13px,3.9vw,18px);
+  line-height:1.24;
+  letter-spacing:-.025em;
+}
+.map-page.in-navigation .v36-nav-report{
+  position:absolute;
+  right:0;
+  top:50%;
+  translate:0 -50%;
+  pointer-events:auto;
+  /* Keep the existing circle-btn theme, 19px AlertTriangle and /relatar action. */
+}
+.map-page.in-navigation .map-controls{
+  /* Leave a gap above the street capsule so the three existing map controls
+     never cover the reporting button during navigation. */
+  bottom:calc(var(--v36-nav-dock-height,180px) + 13px + 58px + 16px);
+}
+@media(max-width:360px){
+  .map-page.in-navigation .v36-nav-road-pill{padding:8px 10px}
+}
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.in-navigation .map-controls{display:none}
+  .map-page.in-navigation .v36-nav-road-row{bottom:calc(var(--v36-nav-dock-height,180px) + 8px)}
+  .map-page.in-navigation .v36-nav-road-pill{min-height:48px}
+}
