@@ -48,6 +48,6 @@ export function planManeuverCamera({navigation=false,maneuver=null,route=null,sp
     category,threshold,strength,unstable:poorGps,
     zoomOut:reducedMotion?0:cfg.zoom*strength,
     pitchDrop:reducedMotion?0:cfg.pitch*strength,
-    lookAheadScale:1-(category==='ramp'?.38:.30)*strength
+    lookAheadScale:1-(category==='ramp' ? 0.38 : 0.30)*strength
   };
 }
