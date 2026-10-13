@@ -5,6 +5,7 @@ import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
 import {iconSvg,selectPublicPins,mapFeatureBBox} from './mapPublicIcons.js';
 import {readMapboxPoiFeatures} from './mapboxPoiFallback.js';
+import {rememberMapFeatures,cachedMapFeatures} from './mapFeaturePersistence.js';
 
 function buildPin(item){
  const element=document.createElement('div');
@@ -32,6 +33,7 @@ function popupBody(item){
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
  let done=false,timer=null,controller=null,latestKey='',lastRead=0,items=[],remoteItems=[],mapTilesItems=[];
+ const stableTileCache=new Map();
  const markers=new Map();
  const credit=document.createElement('a');
  credit.className='v40-map-credit';
@@ -60,7 +62,7 @@ export function attachPublicMapOverlay(map,backend){
   if(done)return;
   const zoom=map.getZoom();
   const node=map.getContainer();
-  const allowed=selectPublicPins(items,project,zoom,55,{width:node.clientWidth,height:node.clientHeight});
+  const allowed=selectPublicPins(items,project,zoom,zoom>=15?120:75,{width:node.clientWidth,height:node.clientHeight});
   const current=new Set(allowed.map(x=>x.id));
   for(const [id,entry] of markers)if(!current.has(id)){entry.marker.remove();markers.delete(id);}
   for(const item of allowed){
@@ -82,7 +84,16 @@ export function attachPublicMapOverlay(map,backend){
  }
  function mergeSources(){
   const combined=[...remoteItems],seen=new Set(combined.map(x=>x.id));
+  // Include only nearby cached real points. Panning never deletes the original
+  // observation; a point reappears at exactly the same coordinate when revisited.
+  const b=map.getBounds?.();
+  const west=b?.getWest?.()??-180,east=b?.getEast?.()??180;
+  const south=b?.getSouth?.()??-85,north=b?.getNorth?.()??85;
+  const lonPad=Math.min(.025,Math.max(.005,(east-west)*.35));
+  const latPad=Math.min(.025,Math.max(.005,(north-south)*.35));
   for(const item of mapTilesItems){
+   if(item.coords[0]<west-lonPad||item.coords[0]>east+lonPad
+      ||item.coords[1]<south-latPad||item.coords[1]>north+latPad)continue;
    if(seen.has(item.id))continue;
    const duplicate=combined.some(x=>x.type===item.type&&Array.isArray(x.coords)&&
     Math.abs(x.coords[0]-item.coords[0])<.00028&&Math.abs(x.coords[1]-item.coords[1])<.00028);
@@ -94,7 +105,10 @@ export function attachPublicMapOverlay(map,backend){
   if(done||backend!=='mapbox')return;
   const local=readMapboxPoiFeatures(map);
   if(!local.length)return;
-  mapTilesItems=local;mergeSources();render();
+  const changed=rememberMapFeatures(stableTileCache,local);
+  if(!changed)return; // Repeated idle events must not remount/move markers.
+  mapTilesItems=cachedMapFeatures(stableTileCache);
+  mergeSources();render();
  }
  function schedule(){
   if(done||document.hidden)return;
@@ -104,7 +118,7 @@ export function attachPublicMapOverlay(map,backend){
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
-  if(!bbox){remoteItems=[];mapTilesItems=[];items=[];latestKey='';clear();credit.hidden=true;setNotice('');return;}
+  if(!bbox){remoteItems=[];items=[];latestKey='';clear();credit.hidden=true;setNotice('');return;}
   updateVectorPoi();render();
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
@@ -118,13 +132,17 @@ export function attachPublicMapOverlay(map,backend){
    remoteItems=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
    mergeSources();
    // Never silently show an empty map when the external data provider failed.
-   setNotice(data?.error?'Dados públicos indisponíveis · tentar novamente':'');
+   // Mapbox tiles continue supplying confirmed mapped services/signals even
+   // during an Overpass outage. Don't cover a working map with a false global
+   // 'dados públicos indisponíveis' warning.
+   setNotice(data?.error&&items.length===0?'Sinalização pública não carregada · tentar novamente':'');
    latestKey=key;lastRead=Date.now();
    render();
   }catch(error){
    if(error.name!=='AbortError'){
     // Do not suppress retries for 130 seconds after a transient failure.
-    lastRead=0;latestKey='';mergeSources();setNotice('Radares e sinalização indisponíveis · tentar novamente');
+    lastRead=0;latestKey='';mergeSources();
+    setNotice(items.length===0?'Sinalização pública não carregada · tentar novamente':'');
     console.warn('VANO public map:',error?.message||String(error));render();
    }
   }
@@ -151,6 +169,6 @@ export function attachPublicMapOverlay(map,backend){
     map.off('style.load',updateVectorPoi);
   }
   document.removeEventListener('visibilitychange',visibility);
-  clear();credit.remove();notice.remove();
+  clear();stableTileCache.clear();credit.remove();notice.remove();
  };
 }
