@@ -1,0 +1,57 @@
+name: VANU Android entry/navigation QA
+on:
+  push:
+    branches:
+      - fix/vanu-entry-instant-navigation-20261013
+  workflow_dispatch:
+
+jobs:
+  web-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install VANO web dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run tests
+        run: npm test
+      - name: Compile React frontend
+        run: npm run build
+
+  android-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: android-vanu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android platform 35
+        run: |
+          echo "SDK: $ANDROID_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" || true
+      - name: Compile installable debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon --stacktrace
+      - name: Upload VANU QA APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VANU-entry-navfix-qa-apk
+          path: android-vanu/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
