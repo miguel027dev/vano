@@ -14,6 +14,7 @@ import './v30-atlas.css';
 import './v31-map-address.css';
 import './v39-vehicle3d.css';
 import './v40-public-map.css';
+import './v43-speed-arrival.css';
 import './native-shell.css';
 import 'leaflet/dist/leaflet.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
