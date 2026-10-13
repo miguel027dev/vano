@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {ArrowLeftRight,ArrowRight,Bot,CarFront,Check,Clock3,Download,FileJson,MapPin,Play,Route as RouteIcon,Search,ShieldCheck,SlidersHorizontal,X,Zap} from 'lucide-react';
+import {ArrowLeftRight,ArrowRight,Bot,CarFront,Check,Download,FileJson,MapPin,Play,Route as RouteIcon,Search,ShieldCheck,SlidersHorizontal,X,Zap} from 'lucide-react';
 import '../benchmark-page.css';
 
 const API='/api/benchmark/v1';
@@ -177,7 +177,7 @@ export default function BenchmarkPage(){
  }
  return <main className="vb-page" role="main" id="benchmark-page">
   <div className="vb-container">
-   <header className="vb-header"><Link to="/mapa" className="vb-back"><ArrowRight size={16}/> Voltar ao mapa</Link><div className="vb-brand"><span className="vb-logo">V</span> VANO <b>LAB</b></div><div className="vb-public"><span/> Público · sem login</div></header>
+   <header className="vb-header"><Link to="/mapa" className="vb-back"><ArrowRight size={16}/> Voltar ao mapa</Link><div className="vb-brand"><img className="vb-logo-img" src="/vano-logo-original.webp" width="33" height="33" alt=""/> VANO <b>LAB</b></div><div className="vb-public"><span/> Público · sem login</div></header>
    <section className="vb-hero"><div><span className="vb-eyebrow"><RouteIcon size={15}/> LABORATÓRIO DE ROTAS</span><h1>Compare caminhos.<br/><em>Meça resultados.</em></h1><p>Defina origem e destino, escolha carro ou moto e execute cálculos reais do VANO. Uma interface para pessoas e agentes de IA.</p></div><div className="vb-agent-chip"><Bot size={22}/><div><strong>Agent ready</strong><span>Interface + API JSON pública</span></div></div></section>
    <div className="vb-workspace">
     <form className="vb-config" onSubmit={execute} data-testid="benchmark-form">
@@ -203,7 +203,7 @@ export default function BenchmarkPage(){
       <label className="vb-toggle"><input type="checkbox" checked={adaptive} disabled={running} onChange={e=>setAdaptive(e.target.checked)}/><span>Roteamento adaptativo</span></label>
      </div>
      <details className="vb-advanced"><summary><SlidersHorizontal size={16}/> Evitar vias específicas</summary><div>{[['tolls','Pedágios'],['ferries','Balsas'],['unpaved','Não pavimentadas']].map(([key,label])=><label key={key}><input type="checkbox" checked={avoids[key]} disabled={running} onChange={e=>setAvoids(prev=>({...prev,[key]:e.target.checked}))}/>{label}</label>)}</div></details>
-     <button type="submit" className="vb-run" data-testid="benchmark-run" disabled={running||!!apiError}>{running?'Calculando trajetos…':'Executar benchmark'}<Play size={17}/></button>
+     <button type="submit" className="vb-run" data-testid="benchmark-run" disabled={running}>{running?'Calculando trajetos…':'Executar benchmark'}<Play size={17}/></button>
      {running&&<button type="button" className="vb-cancel" data-testid="benchmark-cancel" onClick={()=>controller.current?.abort()}><X size={15}/> Cancelar execução</button>}
      {running&&<progress className="vb-progress" max={Math.max(1,progress[1])} value={progress[0]} aria-label="Progresso dos testes"/>}
      <div className="vb-status" data-testid="benchmark-status" role="status" aria-live="polite">{apiError?'API indisponível: '+apiError:notice|| (running?progress[0]+' de '+progress[1]+' cálculos':'Selecione os modos e inicie o teste.')}</div>
