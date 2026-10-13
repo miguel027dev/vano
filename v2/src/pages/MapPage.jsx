@@ -24,13 +24,39 @@ export default function MapPage({active=true}){
   const mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[preparingStart,setPreparingStart]=useState(false),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
-  const offlineGeneration=useRef(0),spoken=useRef(new Set()),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
+  const offlineGeneration=useRef(0),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
   destRef.current=dest;
   useEffect(()=>{if(!tripBooted.current)setChoice(initialChoice);},[initialChoice]);
   useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;setDest(value.destination);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
-  useEffect(()=>{const status=()=>setVoiceProblem(true);window.addEventListener('vano:voice-status',status);return()=>window.removeEventListener('vano:voice-status',status);},[]);
+  useEffect(()=>{
+    const status=()=>setVoiceProblem(true);
+    const nativeFailure=event=>{
+      const error=String(event?.detail?.error||'');
+      // Existing Android WebView emits failed TTS here instead of voice-status.
+      if(!/voz offline indisponível|instale uma voz local/i.test(error))return;
+      const attempt=lastVoiceAttempt.current;
+      if(!navMode||muted||!attempt){setVoiceProblem(true);return;}
+      // If the APK has no offline voice, try device/browser Web Speech once.
+      // Never send the failed instruction back to the same Android bridge.
+      const result=speakNavigationVoice(attempt.text,language,{
+        native:false,
+        onStart:()=>setVoiceProblem(false),
+        onFailure:()=>{
+          if(attempt.key)spoken.current.delete(attempt.key);
+          setVoiceProblem(true);
+        }
+      });
+      if(!result.ok)setVoiceProblem(true);
+    };
+    window.addEventListener('vano:voice-status',status);
+    window.addEventListener('vano:native-dictation',nativeFailure);
+    return()=>{
+      window.removeEventListener('vano:voice-status',status);
+      window.removeEventListener('vano:native-dictation',nativeFailure);
+    };
+  },[navMode,muted,language]);
   useEffect(()=>{const native=e=>onPosition(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
   useEffect(()=>{notifyNative({action:'navigation',active:navMode});return()=>notifyNative({action:'navigation',active:false});},[navMode]);
   useEffect(()=>{notifyNative({action:'wake',active:navMode});return()=>notifyNative({action:'wake',active:false});},[navMode]);
@@ -347,6 +373,7 @@ export default function MapPage({active=true}){
     writeOffline('active-trip',snapshot).then(setStorageReady);
   },[navMode,route,dest,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision]);
   function speakManeuver(text,key=null){
+    lastVoiceAttempt.current={text,key};
     const result=speakNavigationVoice(text,language,{
       native:isNativeShell(),sendNative:notifyNative,
       onStart:()=>setVoiceProblem(false),
