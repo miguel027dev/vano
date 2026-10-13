@@ -38,48 +38,46 @@ export function iconSvg(type){
  const inner=GLYPHS[glyph]||GLYPHS.alert;
  return '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+inner+'</svg>';
 }
-/** Light zoom-dependent declutter: always give radar and essential services room.
- * Initial VANO camera is ~12.4, so refusing to fetch before 13.6 hid EVERY pin.
+/** World-anchored 20m-ish cells: unchanged while zooming, rotating or
+ * moving the camera. Suppress exact/near duplicates, NOT entire icon categories.
+ * Display coverage is limited by REAL loaded provider records, not zoom gating.
  */
-/**
- * Map-fixed clustering: the old screen-pixel grid changed occupants on every
- * pan/rotation and made icons trade places. World Mercator grid never moves
- * with the camera. Only genuinely nearby real points may share a cell.
- */
-export function stableWorldCell(coords,zoom){
+export function stableWorldCell(coords,_zoom){
  if(!Array.isArray(coords)||coords.length<2||!coords.every(Number.isFinite))return '';
- const z=Math.max(11,Math.min(19,Math.floor(zoom)));
+ const z=18,cellSize=30;
  const lat=Math.max(-85,Math.min(85,coords[1]))*Math.PI/180;
  const world=512*Math.pow(2,z);
  const x=(coords[0]+180)/360*world;
  const merc=Math.log(Math.tan(Math.PI/4+lat/2));
  const y=(1-merc/Math.PI)/2*world;
- const cellSize=z>=16?28:z>=14?40:50;
  return Math.floor(x/cellSize)+':'+Math.floor(y/cellSize);
 }
 export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,viewport=null){
- if(!Array.isArray(features)||!Number.isFinite(zoom)||zoom<11.6)return [];
+ if(!Array.isArray(features)||!Number.isFinite(zoom))return [];
  const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]);
- // Sort ties by stable identity, not vector-tile arrival order.
- candidates.sort((a,b)=>Number(b.priority||0)-Number(a.priority||0)||String(a.id).localeCompare(String(b.id)));
- const result=[],occupied=new Set(),counts=new Map();
- const lowZoomCap={radar:30,semaforo:16,lombada:6,rotatoria:5,hospital:10,saude:7,bombeiros:5,'policia-base':4,
-  obra:4,'relato-acidente':6,'relato-risco':5,combustivel:5,eletroposto:3};
- for(const f of candidates){
-  if(result.length>=max)break;
-  if(zoom<14){
-   if(Number(f.priority||0)<47)continue;
-   if((counts.get(f.type)||0)>=(lowZoomCap[f.type]??3))continue;
-  }
-  const pos=project(f.coords);
-  if(!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.y))continue;
+ // Reserve a reasonable share for hospitals/fuel/health services even if the
+ // visible tile happens to have hundreds of signals with higher priorities.
+ const services=new Set(['hospital','saude','bombeiros','policia-base','combustivel','eletroposto','estacionamento']);
+ const urgent=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar']);
+ const compare=(a,b)=>Number(b.priority||0)-Number(a.priority||0)||String(a.id).localeCompare(String(b.id));
+ const reserved=candidates.filter(x=>services.has(x.type)).sort(compare);
+ const rest=candidates.filter(x=>!services.has(x.type)).sort(compare);
+ const ordered=[...reserved.slice(0,Math.max(10,Math.floor(max*.28))),...rest,...reserved.slice(Math.max(10,Math.floor(max*.28)))];
+ const output=[],occupied=new Set();
+ for(const f of ordered){
+  if(output.length>=max)break;
+  let p;
+  try{p=project(f.coords);}catch{continue;}
+  if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))continue;
   if(viewport&&Number.isFinite(viewport.width)&&Number.isFinite(viewport.height)&&
-   (pos.x < -32||pos.y < -32||pos.x > viewport.width+32||pos.y > viewport.height+32))continue;
+   (p.x< -36||p.y< -36||p.x>viewport.width+36||p.y>viewport.height+36))continue;
   const cell=stableWorldCell(f.coords,zoom);
   if(!cell||occupied.has(cell))continue;
-  occupied.add(cell);counts.set(f.type,(counts.get(f.type)||0)+1);result.push(f);
+  occupied.add(cell);output.push(f);
  }
- return result;
+ // Urgent locations never lose their slot just because a dense POI layer was
+ // loaded later; re-rank the final list to make draw order deterministic.
+ return output.sort(compare);
 }
 /** Bound the camera viewport to a small safe geographic query at current zoom. */
 export function mapFeatureBBox(map,backend){
