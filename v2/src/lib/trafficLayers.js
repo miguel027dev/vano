@@ -14,10 +14,10 @@ export const TRAFFIC_ZOOM_CATEGORIES=Object.freeze([
  {key:'street',id:'vano-traffic-streets',minzoom:14,classes:['street','service']}
 ]);
 export const TRAFFIC_LAYER_IDS=TRAFFIC_ZOOM_CATEGORIES.map(x=>x.id);
-export const TRAFFIC_CONGESTION=['low','moderate','heavy','severe'];
+// Low/free-flow segments are intentionally NOT drawn. Leave roads uncolored.
+export const TRAFFIC_CONGESTION=['moderate','heavy','severe'];
 export const trafficColor=[
  'match',['get','congestion'],
- 'low',TRAFFIC_PALETTE.free,
  'moderate',TRAFFIC_PALETTE.moderate,
  'heavy',TRAFFIC_PALETTE.heavy,
  'severe',TRAFFIC_PALETTE.heavy,
