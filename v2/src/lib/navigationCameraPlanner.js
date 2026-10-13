@@ -37,12 +37,14 @@ export function planManeuverCamera({navigation=false,maneuver=null,route=null,sp
   // handles the return to normal framing after the maneuver changes.
   const t=clamp((threshold-distance)/Math.max(1,threshold),0,1);
   let strength=t*t*(3-2*t);
-  const poorGps=Number.isFinite(accuracy)&&accuracy>60;
-  if(poorGps)strength*=accuracy>120?0:0.35;
   const next=route?.steps?.[maneuver.stepIndex+1];
   const consecutive=Number.isFinite(next?.distance)&&next.distance>=0&&next.distance<125
     &&maneuverCategory(next)!=='continue';
   if(consecutive)strength=Math.max(strength,0.3*t);
+  // Reliability is the final gate, after any consecutive-turn lookahead.
+  // A noisy GPS fix must never reactivate aggressive cinematic motion.
+  const poorGps=Number.isFinite(accuracy)&&accuracy>60;
+  if(poorGps)strength*=accuracy>120?0:0.35;
   return {
     phase:strength<.1?'follow':distance<Math.max(20,velocity*1.6)?'executing':'approaching',
     category,threshold,strength,unstable:poorGps,
