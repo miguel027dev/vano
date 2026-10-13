@@ -22,7 +22,7 @@ export function mapboxDirectionsUrl(origin,destination,access,language,vehicle,t
   }))u.searchParams.set(key,String(value));
   if(profile==='driving-traffic'){
     u.searchParams.set('notifications','all');
-    if(opts.departAt&&opts.departAt!=='now'&&/^\\d{4}-\\d\\d-\\d\\dT\\d\\d:\\d\\d/.test(opts.departAt))u.searchParams.set('depart_at',opts.departAt.slice(0,28));
+    if(opts.departAt&&opts.departAt!=='now'&&/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}/.test(opts.departAt))u.searchParams.set('depart_at',opts.departAt.slice(0,28));
     if(numeric(telemetry.speed)&&telemetry.speed>=1.2&&Number.isFinite(telemetry.bearing)&&telemetry.bearing>=0&&telemetry.bearing<360){
       u.searchParams.set('bearings',Math.round(telemetry.bearing)+',70;');
       u.searchParams.set('continue_straight','true');
