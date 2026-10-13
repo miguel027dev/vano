@@ -18,7 +18,7 @@ test('Mapbox logo is configured lower-left; address card remains lower-left',()=
 test('first real GPS centers immediately without relying on loading all map tiles',()=>{
  assert.match(map,/function centerOnFirstGpsFix\(\)/);
  assert.doesNotMatch(map,/if\(backend.current==='mapbox'&&!isLoaded\(map\)\)return/);
- assert.match(map,/map\.jumpTo\(\{center:d\.userCoords/);
+ assert.match(map,/map\.jumpTo\(\{center:d\.gpsCoords/);
  assert.doesNotMatch(map,/maskInitialMap/);
  assert.match(map,/paintMapbox\(map,latest\.current,lastSelection\);centerOnFirstGpsFix\(\)/);
  assert.match(page,/startGpsSession\(navigator\.geolocation/);
