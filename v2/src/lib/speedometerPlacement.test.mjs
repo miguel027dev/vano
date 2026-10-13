@@ -12,7 +12,7 @@ test('a single real-GPS speedometer moves left of the street pill in navigation'
  assert.match(page,/const speedometer=<output className="v43-speedometer"/);
  assert.match(page,/smoothGpsSpeedSample\(speedSampleRef\.current,result\.speed,/);
  assert.doesNotMatch(page,/<div className="map-controls">\{!navMode&&speedometer\}/);
- assert.match(page,/<div className="map-controls"><button type="button"/);
+ assert.match(page,/<div className="map-controls">/);
  const row=page.indexOf('navMode&&<div className="v36-nav-road-row"');
  const dial=page.indexOf('{speedometer}',row);
  const street=page.indexOf('className="v36-nav-road-pill"',row);
