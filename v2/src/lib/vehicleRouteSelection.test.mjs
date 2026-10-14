@@ -9,7 +9,11 @@ const imports=readFileSync(new URL('../main.jsx',import.meta.url),'utf8');
 test('route sheet exposes Carro, Moto and A pé accessible buttons',()=>{
  const section=page.slice(page.indexOf('className="v47-route-vehicle"'),page.indexOf('{loadingRoute?<div className="route-loader"'));
  assert.ok(section.length>200,'mode choice must appear above options');
- assert.match(section,/role="group" aria-label="Selecionar carro, moto ou a pé"/);
+ assert.match(section,/role="group" aria-label=\{import\.meta\.env\.VITE_TRANSIT_PREVIEW/,'vehicle group is feature gated');
+ assert.match(section,/Selecionar carro, moto, ônibus ou a pé/);
+ assert.match(section,/Selecionar carro, moto ou a pé/,'existing labels remain accessible with Transit off');
+ assert.match(section,/className="v47-transit-mode"/,'bus entry stays beside motorcycle');
+ assert.match(section,/to="\/transporte"/,'transit does not call the road router');
  assert.match(section,/onClick=\{\(\)=>chooseRouteVehicle\('carro'\)\}/);
  assert.match(section,/onClick=\{\(\)=>chooseRouteVehicle\('moto'\)\}/);
  assert.match(section,/aria-pressed=\{routeVehicle==='carro'\}/);
@@ -42,4 +46,12 @@ test('vehicle mode presents sliding highlight with touch and reduced motion supp
  assert.match(css,/@media\(max-width:375px\)/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(css,/min-height:39px/);
+});
+ 
+test('fourth transport option does not change the road routing defaults',()=>{
+ assert.match(page,/VITE_TRANSIT_PREVIEW==='1'/);
+ assert.match(css,/\.v47-route-vehicle-switch\.has-transit/);
+ assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+ assert.match(css,/\.has-transit\.is-walking::before/);
+ assert.match(page,/\{navMode&&<button type="button" title="Alternar câmera 2D\/3D"/);
 });
