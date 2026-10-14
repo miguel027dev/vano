@@ -51,7 +51,11 @@ test('map overlay keeps GPS geometry, Mapbox style switching and attribution unt
  assert.match(overlay,/map.off\('moveend',schedule\)/);
  assert.match(overlay,/marker\.setPopup/);
  assert.match(overlay,/marker\.bindPopup/);
- assert.match(overlay,/textContent='© OpenStreetMap contributors · ANTT · ODbL \/ CC BY 4\.0'/);
+ assert.match(overlay,/textContent='© OpenStreetMap contributors'/);
+ assert.match(overlay,/credit\.title='Fontes e licenças: © OpenStreetMap contributors \(ODbL 1\.0\); dados ANTT \(CC BY 4\.0\)\.'/);
+ assert.match(css,/right:calc\(env\(safe-area-inset-right,0px\) \+ 65px\)/);
+ assert.match(css,/\.mapboxgl-ctrl-bottom-right\{right:calc\(env\(safe-area-inset-right,0px\) \+ 62px\)/);
+ assert.match(css,/\.leaflet-bottom\.leaflet-right\{right:calc\(env\(safe-area-inset-right,0px\) \+ 62px\)/);
  assert.match(css,/width:44px;height:44px/);
  assert.match(css,/@media\(max-width:370px\)/);
 });
