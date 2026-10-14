@@ -69,7 +69,7 @@ test('radar endpoint is isolated from non-radar POIs and client retains them',()
  const overlay=readFileSync(new URL('../src/lib/mapPublicOverlay.js',import.meta.url),'utf8');
  assert.match(server,/pathname==='\/api\/map-radars'/);
  assert.match(server,/queryPublicRadars\(bbox\)/);
- assert.match(overlay,/void refreshRadars\(bbox\)/);
+ assert.match(overlay,/if\(radarBbox\)void refreshRadars\(radarBbox\)/);
  assert.match(overlay,/radarController\?\.abort\(\)/);
  assert.match(overlay,/\[\.\.\.radarItems,\.\.\.remoteItems/);
  assert.match(overlay,/data\.features\.filter\(x=>x\?\.type==='radar'/);
