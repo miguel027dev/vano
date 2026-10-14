@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import {Link} from 'react-router-dom';
+import {Link,useLocation} from 'react-router-dom';
 import {ArrowLeft,ArrowRight,ArrowRightLeft,BusFront,CalendarClock,ChevronDown,ChevronRight,Clock3,Footprints,LocateFixed,MapPin,Search,TrainFront,TramFront,Ship,Route,RefreshCw} from 'lucide-react';
 import {api,post} from '../lib/api.js';
 import TransitMap from '../components/TransitMap.jsx';
@@ -88,7 +88,8 @@ function ItineraryCard({item,selected,onSelect}){
  </article>;
 }
 export default function TransitPage(){
- const [from,setFrom]=useState(null),[to,setTo]=useState(null),[sort,setSort]=useState('balanced');
+ const location=useLocation();
+ const [from,setFrom]=useState(()=>location.state?.from||null),[to,setTo]=useState(()=>location.state?.to||null),[sort,setSort]=useState('balanced');
  const [depart,setDepart]=useState(''),[coverage,setCoverage]=useState(null);
  const [result,setResult]=useState(null),[selected,setSelected]=useState(0),[loading,setLoading]=useState(false),[error,setError]=useState('');
  useEffect(()=>{api('/transit/capabilities').then(setCoverage).catch(()=>setCoverage({enabled:false,coverage:[]}));},[]);
