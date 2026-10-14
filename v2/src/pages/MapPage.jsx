@@ -603,7 +603,7 @@ export default function MapPage({active=true}){
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
-        <div className={`v47-route-vehicle-switch ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label="Selecionar carro, moto ou a pé" aria-busy={loadingRoute}>
+        <div className={`v47-route-vehicle-switch ${import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
           <button type="button" className={routeVehicle==='carro'?'is-selected':''} onClick={()=>chooseRouteVehicle('carro')}
             aria-pressed={routeVehicle==='carro'} aria-label="Calcular rota de carro">
             <CarFront size={18} strokeWidth={2} aria-hidden="true"/><span>{t('Carro')}</span>
@@ -612,16 +612,12 @@ export default function MapPage({active=true}){
             aria-pressed={routeVehicle==='moto'} aria-label="Calcular rota de moto">
             <MotorcycleIcon size={22}/><span>{t('Moto')}</span>
           </button>
+          {import.meta.env.VITE_TRANSIT_PREVIEW==='1'&&<Link to="/transporte" state={{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}} className="v47-transit-mode" aria-label="Planejar rota de ônibus, metrô e trem" title="Planejar viagem em transporte público"><BusFront size={19} aria-hidden="true"/><span>Ônibus</span></Link>}
           <button type="button" className={routeVehicle==='a-pe'?'is-selected':''} onClick={()=>chooseRouteVehicle('a-pe')}
             aria-pressed={routeVehicle==='a-pe'} aria-label="Calcular rota a pé">
             <Footprints size={19} strokeWidth={2} aria-hidden="true"/><span>{t('A pé')}</span>
           </button>
         </div>
-        {import.meta.env.VITE_TRANSIT_PREVIEW==='1'&&<Link to="/transporte" state={{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}} className="v49-transit-entry" aria-label="Planejar esta viagem em transporte público">
-          <span className="v49-transit-entry-icon"><BusFront size={20}/></span>
-          <span><strong>Transporte público <small>Beta</small></strong><em>Ônibus, metrô, trem e caminhada</em></span>
-          <MoveRight className="v49-transit-entry-arrow" size={18}/>
-        </Link>}
       </div>
       {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
