@@ -147,6 +147,7 @@
 }
 @media(max-height:530px) and (orientation:landscape){
  .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 80px)
+  bottom:calc(env(safe-area-inset-bottom,0px) + 80px);
+  translate:none;
  }
 }
