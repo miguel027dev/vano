@@ -1,6 +1,6 @@
 import React,{useEffect,useRef} from 'react';
 import mapboxgl from 'mapbox-gl';
-import {mapboxStyleFor} from '../lib/mapLayers.js';
+import {mapboxStyleFor,VANO_ATLAS_STYLE} from '../lib/mapLayers.js';
 
 const valid=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite);
 export function decodeTransitPolyline(encoded){
@@ -27,7 +27,7 @@ export default function TransitMap({itinerary,origin,destination}){
  useEffect(()=>{
   if(!token||!container.current)return;
   mapboxgl.accessToken=token;
-  const map=new mapboxgl.Map({container:container.current,style:mapboxStyleFor('streets'),
+  const map=new mapboxgl.Map({container:container.current,style:mapboxStyleFor('streets',(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE),
     center:[0,20],zoom:1.5,attributionControl:true,logoPosition:'bottom-left',interactive:true});
   instance.current=map;
   const update=()=>{
