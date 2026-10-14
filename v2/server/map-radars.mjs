@@ -38,11 +38,11 @@ function fallback(old,now,error){
 function prune(){
  while(cache.size>160)cache.delete(cache.keys().next().value);
 }
-export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS}={}){
+export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS,useSnapshot=true}={}){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
  if(!b)throw new RangeError('Radar bounding box inválida');
  // National snapshot always wins; map rendering must not depend on Overpass uptime.
- const snapshot=queryRadarSnapshot(b);
+ const snapshot=useSnapshot?queryRadarSnapshot(b):null;
  if(snapshot)return snapshot;
  // Stable ~100 m cells, to reuse results across adjacent camera pans.
  const key=b.map(n=>(Math.round(n*1000)/1000).toFixed(3)).join(',');
