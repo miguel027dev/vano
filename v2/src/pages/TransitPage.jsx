@@ -4,6 +4,7 @@ import {ArrowLeft,ArrowRight,ArrowRightLeft,BusFront,CalendarClock,ChevronDown,C
 import {api,post} from '../lib/api.js';
 import TransitMap from '../components/TransitMap.jsx';
 import TransitJourneyPreview from '../components/TransitJourneyPreview.jsx';
+import {externalTransitUrl} from '../lib/transitExternalFallback.mjs';
 import '../transit-preview.css';
 
 const transportIcon={walk:Footprints,bus:BusFront,metro:TrainFront,train:TrainFront,tram:TramFront,ferry:Ship};
@@ -114,6 +115,7 @@ export default function TransitPage(){
   }catch(e){setError(e.message||'Não foi possível calcular esta viagem.');}
   finally{setLoading(false);}
  };
+ const externalUrl=externalTransitUrl(from?.coords,to?.coords);
  const itinerary=result?.itineraries?.[selected]||null;
  if(itinerary)return <main className="vt-page vt-page-preview">
   <header className="vt-header">
@@ -157,7 +159,14 @@ export default function TransitPage(){
        {loading?'Calculando conexões…':'Encontrar viagens'} <ArrowRight size={18}/>
      </button>
     </form>
-    {coverage?.enabled===false&&<div className="vt-notice" role="status">O mecanismo está preparado, mas as fontes regionais de horários ainda precisam ser ativadas. Nenhum horário será inventado.</div>}
+    {coverage?.enabled===false&&<section className="vt-notice vt-coverage-notice" role="status">
+      <strong>Planejamento de transporte do VANO em implantação</strong>
+      <span>A busca de ônibus, metrô e trem ainda não tem horários oficiais integrados nesta região. O VANO não cria rotas fictícias.</span>
+      {externalUrl?<a className="vt-external-route" href={externalUrl} target="_blank" rel="noopener noreferrer" aria-label="Consultar rota de transporte público no Google Maps, abre serviço externo">
+        Ver rota real no Google Maps <ArrowRight size={17}/>
+      </a>:<span className="vt-coverage-hint">Escolha origem e destino para consultar temporariamente uma rota em outro aplicativo.</span>}
+      <small>A consulta externa utiliza os pontos escolhidos e depende da cobertura do Google Maps. A rota será exibida fora do VANO.</small>
+    </section>}
     {coverage?.enabled&&<div className="vt-region-note">Cobertura atual: {coverage.coverage.map(x=>x.name).join(' · ')}</div>}
     {error&&<div className="vt-error" role="alert">{error}</div>}
     {result?.itineraries?.length>0&&<section className="vt-results" aria-label="Viagens encontradas">
