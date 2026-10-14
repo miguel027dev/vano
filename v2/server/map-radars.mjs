@@ -3,6 +3,7 @@
  * A failed ancillary POI query cannot delay or erase already-mapped radars.
  */
 import {OSM_ATTRIBUTION,parseBBox,normalizeOsmElements} from './map-public-data.mjs';
+import {queryRadarSnapshot} from './radar-catalog.mjs';
 
 export const RADAR_OVERPASS_SERVERS=Object.freeze([
  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -40,6 +41,9 @@ function prune(){
 export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS}={}){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
  if(!b)throw new RangeError('Radar bounding box inválida');
+ // National snapshot always wins; map rendering must not depend on Overpass uptime.
+ const snapshot=queryRadarSnapshot(b);
+ if(snapshot)return snapshot;
  // Stable ~100 m cells, to reuse results across adjacent camera pans.
  const key=b.map(n=>(Math.round(n*1000)/1000).toFixed(3)).join(',');
  const started=now(),old=cache.get(key);
