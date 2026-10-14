@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {iconSvg,iconMeta,ICON_THEME,selectPublicPins,publicPinDensity,mapFeatureBBox} from './mapPublicIcons.js';
+import {iconSvg,iconMeta,ICON_THEME,selectPublicPins,publicPinDensity,mapFeatureBBox,mapRadarBBox} from './mapPublicIcons.js';
 
 test('every supported map category has a static safe icon for light mode',()=>{
  assert.ok(Object.keys(ICON_THEME).length>=17);
@@ -159,4 +159,18 @@ test('restaurants survive many supermarkets and the new glyphs remain recognisab
  // Previously approved categories remain untouched.
  assert.match(iconSvg('shopping'),/M4 8h16/);
  assert.match(iconSvg('parque'),/m6 3-4 8/);
+});
+
+test('radar bbox includes visible London streets beyond the generic map POI crop',()=>{
+ const m={
+  getZoom:()=>12.3,
+  getCenter:()=>({lng:-.119,lat:51.509}),
+  getBounds:()=>({getWest:()=>-.205,getEast:()=>-.036,
+   getSouth:()=>51.45,getNorth:()=>51.56})
+ };
+ const poi=mapFeatureBBox(m,'mapbox'),radar=mapRadarBBox(m);
+ assert.ok(radar[0]<poi[0]&&radar[2]>poi[2]);
+ assert.ok(radar[1]<poi[1]&&radar[3]>poi[3]);
+ assert.ok(radar[2]-radar[0]<.3&&radar[3]-radar[1]<.3);
+ assert.equal(mapRadarBBox({...m,getZoom:()=>10}),null);
 });
