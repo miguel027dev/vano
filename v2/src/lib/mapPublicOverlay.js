@@ -49,7 +49,7 @@ export function attachPublicMapOverlay(map,backend){
  credit.className='v40-map-credit';
  credit.href='https://www.openstreetmap.org/copyright';
  credit.rel='noopener noreferrer';credit.target='_blank';
- credit.textContent='© OpenStreetMap contributors · ODbL';
+ credit.textContent='© OpenStreetMap contributors · ANTT · ODbL / CC BY 4.0';
  credit.hidden=true;map.getContainer().append(credit);
  const notice=document.createElement('button');
  notice.type='button';
@@ -92,7 +92,7 @@ export function attachPublicMapOverlay(map,backend){
    }
    markers.set(item.id,{marker});
   }
-  credit.hidden=!items.some(item=>item.source==='OpenStreetMap');
+  credit.hidden=!items.some(item=>item.source==='OpenStreetMap'||item.id?.startsWith('radar-catalog-'));
  }
  function mergeSources(){
   const combined=[...radarItems,...remoteItems.filter(item=>!radarItems.some(r=>r.id===item.id))],seen=new Set([...radarItems,...remoteItems].map(x=>x.id));
