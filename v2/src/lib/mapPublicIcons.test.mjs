@@ -41,7 +41,7 @@ test('mobile pin coordinates are bounded to a safe viewport query',()=>{
  assert.ok(mapFeatureBBox({...map,getZoom:()=>12.4},'leaflet'));
  assert.equal(mapFeatureBBox({...map,getZoom:()=>11},'leaflet'),null);
 });
-test('map overlay keeps GPS geometry, Mapbox style switching and attribution untouched',()=>{
+test('map overlay keeps GPS geometry, Mapbox native credits and compact extra OSM credit',()=>{
  const component=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
@@ -51,7 +51,9 @@ test('map overlay keeps GPS geometry, Mapbox style switching and attribution unt
  assert.match(overlay,/map.off\('moveend',schedule\)/);
  assert.match(overlay,/marker\.setPopup/);
  assert.match(overlay,/marker\.bindPopup/);
- assert.match(overlay,/textContent='© OpenStreetMap contributors'/);
+ assert.match(overlay,/credit\.textContent='OSM'/);
+ assert.match(overlay,/osmLogo\.src=/);
+ assert.match(component,/attributionControl:true/);
  assert.match(overlay,/credit\.title='Fontes e licenças: OpenStreetMap \(ODbL 1\.0\) e ANTT \(CC BY 4\.0\)\.'/);
  assert.match(overlay,/credit\.setAttribute\('aria-label'/);
  assert.match(css,/width:44px;height:44px/);
