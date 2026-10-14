@@ -119,7 +119,7 @@
 /* Make space under the location card rather than pushing the credits towards
    the middle/top of the phone; no interaction with the live GPS marker. */
 .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
- bottom:calc(env(safe-area-inset-bottom,0px) + 94px);
+ bottom:calc(env(safe-area-inset-bottom,0px) + 86px);
  translate:10px 8px;
 }
 /* When there is an expanded route dock, keep credit links in visible map area. */
@@ -147,7 +147,7 @@
 }
 @media(max-height:530px) and (orientation:landscape){
  .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 80px);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 72px);
   translate:none;
  }
 }
