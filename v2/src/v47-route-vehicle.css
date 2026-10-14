@@ -105,3 +105,41 @@
   .map-page .v47-route-vehicle-switch button{transition:none}
   .map-page .route-sheet .route-options{animation:none}
 }
+
+/* Fourth mode: transport entry inside the existing segmented picker.
+   The three-mode slider geometry is untouched when the beta gate is off. */
+.map-page .v47-route-vehicle-switch.has-transit{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  width:min(318px,100%);
+  flex:0 1 318px;
+}
+.map-page .v47-route-vehicle-switch.has-transit::before{
+  width:calc((100% - 8px)/4);
+}
+.map-page .v47-route-vehicle-switch.has-transit.is-walking::before{
+  transform:translateX(300%);
+}
+.map-page .v47-route-vehicle-switch .v47-transit-mode{
+  position:relative;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  min-width:0;min-height:39px;padding:0 2px;border-radius:11px;
+  color:#7a867e;font-size:12px;font-weight:750;line-height:1;
+  white-space:nowrap;text-decoration:none;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.map-page .v47-route-vehicle-switch .v47-transit-mode:hover,
+.map-page .v47-route-vehicle-switch .v47-transit-mode:focus-visible{
+  color:#dd5b1e;background:#fff9f3;
+}
+.map-page .v47-route-vehicle-switch .v47-transit-mode:focus-visible{
+  outline:2px solid #e96326;outline-offset:-2px;
+}
+@media(max-width:420px){
+ .map-page .v47-route-vehicle-switch.has-transit{flex-basis:275px}
+ .map-page .v47-route-vehicle-switch.has-transit button,
+ .map-page .v47-route-vehicle-switch.has-transit .v47-transit-mode{
+   flex-direction:column;min-height:47px;gap:3px;font-size:10px;
+ }
+ .map-page .v47-route-vehicle-switch.has-transit button svg,
+ .map-page .v47-route-vehicle-switch.has-transit .v47-transit-mode svg{width:18px;height:18px}
+}
