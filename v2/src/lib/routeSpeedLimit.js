@@ -16,16 +16,27 @@ export function speedLimitFromStepSign(step){
  const kmh=unit==='mph'?speed*1.609344:speed;
  return kmh>=10&&kmh<=160?Math.round(kmh):null;
 }
+const matchedStepCache=new WeakMap();
 function stepSpeedLimitAtIndex(route,currentIndex){
  const steps=route?.steps,geometry=route?.geometry;
- if(!Array.isArray(steps)||!Array.isArray(geometry?.coordinates))return null;
- let latest=-1,limit=null;
- for(const step of steps){
-  if(!validPoint(step?.location))continue;
-  const at=nearestOnRoute(step.location,geometry);
-  if(!Number.isFinite(at.distance)||at.distance>25||at.index>currentIndex||at.index<latest)continue;
-  latest=at.index;
-  limit=speedLimitFromStepSign(step);
+ if(!Array.isArray(steps)||!Array.isArray(geometry?.coordinates)||steps.length>700||
+    geometry.coordinates.length>16000)return null;
+ let matched=matchedStepCache.get(route);
+ if(!matched){
+  matched=[];
+  for(const step of steps){
+   if(!validPoint(step?.location))continue;
+   const at=nearestOnRoute(step.location,geometry);
+   if(!Number.isFinite(at.distance)||at.distance>25)continue;
+   matched.push({index:at.index,limit:speedLimitFromStepSign(step)});
+  }
+  matched.sort((a,b)=>a.index-b.index);
+  matchedStepCache.set(route,matched);
+ }
+ let limit=null;
+ for(const step of matched){
+  if(step.index>currentIndex)break;
+  limit=step.limit;
  }
  return limit;
 }
