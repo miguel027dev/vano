@@ -24,9 +24,9 @@
 .vt-options label>svg{color:var(--vt-orange)}.vt-options input{margin-left:auto;min-width:0;max-width:190px;font-size:.77rem;border:none;background:transparent;color:#374550;outline:none}
 .vt-now{margin-left:auto;font-size:.71rem;color:#64737d;pointer-events:none}
 .vt-options label:has(input:not([value=""])) .vt-now{display:none}
-.vt-preference>span{display:block;font-size:.78rem;font-weight:800;margin-bottom:9px}.vt-preference-tabs{display:flex;flex-wrap:wrap;gap:7px}
-.vt-preference-tabs button{font-size:.72rem;white-space:nowrap;padding:9px 11px;border-radius:10px;background:#f4f5f6;border:1px solid #e9eaeb;font-weight:750;color:#626e77}
-.vt-preference-tabs button.is-selected{background:#fff2e9;color:#c45523;border-color:#edbc9c}
+.vt-preference>span{display:block;font-size:.78rem;font-weight:800;margin-bottom:9px}.vt-preference-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.vt-preference-tabs button{display:flex;min-height:96px;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:6px;text-align:left;padding:13px;border-radius:14px;background:#f4f5f6;border:1px solid #e9eaeb;color:#626e77}.vt-preference-tabs button strong{font-size:.88rem;font-weight:850;line-height:1.15}.vt-preference-tabs button small{font-size:.68rem;line-height:1.35;color:#78858d;font-weight:600;letter-spacing:0}.vt-preference-tabs button svg{color:#7d8990}
+.vt-preference-tabs button.is-selected{background:#fff2e9;color:#c45523;border-color:#edbc9c}.vt-preference-tabs button.is-selected svg{color:#c45523}
 .vt-submit{width:100%;min-height:53px;display:flex;gap:10px;align-items:center;justify-content:center;border-radius:14px;color:#fff;background:var(--vt-orange);font-size:.9rem;font-weight:800;box-shadow:0 6px 16px #ee6e3e36}
 .vt-submit svg:last-child{margin-left:6px}.vt-submit:disabled{opacity:.55;cursor:not-allowed}
 .vt-rotate{animation:vt-spin .8s linear infinite}@keyframes vt-spin{to{transform:rotate(360deg)}}
@@ -59,3 +59,12 @@
 @media(max-width:980px){.vt-workspace{grid-template-columns:1fr;gap:14px}.vt-panel{order:1}.vt-map-panel{order:2;min-height:350px;height:43dvh}.vt-intro h1{max-width:initial}.vt-header{padding:0 18px}}
 @media(max-width:520px){.vt-page{background:#fff}.vt-header{height:64px}.vt-header-tag{font-size:.73rem}.vt-workspace{padding:0;gap:0}.vt-panel{border:0;border-radius:0;padding:24px 19px 20px;box-shadow:none}.vt-map-panel{border:0;border-top:1px solid #e8ebed;border-radius:0;min-height:320px}.vt-intro h1{font-size:1.8rem}.vt-location-input{min-height:53px}.vt-submit{min-height:55px}.vt-now{display:none}.vt-options input{max-width:175px}}
 @media(prefers-reduced-motion:reduce){.vt-rotate,.vt-spinner{animation:none}.vt-itinerary-head>svg{transition:none}}
+
+/* Transit fares and delay information use a secondary visual tier. */
+.vt-trip-footer{margin-top:10px;border-top:1px solid #eef0f1;padding-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px 12px;font-size:.72rem;color:#7b8992}
+.vt-trip-footer strong{font-size:.73rem;font-weight:800;color:#72808a}
+.vt-trip-footer strong.is-verified{font-size:.86rem;color:#205c4b}
+.vt-trip-footer span{font-size:.66rem;line-height:1.4;max-width:220px}
+.vt-delay-note{color:#ac552c;font-weight:750}
+.vt-fare-explanation{background:#f4f7f7;border:1px solid #e9eded;color:#526772;padding:10px 11px;border-radius:11px;font-size:.72rem;line-height:1.45;margin:0 0 13px}
+@media(max-width:360px){.vt-preference-tabs button{padding:11px;min-height:105px}.vt-preference-tabs button strong{font-size:.81rem}}
