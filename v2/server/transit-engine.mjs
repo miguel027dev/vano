@@ -19,7 +19,7 @@ const OTP_QUERY=String.raw`query VanoTransitPlan($origin: PlanLabeledLocationInp
         from { name lat lon } to { name lat lon }
         start { scheduledTime estimated { time delay } }
         end { scheduledTime estimated { time delay } }
-        fareProducts { id product { __typename id name
+        fareProducts { id product { __typename id name riderCategory { isDefault }
           ... on DefaultFareProduct { price { amount currency { code } } }
           ... on DependentFareProduct { price { amount currency { code } } }
         } }
@@ -110,7 +110,7 @@ export function verifiedItineraryFare(rawLegs=[]){
     const use=leg.fareProducts[0];
     const product=use?.product;
     const price=isoMoney(product?.price);
-    if(typeof use?.id!=='string'||!use.id||product?.__typename!=='DefaultFareProduct'||!price){unverified=true;break;}
+    if(typeof use?.id!=='string'||!use.id||product?.__typename!=='DefaultFareProduct'||(product?.riderCategory&&product.riderCategory.isDefault!==true)||!price){unverified=true;break;}
     if(used.has(use.id)){
       const old=used.get(use.id);
       if(old.amount!==price.amount||old.currency!==price.currency){unverified=true;break;}
