@@ -182,7 +182,8 @@
  .vt-preview-dock-top strong{font-size:.96rem}
 }
 @media(max-height:610px){
- .vt-preview-map-actions{top:47%;right:9px}
+ .vt-preview-map-actions{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 234px);right:9px;flex-direction:row}
+ .vt-preview-map-actions button{width:38px;height:38px}
  .vt-preview-top{padding-top:10px;padding-bottom:10px}
  .vt-preview-location{gap:5px}
  .vt-preview-dock-handle{margin-bottom:8px}
@@ -190,4 +191,12 @@
 }
 @media(prefers-reduced-motion:reduce){
  .vt-preview-top,.vt-preview-dock{animation:none}
+}
+
+/* Extremely short landscape windows have no safe zone between route cards.
+   Keep the preview readable rather than allowing floating controls to collide. */
+@media(max-height:480px){
+ .vt-preview-map-actions{display:none}
+ .vt-preview-top{max-width:min(680px,calc(100% - 16px))}
+ .vt-preview-dock{max-height:65dvh}
 }
