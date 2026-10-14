@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --no-audit --no-fund
+      # Security gate: check production dependencies before declaring deploy-ready.
+      - run: npm audit --omit=dev --audit-level=high
       - run: node scripts/sync-radars.mjs
       - run: npm test
       - run: npm run build
