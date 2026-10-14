@@ -200,3 +200,14 @@
  .vt-preview-top{max-width:min(680px,calc(100% - 16px))}
  .vt-preview-dock{max-height:65dvh}
 }
+
+/* Honest operator-coverage fallback: separate native planning from opt-in external directions. */
+.vt-coverage-notice{display:flex;flex-direction:column;align-items:stretch;gap:9px}
+.vt-coverage-notice>strong{font-size:.86rem;font-weight:850;color:#835018}
+.vt-coverage-notice>span{font-size:.78rem;line-height:1.5}
+.vt-coverage-notice>small{font-size:.68rem;line-height:1.4;color:#7c6958}
+.vt-coverage-notice .vt-coverage-hint{font-weight:650}
+.vt-external-route{display:flex;align-items:center;justify-content:center;gap:9px;
+ background:#fff;color:#a94920;border:1px solid #e8b894;border-radius:12px;min-height:47px;
+ text-decoration:none;font-size:.81rem;font-weight:850;margin:4px 0}
+.vt-external-route:hover,.vt-external-route:focus-visible{background:#ffeddc;outline:2px solid #d56d33;outline-offset:2px}
