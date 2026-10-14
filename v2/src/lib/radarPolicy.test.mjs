@@ -7,7 +7,7 @@ import {normalizeOsmElements} from '../../server/map-public-data.mjs';
 test('strict camera pins are withheld in restricted regions and remain available elsewhere',()=>{
  const blocked=[
   [[4.83,45.75],'FR'],[[2.35,48.86],'FR'],[[13.4,52.52],'DE'],
-  [[6.14,46.21],'CH'],[[8.54,47.38],'CH']
+  [[8.54,47.38],'CH']
  ];
  for(const [coordinates,country]of blocked){
   assert.equal(radarRestrictedRegion(coordinates),country,String(coordinates));
@@ -16,6 +16,9 @@ test('strict camera pins are withheld in restricted regions and remain available
  for(const p of [[-46.63,-23.55],[9.19,45.46],[-.12,51.51],[28.97,41.01],[2.17,41.4]]){
   assert.equal(radarDisplayAllowed(p),true,String(p));
  }
+ // Geneva is on a complex national border: coarse outlines may label it FR,
+ // but both adjacent restricted jurisdictions must still suppress the pin.
+ assert.equal(radarDisplayAllowed([6.14,46.21]),false);
  assert.ok(radarFullyRestrictedBBox([4.82,45.74,4.84,45.76]));
  assert.equal(radarFullyRestrictedBBox([9.18,45.45,9.20,45.47]),false);
 });
