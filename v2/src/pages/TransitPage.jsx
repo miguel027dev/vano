@@ -3,6 +3,7 @@ import {Link,useLocation} from 'react-router-dom';
 import {ArrowLeft,ArrowRight,ArrowRightLeft,BusFront,CalendarClock,ChevronDown,ChevronRight,Clock3,Wallet, Zap, Footprints,LocateFixed,MapPin,Search,TrainFront,TramFront,Ship,Route,RefreshCw} from 'lucide-react';
 import {api,post} from '../lib/api.js';
 import TransitMap from '../components/TransitMap.jsx';
+import TransitJourneyPreview from '../components/TransitJourneyPreview.jsx';
 import '../transit-preview.css';
 
 const transportIcon={walk:Footprints,bus:BusFront,metro:TrainFront,train:TrainFront,tram:TramFront,ferry:Ship};
@@ -114,6 +115,15 @@ export default function TransitPage(){
   finally{setLoading(false);}
  };
  const itinerary=result?.itineraries?.[selected]||null;
+ if(itinerary)return <main className="vt-page vt-page-preview">
+  <header className="vt-header">
+   <Link to="/mapa" className="vt-back" aria-label="Voltar ao mapa"><ArrowLeft size={21}/></Link>
+   <div className="vt-brand">VANO<span>.</span></div>
+   <span className="vt-header-tag">Transporte público <i>Beta</i></span>
+  </header>
+  <TransitJourneyPreview itinerary={itinerary} alternatives={result.itineraries} selected={selected} onSelect={setSelected}
+     from={from} to={to} sort={sort} onEdit={()=>{setResult(null);setSelected(0);}}/>
+ </main>;
  return <main className="vt-page">
   <header className="vt-header">
    <Link to="/mapa" className="vt-back" aria-label="Voltar ao mapa"><ArrowLeft size={21}/></Link>
