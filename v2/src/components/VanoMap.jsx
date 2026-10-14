@@ -131,7 +131,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     if(token){
       try{
         mapboxgl.accessToken=token;
-        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-right',antialias:false});
+        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
         map._vanoStyle=styleFor(latest.current.layer);
         map.on('error',report);
         backend.current='mapbox';mapRef.current=map;

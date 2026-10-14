@@ -60,8 +60,8 @@ test('provider credits remain legible and airport glyph is symmetrical',()=>{
  const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
  const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  const icons=readFileSync(new URL('./mapPublicIcons.js',import.meta.url),'utf8');
- assert.match(css,/\.v40-map-credit\{[\s\S]*?left:auto;right:/);
+ assert.match(css,/\.v40-map-credit\{[\s\S]*?left:calc\(env\(safe-area-inset-left,0px\) \+ 22px\);right:auto/);
  assert.match(css,/\.mapboxgl-ctrl-bottom-right/);
- assert.match(map,/attributionControl:true,logoPosition:'bottom-right'/);
+ assert.match(map,/attributionControl:true,logoPosition:'bottom-left'/);
  assert.match(icons,/plane:'<path d="M12 2c1\.1 0/);
 });

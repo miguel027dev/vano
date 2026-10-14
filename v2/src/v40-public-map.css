@@ -38,15 +38,15 @@
 .v40-public-popup small{font-size:11px;color:#66726d}
 .v40-public-popup p{margin:3px 0 0;font-weight:450;font-size:12px;overflow-wrap:anywhere}
 .v40-map-credit{
- position:absolute;left:auto;right:calc(env(safe-area-inset-right,0px) + 11px + var(--vano-provider-left-shift,28px));bottom:calc(env(safe-area-inset-bottom,0px) + 65px);
- z-index:30;text-decoration:none;font:500 10px/1.1 system-ui,sans-serif;
+ position:absolute;left:calc(env(safe-area-inset-left,0px) + 22px);right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 62px);
+ z-index:30;text-decoration:none;font:500 10px/1.1 system-ui,sans-serif;white-space:nowrap;
  color:#485750;background:#fffffff0;border:1px solid #dee8e4;
  border-radius:7px;padding:3px 5px;box-shadow:0 1px 4px #24332918;
 }
 .v40-map-credit[hidden]{display:none!important}
 .v40-map-credit:hover,.v40-map-credit:focus-visible{text-decoration:underline}
-.map-page.in-navigation .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 87px)}
-.map-page.has-sheet .v40-map-credit{bottom:calc(min(66dvh,570px) + 17px)}
+.map-page.in-navigation .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 130px)}
+.map-page.has-sheet .v40-map-credit{bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 74px)}
 @media(max-width:370px){
  .v40-public-pin{width:29px;height:29px;border-radius:11px}
  .v40-public-pin.is-radar{width:33px;height:33px}
@@ -101,29 +101,51 @@
  font:600 12px/1.4 system-ui,sans-serif;
 }
 
-/* Keep mandatory provider marks clear of the wider location card.
-   Move the official badges; never resize, hide or cover provider branding. */
-.map-page .mapboxgl-ctrl-bottom-right{right:calc(env(safe-area-inset-right,0px) + 8px + var(--vano-provider-left-shift,28px));bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
-.map-page .leaflet-bottom.leaflet-right{right:calc(env(safe-area-inset-right,0px) + 8px + var(--vano-provider-left-shift,28px));bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
-
-/* All legal provider marks move together left, without shrinking their labels.
-   On phones, 54px ≈ one and a half finger-widths. */
-.map-page{--vano-provider-left-shift:28px}
+/* Keep ALL provider credits in the lower-left map corner, below the location
+   card. The small inset + ascending baselines form the requested diagonal:
+   14px/10px (official logo), 16px/36px (attribution), 22px/62px (OSM).
+   Do not scale, clip, cover, or remove mandatory Mapbox/OSM marks. */
+.map-page .mapboxgl-ctrl-bottom-left{
+ left:calc(env(safe-area-inset-left,0px) + 14px);
+ right:auto;
+ bottom:calc(env(safe-area-inset-bottom,0px) + 10px)
+}
+.map-page .mapboxgl-ctrl-bottom-right,
+.map-page .leaflet-bottom.leaflet-right{
+ left:calc(env(safe-area-inset-left,0px) + 16px);
+ right:auto;
+ bottom:calc(env(safe-area-inset-bottom,0px) + 36px)
+}
+/* Make space under the location card rather than pushing the credits towards
+   the middle/top of the phone; no interaction with the live GPS marker. */
+.map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
+ bottom:calc(env(safe-area-inset-bottom,0px) + 94px)
+}
+/* When there is an expanded route dock, keep credit links in visible map area. */
+.map-page.in-navigation .mapboxgl-ctrl-bottom-left{
+ bottom:calc(var(--v36-nav-dock-height,180px) + 78px)
+}
+.map-page.in-navigation .mapboxgl-ctrl-bottom-right,
+.map-page.in-navigation .leaflet-bottom.leaflet-right{
+ bottom:calc(var(--v36-nav-dock-height,180px) + 104px)
+}
+.map-page.has-sheet .mapboxgl-ctrl-bottom-left{
+ bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 22px)
+}
+.map-page.has-sheet .mapboxgl-ctrl-bottom-right,
+.map-page.has-sheet .leaflet-bottom.leaflet-right{
+ bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 48px)
+}
 @media(max-width:600px){
- .map-page{--vano-provider-left-shift:54px}
- /* The card occupies the bottom-left: raise legal provider credits just above it,
-    rather than letting the new horizontal offset cover location information. */
- .map-page:not(.in-navigation):not(.has-sheet) .mapboxgl-ctrl-bottom-right,
- .map-page:not(.in-navigation):not(.has-sheet) .leaflet-bottom.leaflet-right{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 97px)
- }
- .map-page:not(.in-navigation):not(.has-sheet) .v40-map-credit{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 137px)
- }
- .v40-map-credit{
+ .map-page .v40-map-credit{
   box-sizing:border-box;
-  max-width:calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 82px);
-  text-align:right;
-  overflow-wrap:anywhere
+  max-width:calc(100vw - env(safe-area-inset-left,0px) - 32px);
+  text-align:left;
+  overflow-wrap:normal
+ }
+}
+@media(max-height:530px) and (orientation:landscape){
+ .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 80px)
  }
 }
