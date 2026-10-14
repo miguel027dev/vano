@@ -38,7 +38,7 @@
 .v40-public-popup small{font-size:11px;color:#66726d}
 .v40-public-popup p{margin:3px 0 0;font-weight:450;font-size:12px;overflow-wrap:anywhere}
 .v40-map-credit{
- position:absolute;left:auto;right:calc(env(safe-area-inset-right,0px) + 11px);bottom:calc(env(safe-area-inset-bottom,0px) + 65px);
+ position:absolute;left:auto;right:calc(env(safe-area-inset-right,0px) + 11px + var(--vano-provider-left-shift,28px));bottom:calc(env(safe-area-inset-bottom,0px) + 65px);
  z-index:30;text-decoration:none;font:500 10px/1.1 system-ui,sans-serif;
  color:#485750;background:#fffffff0;border:1px solid #dee8e4;
  border-radius:7px;padding:3px 5px;box-shadow:0 1px 4px #24332918;
@@ -103,5 +103,27 @@
 
 /* Keep mandatory provider marks clear of the wider location card.
    Move the official badges; never resize, hide or cover provider branding. */
-.map-page .mapboxgl-ctrl-bottom-right{right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
-.map-page .leaflet-bottom.leaflet-right{right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+.map-page .mapboxgl-ctrl-bottom-right{right:calc(env(safe-area-inset-right,0px) + 8px + var(--vano-provider-left-shift,28px));bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+.map-page .leaflet-bottom.leaflet-right{right:calc(env(safe-area-inset-right,0px) + 8px + var(--vano-provider-left-shift,28px));bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+
+/* All legal provider marks move together left, without shrinking their labels.
+   On phones, 54px ≈ one and a half finger-widths. */
+.map-page{--vano-provider-left-shift:28px}
+@media(max-width:600px){
+ .map-page{--vano-provider-left-shift:54px}
+ /* The card occupies the bottom-left: raise legal provider credits just above it,
+    rather than letting the new horizontal offset cover location information. */
+ .map-page:not(.in-navigation):not(.has-sheet) .mapboxgl-ctrl-bottom-right,
+ .map-page:not(.in-navigation):not(.has-sheet) .leaflet-bottom.leaflet-right{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 97px)
+ }
+ .map-page:not(.in-navigation):not(.has-sheet) .v40-map-credit{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 137px)
+ }
+ .v40-map-credit{
+  box-sizing:border-box;
+  max-width:calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 82px);
+  text-align:right;
+  overflow-wrap:anywhere
+ }
+}
