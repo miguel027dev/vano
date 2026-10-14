@@ -52,7 +52,7 @@
   left:calc(env(safe-area-inset-left,0px) + 12px);
   bottom:calc(env(safe-area-inset-bottom,0px) + 11px);
   display:flex;align-items:center;gap:12px;
-  width:min(325px,calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 125px));
+  width:min(357px,calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 105px));
   min-width:0;min-height:75px;padding:12px 14px;
   border:1px solid rgba(222,229,221,.96);border-radius:19px;
   background:rgba(255,255,255,.97);color:#26392e;

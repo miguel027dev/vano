@@ -71,7 +71,7 @@ const GLYPHS={
  bus:'<rect x="5" y="3" width="14" height="17" rx="3"/><path d="M7 8h10M8 16h1m6 0h1M7 20v2m10-2v2M9 5h6"/>',
  train:'<rect x="5" y="2" width="14" height="18" rx="4"/><path d="M8 6h8M8 11h8M8 16h1m6 0h1M8 20l-3 3m11-3 3 3"/>',
  railstation:'<rect x="4" y="3" width="16" height="16" rx="3"/><path d="M7 7h10M7 12h10M8 16h1m6 0h1M8 19l-3 4m11-4 3 4"/>',
- plane:'<path d="m22 3-8 8-9-4-2 2 8 6-4 5 1 1 6-4 6 4 2-2-4-9 4-8Z"/>'
+ plane:'<path d="M12 2c1.1 0 1.6 1 1.6 2.5v6.1l7 4.3v2.3l-7-2.4v5.1l2.7 1.5V23L12 21.8 7.7 23v-1.6l2.7-1.5v-5.1l-7 2.4v-2.3l7-4.3V4.5C10.4 3 10.9 2 12 2Z"/>'
 };
 export function iconMeta(type){return ICON_THEME[type]||['alert','#616a70'];}
 export function iconSvg(type){

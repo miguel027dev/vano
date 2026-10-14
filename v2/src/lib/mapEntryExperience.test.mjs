@@ -11,7 +11,7 @@ test('map is always rendered and GPS wait cannot lock the screen behind a grid',
  assert.doesNotMatch(map,/v38-map-first-fix-mask/);
  assert.doesNotMatch(map,/setInitialMapLocated/);
  assert.match(map,/className=\{\`map-container /);
- assert.match(page,/awaitingInitialGps=\{gpsStatus==='checking'&&!validPoint\(origin\)\}/);
+ assert.match(page,/awaitingInitialGps=\{gpsStatus==='checking'&&!validPoint\(displayCoords\)&&!validPoint\(origin\)\}/);
 });
 test('first real GPS camera placement is immediate, with no animated flight from a provisional city',()=>{
  const begin=map.indexOf('function centerOnFirstGpsFix()');
@@ -28,7 +28,7 @@ test('first real GPS camera placement is immediate, with no animated flight from
 });
 test('initial GPS wait does not put a giant warning banner over search',()=>{
  assert.match(page,/!validPoint\(origin\)&&gpsStatus!=='checking'&&<div className="gps-banner"/);
- assert.match(page,/\(validPoint\(userCoords\)\|\|gpsStatus!=='checking'\)&&<div className="v31-location-card"/);
+ assert.match(page,/!pickOriginMode&&<div className="v31-location-card"/);
  assert.match(page,/className="map-search v31-search"/);
 });
 test('arrival dock is reduced in height and desktop width without hiding GPS warnings',()=>{
