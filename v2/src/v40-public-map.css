@@ -38,8 +38,8 @@
 .v40-public-popup small{font-size:11px;color:#66726d}
 .v40-public-popup p{margin:3px 0 0;font-weight:450;font-size:12px;overflow-wrap:anywhere}
 .v40-map-credit{
- position:absolute;left:auto;right:calc(env(safe-area-inset-right,0px) + 11px);bottom:calc(env(safe-area-inset-bottom,0px) + 65px);
- z-index:30;text-decoration:none;font:500 10px/1.1 system-ui,sans-serif;
+ position:absolute;left:auto;right:calc(env(safe-area-inset-right,0px) + 65px);bottom:calc(env(safe-area-inset-bottom,0px) + 65px);
+ z-index:30;text-decoration:none;font:500 9.5px/1.1 system-ui,sans-serif;white-space:nowrap;
  color:#485750;background:#fffffff0;border:1px solid #dee8e4;
  border-radius:7px;padding:3px 5px;box-shadow:0 1px 4px #24332918;
 }
@@ -103,5 +103,6 @@
 
 /* Keep mandatory provider marks clear of the wider location card.
    Move the official badges; never resize, hide or cover provider branding. */
-.map-page .mapboxgl-ctrl-bottom-right{right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
-.map-page .leaflet-bottom.leaflet-right{right:8px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+/* Shift both provider credit groups ~54 CSS px left; keep full legal logos readable. */
+.map-page .mapboxgl-ctrl-bottom-right{right:calc(env(safe-area-inset-right,0px) + 62px);bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
+.map-page .leaflet-bottom.leaflet-right{right:calc(env(safe-area-inset-right,0px) + 62px);bottom:calc(env(safe-area-inset-bottom,0px) + 10px)}
