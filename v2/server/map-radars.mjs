@@ -72,7 +72,7 @@ export function mergeRadarSources(national,international){
 }
 export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS,useSnapshot=true,
  useWorldSnapshot=useSnapshot&&fetcher===fetch,worldFetcher=fetch}={}){
- const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
+ const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox,.3,.3);
  if(!b)throw new RangeError('Radar bounding box inválida');
  if(radarFullyRestrictedBBox(b))return {features:[],source:'VANO Radar Policy',stale:false,coverage:'restricted'};
  // Do not scan the 8,885-point national dataset for viewports outside Brazil.
@@ -88,6 +88,10 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
   const catalog=await queryWorldRadarCatalog(b,{fetcher:worldFetcher,now});
   if(catalog.available)return withNational(catalog);
  }
+ // Legacy public Overpass accepts small boxes only; never send oversized
+ // viewports to an upstream and accidentally stall the map.
+ if(b[2]-b[0]>.065||b[3]-b[1]>.055)return withNational({features:[],source:'OpenStreetMap',
+  stale:true,error:'Catálogo internacional temporariamente indisponível',coverage:'snapshot-unavailable'});
  // Stable ~100 m cells, to reuse results across adjacent camera pans.
  const key=b.map(n=>(Math.round(n*1000)/1000).toFixed(3)).join(',');
  const started=now(),old=cache.get(key);
