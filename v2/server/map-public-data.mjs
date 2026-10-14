@@ -2,6 +2,7 @@
  * For large production demand, import OSM extracts into a managed spatial store.
  * OSM data must remain attributed: https://www.openstreetmap.org/copyright
  */
+import {radarDisplayAllowed} from '../src/lib/radarPolicy.js';
 export const OSM_ATTRIBUTION='© OpenStreetMap contributors (ODbL)';
 export const MAX_FEATURES=180;
 const ENDPOINT='https://overpass-api.de/api/interpreter';
@@ -59,6 +60,7 @@ export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
   const kind=classifyOsm(el.tags||{});if(!kind)continue;
   const lon=Number(el.lon??el.center?.lon),lat=Number(el.lat??el.center?.lat);
   if(!finite(lon)||!finite(lat)||Math.abs(lon)>180||Math.abs(lat)>90)continue;
+  if(kind[0]==='radar'&&!radarDisplayAllowed([lon,lat]))continue;
   const id='osm-'+el.type+'-'+el.id;if(seen.has(id))continue;seen.add(id);
   const tags=el.tags||{};
   items.push({id,type:kind[0],coords:[lon,lat],priority:kind[1],name:safeTag(tags.name)||kind[2],
