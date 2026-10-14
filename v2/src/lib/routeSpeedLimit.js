@@ -1,7 +1,7 @@
 /** Only reveal the Mapbox-reported limit for the current GPS-matched segment.
  * No speed estimates from road class, navigation ETA, or known radar limits.
  */
-import {nearestOnRoute,validPoint} from './navigationMotion.js';
+import {nearestOnRoute,validPoint,metersBetween} from './navigationMotion.js';
 /** The original VANO routing engine sometimes supplies an explicit limit
  * sign per maneuver step. Treat it as provider metadata only on that step's
  * matched portion of the same route, never as a neighborhood default.
@@ -28,7 +28,12 @@ function stepSpeedLimitAtIndex(route,currentIndex){
    if(!validPoint(step?.location))continue;
    const at=nearestOnRoute(step.location,geometry);
    if(!Number.isFinite(at.distance)||at.distance>25)continue;
-   matched.push({index:at.index,limit:speedLimitFromStepSign(step)});
+   // The snapped maneuver vertex belongs to the NEXT segment, not the
+   // preceding one. Otherwise a new street limit leaks backwards at a turn.
+   const nextIndex=at.index+1;
+   const segmentIndex=nextIndex<geometry.coordinates.length-1&&
+     metersBetween(step.location,geometry.coordinates[nextIndex])<=2?nextIndex:at.index;
+   matched.push({index:segmentIndex,limit:speedLimitFromStepSign(step)});
   }
   matched.sort((a,b)=>a.index-b.index);
   matchedStepCache.set(route,matched);
