@@ -61,6 +61,7 @@ test('a failed first source switches to the next validated provider',async()=>{
 test('source snapshot integration does not require Overpass on every map request',()=>{
  const server=fs.readFileSync(new URL('./map-radars.mjs',import.meta.url),'utf8');
  assert.match(server,/queryRadarSnapshot\(b\)/);
- assert.match(server,/if\(snapshot\)/);
+ assert.match(server,/if\(snapshot&&entirelyBrazilCore\(b\)\)/);
+ assert.match(server,/mergeRadarSources\(national,result\)/);
  assert.match(server,/coverage/);
 });
