@@ -36,7 +36,7 @@ test('fallback succeeds when the primary endpoint fails',async()=>{
   return {ok:true,json:async()=>({elements:[camera(53)]})};
  };
  const result=await queryPublicRadars([-46.812,-23.711,-46.801,-23.701],
-  {fetcher,now:()=>100000,servers:['https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.private.coffee/api/interpreter']});
+  {fetcher,now:()=>100000,useSnapshot:false,servers:['https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.private.coffee/api/interpreter']});
  assert.equal(calls,2);
  assert.equal(result.features[0].type,'radar');
  assert.equal(result.stale,false);
@@ -45,7 +45,7 @@ test('successful speed-camera lookup is cached and not queried on every pan',asy
  let calls=0;
  const fetcher=async()=>{calls++;return {ok:true,json:async()=>({elements:[camera(62)]})};};
  const bb=[-46.902,-23.745,-46.891,-23.733];
- const opts={fetcher,now:()=>120000,servers:[RADAR_OVERPASS_SERVERS[0]]};
+ const opts={fetcher,now:()=>120000,useSnapshot:false,servers:[RADAR_OVERPASS_SERVERS[0]]};
  const a=await queryPublicRadars(bb,opts);
  const b=await queryPublicRadars(bb,opts);
  assert.equal(a.features.length,1);
@@ -56,7 +56,7 @@ test('failed radar host never fabricates results and is negatively cached',async
  let calls=0;
  const fetcher=async()=>{calls++;throw Error('simulated radar outage');};
  const bb=[-46.982,-23.845,-46.971,-23.832];
- const opts={fetcher,now:()=>130000,servers:[RADAR_OVERPASS_SERVERS[0],RADAR_OVERPASS_SERVERS[1]]};
+ const opts={fetcher,now:()=>130000,useSnapshot:false,servers:[RADAR_OVERPASS_SERVERS[0],RADAR_OVERPASS_SERVERS[1]]};
  const first=await queryPublicRadars(bb,opts);
  const next=await queryPublicRadars(bb,opts);
  assert.deepEqual(first.features,[]);
