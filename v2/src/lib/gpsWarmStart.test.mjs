@@ -62,6 +62,6 @@ test('provider credits remain legible and airport glyph is symmetrical',()=>{
  const icons=readFileSync(new URL('./mapPublicIcons.js',import.meta.url),'utf8');
  assert.match(css,/\.v40-map-credit\{[\s\S]*?left:auto;right:/);
  assert.match(css,/\.mapboxgl-ctrl-bottom-right/);
- assert.match(map,/attributionControl:true,logoPosition:'bottom-right'/);
+ assert.match(map,/attributionControl:true,logoPosition:'bottom-left'/);
  assert.match(icons,/plane:'<path d="M12 2c1\.1 0/);
 });
