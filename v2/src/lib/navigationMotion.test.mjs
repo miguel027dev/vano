@@ -32,3 +32,19 @@ test('free driving camera centers without inventing a route or GPS heading',()=>
  assert.deepEqual(accessible.center,gps);
  assert.equal(accessible.pitch,0);
 });
+
+test('optional V2 camera widens the road preview and preserves the original defaults',()=>{
+ const point=[-46.68,-23.58],telemetry={speed:12,heading:90,accuracy:8};
+ const route={geometry:{type:'LineString',coordinates:[point,[-46.67,-23.58]]}};
+ const normal=cameraTarget({navigation:true,position:point,route,telemetry});
+ const explicitOff=cameraTarget({navigation:true,position:point,route,telemetry,experimentalCameraV2:false});
+ const experimental=cameraTarget({navigation:true,position:point,route,telemetry,experimentalCameraV2:true});
+ assert.deepEqual(explicitOff,normal,'V2 off is bit-for-bit the existing camera policy');
+ assert.ok(experimental.zoom<normal.zoom,'the map is slightly zoomed out');
+ assert.ok(experimental.pitch>normal.pitch,'the viewing angle opens subtly');
+ assert.ok(experimental.center[0]>normal.center[0],'the camera looks further down the route');
+ assert.equal(experimental.bearing,normal.bearing,'the navigation direction is unchanged');
+ assert.deepEqual(point,[-46.68,-23.58],'the real GPS position is untouched');
+ const constrained=cameraTarget({navigation:true,position:point,route,telemetry,experimentalCameraV2:true,viewportClearancePx:0});
+ assert.deepEqual(constrained.center,point,'V2 still obeys safe viewport bounds');
+});
