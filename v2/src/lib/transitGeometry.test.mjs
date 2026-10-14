@@ -11,7 +11,7 @@ const itinerary={legs:[
  {transit:true,mode:'metro',line:'Linha 4',lineColor:'#FFD600',from:{coords:stop,name:'Parada Central'},to:{coords:end,name:'Estação final'},geometryEncoded:null}
 ]};
 test('polyline decoding uses provider-supplied geometry and rejects invalid coordinate data',()=>{
- const decoded=decodeTransitPolyline('_p~iF~ps|U_ulLnnqC_mqNvxq');
+ const decoded=decodeTransitPolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@');
  assert.deepEqual(decoded,[start,stop,end]);
  assert.deepEqual(decodeTransitPolyline('invalid&polyline'),[]);
  assert.deepEqual(decodeTransitPolyline(null),[]);
