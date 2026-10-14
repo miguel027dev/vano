@@ -4,8 +4,8 @@ import {readFileSync} from 'node:fs';
 const css=readFileSync(new URL('../v31-map-address.css',import.meta.url),'utf8');
 const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
 const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
-test('provider badges move bottom-right; the left location card stays separate',()=>{
- assert.match(map,/attributionControl:true,logoPosition:'bottom-right'/);
+test('provider badges move lower-left beneath the location card',()=>{
+ assert.match(map,/attributionControl:true,logoPosition:'bottom-left'/);
  assert.match(css,/left:calc\(env\(safe-area-inset-left,0px\) \+ 12px\)/);
  assert.match(css,/bottom:calc\(env\(safe-area-inset-bottom,0px\) \+ 11px\)/);
  assert.match(css,/bottom:calc\(env\(safe-area-inset-bottom,0px\) \+ 10px\)/);
