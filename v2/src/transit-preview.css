@@ -68,3 +68,126 @@
 .vt-delay-note{color:#ac552c;font-weight:750}
 .vt-fare-explanation{background:#f4f7f7;border:1px solid #e9eded;color:#526772;padding:10px 11px;border-radius:11px;font-size:.72rem;line-height:1.45;margin:0 0 13px}
 @media(max-width:360px){.vt-preference-tabs button{padding:11px;min-height:105px}.vt-preference-tabs button strong{font-size:.81rem}}
+
+
+/* FULL-MAP ROUTE PREVIEW — owned by VANO Transit, not the car navigation UI.
+   Mobile grid: 64px header, 12px top margin, <=150px summary,
+   map continuously framed above a ~220px dock. Safe areas respected. */
+.vt-page-preview{height:100dvh;overflow:hidden;background:#dfe8e8}
+.vt-page-preview .vt-header{height:64px;background:#141f2a;color:#fff;border:0;position:relative;z-index:12}
+.vt-page-preview .vt-back{color:#fff;background:#28343e;border-color:#40505b}
+.vt-page-preview .vt-header-tag{color:#e3e7e9}
+.vt-preview-stage{position:relative;height:calc(100dvh - 64px);min-height:0;overflow:hidden;background:#dbe3e7}
+.vt-preview-stage .vano-transit-map{inset:0}
+.vt-preview-stage .mapboxgl-ctrl-bottom-left,.vt-preview-stage .mapboxgl-ctrl-bottom-right{
+ bottom:calc(env(safe-area-inset-bottom,0px) + 219px);z-index:2;
+}
+.vt-preview-top{position:absolute;z-index:5;top:12px;left:50%;transform:translateX(-50%);
+ width:calc(100% - 24px);max-width:760px;background:#17222ff2;color:#fff;border:1px solid #ffffff24;
+ border-radius:20px;padding:16px 17px 13px;box-shadow:0 11px 37px #07121e48;
+ display:grid;grid-template-columns:minmax(0,1fr) 65px;gap:9px 12px;
+ animation:vt-preview-reveal .32s cubic-bezier(.2,.8,.2,1) both;
+}
+.vt-preview-location{min-width:0;display:flex;flex-direction:column;gap:9px}
+.vt-preview-location>div{display:flex;align-items:center;gap:11px;min-width:0}
+.vt-preview-location strong{font-size:.9rem;font-weight:770;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vt-preview-marker{display:grid;place-items:center;width:24px;height:24px;min-width:24px;border-radius:50%;
+ font-size:.71rem;font-weight:900;background:#e96732;color:#fff;box-shadow:0 0 0 2px #ffffff22}
+.vt-preview-marker.is-a{background:#fcfdff;color:#1b2933}
+.vt-preview-edit{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+ border:1px solid #ffffff35;border-radius:13px;color:#fff;font-weight:750;font-size:.65rem}
+.vt-preview-edit:hover{background:#ffffff13}
+.vt-preview-top-metrics{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:7px;padding-top:12px;border-top:1px solid #ffffff24;margin-top:3px}
+.vt-preview-top-metrics span{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;
+ font-size:.66rem;line-height:1.35;color:#c4ced5;text-align:center;border-right:1px solid #ffffff16}
+.vt-preview-top-metrics span:last-child{border-right:0}
+.vt-preview-top-metrics strong{font-size:.78rem;color:#fff;font-weight:850}
+.vt-preview-map-actions{position:absolute;z-index:5;right:16px;top:clamp(182px,32%,285px);
+ display:flex;flex-direction:column;gap:9px}
+.vt-preview-map-actions button{display:grid;place-items:center;background:#18232fef;color:#fff;
+ border:1px solid #ffffff30;border-radius:50%;width:46px;height:46px;
+ box-shadow:0 4px 12px #10182444}
+.vt-preview-map-actions button:active{transform:scale(.96)}
+.vt-preview-dock{position:absolute;z-index:7;left:50%;bottom:0;transform:translateX(-50%);
+ width:100%;max-width:850px;background:#131d29f9;color:#fff;
+ border-radius:25px 25px 0 0;padding:9px 20px calc(env(safe-area-inset-bottom,0px) + 19px);
+ box-shadow:0 -9px 35px #0d182a44;
+ animation:vt-dock-in .36s cubic-bezier(.2,.8,.2,1) both;
+}
+.vt-preview-dock-handle{width:46px;height:4px;border-radius:9px;background:#69747d;margin:0 auto 16px}
+.vt-preview-dock-top{display:grid;grid-template-columns:1fr 1.25fr 1fr 75px;align-items:center;gap:7px}
+.vt-preview-dock-top>div{min-width:0;border-right:1px solid #ffffff25;padding:0 4px}
+.vt-preview-dock-top>div:nth-child(3){border-right:0}
+.vt-preview-dock-top strong{display:block;font-size:clamp(1.05rem,3.6vw,1.5rem);line-height:1.15;
+ font-weight:850;letter-spacing:-.04em;white-space:nowrap}
+.vt-preview-dock-top small{display:block;margin-top:4px;font-size:.69rem;color:#bdc6cd;white-space:nowrap}
+.vt-preview-details-btn{display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;
+ height:55px;padding:3px;border:1px solid #ffffff42;border-radius:14px;color:#fff;font-size:.69rem;font-weight:750}
+.vt-preview-details-btn:hover{background:#ffffff15}
+.vt-preview-sequence{display:flex;gap:8px;align-items:center;margin-top:17px;overflow-x:auto;
+ scroll-snap-type:x proximity;overscroll-behavior-x:contain;padding:0 0 7px;scrollbar-width:thin}
+.vt-preview-chip{display:flex;align-items:center;gap:7px;flex:none;scroll-snap-align:start;max-width:162px;min-width:62px}
+.vt-preview-chip-icon{display:grid;place-items:center;color:#fff;background:var(--vt-chip,#708391);
+ width:31px;height:31px;min-width:31px;border-radius:9px}
+.vt-preview-chip-label{min-width:0;display:flex;flex-direction:column;gap:4px}
+.vt-preview-chip strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ font-size:.73rem;font-weight:790}
+.vt-preview-chip small{color:#b8c3cb;font-size:.65rem}
+.vt-preview-seq-arrow{color:#a4b0b9;flex-shrink:0}
+.vt-preview-footer-note{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;
+ color:#b1bac3;font-size:.65rem;padding-top:12px;margin-top:6px;border-top:1px solid #ffffff1c}
+.vt-preview-dock.is-expanded{max-height:min(73dvh,675px);display:flex;flex-direction:column}
+.vt-preview-dock.is-expanded .vt-preview-expanded{min-height:0;overflow-y:auto;overscroll-behavior:contain;margin-top:13px;
+ padding-bottom:10px;border-top:1px solid #ffffff29;scrollbar-color:#62707a transparent}
+.vt-preview-expanded h2{color:#fff;font-size:.9rem;margin:18px 0 12px}
+.vt-preview-leg{display:flex;gap:12px;margin:0 0 15px}
+.vt-preview-leg-icon{display:grid;place-items:center;flex:none;width:30px;height:30px;
+ background:var(--vt-chip,#617587);border-radius:9px}
+.vt-preview-leg>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.vt-preview-leg strong{font-size:.77rem}.vt-preview-leg small{color:#bbc6ce;font-size:.71rem;line-height:1.45}
+.vt-preview-expanded p{color:#bfc9d0;font-size:.69rem;line-height:1.45}
+.vt-preview-alternatives{display:flex;flex-wrap:wrap;gap:9px}
+.vt-preview-alternatives h2{width:100%}
+.vt-preview-alternatives button{background:#24303c;border:1px solid #ffffff20;border-radius:12px;color:#fff;
+ display:flex;gap:7px;flex-direction:column;text-align:left;padding:11px 15px;min-width:108px}
+.vt-preview-alternatives button.is-selected{border-color:#ec8755;background:#37291e}
+.vt-preview-alternatives button span,.vt-preview-alternatives button small{font-size:.68rem;color:#c2cbd2}
+.vt-preview-alternatives button strong{font-size:1.08rem}
+@keyframes vt-preview-reveal{from{opacity:0;translate:0 -8px}to{opacity:1;translate:0 0}}
+@keyframes vt-dock-in{from{opacity:.3;translate:0 18px}to{opacity:1;translate:0 0}}
+@media(min-width:901px){
+ .vt-preview-top{top:20px}
+ .vt-preview-dock{border-radius:25px 25px 0 0}
+}
+@media(max-width:520px){
+ .vt-preview-top{border-radius:19px;padding:13px 14px 11px;top:10px}
+ .vt-preview-location strong{font-size:.84rem}
+ .vt-preview-top-metrics strong{font-size:.75rem}
+ .vt-preview-dock{padding-left:16px;padding-right:16px}
+ .vt-preview-dock-top{grid-template-columns:1fr 1.2fr .8fr 59px;gap:4px}
+ .vt-preview-dock-top strong{font-size:clamp(.98rem,4.3vw,1.33rem)}
+ .vt-preview-dock-top small{font-size:.63rem}
+ .vt-preview-details-btn{height:48px;font-size:.62rem}
+ .vt-preview-map-actions{right:12px;top:clamp(180px,32%,245px)}
+ .vt-preview-map-actions button{width:43px;height:43px}
+ .vt-preview-stage .mapboxgl-ctrl-bottom-left,.vt-preview-stage .mapboxgl-ctrl-bottom-right{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 224px)
+ }
+}
+@media(max-width:340px){
+ .vt-preview-top-metrics{gap:3px}
+ .vt-preview-top-metrics span{font-size:.58rem}
+ .vt-preview-dock-top{grid-template-columns:1fr 1fr .75fr 54px}
+ .vt-preview-dock-top strong{font-size:.96rem}
+}
+@media(max-height:610px){
+ .vt-preview-map-actions{top:47%;right:9px}
+ .vt-preview-top{padding-top:10px;padding-bottom:10px}
+ .vt-preview-location{gap:5px}
+ .vt-preview-dock-handle{margin-bottom:8px}
+ .vt-preview-sequence{margin-top:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .vt-preview-top,.vt-preview-dock{animation:none}
+}
