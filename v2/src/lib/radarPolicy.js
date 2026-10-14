@@ -34,8 +34,9 @@ function inPolygon(lon,lat,points){
 export function radarRestrictedRegion(coords){
  if(!Array.isArray(coords)||!coords.every(Number.isFinite))return null;
  const [lon,lat]=coords;
- for(const [country,polygons]of Object.entries(RESTRICTED)){
-  if(polygons.some(poly=>inPolygon(lon,lat,poly)))return country;
+ // Swiss border areas have priority over neighbouring simplified outlines.
+ for(const country of ['CH','DE','FR']){
+  if(RESTRICTED[country].some(poly=>inPolygon(lon,lat,poly)))return country;
  }
  return null;
 }
