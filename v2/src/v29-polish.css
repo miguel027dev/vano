@@ -38,3 +38,21 @@
   box-shadow:0 0 0 2px #ee875f35,0 4px 18px #1e2b3224;
 }
 .map-page .v2-camera-toggle:focus-visible{outline:3px solid #ee875f;outline-offset:3px}
+
+/* Beta transport planner entry; only mounted when VITE_TRANSIT_PREVIEW=1. */
+.map-page .v49-transit-entry{
+  display:flex;align-items:center;gap:12px;padding:11px 13px;margin-top:11px;
+  background:#f9faf9;border:1px solid #e9eae8;border-radius:15px;color:#273139;
+  text-decoration:none;transition:background .18s,border-color .18s;
+}
+.map-page .v49-transit-entry:hover{background:#fff4ec;border-color:#edb08c}
+.map-page .v49-transit-entry-icon{
+  width:38px;height:38px;min-width:38px;border-radius:11px;
+  display:grid;place-items:center;background:#fff0e5;color:#d65d27;
+}
+.map-page .v49-transit-entry>span:nth-child(2){flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.map-page .v49-transit-entry strong{font-size:.84rem;font-weight:850;line-height:1.2}
+.map-page .v49-transit-entry strong small{font-size:.59rem;padding:3px 5px;border-radius:5px;background:#fce7d8;color:#b25026;vertical-align:middle}
+.map-page .v49-transit-entry em{font-size:.72rem;font-style:normal;color:#73808a}
+.map-page .v49-transit-entry-arrow{color:#9da6ab;flex-shrink:0}
+@media(prefers-reduced-motion:reduce){.map-page .v49-transit-entry{transition:none}}
