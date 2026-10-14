@@ -45,11 +45,29 @@ function stepsOf(route){
     lanes:(s.intersections||[]).find(i=>Array.isArray(i.lanes))?.lanes?.slice(0,8).map(x=>({valid:x.valid===true,indications:Array.isArray(x.indications)?x.indications.slice(0,4):[]}))||[]
   }))).slice(0,700);
 }
+/** Mapbox maxspeed annotations are aligned to each pair of route geometry
+ * coordinates. Unknown/advisory-free segments remain null, never estimated. */
+export function routePostedSpeedLimits(route){
+ const coords=route?.geometry?.coordinates,legs=route?.legs;
+ if(!Array.isArray(coords)||coords.length<2||coords.length>16000||
+    !Array.isArray(legs)||legs.length!==1)return null;
+ const entries=legs[0]?.annotation?.maxspeed;
+ if(!Array.isArray(entries)||entries.length!==coords.length-1)return null;
+ const values=entries.map(entry=>{
+   if(!entry||entry.unknown===true||entry.none===true)return null;
+   const speed=entry.speed,unit=entry.unit;
+   if(typeof speed!=='number'||!Number.isFinite(speed)||speed<5||speed>160)return null;
+   const kmh=unit==='km/h'?speed:unit==='mph'?speed*1.609344:null;
+   return kmh!==null&&kmh>=10&&kmh<=160?Math.round(kmh):null;
+ });
+ return values.some(value=>value!==null)?values:null;
+}
+
 function present(route,id){
   return {id,label:id==='fast'?'Mais rápida':'Mais segura',
     duration:Math.max(1,Math.round(route.duration/60)),
     distance:Math.round(route.distance/100)/10,
-    geometry:route.geometry,steps:stepsOf(route),verifiedSafety:false,
+    geometry:route.geometry,steps:stepsOf(route),speedLimits:routePostedSpeedLimits(route),verifiedSafety:false,
     microRoute:route._microRoute===true,microStrategy:route._microStrategy||'',
     etaGainSeconds:route._etaGainSeconds||0,
     trafficScore:Math.round(traffic(route).score*10)/10,
