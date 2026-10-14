@@ -39,7 +39,11 @@ if (fs.existsSync(envFile)) for (const line of fs.readFileSync(envFile, 'utf8').
 const renderWeb = process.env.RENDER === 'true' && process.env.RENDER_SERVICE_TYPE === 'web';
 const production = process.env.NODE_ENV === 'production' || renderWeb;
 const origin = process.env.VANO_PUBLIC_ORIGIN || '';
-const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.VANO_EMAIL_FROM);
+// Email delivery is an optional subsystem: map, OAuth and routing stay available.
+ // Password signup still requires a verified sender and a real email provider.
+const mailReady = Boolean(process.env.RESEND_API_KEY?.trim() &&
+  !process.env.RESEND_API_KEY.startsWith('REPLACE_') &&
+  process.env.VANO_EMAIL_FROM?.includes('@'));
 const startupMs = Date.now();
 const SESSION_MAX_AGE=90*86400;
 const runtimeMetrics = { requests:0,routeRequests:0,routeErrors:0,routeLatencyMs:0,pageViews:Object.create(null) };
@@ -52,7 +56,7 @@ if (production) {
   if (!origin || publicUrl.protocol !== 'https:' || publicUrl.origin !== origin || publicUrl.username || publicUrl.password) throw Error('Produção exige VANO_PUBLIC_ORIGIN=https://seu-dominio');
   if (!process.env.VANO_SECURITY_SECRET || process.env.VANO_SECURITY_SECRET.length < 32) throw Error('Produção exige VANO_SECURITY_SECRET com no mínimo 32 caracteres.');
   if (!process.env.DATABASE_URL && process.env.VANO_ALLOW_SINGLE_INSTANCE_JSON !== '1') throw Error('Produção exige DATABASE_URL PostgreSQL ou autorização explícita de JSON single-instance.');
-  if (!mailReady || process.env.RESEND_API_KEY.startsWith('REPLACE_') || !process.env.VANO_EMAIL_FROM.includes('@')) throw Error('Produção exige e-mail verificado: RESEND_API_KEY e VANO_EMAIL_FROM reais.');
+  if (!mailReady) console.warn('VANO e-mail: serviço indisponível; cadastro por e-mail desativado até configurar Resend. Login Google permanece habilitado.');
   if (process.env.VANO_SECURITY_SECRET.startsWith('REPLACE_')) throw Error('Substitua o segredo de exemplo antes da produção.');
   if (!process.env.VITE_MAPBOX_PUBLIC_TOKEN?.startsWith('pk.')) throw Error('Produção exige token público Mapbox válido no build e no servidor.');
   if(process.env.VANO_V1_API_URL){
@@ -579,6 +583,9 @@ async function route(req, res) {
   }
   if (pathname === '/api/auth/signup' && req.method === 'POST') {
     if (!limits(req,res,'signup',5,3600000)) return;
+    // Fail closed: never create an unverified account or an unreachable
+    // verification token in production when email delivery is unavailable.
+    if (production && !mailReady) return err(res,503,'Cadastro por e-mail temporariamente indisponível. Entre com o Google.');
     const body=await getBody(req),em=normEmail(body.email);
     if (!limitAccount(res,'signup',em,3,3600000)) return;
     if(body.language!==undefined&&!LANGUAGES.has(body.language))return err(res,400,'Idioma inválido.');
