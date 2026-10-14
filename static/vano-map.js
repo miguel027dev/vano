@@ -885,11 +885,42 @@ async function searchPlaces(q,kind){
 }
 
 
-const VANO_MAP_ICONS={destination:'destination.svg',traffic:'traffic.svg',signal:'traffic-signal.svg',stop:'stop-sign.svg',yield:'yield-sign.svg',roadsign:'road-sign.svg',radar:'speed-camera.svg',alertAccident:'alert-accident-premium.png',alertTraffic:'/static/icons/vano/reports/report-traffic.png',alertBlock:'/static/icons/vano/reports/report-roadblock.png',alertRadar:'/static/icons/vano/reports/report-radar.png',alertHazard:'alert-hazard.svg',alertPothole:'alert-pothole.svg',alertStoppedVehicle:'alert-stopped-vehicle.svg',alertObjectRoad:'alert-object-road.svg',alertBrokenSignal:'alert-broken-signal.svg',alertFlood:'alert-flood.svg',alertConstruction:'alert-construction.svg',alertCrowd:'alert-crowd.svg',alertRobbery:'alert-robbery-premium.png',alertPolice:'/static/icons/vano/reports/report-police.png',alertSecurity:'alert-security.svg',alertLight:'alert-light.svg',alertGeneric:'alert-generic.svg',pedestrianCrossing:'poi-pedestrian-crossing.svg',parking:'poi-parking.svg',railwayCrossing:'poi-railway-crossing.svg',bank:'poi-bank.svg'};
+const VANO_MAP_ICONS={destination:'destination.svg',traffic:'traffic.svg',signal:'traffic-signal.svg',stop:'stop-sign.svg',yield:'yield-sign.svg',roadsign:'road-sign.svg',radar:'speed-camera.svg',alertAccident:'alert-accident-premium.png',alertTraffic:'/static/icons/vano/reports/report-traffic.png',alertBlock:'/static/icons/vano/reports/report-roadblock.png',alertRadar:'/static/icons/vano/reports/report-radar.png',alertHazard:'alert-hazard.svg',alertPothole:'alert-pothole.svg',alertStoppedVehicle:'alert-stopped-vehicle.svg',alertObjectRoad:'alert-object-road.svg',alertBrokenSignal:'alert-broken-signal.svg',alertFlood:'alert-flood.svg',alertConstruction:'alert-construction.svg',alertCrowd:'alert-crowd.svg',alertRobbery:'alert-robbery-premium.png',alertPolice:'/static/icons/vano/reports/report-police.png',alertSecurity:'alert-security.svg',alertLight:'alert-light.svg',alertGeneric:'alert-generic.svg',pedestrianCrossing:'poi-pedestrian-crossing.svg',parking:'poi-parking.svg',railwayCrossing:'poi-railway-crossing.svg',bank:'poi-bank.svg',market:'poi-market.svg',supermarket:'poi-supermarket.svg',mall:'poi-mall.svg',evCharge:'poi-ev-charge.svg',evStation:'poi-ev-station.svg',carwash:'poi-carwash.svg',hotel:'poi-hotel.svg',school:'poi-school.svg',fitness:'poi-fitness.svg',park:'poi-park.svg',petShop:'poi-pet-shop.svg',post:'poi-post.svg',pharmacy:'poi-pharmacy.svg',restaurant:'poi-restaurant.svg',fastFood:'poi-fast-food.svg',cafe:'poi-cafe.svg',busTerminal:'poi-bus-terminal.svg',trainStation:'poi-train-station.svg',railwayStation:'poi-railway-station.svg',airport:'poi-airport.svg'};
 function loadSparkSvg(name,file){return new Promise(resolve=>{if(map.hasImage(name)){resolve();return}const img=new Image();img.onload=()=>{try{if(!map.hasImage(name))map.addImage(name,img,{pixelRatio:name==='vano-signal'?1.55:2})}catch{}resolve()};img.onerror=()=>resolve();img.src=String(file||'').startsWith('/')?file:'/static/icons/vano/'+file})}
 async function registerSparkMapIcons(){await Promise.all(Object.entries(VANO_MAP_ICONS).map(([name,file])=>loadSparkSvg('vano-'+name,file)))}
 function roadControlIconExpr(){return ['match',['get','type'],'speed_camera','vano-radar','traffic_signal','vano-signal','stop_sign','vano-stop','yield_sign','vano-yield','traffic_sign','vano-roadsign','vano-signal']}
 function secondaryRoadControlIconExpr(){return ['match',['get','type'],'railway_crossing','vano-railwayCrossing','pedestrian_crossing','vano-pedestrianCrossing','vano-pedestrianCrossing']}
+
+/* VANO secondary map POIs: Mapbox Streets v8 categories, with explicit subtype gates
+   for classes that share a generic Maki icon. No location sampling or HTML overlays. */
+const VANO_POI_MAKI=['bank','parking','parking-garage','grocery','convenience','charging-station','restaurant','restaurant-noodle','restaurant-pizza','restaurant-seafood','fast-food','cafe','school','pharmacy','post','fitness-centre','park','lodging'];
+const VANO_POI_DETAILS=['downcase',['concat',['to-string',['coalesce',['get','type'],'']],' ',['to-string',['coalesce',['get','category_en'],'']]]];
+function vanoPoiDetailsMatch(words){return ['any',...words.map(w=>['in',w,VANO_POI_DETAILS])]}
+const VANO_POI_SPECIAL=[
+  [vanoPoiDetailsMatch(['pet shop','pet store','pet supplies','petshop']),'vano-petShop'],
+  [vanoPoiDetailsMatch(['car wash','carwash','lava-rápido','lava rapido','lavagem automotiva']),'vano-carwash'],
+  [vanoPoiDetailsMatch(['shopping mall','shopping centre','shopping center','shopping centre','shopping mall','mall']),'vano-mall'],
+  [['all',['==',['get','maki'],'grocery'],vanoPoiDetailsMatch(['supermarket','hypermarket','supermercado'])],'vano-supermarket'],
+  [['all',['==',['get','maki'],'charging-station'],vanoPoiDetailsMatch(['charging point','electric charger','carregador'])],'vano-evCharge']
+];
+function vanoPoiIconExpr(){
+  const values=[];
+  for(const [condition,icon] of VANO_POI_SPECIAL)values.push(condition,icon);
+  return ['case',...values,
+    ['match',['get','maki'],
+      'bank','vano-bank','parking','vano-parking','parking-garage','vano-parking',
+      'grocery','vano-market','convenience','vano-market',
+      'charging-station','vano-evStation',
+      'restaurant','vano-restaurant','restaurant-noodle','vano-restaurant','restaurant-pizza','vano-restaurant','restaurant-seafood','vano-restaurant',
+      'fast-food','vano-fastFood','cafe','vano-cafe',
+      'school','vano-school','pharmacy','vano-pharmacy','post','vano-post',
+      'fitness-centre','vano-fitness','park','vano-park','lodging','vano-hotel',
+      'vano-market']];
+}
+function vanoPoiFilterExpr(){
+  return ['any',['in',['get','maki'],['literal',VANO_POI_MAKI]],...VANO_POI_SPECIAL.map(item=>item[0])];
+}
+
 function alertIconExpr(){return ['match',['get','category'],'robbery','vano-alertRobbery','harassment','vano-alertSecurity','poor_lighting','vano-alertLight','accident','vano-alertAccident','traffic','vano-alertTraffic','road_block','vano-alertBlock','blitz','vano-alertPolice','speed_camera','vano-alertRadar','road_hazard','vano-alertHazard','pothole','vano-alertPothole','stopped_vehicle','vano-alertStoppedVehicle','object_on_road','vano-alertObjectRoad','broken_signal','vano-alertBrokenSignal','flood','vano-alertFlood','construction','vano-alertConstruction','crowd','vano-alertCrowd','vano-alertGeneric']}
 
 let lastPresenceSyncAt=0,lastNearbyFetchAt=0,nearbyController=null,lastNearbyDriversCount=0;
@@ -995,22 +1026,46 @@ async function installRuntimeLayers(){
   ensureLayer({id:'alerts-marker-symbol',type:'symbol',source:'alerts',filter:unclustered,minzoom:10.8,layout:{'icon-image':alertIconExpr(),'icon-size':['interpolate',['linear'],['zoom'],10.8,.38,13,.47,16,.60,18,.69],'icon-allow-overlap':true,'icon-ignore-placement':true,'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport'}},routeBefore);
   ensureGeoSource('support-points');
   ensureGeoSource('road-controls');
-  // POIs from Streets v8, limited to approved bank and parking glyphs.
+  // Secondary POIs: vector-native, collision-aware, rendered with the same SVG system.
   if(!map.getSource('vano-secondary-pois')){
     try{map.addSource('vano-secondary-pois',{type:'vector',url:'mapbox://mapbox.mapbox-streets-v8'})}
     catch(e){console.debug('[VANO MAPS:secondary-pois]',e)}
   }
-  if(map.getSource('vano-secondary-pois'))ensureLayer({
-    id:'vano-secondary-pois-icons',type:'symbol',source:'vano-secondary-pois','source-layer':'poi_label',minzoom:14.8,
-    filter:['in',['get','maki'],['literal',['parking','parking-garage','bank']]],
-    layout:{
-      'icon-image':['match',['get','maki'],'bank','vano-bank','parking','vano-parking','parking-garage','vano-parking','vano-parking'],
-      'icon-size':['interpolate',['linear'],['zoom'],14.8,.58,16,.72,18,.80],
-      'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
-      'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':4,
-      'symbol-sort-key':['match',['get','maki'],'parking',3,'parking-garage',3,'bank',2,1]
-    }
-  },'route-shadow');
+  if(map.getSource('vano-secondary-pois')){
+    ensureLayer({
+      id:'vano-secondary-pois-icons',type:'symbol',source:'vano-secondary-pois','source-layer':'poi_label',minzoom:14.8,
+      filter:vanoPoiFilterExpr(),
+      layout:{
+        'icon-image':vanoPoiIconExpr(),
+        'icon-size':['interpolate',['linear'],['zoom'],14.8,.52,16,.67,18,.77],
+        'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
+        'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':5,
+        'symbol-sort-key':['match',['get','maki'],'pharmacy',1,'school',2,'bank',3,'parking',3,'parking-garage',3,'charging-station',4,'grocery',5,'restaurant',7,6]
+      }
+    },'route-shadow');
+    // A terminal is a station, not every local bus stop.
+    ensureLayer({
+      id:'vano-secondary-transit-icons',type:'symbol',source:'vano-secondary-pois','source-layer':'transit_stop_label',minzoom:13.5,
+      filter:['any',
+        ['all',['==',['get','maki'],'bus'],['==',['get','stop_type'],'station']],
+        ['in',['get','maki'],['literal',['rail','rail-light','rail-metro']]]],
+      layout:{
+        'icon-image':['match',['get','maki'],'bus','vano-busTerminal','rail','vano-railwayStation','rail-light','vano-trainStation','rail-metro','vano-trainStation','vano-trainStation'],
+        'icon-size':['interpolate',['linear'],['zoom'],13.5,.48,16,.66,18,.77],
+        'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
+        'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':5
+      }
+    },'route-shadow');
+    ensureLayer({
+      id:'vano-secondary-airport-icons',type:'symbol',source:'vano-secondary-pois','source-layer':'airport_label',minzoom:11.5,
+      filter:['==',['get','maki'],'airport'],
+      layout:{
+        'icon-image':'vano-airport','icon-size':['interpolate',['linear'],['zoom'],11.5,.42,14,.55,18,.72],
+        'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
+        'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':5
+      }
+    },'route-shadow');
+  }
   ensureLayer({id:'road-controls-pulse',type:'circle',source:'road-controls',minzoom:11.8,filter:['in',['get','type'],['literal',['speed_camera','traffic_signal','stop_sign','yield_sign','traffic_sign']]],layout:{'circle-pitch-alignment':'viewport'},paint:{'circle-radius':['case',['==',['get','type'],'speed_camera'],['interpolate',['linear'],['zoom'],11.8,5.5,15.5,8,18,9],['interpolate',['linear'],['zoom'],11.8,0,13.79,0,13.8,8,18,8]],'circle-color':['match',['get','type'],'speed_camera','#ef4444','traffic_signal','#ffb13b','stop_sign','#ff6166','yield_sign','#ff8b43','traffic_sign','#6db9ff','#ff9a45'],'circle-opacity':['case',['==',['get','type'],'speed_camera'],.15,['interpolate',['linear'],['zoom'],13.79,0,13.8,.13]],'circle-blur':.58}});
   ensureLayer({id:'road-controls-dot',type:'symbol',source:'road-controls',minzoom:11.8,filter:['in',['get','type'],['literal',['speed_camera','traffic_signal','stop_sign','yield_sign','traffic_sign']]],layout:{'icon-image':roadControlIconExpr(),'icon-size':['case',['==',['get','type'],'speed_camera'],['interpolate',['linear'],['zoom'],11.8,.36,13.4,.48,15.5,.60,18,.74],['interpolate',['linear'],['zoom'],11.8,0,13.79,0,13.8,.48,15.5,.60,18,.74]],'icon-allow-overlap':true,'icon-ignore-placement':true,'symbol-sort-key':['match',['get','type'],'speed_camera',20,'traffic_signal',10,5],'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport'}});
   ensureLayer({
