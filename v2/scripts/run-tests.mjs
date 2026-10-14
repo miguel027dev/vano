@@ -14,7 +14,9 @@ if (!testFiles.length) {
   process.exit(1);
 }
 const environment = { ...process.env, NODE_ENV: 'test' };
-for (const key of ['PORT', 'API_HOST', 'API_PORT', 'VANO_DEV_HTTPS', 'VANO_TRUST_PROXY', 'DATABASE_URL', 'VANO_REQUIRE_POSTGRES']) delete environment[key];
+// Tests launch local child servers by design. Strip Render host identity only
+// from these test processes; never weaken the hosted runtime's production checks.
+for (const key of ['PORT', 'API_HOST', 'API_PORT', 'VANO_DEV_HTTPS', 'VANO_TRUST_PROXY', 'DATABASE_URL', 'VANO_REQUIRE_POSTGRES', 'RENDER', 'RENDER_SERVICE_TYPE', 'RENDER_SERVICE_ID', 'RENDER_EXTERNAL_URL', 'RENDER_EXTERNAL_HOSTNAME']) delete environment[key];
 const run = spawnSync(process.execPath, ['--test', ...testFiles], {
   cwd: process.cwd(), env: environment, stdio: 'inherit',
 });
