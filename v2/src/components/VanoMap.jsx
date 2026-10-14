@@ -133,6 +133,16 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         mapboxgl.accessToken=token;
         map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
         map._vanoStyle=styleFor(latest.current.layer);
+        const attachOpenRouterMark=()=>{
+          const tray=map.getContainer().querySelector('.mapboxgl-ctrl-bottom-left');
+          if(!tray||tray.querySelector('.vano-openrouter-mark'))return;
+          const mark=document.createElement('img');
+          mark.className='vano-openrouter-mark';
+          mark.src='https://openrouter.ai/brand/logos/transparent/glyph/svg/glyph-ink.svg';
+          mark.alt='OpenRouter';
+          mark.width=12;mark.height=12;mark.decoding='async';
+          tray.appendChild(mark);
+        };
         map.on('error',report);
         backend.current='mapbox';mapRef.current=map;
         motion.current=motionController(map,latest,status);
@@ -142,7 +152,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   if(!isLoaded(map))return;
   setError('');paintMapbox(map,latest.current,lastSelection);centerOnFirstGpsFix();if(shouldFollowLocation({navigation:latest.current.navigation,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
         map.on('style.load',update);
-        map.on('load',()=>{update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
+        map.on('load',()=>{attachOpenRouterMark();update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
         map.on('rotatestart',e=>{if(e.originalEvent)motion.current?.setFree();});
