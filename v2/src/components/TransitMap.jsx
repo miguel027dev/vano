@@ -42,8 +42,8 @@ function drawTransit(map,{itinerary,origin,destination},overview){
  const all=lines.features.flatMap(f=>f.geometry.coordinates).concat(stops.features.map(f=>f.geometry.coordinates));
  if(all.length){
   const bounds=new mapboxgl.LngLatBounds();all.forEach(p=>bounds.extend(p));
-  const h=map.getContainer().clientHeight,compact=map.getContainer().clientWidth<700;
-  const padding=overview?{top:Math.min(170,Math.round(h*0.25)),bottom:Math.min(265,Math.round(h*0.37)),left:34,right:34}
+  const h=map.getContainer().clientHeight;
+  const padding=overview?{top:Math.min(165,Math.max(135,Math.round(h*0.25))),bottom:Math.min(265,Math.max(205,Math.round(h*0.37))),left:34,right:34}
     :{top:80,bottom:80,left:40,right:40};
   map.fitBounds(bounds,{padding,maxZoom:14.5,pitch:overview?22:0,duration:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:560});
  }
