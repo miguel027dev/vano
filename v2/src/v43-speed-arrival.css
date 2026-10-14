@@ -25,6 +25,18 @@
  font-variant-numeric:tabular-nums lining-nums;
  font-family:'DM Sans',system-ui,-apple-system,sans-serif;
 }
+/* A discrete roadside sign badge, without enlarging or moving the GPS dial. */
+.map-page .v43-speedometer{position:relative}
+.map-page .v43-speedometer .v43-speed-limit{
+ position:absolute;left:-6px;bottom:-7px;
+ width:30px;height:30px;box-sizing:border-box;
+ display:grid;place-items:center;
+ border:3px solid #d94b46;border-radius:50%;
+ background:#fff;box-shadow:0 1px 4px #1d27342a;
+ color:#1d2a34;font-size:11px;font-weight:850;
+ letter-spacing:-.045em;line-height:1;white-space:nowrap;
+}
+.map-page .v43-speedometer .v43-speed-limit b{font:inherit}
 .map-page .v43-speedometer strong{
  display:block;
  margin:0;
