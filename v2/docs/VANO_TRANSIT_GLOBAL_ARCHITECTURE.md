@@ -109,3 +109,52 @@ Referências oficiais:
 - https://docs.opentripplanner.org/en/latest/apis/GTFS-GraphQL-API/
 - https://github.com/MobilityData/mobility-feed-api
 - https://transitous.org/doc/
+
+
+## Atualização: rotas econômicas, velocidade e atrasos
+
+O seletor Transit mostra apenas duas escolhas principais:
+
+- **Mais econômica:** ordenar pelo preço total somente quando tarifas completas forem verificáveis e comparáveis. Integrações gratuitas e descontos não devem ser cobrados novamente.
+- **Mais rápida:** menor duração completa, incluindo espera e caminhada.
+
+Se qualquer opção do conjunto de resultados não tiver preço confiável, a econômica vira **menos embarques** como aproximação de conveniência, e a UI explica que **não há garantia de menor preço**. Nunca assumir que trocar de ônibus obriga pagar outra passagem. GTFS Fares V2 inclui produtos tarifários e regras de integração.
+
+O módulo OTP2 pede fareProducts de cada Leg. Cada FareProductUse.id representa uma instância de bilhete e deve ser deduplicada em vários trechos. Na versão inicial o cálculo só aceita exatamente um DefaultFareProduct normal e precificado por trecho, com moeda consistente. Não soma passagens alternativas nem bilhetes dependentes; categorias especiais exigem implementação adicional. Há testes dessa deduplicação e do fallback.
+
+### Atrasos
+
+GTFS Realtime suporta TripUpdates, VehiclePositions e ServiceAlerts. A API Olho Vivo da SPTrans é possível adaptador adicional para ônibus de São Paulo. A disponibilidade depende da agência, licença e limites de acesso.
+
+- Atualizar as fontes aproximadamente a cada 30 segundos quando permitido; aproveitar cache e deduplicação de requisições.
+- Usar timestamp da **observação original do veículo/operadora**, não o momento do download.
+- TripUpdates e VehiclePositions acima de 90 segundos são desatualizados; alertas com mais de 10 minutos necessitam revisão.
+- OTP2 pode fornecer estimated.time sem timestamp da observação. Nesse caso a interface pode exibir **previsão da operadora**, mas não afirmar que foi atualizada agora.
+- O atraso é a diferença entre o horário previsto e o programado; valores negativos indicam adiantamento. Calcular sobre timestamps ISO com fuso.
+- Nunca usar dados atrasados/inválidos para sobrescrever horários programados com aparência de tempo real.
+
+A base de validação foi criada em server/transit-realtime.mjs com testes unitários; o conector GTFS-RT/SIRI real, scheduler e cache ainda não estão implementados.
+
+### Futuras confirmações dos passageiros — fase posterior
+
+Possíveis botões: "Passou", "Ainda não passou", "Chegou adiantado", "Lotado". Isso ainda NÃO foi implementado. Antes de liberar:
+
+1. Relato ligado à **parada + viagem + janela de horário**, não apenas ao número da linha.
+2. Privacidade por padrão: não publicar pessoa ou GPS individual; retenção curta e consentimento quando necessário.
+3. Rate limiting, deduplicação, proteção contra spam, moderação e correção de informações equivocadas.
+4. Relatos marcados como **comunidade** e não como dados oficiais; preferir múltiplas confirmações independentes antes de alterar ETA.
+5. Relatos expirados não devem continuar interferindo na navegação.
+
+### Branding e requisitos de qualidade
+
+Dois cartões no preview: carteira para econômica e raio para rápida. Exibir total da tarifa quando verificado; caso contrário, "Tarifa não informada". Exibir separadamente minutos de atraso e rótulos "horário programado" e "previsão da operadora". Mapa mantém cores oficiais de cada linha, caminhada cinza tracejada e badges pequenos com identificação da linha de ônibus.
+
+Antes do rollout, validar região-piloto com dados e tarifas reais, medir latência e frescor, testar meio-dia/meia-noite/feriados/fusos, certificar desempenho mobile e ajustar a busca OTP: ordenar os primeiros resultados por preço **não garante** a verdadeira rota mais econômica global, por isso o produto deve evitar essa promessa até a política de exploração de itinerários estar completa.
+
+Feature flags continuam desativadas; não realizar deploy no domínio público durante esta fase.
+
+Fontes:
+- https://gtfs.org/getting-started/features/fares/
+- https://gtfs.org/documentation/realtime/realtime-best-practices/
+- https://gtfs.org/documentation/realtime/feed-entities/trip-updates/
+- https://www.sptrans.com.br/desenvolvedores/api-do-olho-vivo-guia-de-referencia/documentacao-api/
