@@ -38,7 +38,7 @@
 .v40-public-popup small{font-size:11px;color:#66726d}
 .v40-public-popup p{margin:3px 0 0;font-weight:450;font-size:12px;overflow-wrap:anywhere}
 .v40-map-credit{
- position:absolute;left:calc(env(safe-area-inset-left,0px) + 22px);right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 62px);
+ position:absolute;left:calc(env(safe-area-inset-left,0px) + 22px);right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 59px);
  z-index:30;display:flex;align-items:center;justify-content:center;
  width:28px;height:28px;text-decoration:none;font:750 10px/1 system-ui,sans-serif;white-space:nowrap;
  color:#485750;background:#fffffff0;border:1px solid #dee8e4;
@@ -47,8 +47,8 @@
 .v40-map-credit img{display:block;width:20px;height:20px;object-fit:contain}
 .v40-map-credit[hidden]{display:none!important}
 .v40-map-credit:hover,.v40-map-credit:focus-visible{text-decoration:underline}
-.map-page.in-navigation .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 60px);z-index:2}
-.map-page.has-sheet .v40-map-credit{bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 74px)}
+.map-page.in-navigation .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 57px);z-index:2}
+.map-page.has-sheet .v40-map-credit{bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 71px)}
 @media(max-width:370px){
  .v40-public-pin{width:29px;height:29px;border-radius:11px}
  .v40-public-pin.is-radar{width:33px;height:33px}
@@ -121,8 +121,10 @@
 /* Make space under the location card rather than pushing the credits towards
    the middle/top of the phone; no interaction with the live GPS marker. */
 .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
- bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
- translate:10px 0px;
+ bottom:calc(env(safe-area-inset-bottom,0px) + 13px);
+ translate:4px 0px;
+ width:min(365px,calc(100vw - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px) - 97px));
+ min-height:78px;
 }
 /* When there is an expanded route dock, keep credit links in visible map area. */
 .map-page.in-navigation .mapboxgl-ctrl-bottom-left{
@@ -142,6 +144,7 @@
  bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 48px)
 }
 @media(max-width:600px){
+ .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{min-height:76px}
  .map-page .v40-map-credit{
   box-sizing:border-box;
   max-width:calc(100vw - env(safe-area-inset-left,0px) - 32px);
@@ -152,6 +155,7 @@
 @media(max-height:530px) and (orientation:landscape){
  .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
   bottom:calc(env(safe-area-inset-bottom,0px) + 72px);
-  translate:none;
+  translate:-6px 0px;
+  min-height:64px;
  }
 }
