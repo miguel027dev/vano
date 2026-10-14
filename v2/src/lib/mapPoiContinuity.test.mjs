@@ -15,7 +15,8 @@ test('real hospitals, fuel stations and traffic lights do not vanish at zoom bou
   f('pharmacy','saude',46,-46.684,-23.58),
   f('parking','estacionamento',30,-46.685,-23.58)
  ];
- const project=c=>({x:(c[0]+47)*1000,y:(c[1]+24)*1000});
+ // Non-overlapping points remain available at any zoom: collision filtering is intentional.
+ const project=c=>({x:(c[0]+47)*80000,y:(c[1]+24)*80000});
  for(const zoom of [5,8.5,11.3,11.6,12.4,13.99,14,16,18,19.5]){
   const got=selectPublicPins(features,project,zoom,100).map(x=>x.id);
   assert.deepEqual(new Set(got),new Set(features.map(x=>x.id)),String(zoom));
@@ -54,7 +55,7 @@ test('map updates POI tiles progressively on source-data events instead of waiti
  assert.match(overlay,/map\.off\('sourcedata',scheduleVectorUpdate\)/);
  assert.match(overlay,/vectorTimer=setTimeout\(\(\)=>\{/);
  assert.match(overlay,/mapTilesItems=cachedMapFeatures\(stableTileCache\)/);
- assert.match(overlay,/const markerBudget=Math\.max\(100,Math\.min\(300,/);
+ assert.match(overlay,/const markerBudget=Math\.max\(20,Math\.min\(90,/);
  assert.match(overlay,/if\(!bbox\)\{[\s\S]*?updateVectorPoi\(\);mergeSources\(\);render\(\);setNotice\(''\);return;/);
  assert.doesNotMatch(source,/if\(typeof map\.isStyleLoaded==='function'&&!map\.isStyleLoaded\(\)\)return \[\]/);
  assert.match(source,/max=460/);
