@@ -34,7 +34,10 @@ if (fs.existsSync(envFile)) for (const line of fs.readFileSync(envFile, 'utf8').
   const m = line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/);
   if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2].trim();
 }
-const production = process.env.NODE_ENV === 'production';
+// Render web services are publicly exposed even when NODE_ENV was overridden
+// by deployment configuration. Never silently start one in development mode.
+const renderWeb = process.env.RENDER === 'true' && process.env.RENDER_SERVICE_TYPE === 'web';
+const production = process.env.NODE_ENV === 'production' || renderWeb;
 const origin = process.env.VANO_PUBLIC_ORIGIN || '';
 const mailReady = Boolean(process.env.RESEND_API_KEY && process.env.VANO_EMAIL_FROM);
 const startupMs = Date.now();
@@ -751,6 +754,8 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
   }
 });
 const host=process.env.API_HOST||'127.0.0.1';
-if(production && !['127.0.0.1','::1','localhost'].includes(host)) throw Error('O backend de produção deve ficar privado, acessível somente via proxy HTTPS.');
+// Render terminates TLS at its reverse proxy and requires 0.0.0.0:$PORT binding.
+ // Do not accept public bind addresses outside the trusted Render runtime.
+ if(production && !['127.0.0.1','::1','localhost'].includes(host) && !(renderWeb && host==='0.0.0.0')) throw Error('O backend de produção deve ficar privado ou protegido pelo proxy HTTPS do Render.');
 if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
 export { server,search,directions };
