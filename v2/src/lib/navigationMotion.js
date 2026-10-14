@@ -18,16 +18,17 @@ export function shouldFollowLocation({navigation=false,destination=null,pickingO
   if(navigation)return true;
   return !destination&&!pickingOrigin&&!validPoint(manualOrigin);
 }
-export function cameraTarget({position,destination,route,telemetry={},vehicle='carro',navigation=false,reducedMotion=false,maneuverPlan=null,compactViewport=false,viewportClearancePx=null}){const pos=validPoint(position)?position:null;if(!navigation||!pos)return null;const speed=Number.isFinite(telemetry.speed)&&telemetry.speed>=0?telemetry.speed:0,near=nearestOnRoute(pos,route?.geometry),reliable=Number.isFinite(telemetry.accuracy)?telemetry.accuracy<=50:true,roadBearing=nextRouteBearing(pos,route?.geometry,clamp(48+speed*5,60,220));const heading=Number.isFinite(telemetry.heading)&&telemetry.heading>=0?telemetry.heading:null;const isMoto=vehicle==='moto';
+export function cameraTarget({position,destination,route,telemetry={},vehicle='carro',navigation=false,reducedMotion=false,maneuverPlan=null,compactViewport=false,viewportClearancePx=null,experimentalCameraV2=false}){const pos=validPoint(position)?position:null;if(!navigation||!pos)return null;const speed=Number.isFinite(telemetry.speed)&&telemetry.speed>=0?telemetry.speed:0,near=nearestOnRoute(pos,route?.geometry),reliable=Number.isFinite(telemetry.accuracy)?telemetry.accuracy<=50:true,roadBearing=nextRouteBearing(pos,route?.geometry,clamp(48+speed*5,60,220));const heading=Number.isFinite(telemetry.heading)&&telemetry.heading>=0?telemetry.heading:null;const isMoto=vehicle==='moto';
 // A stopped or uncertain motorcycle does not chase fluctuating GPS bearings.
 // Never mistake the direction of travel for physical motorcycle lean.
 const bearing=isMoto&&(!reliable||speed<2.2)?null:roadBearing??(reliable?heading:null);const remaining=validPoint(destination)?metersBetween(pos,destination):Infinity;const arriving=remaining<90;const highway=speed>21,turnFocus=vehicle!=='moto'&&!highway&&speed>2&&roadBearing!==null&&heading!==null&&Math.abs(shortestAngle(heading,roadBearing))>38;let zoom=isMoto?(highway?16.05:speed>12?16.75:17.25):(highway?16.0:speed>12?16.9:17.25);
 let pitch=isMoto?(highway?22:28):(highway?39:42);if(turnFocus){zoom-=.3;pitch=32;}if(arriving){zoom=isMoto?16.8:17.1;pitch=isMoto?12:20;}
 const focus=maneuverPlan?.strength||0;
 if(focus>0){zoom=clamp(zoom-(maneuverPlan.zoomOut||0),14.8,18.2);pitch=clamp(pitch-(maneuverPlan.pitchDrop||0),0,55);}
+if(experimentalCameraV2){zoom=clamp(zoom-0.3,14.8,18.2);pitch=clamp(pitch+4,0,55);}
 if(compactViewport){zoom=Math.min(zoom,16.5);pitch=Math.min(pitch,22);}
 const aheadMeters=arriving||(!route?.geometry&&(speed<1.5||bearing===null))?0:
-  isMoto?clamp(speed*4+30,30,175):clamp(speed*5+40,45,230);const desiredAheadMeters=aheadMeters*(maneuverPlan?.lookAheadScale??1)*(compactViewport?0.65:1);
+  isMoto?clamp(speed*4+30,30,175):clamp(speed*5+40,45,230);const desiredAheadMeters=aheadMeters*(maneuverPlan?.lookAheadScale??1)*(compactViewport?0.65:1)*(experimentalCameraV2?1.18:1);
 const metersPerPixel=156543.03392*Math.max(.1,Math.cos(pos[1]*Math.PI/180))/Math.pow(2,zoom);
 const maxAheadMeters=Number.isFinite(viewportClearancePx)?Math.max(0,viewportClearancePx)*metersPerPixel*.7:Infinity;
 const safeAheadMeters=Math.min(desiredAheadMeters,maxAheadMeters);
