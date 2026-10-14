@@ -4,6 +4,7 @@
  */
 import {OSM_ATTRIBUTION,parseBBox,normalizeOsmElements} from './map-public-data.mjs';
 import {queryRadarSnapshot} from './radar-catalog.mjs';
+import {entirelyBrazilCore,overlapsBrazilBounds} from './radar-geography.mjs';
 
 export const RADAR_OVERPASS_SERVERS=Object.freeze([
  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -38,18 +39,51 @@ function fallback(old,now,error){
 function prune(){
  while(cache.size>160)cache.delete(cache.keys().next().value);
 }
+/** Existing Brazilian catalog takes precedence when OSM maps the same device.
+ * This merges sources without slowing down the view, even if OSM is offline.
+ */
+export function mergeRadarSources(national,international){
+ if(!national?.features?.length)return international;
+ if(!international?.features?.length)return {
+  ...national,cacheHit:international?.cacheHit||false,
+  internationalUnavailable:Boolean(international?.error)
+ };
+ const features=[...national.features];
+ for(const radar of international.features){
+  const lon=radar.coords?.[0],lat=radar.coords?.[1];
+  if(!Number.isFinite(lon)||!Number.isFinite(lat))continue;
+  // Approx. 35 metres, latitude-adjusted. National coordinates win.
+  const duplicate=features.some(p=>{
+   const [x,y]=p.coords||[];
+   return Number.isFinite(x)&&Number.isFinite(y)&&
+    Math.hypot((x-lon)*Math.cos(lat*Math.PI/180),y-lat)<.00032;
+  });
+  if(!duplicate)features.push(radar);
+  if(features.length>=160)break;
+ }
+ return {
+  ...national,features,source:'VANO Radar Catalog + OpenStreetMap',
+  coverage:'national-snapshot-and-mapped',fetchedAt:international.fetchedAt,
+  cacheHit:international.cacheHit||false,stale:Boolean(international.stale),
+  internationalUnavailable:Boolean(international.error)
+ };
+}
 export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS,useSnapshot=true}={}){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
  if(!b)throw new RangeError('Radar bounding box inválida');
- // National snapshot always wins; map rendering must not depend on Overpass uptime.
- const snapshot=useSnapshot?queryRadarSnapshot(b):null;
- if(snapshot)return snapshot;
+ // Do not scan the 8,885-point national dataset for viewports outside Brazil.
+ // Inside the Brazilian core the existing offline catalog retains priority,
+ // including legitimately empty responses. Border/coastal areas merge sources.
+ const snapshot=useSnapshot&&overlapsBrazilBounds(b)?queryRadarSnapshot(b):null;
+ if(snapshot&&entirelyBrazilCore(b))return snapshot;
+ const national=snapshot?.features?.length?snapshot:null;
+ const withNational=result=>mergeRadarSources(national,result);
  // Stable ~100 m cells, to reuse results across adjacent camera pans.
  const key=b.map(n=>(Math.round(n*1000)/1000).toFixed(3)).join(',');
  const started=now(),old=cache.get(key);
- if(old?.result&&old.expires>started)return {...old.result,cacheHit:true};
- if(old?.pending)return old.pending;
- if(running>=4)return fallback(old,started,'Fonte de radares ocupada');
+ if(old?.result&&old.expires>started)return withNational({...old.result,cacheHit:true});
+ if(old?.pending)return old.pending.then(withNational);
+ if(running>=4)return withNational(fallback(old,started,'Fonte de radares ocupada'));
  running++;
  const request=(async()=>{
   const query=new URLSearchParams({data:radarOverpassQuery(b)}).toString();
@@ -82,5 +116,5 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
   return failed;
  })().finally(()=>{running--;});
  cache.set(key,{...old,pending:request,expires:started+successTtl});
- return request;
+ return request.then(withNational);
 }
