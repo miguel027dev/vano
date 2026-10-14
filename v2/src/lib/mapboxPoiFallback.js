@@ -5,15 +5,35 @@
  */
 const MAKI_TYPES=Object.freeze({
   hospital:['hospital',58,'Hospital'],doctor:['saude',48,'Serviço de saúde'],
-  pharmacy:['saude',46,'Farmácia'],dentist:['saude',44,'Atendimento de saúde'],
+  pharmacy:['farmacia',43,'Farmácia'],dentist:['saude',44,'Atendimento de saúde'],
   'fire-station':['bombeiros',56,'Bombeiros'],police:['policia-base',50,'Base policial'],
   fuel:['combustivel',37,'Posto de combustível'],parking:['estacionamento',30,'Estacionamento'],'parking-garage':['estacionamento',30,'Estacionamento'],bank:['banco',26,'Banco'],
-  'charging-station':['eletroposto',38,'Eletroposto']
+  'charging-station':['estacao-recarga',38,'Estação de recarga'],
+  grocery:['mercado',23,'Mercado'],convenience:['mercado',22,'Mercado'],
+  supermarket:['supermercado',27,'Supermercado'],mall:['shopping',29,'Shopping'],
+  restaurant:['restaurante',20,'Restaurante'],'fast-food':['fastfood',19,'Fast-food'],
+  cafe:['cafeteria',18,'Cafeteria'],school:['escola',38,'Escola'],
+  park:['parque',21,'Parque'],'fitness-centre':['academia',25,'Academia'],
+  gym:['academia',25,'Academia'],lodging:['hotel',24,'Hotel'],hotel:['hotel',24,'Hotel'],
+  post:['correios',23,'Correios'],bus:['terminal-onibus',27,'Terminal de ônibus'],
+  rail:['estacao-ferroviaria',29,'Estação ferroviária'],
+  'rail-metro':['estacao-trem',29,'Estação de trem'],airport:['aeroporto',32,'Aeroporto']
 });
 const clean=x=>typeof x==='string'?x.replace(/[<>\u0000-\u001f\u007f]/g,'').trim().slice(0,96):'';
 export function classifyMapboxPoi(properties={}){
   const maki=String(properties.maki||properties.maki_beta||'').toLowerCase().trim();
-  if(MAKI_TYPES[maki])return MAKI_TYPES[maki];
+  // Category metadata only: never infer business type from an arbitrary name.
+  const details=[properties.type,properties.category_en,properties.subcategory].map(x=>String(x||'').toLowerCase()).join(' ');
+  if(/\b(pet shop|pet store|pet supplies|petshop)\b/.test(details))return ['petshop',20,'Pet shop'];
+  if(/\b(car wash|carwash|lavagem automotiva)\b/.test(details))return ['lavarapido',20,'Lava-rápido'];
+  if(/\b(shopping mall|shopping centre|shopping center|mall)\b/.test(details))return ['shopping',29,'Shopping'];
+  if(/\b(supermarket|supermercado)\b/.test(details))return ['supermercado',27,'Supermercado'];
+  if(/\b(charging point|carregador elétrico|carregador eletrico)\b/.test(details))return ['carregador-eletrico',32,'Carregador elétrico'];
+  if(MAKI_TYPES[maki]){
+    // Do not mistake an ordinary bus stop for a terminal.
+    if(['bus','rail','rail-metro'].includes(maki)&&!/(station|terminal|estação|estacao)/.test(details))return null;
+    return MAKI_TYPES[maki];
+  }
   const type=String(properties.type||'').toLowerCase().trim();
   const cls=String(properties.class||'').toLowerCase().trim();
   if(type==='hospital')return MAKI_TYPES.hospital;
@@ -22,7 +42,11 @@ export function classifyMapboxPoi(properties={}){
   if(type==='fire station')return MAKI_TYPES['fire-station'];
   if(type==='parking'||type==='parking-garage')return MAKI_TYPES.parking;
   if(type==='bank')return MAKI_TYPES.bank;
-  if(type==='pharmacy'||type==='clinic'||type==='doctor')return MAKI_TYPES.doctor;
+  if(type==='pharmacy')return MAKI_TYPES.pharmacy;
+  if(type==='clinic'||type==='doctor')return MAKI_TYPES.doctor;
+  if(type==='restaurant')return MAKI_TYPES.restaurant;
+  if(type==='cafe')return MAKI_TYPES.cafe;
+  if(type==='school')return MAKI_TYPES.school;
   if(cls==='medical'&&/hospital|clinic|doctor|health|emergency/.test(type))
     return MAKI_TYPES.doctor;
   return null;
@@ -104,8 +128,10 @@ export function readMapboxPoiFeatures(map){
           }
         }catch{/* Source tile not loaded yet; idle event retries. */}
       }
-      try{poiFeatures.push(...map.querySourceFeatures(source,{sourceLayer:'poi_label'}).slice(0,1600));}
-      catch{/* POI vector tiles may not have loaded yet. Retry on camera idle. */}
+      for(const layer of ['poi_label','transit_stop_label','airport_label']){
+        try{poiFeatures.push(...map.querySourceFeatures(source,{sourceLayer:layer}).slice(0,1600));}
+        catch{/* Some styles omit this tile layer. Try again after map idle. */}
+      }
     }
     // Important road signage goes first; POIs remain available even when
     // external Overpass is down.

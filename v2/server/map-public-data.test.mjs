@@ -17,7 +17,7 @@ test('radar, signage, traffic calming, road work and critical public services us
   [{highway:'give_way'},'preferencia'],[{traffic_sign:'BR:R-1'},'placa'],
   [{railway:'level_crossing'},'ferrovia'],[{highway:'construction'},'obra'],
   [{amenity:'hospital'},'hospital'],[{amenity:'fire_station'},'bombeiros'],
-  [{amenity:'police'},'policia-base'],[{amenity:'charging_station'},'eletroposto']
+  [{amenity:'police'},'policia-base'],[{amenity:'charging_station'},'estacao-recarga']
  ];
  for(const [tags,type]of expected)assert.equal(classifyOsm(tags)[0],type);
  assert.equal(classifyOsm({shop:'sweets'}),null);

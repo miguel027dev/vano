@@ -15,7 +15,16 @@ function buildPin(item){
  element.setAttribute('aria-label',item.name+', fonte '+item.source);
  element.title=item.name;
  const chip=document.createElement('span');
- const secondaryStyle={travessia:'is-crossing',estacionamento:'is-parking',ferrovia:'is-rail',banco:'is-bank'}[item.type]||'';
+ const secondaryStyle={
+   travessia:'is-crossing',estacionamento:'is-parking',ferrovia:'is-rail',banco:'is-bank',
+   mercado:'is-commerce',supermercado:'is-commerce',shopping:'is-shopping',
+   'estacao-recarga':'is-electric','carregador-eletrico':'is-electric',eletroposto:'is-electric',
+   restaurante:'is-food',fastfood:'is-food',cafeteria:'is-food',
+   escola:'is-school',academia:'is-fitness',parque:'is-park',
+   hotel:'is-hotel',petshop:'is-pet',correios:'is-service',farmacia:'is-pharmacy',
+   lavarapido:'is-automotive',
+   'terminal-onibus':'is-transit','estacao-trem':'is-transit','estacao-ferroviaria':'is-transit',aeroporto:'is-transit'
+  }[item.type]||'';
  chip.className='v40-public-pin '+(item.type==='radar'?'is-radar':item.type.startsWith('relato-')?'is-report':'')+(secondaryStyle?' '+secondaryStyle:'');
  // Closed enum only. No remote text is inserted as HTML.
  chip.innerHTML=iconSvg(item.type);

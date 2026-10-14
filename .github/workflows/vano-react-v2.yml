@@ -1,0 +1,30 @@
+name: VANO React V2 Checks
+
+on:
+  pull_request:
+    branches:
+      - preview/vano-react-v2-7
+    paths:
+      - "v2/**"
+      - ".github/workflows/vano-react-v2.yml"
+  push:
+    branches:
+      - preview/vano-react-v2-7
+    paths:
+      - "v2/**"
+      - ".github/workflows/vano-react-v2.yml"
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run build

@@ -19,6 +19,19 @@
 .v40-public-pin.is-parking{background:#EAF2FB;border-color:#D9E7F6}
 .v40-public-pin.is-rail{background:#FFF0E7;border-color:#F2DACB}
 .v40-public-pin.is-bank{background:#EDF0F3;border-color:#DBE1E7}
+.v40-public-pin.is-commerce{background:#E8F4EE;border-color:#CDE5D6}
+.v40-public-pin.is-shopping{background:#F0EAFE;border-color:#DFD3F3}
+.v40-public-pin.is-electric{background:#E7F8F1;border-color:#C7EADB}
+.v40-public-pin.is-food{background:#FFF1E5;border-color:#F3DFC9}
+.v40-public-pin.is-school{background:#FFF3DF;border-color:#F2E2BE}
+.v40-public-pin.is-fitness{background:#E4F7EA;border-color:#B7E2C3}
+.v40-public-pin.is-park{background:#E8F5EA;border-color:#C7E6CE}
+.v40-public-pin.is-hotel{background:#F1EBFA;border-color:#DACDEB}
+.v40-public-pin.is-pet{background:#F9E9F7;border-color:#EBD2E8}
+.v40-public-pin.is-service{background:#F0EAFB;border-color:#DDD0F2}
+.v40-public-pin.is-pharmacy{background:#E5F6FB;border-color:#C7E9F2}
+.v40-public-pin.is-automotive{background:#E7F2FE;border-color:#D0E3F5}
+.v40-public-pin.is-transit{background:#E8F3FD;border-color:#D4E5F5}
 .v40-leaflet-pin{border:none!important;background:transparent!important}
 .v40-public-popup{display:flex;flex-direction:column;gap:5px;color:#25312c;font:600 12px/1.35 system-ui,sans-serif;max-width:220px}
 .v40-public-popup strong{font-size:14px;font-weight:760}
