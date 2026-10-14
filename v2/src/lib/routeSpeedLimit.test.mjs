@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {routePostedSpeedLimits,mapboxDirectionsUrl} from '../../server/mapbox-v1-fallback.mjs';
-import {speedLimitAtGpsPosition} from './routeSpeedLimit.js';
+import {speedLimitAtGpsPosition,speedLimitFromStepSign} from './routeSpeedLimit.js';
 
 const geometry={type:'LineString',coordinates:[[-46.660,-23.560],[-46.659,-23.560],[-46.658,-23.560],[-46.657,-23.560]]};
 const route=annotations=>({geometry,legs:[{annotation:{maxspeed:annotations}}]});
@@ -45,4 +45,27 @@ test('existing GPS dial is single, with only a conditional speed-limit badge',()
  assert.match(backend,/speedLimits:routePostedSpeedLimits\(route\)/);
  assert.match(css,/\.v43-speedometer \.v43-speed-limit/);
  assert.doesNotMatch(css,/conic-gradient|progress-ring|stroke-dasharray/);
+});
+
+test('original VANO engine speed signs only apply to their GPS-matched maneuver',()=>{
+ const route={geometry,steps:[
+  {location:[-46.660,-23.560],speedLimitSign:'50',speedLimitUnit:'km/h'},
+  {location:[-46.659,-23.560],speedLimitSign:'60',speedLimitUnit:'km/h'},
+  {location:[-46.658,-23.560],speedLimitSign:'',speedLimitUnit:''}
+ ]};
+ const gps={fresh:true,accuracy:8,simulated:false};
+ assert.equal(speedLimitAtGpsPosition(route,[-46.6596,-23.560],gps),50);
+ assert.equal(speedLimitAtGpsPosition(route,[-46.6586,-23.560],gps),60);
+ assert.equal(speedLimitAtGpsPosition(route,[-46.6576,-23.560],gps),null);
+ assert.equal(speedLimitAtGpsPosition(route,[-46.6596,-23.559],gps),null);
+ assert.equal(speedLimitAtGpsPosition({...route,steps:[
+  {location:[-46.660,-23.559],speedLimitSign:'50',speedLimitUnit:'km/h'}
+ ]},[-46.6596,-23.560],gps),null);
+});
+test('sign parser refuses ambiguous or unset limits rather than guessing',()=>{
+ assert.equal(speedLimitFromStepSign({speedLimitSign:'50',speedLimitUnit:'km/h'}),50);
+ assert.equal(speedLimitFromStepSign({speedLimitSign:'35 mph'}),56);
+ for(const str of ['BR:urban','50-60','Radar 60','0','180',''])assert.equal(
+  speedLimitFromStepSign({speedLimitSign:str,speedLimitUnit:'km/h'}),null);
+ assert.equal(speedLimitFromStepSign({speedLimitSign:'50'}),null);
 });
