@@ -27,9 +27,8 @@ test('Brazil keeps existing offline snapshot and never requests Overpass in its 
  assert.deepEqual(actual,original);
  assert.equal(calls,0);
 });
-test('mapped international speed cameras work in France Italy UK Turkey and the Americas',async()=>{
+test('mapped international speed cameras work in Italy UK Turkey and the Americas',async()=>{
  const places=[
-  ['Lyon',4.83,45.75,190101],
   ['Milano',9.19,45.46,190102],
   ['London',-.12,51.51,190103],
   ['Istanbul',28.97,41.01,190104],
@@ -69,4 +68,20 @@ test('international lookup failure does not hide Brazilian snapshot or invent ca
  assert.ok(Array.isArray(found.features));
  assert.equal(found.features.length,snapshot?.features.length||0);
  if(snapshot?.features.length)assert.ok(found.features.every(f=>f.id.startsWith('radar-catalog-')));
+});
+
+test('restricted countries reject precise camera markers even with valid OSM data',async()=>{
+ const locations=[
+  ['Lyon',4.83,45.75],['Paris',2.35,48.86],['Berlin',13.40,52.52],
+  ['Geneva',6.14,46.21],['Zurich',8.54,47.38]
+ ];
+ for(const [name,lon,lat]of locations){
+  let calls=0;
+  const b=box(lon,lat);
+  const result=await queryPublicRadars(b,{fetcher:async()=>{calls++;return fixture(191001,lon,lat);},
+   now:()=>200000,servers:['https://test.example/']});
+  assert.deepEqual(result.features,[],name);
+  assert.equal(calls,0,name);
+  assert.equal(result.coverage,'restricted',name);
+ }
 });
