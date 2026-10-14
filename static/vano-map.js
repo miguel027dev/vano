@@ -132,7 +132,8 @@ if(document.body)SAFE_AREA_BOTTOM=readSafeAreaInsetBottom();else document.addEve
 let routeFlowFrame=null,lastRouteFlowPaintAt=0;const REDUCED_MOTION=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
 const LOW_POWER_DEVICE=!!((navigator.deviceMemory&&navigator.deviceMemory<=4)||(navigator.hardwareConcurrency&&navigator.hardwareConcurrency<=4));
 let performanceTier=LOW_POWER_DEVICE?'normal':'high',perfMonitorFrame=null,perfLastTs=0,perfWindowStartedAt=0,perfFrameCount=0,perfFrameTotal=0,perfLongFrames=0,perfHealthyWindows=0;
-let lastAcceptedGpsTimestamp=0,lastAcceptedGpsKey='',mapMatchMismatchHits=0,mapMatchReleaseUntil=0;
+let lastAcceptedGpsTimestamp=0,lastAcceptedGpsKey='',lastAcceptedGpsRaw=null,mapMatchMismatchHits=0,mapMatchReleaseUntil=0;
+let navGpsPending=null,navGpsFlushTimer=null;
 let trafficTrendSnapshot=null,trafficSuggestionMeta=null,lastTrafficTrendNoticeAt=0,lastRouteSwitchAt=0,lastRouteSwitchFromKey='',lastRouteSwitchToKey='',lastRouteSwitchSaving=0,lastGpsMetricAt=0,lastEtaMetricAt=0,lastEtaMetricValue=null,searchSuggestionsCache=null,searchSuggestionsAt=0,offlineSince=0,arrivalTelemetrySent=false,lastAlertPopupOpenAt=0,lastAlertRecords=[],alertDomMarkers=new Map(),lastAlertSyncTelemetryAt=0,lastAlertSyncTelemetryCount=-1,alertLiveSyncTimer=null;
 let lastAlertFetchAt=0,lastAlertFetchCenter=null,lastAlertFetchZoom=null,lastAlertVectorKey='',lastNavAlertRefreshAt=0,lastNavAlertRefreshPos=null;
 const ALERT_DOM_MARKER_MIN_ZOOM=13.6,ALERT_DOM_MARKER_MAX=45;
@@ -332,20 +333,49 @@ let startupWatchId=null,startupWatchTimer=null;
 function readLastGps(){try{const x=JSON.parse(localStorage.getItem(LAST_GPS_KEY)||'null');const age=Date.now()-(+x?.ts||0);if(!x||!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon)||age>2*60*60*1000)return null;return{lat:+x.lat,lon:+x.lon,accuracy:+x.accuracy||999,heading:age<=20000&&Number.isFinite(+x.heading)?+x.heading:null,speed:age<=12000&&Number.isFinite(+x.speed)?Math.max(0,+x.speed):null,ts:+x.ts||0}}catch{return null}}
 function saveLastGps(p){if(!p||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;try{localStorage.setItem(LAST_GPS_KEY,JSON.stringify({lat:+p.lat,lon:+p.lon,accuracy:+p.accuracy||999,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?+p.speed:null,ts:Date.now()}))}catch{}}
 function geoRaw(g){return{lat:g.coords.latitude,lon:g.coords.longitude,accuracy:g.coords.accuracy,altitude:Number.isFinite(g.coords.altitude)?g.coords.altitude:null,altitudeAccuracy:Number.isFinite(g.coords.altitudeAccuracy)?g.coords.altitudeAccuracy:null,heading:Number.isFinite(g.coords.heading)?g.coords.heading:null,speed:Number.isFinite(g.coords.speed)?Math.max(0,g.coords.speed):null,ts:Number.isFinite(+g.timestamp)?+g.timestamp:Date.now()}}
+function gpsFixScore(raw){const age=Math.max(0,Date.now()-(+raw?.ts||Date.now())),accuracy=Math.max(1,+raw?.accuracy||999);return accuracy+Math.min(180,age/18)}
+function chooseNavigationGpsFix(current,candidate){
+  if(!current)return candidate;const newer=(+candidate.ts||0)-(+current.ts||0),candidateScore=gpsFixScore(candidate),currentScore=gpsFixScore(current);
+  // Prefer the newest real fix, unless the older callback is materially more accurate.
+  return newer>220||candidateScore+5<currentScore?candidate:current
+}
 function acceptGpsRaw(raw,{force=false}={}){
-  if(force||!raw)return true;const ts=Number.isFinite(+raw.ts)?+raw.ts:Date.now(),acc=Math.max(1,+raw.accuracy||999),key=`${(+raw.lat).toFixed(7)}:${(+raw.lon).toFixed(7)}:${Math.round(acc)}`;
+  if(force||!raw)return true;
+  const now=Date.now(),ts=Number.isFinite(+raw.ts)?+raw.ts:now,acc=Math.max(1,+raw.accuracy||999),lat=+raw.lat,lon=+raw.lon,key=`${lat.toFixed(7)}:${lon.toFixed(7)}:${Math.round(acc)}`;
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return false;
+  // Browsers can deliver a late callback after a watch/heartbeat race. It is
+  // not a new GPS observation and must never pull an active route backwards.
+  if(ts<now-15000||ts>now+60000)return false;
   if(lastAcceptedGpsTimestamp&&ts<lastAcceptedGpsTimestamp-350)return false;
-  if(key===lastAcceptedGpsKey&&ts-lastAcceptedGpsTimestamp<260)return false;
-  lastAcceptedGpsTimestamp=Math.max(lastAcceptedGpsTimestamp,ts);lastAcceptedGpsKey=key;return true
+  if(key===lastAcceptedGpsKey&&ts-lastAcceptedGpsTimestamp<700)return false;
+  const previous=lastAcceptedGpsRaw;
+  if(previous){
+    const dt=Math.max(.05,(ts-(+previous.ts||ts))/1000),distance=hav([previous.lon,previous.lat],[lon,lat]),reportedSpeed=Math.max(0,+raw.speed||0,+previous.speed||0);
+    // Reject an isolated teleport only while a usable recent fix exists. The
+    // generous bound still permits real recovery after a short signal outage.
+    const allowance=Math.max(45,(reportedSpeed*dt*3.2)+acc+Math.max(1,+previous.accuracy||35)+24);
+    if(dt<12&&distance>allowance)return false;
+  }
+  lastAcceptedGpsTimestamp=Math.max(lastAcceptedGpsTimestamp,ts);lastAcceptedGpsKey=key;lastAcceptedGpsRaw={lat,lon,accuracy:acc,speed:Number.isFinite(+raw.speed)?Math.max(0,+raw.speed):null,ts};return true
+}
+function clearPendingNavigationGps(){if(navGpsFlushTimer){clearTimeout(navGpsFlushTimer);navGpsFlushTimer=null}navGpsPending=null}
+function queueNavigationGps(g,source='watch'){
+  if(!g?.coords||!activeNav?.classList.contains('show')||adminSimulation)return;
+  const raw=geoRaw(g);if(!Number.isFinite(+raw.lat)||!Number.isFinite(+raw.lon))return;
+  navGpsPending=chooseNavigationGpsFix(navGpsPending,raw);
+  if(navGpsFlushTimer)return;
+  // Coalesce near-simultaneous watchPosition/getCurrentPosition callbacks. A
+  // 55 ms window is imperceptible to driving, but removes source-order jumps.
+  navGpsFlushTimer=setTimeout(()=>{navGpsFlushTimer=null;const next=navGpsPending;navGpsPending=null;if(next&&activeNav?.classList.contains('show')&&!adminSimulation)updateNavigation(next)},source==='heartbeat'?70:55);
 }
 function requestPosition(){return new Promise((ok,no)=>{if(!navigator.geolocation)return no({code:0});navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:4500,maximumAge:5000})})}
 function requestFreshNavigationPosition(timeout=2600){return new Promise((ok,no)=>{if(!navigator.geolocation)return no({code:0});navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:Math.max(1200,timeout),maximumAge:0})})}
 function stopStartupGps(){if(startupWatchId!==null){try{navigator.geolocation.clearWatch(startupWatchId)}catch{}startupWatchId=null}if(startupWatchTimer){clearTimeout(startupWatchTimer);startupWatchTimer=null}}
 function stopPassiveMapTracking(){if(passiveWatchId!==null){try{navigator.geolocation?.clearWatch(passiveWatchId)}catch{}passiveWatchId=null}if(passiveGpsHeartbeatTimer){clearInterval(passiveGpsHeartbeatTimer);passiveGpsHeartbeatTimer=null}}
-function stopNavigationGpsHeartbeat(){if(navGpsHeartbeatTimer){clearInterval(navGpsHeartbeatTimer);navGpsHeartbeatTimer=null}gpsHeartbeatBusy=false}
+function stopNavigationGpsHeartbeat(){if(navGpsHeartbeatTimer){clearInterval(navGpsHeartbeatTimer);navGpsHeartbeatTimer=null}clearPendingNavigationGps();gpsHeartbeatBusy=false}
 function requestGpsHeartbeat(handler,timeout=3500,maximumAge=0){if(gpsHeartbeatBusy||!navigator.geolocation||document.visibilityState==='hidden')return;gpsHeartbeatBusy=true;try{navigator.geolocation.getCurrentPosition(g=>{gpsHeartbeatBusy=false;handler(g)},()=>{gpsHeartbeatBusy=false},{enableHighAccuracy:true,maximumAge,timeout})}catch{gpsHeartbeatBusy=false}}
 function startPassiveGpsHeartbeat(){if(passiveGpsHeartbeatTimer||!navigator.geolocation)return;passiveGpsHeartbeatTimer=setInterval(()=>{if(activeNav?.classList.contains('show')||!mapFollowMode)return;if(Date.now()-lastGpsFixAt<7000)return;requestGpsHeartbeat(updatePassiveTracking,3500,1200)},7800)}
-function startNavigationGpsHeartbeat(){stopNavigationGpsHeartbeat();if(!navigator.geolocation)return;navGpsHeartbeatTimer=setInterval(()=>{if(!activeNav?.classList.contains('show')||adminSimulation)return;if(Date.now()-lastGpsFixAt<2400)return;requestGpsHeartbeat(g=>{if(activeNav?.classList.contains('show')&&!adminSimulation)updateNavigation(g)},2200,0)},2000)}
+function startNavigationGpsHeartbeat(){stopNavigationGpsHeartbeat();if(!navigator.geolocation)return;navGpsHeartbeatTimer=setInterval(()=>{if(!activeNav?.classList.contains('show')||adminSimulation)return;if(Date.now()-lastGpsFixAt<2400)return;requestGpsHeartbeat(g=>queueNavigationGps(g,'heartbeat'),2200,0)},2000)}
 function passiveCameraAllowed(){return !!map&&mapFollowMode&&!activeNav?.classList.contains('show')&&!previewing&&!destination&&!destinationConfirmed&&!selectedRoute&&!window.__searchPreviewPopup&&document.visibilityState!=='hidden'}
 function updatePassiveTracking(g){
   if(!g?.coords)return;const raw=geoRaw(g);if(!acceptGpsRaw(raw))return;lastGpsFixAt=Date.now();const p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);emitVanoOsint('location',{location:osintLocationPayload(raw,p),navigation:false});
@@ -466,13 +496,20 @@ function resetMapMatchHysteresis(){mapMatchMismatchHits=0;mapMatchReleaseUntil=0
 function stabilizeActiveNavPosition(filtered,raw,match=null){
   if(!activeNav?.classList.contains('show')||!selectedRoute?.geometry?.coordinates?.length)return filtered;
   if(!routeCumulative.length)buildMetrics();const m=match||nearestProgress(filtered),acc=Number.isFinite(+raw?.accuracy)?Math.max(1,+raw.accuracy):50,speed=Number.isFinite(+raw?.speed)?Math.max(0,+raw.speed):0,snapLimit=Math.max(20,Math.min(72,acc*1.35)),prevRaw=navLastRawPosition;
-  const rawMove=prevRaw?hav([prevRaw.lon,prevRaw.lat],[raw.lon,raw.lat]):Infinity,motionBearing=prevRaw&&rawMove>3.5?bearingBetween([prevRaw.lon,prevRaw.lat],[raw.lon,raw.lat]):null;navLastRawPosition={lat:raw.lat,lon:raw.lon,accuracy:acc,speed,heading:raw.heading};
+  const rawMove=prevRaw?hav([prevRaw.lon,prevRaw.lat],[raw.lon,raw.lat]):Infinity,motionBearing=prevRaw&&rawMove>3.5?bearingBetween([prevRaw.lon,prevRaw.lat],[raw.lon,raw.lat]):null,rawDt=prevRaw?Math.max(.08,Math.min(12,((+raw.ts||Date.now())-(+prevRaw.ts||Date.now()))/1000)):0;navLastRawPosition={lat:raw.lat,lon:raw.lon,accuracy:acc,speed,heading:raw.heading,ts:+raw.ts||Date.now()};
   if(!Number.isFinite(m.offRoute)||m.offRoute>snapLimit){mapMatchMismatchHits=Math.min(6,mapMatchMismatchHits+1);if(mapMatchMismatchHits>=3)mapMatchReleaseUntil=Date.now()+6500;return{...filtered,_rawOffRoute:m.offRoute,_routeSnapped:false}}
   let along=Math.max(0,m.distanceAlong||0);const routeHeading=routeBearingAtDistance(along,Math.max(26,Math.min(70,30+speed*2))),headingCandidate=speed>1.6&&Number.isFinite(+raw.heading)?+raw.heading:motionBearing,mismatch=Number.isFinite(routeHeading)&&Number.isFinite(headingCandidate)?bearingDelta(routeHeading,headingCandidate):0;
   const confidentLateral=acc<=20&&m.offRoute>Math.max(11,acc*.72)&&rawMove>2.4,headingConflict=speed>2.0&&mismatch>78&&rawMove>2.4;if(confidentLateral||headingConflict)mapMatchMismatchHits=Math.min(8,mapMatchMismatchHits+1);else mapMatchMismatchHits=Math.max(0,mapMatchMismatchHits-1);
   if(mapMatchMismatchHits>=3)mapMatchReleaseUntil=Date.now()+6500;const reacquired=m.offRoute<Math.max(6,acc*.38)&&mismatch<42;if(reacquired&&mapMatchMismatchHits===0&&Date.now()+1500>mapMatchReleaseUntil)mapMatchReleaseUntil=0;
   if(Date.now()<mapMatchReleaseUntil)return{...filtered,_rawOffRoute:m.offRoute,_routeSnapped:false,_mapMatchReleased:true};
-  const jitterRadius=Math.max(2.4,Math.min(7.0,acc*.17)),moving=speed>.72||rawMove>jitterRadius;if(navLastAlong>0){if(!moving&&Math.abs(along-navLastAlong)<20)along=navLastAlong;else if(along<navLastAlong-5)along=navLastAlong;else if(moving&&along<navLastAlong)along=Math.max(navLastAlong-1.2,along)}
+  const jitterRadius=Math.max(2.4,Math.min(7.0,acc*.17)),moving=speed>.72||rawMove>jitterRadius;if(navLastAlong>0){if(!moving&&Math.abs(along-navLastAlong)<20)along=navLastAlong;else if(along<navLastAlong-5)along=navLastAlong;else if(moving&&along<navLastAlong)along=Math.max(navLastAlong-1.2,along);else if(moving&&rawDt>0){
+    // At crossings and under multipath GPS a single fix can project far ahead
+    // on the same route. Keep visual/progress motion physically continuous;
+    // subsequent consistent samples catch up immediately, while a real
+    // off-route departure is still detected from the unmodified raw fix.
+    const forwardAllowance=Math.max(14,Math.min(180,speed*rawDt*3.2+acc*.85+12));
+    if(along-navLastAlong>forwardAllowance)along=navLastAlong+forwardAllowance;
+  }}
   const xy=routePointAtDistance(along);if(!xy)return filtered;let strength=moving?(acc<=28?.99:.94):1;if(mismatch>55&&moving)strength=Math.min(strength,.78);if(mismatch>72&&moving)strength=Math.min(strength,.58);
   return{...filtered,lon:filtered.lon+(xy[0]-filtered.lon)*strength,lat:filtered.lat+(xy[1]-filtered.lat)*strength,_rawOffRoute:m.offRoute,_routeSnapped:true,_distanceAlong:along,_moving:moving,_routeHeading:routeHeading}
 }
@@ -1849,8 +1886,8 @@ function beginNavigationGpsWatch(){
   stopNavigationGpsHeartbeat();
   if(watchId!==null){try{navigator.geolocation?.clearWatch(watchId)}catch{}watchId=null}
   if(!navigator.geolocation)return;
-  try{watchId=navigator.geolocation.watchPosition(updateNavigation,e=>{console.warn('[VANO MAPS:GPS watch]',e);if(e?.code===1){showPermission(locationErrorMessage(e));showToast('GPS bloqueado. A rota continua aberta usando a última posição.')}},{enableHighAccuracy:true,maximumAge:0,timeout:4000})}catch(e){console.warn('[VANO MAPS:GPS watch start]',e)}
-  requestGpsHeartbeat(g=>{if(activeNav.classList.contains('show')&&!adminSimulation)updateNavigation(g)},1800,0);
+  try{watchId=navigator.geolocation.watchPosition(g=>queueNavigationGps(g,'watch'),e=>{console.warn('[VANO MAPS:GPS watch]',e);if(e?.code===1){showPermission(locationErrorMessage(e));showToast('GPS bloqueado. A rota continua aberta usando a última posição.')}},{enableHighAccuracy:true,maximumAge:0,timeout:4000})}catch(e){console.warn('[VANO MAPS:GPS watch start]',e)}
+  requestGpsHeartbeat(g=>queueNavigationGps(g,'heartbeat'),1800,0);
   startNavigationGpsHeartbeat();
 }
 function playNavigationLaunchCue(p){
@@ -1907,7 +1944,7 @@ async function startAdminSimulation(){if(!IS_ADMIN)return;if(adminSimulation){st
 function stepAdminSimulation(ts){if(!adminSimulation||!selectedRoute)return;if(!adminSimLastTs)adminSimLastTs=ts;const dt=Math.min(.12,Math.max(0,(ts-adminSimLastTs)/1000));adminSimLastTs=ts;adminSimDistance=Math.min(routeTotalGeometry,adminSimDistance+adminSimRealSpeed*dt*adminSimTimeScale);if(ts-adminSimLastUiAt>=70){adminSimLastUiAt=ts;const xy=routePointAtDistance(adminSimDistance),heading=routeBearingAtDistance(adminSimDistance,Math.max(20,adminSimRealSpeed*2.8));if(xy)updateNavigation({coords:{latitude:xy[1],longitude:xy[0],accuracy:4,heading,speed:adminSimRealSpeed}},true)}if(adminSimDistance>=routeTotalGeometry-2){const xy=routePointAtDistance(routeTotalGeometry-1);if(xy)updateNavigation({coords:{latitude:xy[1],longitude:xy[0],accuracy:4,heading:routeBearingAtDistance(Math.max(0,routeTotalGeometry-35),35),speed:0}},true);showToast('Teste concluído no destino.');stopAdminSimulation({keepNavigation:true});return}adminSimFrame=requestAnimationFrame(stepAdminSimulation)}
 function stopAdminSimulation({keepNavigation=false}={}){adminSimulation=false;if(adminSimFrame)cancelAnimationFrame(adminSimFrame);adminSimFrame=null;adminSimLastTs=0;adminSimDistance=0;$('simBadge')?.classList.remove('show');adminSimulationButton(false);if(!keepNavigation&&activeNav?.classList.contains('show')){try{updateFloatingSpeedometer(0)}catch{}}}
 function updateNavigation(g,simulated=false){
-  const raw=simulated?{lat:g.coords.latitude,lon:g.coords.longitude,accuracy:g.coords.accuracy,heading:Number.isFinite(g.coords.heading)?g.coords.heading:null,speed:Number.isFinite(g.coords.speed)?Math.max(0,g.coords.speed):null,ts:Date.now()}:geoRaw(g);
+  const raw=simulated?{lat:g.coords.latitude,lon:g.coords.longitude,accuracy:g.coords.accuracy,heading:Number.isFinite(g.coords.heading)?g.coords.heading:null,speed:Number.isFinite(g.coords.speed)?Math.max(0,g.coords.speed):null,ts:Date.now()}:(g?.coords?geoRaw(g):g);
   if(!simulated&&!acceptGpsRaw(raw))return;if(!simulated){lastGpsFixAt=Date.now();saveLastGps(raw)};const filtered=simulated?raw:filterPosition(raw),rawMatch=selectedRoute?nearestProgress(raw):null;let p=simulated?raw:stabilizeActiveNavPosition(filtered,raw,rawMatch);updateGpsQuality(raw.accuracy);if(!simulated&&Date.now()-lastGpsMetricAt>300000){lastGpsMetricAt=Date.now();const bucket=(+raw.accuracy||999)<=20?'excellent':(+raw.accuracy||999)<=50?'good':(+raw.accuracy||999)<=90?'weak':'poor';productTelemetry('gps',`quality:${bucket}`,'navigation')}if(!simulated&&maybeAdoptNavigationAlternative(raw,p)){p=stabilizeActiveNavPosition(filtered,raw,nearestProgress(raw))}userLocation={lat:p.lat,lon:p.lon};lastNavPosition=p;updateUserMarker(p);maybeRefreshNavigationAlerts(p);
   if(lastGps){const jump=hav([lastGps.lon,lastGps.lat],[p.lon,p.lat]);if(jump<Math.max(120,(raw.accuracy||30)*4))gpsDistance+=jump}lastGps=p;
   const m=nearestProgress(p),elapsed=Math.max(1,(Date.now()-navStartedAt)/1000),avg=gpsDistance/elapsed,step=currentStep(m.distanceAlong),now=performance.now();
