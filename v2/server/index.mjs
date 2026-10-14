@@ -466,7 +466,7 @@ async function route(req, res) {
   // Fetch mapped speed cameras independently of broad POI/traffic-light queries.
   if(pathname==='/api/map-radars'&&req.method==='GET'){
     if(!limits(req,res,'public-map-radars',40,60000))return;
-    const bbox=parseBBox(u.searchParams.get('bbox'));
+    const bbox=parseBBox(u.searchParams.get('bbox'),.3,.3);
     if(!bbox)return err(res,400,'Área dos radares inválida ou grande demais.');
     const result=await queryPublicRadars(bbox);
     return json(res,200,result,{'Cache-Control':'public, max-age=45'});
