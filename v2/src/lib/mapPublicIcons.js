@@ -185,3 +185,21 @@ export function mapFeatureBBox(map,backend){
  if(!(spanLat>0&&spanLon>0))return null;
  return [longitude-spanLon,latitude-spanLat,longitude+spanLon,latitude+spanLat].map(n=>+n.toFixed(5));
 }
+
+/** Public camera snapshots are indexed locally by viewport. Unlike POIs,
+ * radar lookup covers the visible map instead of just a small center patch.
+ * One bounded request is issued after the user finishes panning.
+ */
+export function mapRadarBBox(map){
+ const zoom=Number(map.getZoom());
+ if(!Number.isFinite(zoom)||zoom<11.6)return null;
+ const center=map.getCenter(),lng=Number(center.lng),lat=Number(center.lat);
+ if(!Number.isFinite(lng)||!Number.isFinite(lat)||Math.abs(lat)>84)return null;
+ const b=map.getBounds(),west=Number(b.getWest()),east=Number(b.getEast());
+ const south=Number(b.getSouth()),north=Number(b.getNorth());
+ if(![west,east,south,north].every(Number.isFinite)||east<=west||north<=south)return null;
+ const left=Math.max(-180,lng-.149,west-.002),right=Math.min(180,lng+.149,east+.002);
+ const bottom=Math.max(-85,lat-.149,south-.002),top=Math.min(85,lat+.149,north+.002);
+ if(left>=right||bottom>=top)return null;
+ return [left,bottom,right,top].map(x=>+x.toFixed(5));
+}
