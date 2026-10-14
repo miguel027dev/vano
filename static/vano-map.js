@@ -899,7 +899,7 @@ function vanoPoiDetailsMatch(words){return ['any',...words.map(w=>['in',w,VANO_P
 const VANO_POI_SPECIAL=[
   [vanoPoiDetailsMatch(['pet shop','pet store','pet supplies','petshop']),'vano-petShop'],
   [vanoPoiDetailsMatch(['car wash','carwash','lava-rápido','lava rapido','lavagem automotiva']),'vano-carwash'],
-  [vanoPoiDetailsMatch(['shopping mall','shopping centre','shopping center','shopping centre','shopping mall','mall']),'vano-mall'],
+  [['any',vanoPoiDetailsMatch(['shopping mall','shopping centre','shopping center']),['==',['downcase',['to-string',['coalesce',['get','type'],'']]],'mall']],'vano-mall'],
   [['all',['==',['get','maki'],'grocery'],vanoPoiDetailsMatch(['supermarket','hypermarket','supermercado'])],'vano-supermarket'],
   [['all',['==',['get','maki'],'charging-station'],vanoPoiDetailsMatch(['charging point','electric charger','carregador'])],'vano-evCharge']
 ];
