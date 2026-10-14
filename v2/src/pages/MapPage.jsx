@@ -7,6 +7,7 @@ import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {startGpsSession} from '../lib/gpsSession';
 import {smoothGpsSpeedSample} from '../lib/mapSpeed.js';
+import {speedLimitAtGpsPosition} from '../lib/routeSpeedLimit.js';
 import {advanceTravelDistance} from '../lib/travelDistance.js';
 import {searchGeoBias} from '../lib/searchGeoBias.js';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
@@ -506,7 +507,15 @@ export default function MapPage({active=true}){
 
   // The only readout lives beside the street name when a route is ACTIVE.
   // Never render it on the initial map or next to the location card.
-  const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`} aria-live="off" title={speedKmh===null?'Aguardando velocidade informada pelo GPS':'Velocidade medida pelo GPS'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small></output>;
+  // Only the selected driving route and a fresh, precise GPS fix can supply
+  // a posted limit; unknown provider segments never display guessed numbers.
+  const postedLimit=navMode&&hasLiveGPS&&routeVehicle!=='a-pe'&&routeData?.source!=='demonstracao'
+    ?speedLimitAtGpsPosition(route,userCoords,{
+      accuracy:telemetry.accuracy,
+      fresh:hasRecentGpsFix(lastGpsFix.current,Date.now(),15000),
+      simulated:demoRoute
+    }):null;
+  const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`+(postedLimit===null?'':`. Limite informado da via: ${postedLimit} quilômetros por hora`)} aria-live="off" title={postedLimit===null?'Velocidade do GPS. Limite da via indisponível':'Velocidade do GPS e limite informado pelo Mapbox'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small>{postedLimit!==null&&<span className="v43-speed-limit" aria-label={`Limite de velocidade informado: ${postedLimit} km/h`}><b>{postedLimit}</b></span>}</output>;
 
   const nextTurnText=maneuverText(guidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
   const visualLanes=Array.isArray(guidance?.lanes)?guidance.lanes.map((lane,index)=>({
