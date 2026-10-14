@@ -12,14 +12,14 @@ test('categorizes only real Mapbox Streets POIs with valid categories',()=>{
  assert.equal(classifyMapboxPoi({maki:'fuel'})[0],'combustivel');
  assert.equal(classifyMapboxPoi({maki:'parking'})[0],'estacionamento');
  assert.equal(classifyMapboxPoi({type:'Hospital'})[0],'hospital');
- assert.equal(classifyMapboxPoi({type:'Restaurant'}),null);
+ assert.equal(classifyMapboxPoi({type:'Restaurant'})[0],'restaurante');
  assert.equal(classifyMapboxPoi({}),null);
 });
 test('normalizes duplicated vector tile POIs without making up radars or signals',()=>{
  const features=[point('Hospital Municipal','hospital'),point('Hospital Municipal','hospital',1),
   point('Posto', 'fuel',2,-46.683,-23.584),point('Unlisted','restaurant',3)];
  const out=normalizeMapboxPois(features);
- assert.deepEqual(out.map(x=>x.type),['hospital','combustivel']);
+ assert.deepEqual(out.map(x=>x.type),['hospital','combustivel','restaurante']);
  assert.ok(out.every(x=>x.source==='Mapbox Streets'));
  assert.ok(out.every(x=>x.verified===false));
  assert.ok(out.every(x=>x.type!=='radar'&&x.type!=='semaforo'));
@@ -33,7 +33,7 @@ test('reads loaded Mapbox Streets v8 vector source without fetching another netw
   querySourceFeatures:(source,options)=>{calls.push([source,options.sourceLayer]);return options.sourceLayer==='road'?[{id:222,geometry:{type:'Point',coordinates:[-46.681,-23.581]},properties:{class:'traffic_signals'}}]:[point('UPA Exemplo','hospital')];}
  };
  const out=readMapboxPoiFeatures(map);
- assert.deepEqual(calls,[['vano-streets','road'],['vano-streets','poi_label']]);
+ assert.deepEqual(calls,[['vano-streets','road'],['vano-streets','poi_label'],['vano-streets','transit_stop_label'],['vano-streets','airport_label']]);
  assert.equal(out.length,2);
  assert.equal(out[0].type,'semaforo');
  assert.equal(out[0].name,'Semáforo');
@@ -90,7 +90,7 @@ test('signage remains when no POI labels exist in loaded vector tiles',()=>{
  };
  const out=readMapboxPoiFeatures(map);
  assert.deepEqual(out.map(x=>x.type),['semaforo']);
- assert.deepEqual(calls,['road','poi_label']);
+ assert.deepEqual(calls,['road','poi_label','transit_stop_label','airport_label']);
 });
 
 test('older Mapbox source query rejects an expression filter but still supplies real signal points',()=>{
@@ -109,7 +109,7 @@ test('older Mapbox source query rejects an expression filter but still supplies 
   }
  };
  assert.deepEqual(readMapboxPoiFeatures(map).map(x=>x.type),['semaforo']);
- assert.deepEqual(methods,['road-filtered','road-all','poi_label-all']);
+ assert.deepEqual(methods,['road-filtered','road-all','poi_label-all','transit_stop_label-all','airport_label-all']);
 });
 
 
