@@ -49,7 +49,10 @@ export function attachPublicMapOverlay(map,backend){
  credit.className='v40-map-credit';
  credit.href='https://www.openstreetmap.org/copyright';
  credit.rel='noopener noreferrer';credit.target='_blank';
- credit.textContent='© OpenStreetMap contributors · ANTT · ODbL / CC BY 4.0';
+ credit.textContent='© OpenStreetMap contributors';
+ // Keep licensing information available without crowding the map interface.
+ credit.title='Fontes e licenças: OpenStreetMap (ODbL 1.0) e ANTT (CC BY 4.0).';
+ credit.setAttribute('aria-label','© OpenStreetMap contributors. Fontes: OpenStreetMap e ANTT; licenças ODbL 1.0 e CC BY 4.0.');
  credit.hidden=true;map.getContainer().append(credit);
  const notice=document.createElement('button');
  notice.type='button';
