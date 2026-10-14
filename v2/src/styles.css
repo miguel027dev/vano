@@ -102,3 +102,21 @@
   top:-7px;
   bottom:auto;
 }
+
+
+/* Official OpenRouter glyph only; visible with the map credits during navigation. */
+.map-page .mapboxgl-ctrl-bottom-left{
+  display:flex;
+  align-items:flex-end;
+}
+.map-page .vano-openrouter-mark{
+  display:none !important;
+  width:12px !important;
+  height:12px !important;
+  margin:0 0 2px 4px;
+  flex:0 0 12px;
+  object-fit:contain;
+  opacity:.72;
+  pointer-events:none;
+}
+.map-page.in-navigation .vano-openrouter-mark{display:block !important;}
