@@ -84,8 +84,9 @@ export function validateTransitRequest(input,now=Date.now()){
   return {origin,destination,sort,departAt:date};
 }
 const place=p=>{
-  const lon=Number(p?.lon),lat=Number(p?.lat);
-  return {name:safeLabel(p?.name,110),coords:pointOK([lon,lat])?[lon,lat]:null};
+  const lon=p?.lon,lat=p?.lat;
+  // Do not transform null, undefined or empty strings into [0,0].
+  return {name:safeLabel(p?.name,110),coords:Number.isFinite(lon)&&Number.isFinite(lat)&&pointOK([lon,lat])?[lon,lat]:null};
 };
 const stopTime=(s)=>{
   const scheduled=validTime(s?.scheduledTime),estimated=validTime(s?.estimated?.time);
@@ -184,6 +185,35 @@ export function normalizeTransitResult(data,region,sort='balanced'){
     itineraries:ranked.itineraries.slice(0,6),errors:plan.routingErrors?.map(e=>safeLabel(e.description,120)).filter(Boolean).slice(0,3)||[],
     notice:'Horários previstos podem mudar. Estimativas não comprovam atualização em tempo real; tarifas podem variar por perfil e forma de pagamento.'};
 }
+/**
+ * Limit untrusted upstream response size to 1 MiB, including chunked bodies
+ * that have no Content-Length. Prevents an upstream from exhausting web memory.
+ */
+export async function readTransitProviderJson(response,maxBytes=1048576){
+  const declared=Number(response?.headers?.get?.('content-length'));
+  if(Number.isFinite(declared)&&declared>maxBytes)throw new TransitError('provider_too_large','Resposta excessivamente grande do provedor.',502);
+  if(!response?.body?.getReader){
+    // Used by the existing fetcher mock in tests; native fetch always returns a stream.
+    const obj=await response.json();
+    if(Buffer.byteLength(JSON.stringify(obj))>maxBytes)throw new TransitError('provider_too_large','Resposta excessivamente grande do provedor.',502);
+    return obj;
+  }
+  const reader=response.body.getReader();
+  let total=0;const chunks=[];
+  try{
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      total+=value.byteLength;
+      if(total>maxBytes)throw new TransitError('provider_too_large','Resposta excessivamente grande do provedor.',502);
+      chunks.push(value);
+    }
+    return JSON.parse(Buffer.concat(chunks.map(x=>Buffer.from(x))).toString('utf8'));
+  }catch(error){
+    if(error instanceof TransitError)throw error;
+    throw new TransitError('provider_invalid','Resposta inválida do provedor.',502);
+  }finally{void reader.cancel().catch(()=>{});}
+}
 export async function planTransitTrip(input,{regions=transitRegions(),fetcher=fetch,now=Date.now(),timeoutMs=8000}={}){
   const request=validateTransitRequest(input,now);
   const region=findTransitRegion(request.origin,request.destination,regions);
@@ -202,6 +232,6 @@ export async function planTransitTrip(input,{regions=transitRegions(),fetcher=fe
     });
   }catch{throw new TransitError('provider_unavailable','O serviço de horários está temporariamente indisponível.',503);}
   if(!response.ok)throw new TransitError('provider_unavailable','O provedor não conseguiu calcular esta viagem.',502);
-  let data;try{data=await response.json();}catch{throw new TransitError('provider_invalid','Resposta inválida do provedor.',502);}
+  const data=await readTransitProviderJson(response);
   return normalizeTransitResult(data,region,request.sort);
 }
