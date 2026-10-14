@@ -23,6 +23,7 @@ const inRange=(lon,lat)=>Number.isFinite(lon)&&Number.isFinite(lat)&&Math.abs(lo
 const keyFor=(lon,lat)=>Math.floor(lon*GRID_SCALE)+':'+Math.floor(lat*GRID_SCALE);
 const headerIndex=(columns,names)=>columns.findIndex(x=>names.includes(clean(x)));
 const mkRecord=(lon,lat,id='',speed=null,country='')=>{
+ if(lon==null||lat==null||String(lon).trim()===''||String(lat).trim()==='')return null;
  lon=Number(lon);lat=Number(lat);
  if(!inRange(lon,lat))return null;
  if(!radarDisplayAllowed([lon,lat]))return null;
@@ -134,7 +135,7 @@ export function resetWorldRadarCatalogForTests(){
  }
 }
 export async function queryWorldRadarCatalog(bbox,opts={}){
- const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
+ const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox,.3,.3);
  if(!b)throw RangeError('Invalid camera catalog bbox');
  await Promise.all(sourceStates.map(state=>fetchSnapshot(state,opts)));
  const [w,s,e,n]=b,features=[],seen=new Set(),cx=(w+e)/2,cy=(s+n)/2;
