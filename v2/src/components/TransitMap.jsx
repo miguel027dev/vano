@@ -1,70 +1,124 @@
 import React,{useEffect,useRef} from 'react';
 import mapboxgl from 'mapbox-gl';
-import {mapboxStyleFor,VANO_ATLAS_STYLE} from '../lib/mapLayers.js';
+import {mapboxStyleFor,MAPBOX_STYLES,VANO_ATLAS_STYLE} from '../lib/mapLayers.js';
 
-const valid=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite);
+const valid=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<=90;
+const collection=(features=[])=>({type:'FeatureCollection',features});
+const feature=(coordinates,properties)=>({type:'Feature',properties,geometry:{type:'Point',coordinates}});
 export function decodeTransitPolyline(encoded){
  if(typeof encoded!=='string'||encoded.length>50000)return [];
  let lat=0,lon=0,index=0;const points=[];
  const next=()=>{let result=0,shift=0,b;do{if(index>=encoded.length||shift>30)throw Error('Invalid polyline');b=encoded.charCodeAt(index++)-63;result|=(b&31)<<shift;shift+=5;}while(b>=32);return result&1?~(result>>1):(result>>1);};
- try{while(index<encoded.length&&points.length<10000){lat+=next();lon+=next();const p=[lon/1e5,lat/1e5];if(!valid(p)||Math.abs(p[0])>180||Math.abs(p[1])>90)return [];points.push(p);}return points;}catch{return [];}
+ try{while(index<encoded.length&&points.length<10000){lat+=next();lon+=next();const p=[lon/1e5,lat/1e5];if(!valid(p))return [];points.push(p);}return points;}catch{return [];}
 }
 export function transitGeojson(itinerary){
  const features=(itinerary?.legs||[]).flatMap((leg,i)=>{
-  const points=decodeTransitPolyline(leg.geometryEncoded);
-  const coords=points.length>=2?points:[leg.from?.coords,leg.to?.coords].filter(valid);
+  const coords=decodeTransitPolyline(leg.geometryEncoded);
+  // Route geometry MUST originate with the provider. A straight segment from
+  // stop A to stop B is not a transit route and must never be fabricated.
   if(coords.length<2)return [];
-  const lineColor=leg.transit?leg.lineColor||'#EF652B':'#778798';
+  const lineColor=leg.transit?leg.lineColor||'#EA6229':'#83909C';
   return [{type:'Feature',properties:{order:i,transit:leg.transit===true,color:lineColor},
     geometry:{type:'LineString',coordinates:coords}}];
  });
- return {type:'FeatureCollection',features};
+ return collection(features);
 }
-export default function TransitMap({itinerary,origin,destination}){
+export function transitStopsGeojson(itinerary,origin,destination){
+ const stops=[];
+ const add=(coordinates,label,kind,color='#FFFFFF')=>{
+  if(!valid(coordinates)||stops.some(s=>s.geometry.coordinates.every((v,i)=>Math.abs(v-coordinates[i])<0.000005)&&s.properties.kind===kind))return;
+  stops.push(feature(coordinates,{label:String(label||'').slice(0,60),kind,color}));
+ };
+ const first=itinerary?.legs?.[0]?.from;
+ const last=itinerary?.legs?.at(-1)?.to;
+ add(origin?.coords||first?.coords,'A','start','#EA6229');
+ for(const leg of itinerary?.legs||[]){
+  if(!leg?.transit)continue;
+  if(valid(leg.from?.coords))add(leg.from.coords,leg.from.name,'transfer',leg.lineColor||'#EA6229');
+  if(valid(leg.to?.coords))add(leg.to.coords,leg.to.name,'transfer',leg.lineColor||'#EA6229');
+ }
+ add(destination?.coords||last?.coords,'B','finish','#EA6229');
+ return collection(stops);
+}
+export function transitBadgeGeojson(itinerary){
+ const features=[];
+ for(const leg of itinerary?.legs||[]){
+  if(!leg.transit)continue;
+  const geometry=decodeTransitPolyline(leg.geometryEncoded);
+  if(geometry.length<2||!leg.line)continue;
+  const point=geometry[Math.floor((geometry.length-1)*0.5)];
+  features.push(feature(point,{label:String(leg.line).slice(0,9),color:leg.lineColor||'#EA6229'}));
+ }
+ return collection(features);
+}
+const layerIds=['vt-route-halo','vt-route-walk','vt-route-transit','vt-stop-circles','vt-stop-labels','vt-stop-text','vt-badge-circles','vt-badge-text'];
+function drawTransit(map,{itinerary,origin,destination},overview){
+ if(!map.isStyleLoaded())return;
+ const lines=transitGeojson(itinerary);
+ const stops=transitStopsGeojson(itinerary,origin,destination);
+ const badges=transitBadgeGeojson(itinerary);
+ const addSource=(id,data)=>{
+   const existing=map.getSource(id);if(existing)existing.setData(data);
+   else map.addSource(id,{type:'geojson',data});
+ };
+ addSource('vt-legs',lines);addSource('vt-stops',stops);addSource('vt-badges',badges);
+ if(!map.getLayer(layerIds[0])){
+  map.addLayer({id:layerIds[0],type:'line',source:'vt-legs',paint:{'line-color':'#FFFFFF','line-width':9,'line-opacity':0.94}});
+  map.addLayer({id:layerIds[1],type:'line',source:'vt-legs',filter:['==',['get','transit'],false],
+   paint:{'line-color':'#84919A','line-width':4,'line-opacity':1,'line-dasharray':[1,1.4]}});
+  map.addLayer({id:layerIds[2],type:'line',source:'vt-legs',filter:['==',['get','transit'],true],
+   paint:{'line-color':['get','color'],'line-width':6,'line-opacity':0.98}});
+  map.addLayer({id:layerIds[3],type:'circle',source:'vt-stops',
+   paint:{'circle-radius':['match',['get','kind'],'transfer',7,12],
+   'circle-color':['match',['get','kind'],'transfer','#FFFFFF','#EA6229'],
+   'circle-stroke-color':['match',['get','kind'],'transfer','#28333C','#FFFFFF'],'circle-stroke-width':3}});
+  map.addLayer({id:layerIds[4],type:'symbol',source:'vt-stops',filter:['==',['get','kind'],'transfer'],
+   layout:{'text-field':['get','label'],'text-size':11,'text-font':['DIN Pro Medium','Arial Unicode MS Regular'],
+      'text-offset':[0,1.35],'text-anchor':'top','text-max-width':10,'text-optional':true},
+   paint:{'text-color':'#FFFFFF','text-halo-color':'#192530','text-halo-width':2.4}});
+  map.addLayer({id:layerIds[5],type:'symbol',source:'vt-stops',filter:['!=',['get','kind'],'transfer'],
+   layout:{'text-field':['get','label'],'text-size':12,'text-font':['DIN Pro Bold','Arial Unicode MS Bold'],
+      'text-allow-overlap':true},
+   paint:{'text-color':'#FFFFFF'}});
+  map.addLayer({id:layerIds[6],type:'circle',source:'vt-badges',
+   paint:{'circle-radius':15,'circle-color':['get','color'],'circle-stroke-color':'#FFFFFF','circle-stroke-width':2}});
+  map.addLayer({id:layerIds[7],type:'symbol',source:'vt-badges',
+   layout:{'text-field':['get','label'],'text-size':10,'text-font':['DIN Pro Bold','Arial Unicode MS Bold'],
+      'text-allow-overlap':false,'text-optional':true},
+   paint:{'text-color':'#FFFFFF','text-halo-color':'#17232B','text-halo-width':0.5}});
+ }
+ const all=lines.features.flatMap(f=>f.geometry.coordinates).concat(stops.features.map(f=>f.geometry.coordinates));
+ if(all.length){
+  const bounds=new mapboxgl.LngLatBounds();all.forEach(p=>bounds.extend(p));
+  const h=map.getContainer().clientHeight,compact=map.getContainer().clientWidth<700;
+  const padding=overview?{top:Math.min(170,Math.round(h*0.25)),bottom:Math.min(265,Math.round(h*0.37)),left:34,right:34}
+    :{top:80,bottom:80,left:40,right:40};
+  map.fitBounds(bounds,{padding,maxZoom:14.5,pitch:overview?22:0,duration:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?0:560});
+ }
+}
+export default function TransitMap({itinerary,origin,destination,overview=false,style='streets',controller=null}){
  const container=useRef(null),instance=useRef(null),data=useRef({itinerary,origin,destination});
  data.current={itinerary,origin,destination};
  const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
  useEffect(()=>{
   if(!token||!container.current)return;
   mapboxgl.accessToken=token;
-  const map=new mapboxgl.Map({container:container.current,style:mapboxStyleFor('streets',(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE),
-    center:[0,20],zoom:1.5,attributionControl:true,logoPosition:'bottom-left',interactive:true});
+  const selectedStyle=style==='satellite'?MAPBOX_STYLES.satellite:mapboxStyleFor('streets',(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE);
+  const map=new mapboxgl.Map({container:container.current,style:selectedStyle,center:[0,20],zoom:1.5,
+    attributionControl:true,logoPosition:'bottom-left',interactive:true,pitch:0});
   instance.current=map;
-  const update=()=>{
-   if(!map.isStyleLoaded())return;
-   const selected=data.current;
-   const geo=transitGeojson(selected.itinerary);
-   const existing=map.getSource('vano-transit-legs');
-   if(existing)existing.setData(geo);
-   else{
-    map.addSource('vano-transit-legs',{type:'geojson',data:geo});
-    map.addLayer({id:'vano-transit-walking',type:'line',source:'vano-transit-legs',
-      filter:['==',['get','transit'],false],paint:{'line-color':'#8390A2','line-width':4,'line-opacity':0.85,'line-dasharray':[1.6,1.2]}});
-    map.addLayer({id:'vano-transit-lines',type:'line',source:'vano-transit-legs',
-      filter:['==',['get','transit'],true],paint:{'line-color':['get','color'],'line-width':6,'line-opacity':0.95}});
-   }
-   const all=geo.features.flatMap(f=>f.geometry.coordinates).concat([selected.origin?.coords,selected.destination?.coords].filter(valid));
-   if(all.length){
-    const bounds=new mapboxgl.LngLatBounds();all.forEach(p=>bounds.extend(p));
-    if(!bounds.isEmpty())map.fitBounds(bounds,{padding:{top:80,bottom:80,left:40,right:40},maxZoom:15,duration:450});
-   }
-  };
-  map.on('load',update);map.on('style.load',update);
-  return()=>{instance.current=null;map.remove();};
- },[token]);
+  if(controller)controller.current={recenter:()=>drawTransit(map,data.current,overview)};
+  const paint=()=>{if(map.isStyleLoaded())drawTransit(map,data.current,overview);};
+  map.on('load',paint);map.on('style.load',paint);
+  return()=>{if(controller)controller.current=null;instance.current=null;map.remove();};
+ },[token,style,overview]);
  useEffect(()=>{
-  const map=instance.current;if(!map)return;
-  if(map.isStyleLoaded()){
-   const geo=transitGeojson(itinerary);
-   const source=map.getSource('vano-transit-legs');
-   if(source)source.setData(geo);
-   const bounds=new mapboxgl.LngLatBounds();
-   geo.features.flatMap(f=>f.geometry.coordinates).concat([origin?.coords,destination?.coords].filter(valid)).forEach(p=>bounds.extend(p));
-   if(!bounds.isEmpty())map.fitBounds(bounds,{padding:{top:70,bottom:80,left:40,right:40},maxZoom:15,duration:450});
-  }
- },[itinerary,origin,destination]);
+  const map=instance.current;
+  if(!map||!map.isStyleLoaded())return;
+  drawTransit(map,data.current,overview);
+ },[itinerary,origin?.coords?.[0],origin?.coords?.[1],destination?.coords?.[0],destination?.coords?.[1],overview]);
  return <div className="vano-transit-map" aria-label="Mapa do itinerário em transporte público">
-   {token?<div ref={container} className="vano-transit-map-canvas"/>:<div className="vano-transit-map-empty">Mapa indisponível neste ambiente</div>}
-   {!itinerary&&<div className="vano-transit-map-hint">Escolha origem e destino para explorar as linhas disponíveis.</div>}
+  {token?<div ref={container} className="vano-transit-map-canvas"/>:<div className="vano-transit-map-empty">Mapa indisponível neste ambiente</div>}
+  {!itinerary&&!overview&&<div className="vano-transit-map-hint">Escolha origem e destino para explorar as linhas disponíveis.</div>}
  </div>;
 }
