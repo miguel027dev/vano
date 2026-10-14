@@ -79,6 +79,7 @@ test('economy compares verified fare totals instead of assuming each boarding is
  const singles=[{transitLeg:true,fareProducts:[p('trip1',5)]},{transitLeg:true,fareProducts:[p('trip2',5)]}];
  assert.equal(verifiedItineraryFare(singles).amount,10);
  assert.equal(verifiedItineraryFare([{transitLeg:true,fareProducts:[]}]),null);
+ assert.equal(verifiedItineraryFare([{transitLeg:true,fareProducts:[{id:'student',product:{__typename:'DefaultFareProduct',riderCategory:{isDefault:false},price:{amount:2,currency:{code:'BRL'}}}}]}]),null,'student discounts cannot be assumed for every rider');
  assert.equal(verifiedItineraryFare([{transitLeg:true,fareProducts:[p('A',5),p('B',8)]}]),null,'alternative tickets must not be added together');
  assert.equal(verifiedItineraryFare([{transitLeg:true,fareProducts:[{id:'A',product:{__typename:'DependentFareProduct',price:{amount:3,currency:{code:'BRL'}}}}]}]),null,'dependent discounts require a complete fare contract');
 });
