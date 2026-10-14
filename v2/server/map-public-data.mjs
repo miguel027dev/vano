@@ -9,12 +9,12 @@ const ENDPOINT='https://overpass-api.de/api/interpreter';
 const ttlMs=5*60*1000,maxCache=100,cache=new Map();
 let lastUpstream=0,queued=Promise.resolve(),pending=0,quotaWindow=Date.now(),quotaUsed=0;
 const finite=Number.isFinite;
-export function parseBBox(raw){
+export function parseBBox(raw,maxLongitudeSpan=.065,maxLatitudeSpan=.055){
  if(typeof raw!=='string'||raw.length>100)return null;
  const b=raw.split(',').map(Number);
  if(b.length!==4||!b.every(finite))return null;
  const [w,s,e,n]=b;
- if(w< -180||e>180||s< -85||n>85||w>=e||s>=n||e-w>0.065||n-s>0.055)return null;
+ if(w< -180||e>180||s< -85||n>85||w>=e||s>=n||e-w>maxLongitudeSpan||n-s>maxLatitudeSpan)return null;
  return b.map(v=>+v.toFixed(5));
 }
 const safeTag=(v,max=100)=>typeof v==='string'?v.replace(/[\u0000-\u001F\u007F<>]/g,'').trim().slice(0,max):'';
