@@ -4,6 +4,7 @@
 import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
 import {iconSvg,selectPublicPins,mapFeatureBBox} from './mapPublicIcons.js';
+import {radarDisplayAllowed} from './radarPolicy.js';
 import {readMapboxPoiFeatures} from './mapboxPoiFallback.js';
 import {rememberMapFeatures,cachedMapFeatures} from './mapFeaturePersistence.js';
 
@@ -119,7 +120,7 @@ export function attachPublicMapOverlay(map,backend){
     Math.abs(x.coords[0]-item.coords[0])<.00028&&Math.abs(x.coords[1]-item.coords[1])<.00028);
    if(!duplicate){combined.push(item);seen.add(item.id);}
   }
-  items=combined;
+  items=combined.filter(item=>item.type!=='radar'||radarDisplayAllowed(item.coords));
  }
  function updateVectorPoi(){
   if(done||backend!=='mapbox')return;
