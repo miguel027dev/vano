@@ -57,14 +57,14 @@ const GLYPHS={
  bag:'<path d="M4 8h16l-1.2 13H5.2L4 8ZM9 10V6a3 3 0 0 1 6 0v4"/>',
  charge:'<rect x="4" y="3" width="12" height="19" rx="2"/><path d="M8 7h4l-3 5h4l-4 6M16 9h2a2 2 0 0 1 2 2v7a2 2 0 0 0 2 2"/>',
  plug:'<path d="M8 3v5m8-5v5M6 8h12v5a6 6 0 0 1-6 6v3M12 12l-2 3h3l-1 2"/>',
- utensils:'<path d="M4 3v7m3-7v7m3-7v7M4 10h6M7 10v11M17 3c-3 3-3 8 0 10h3V3zM17 13v8"/>',
- burger:'<path d="M4 11a8 8 0 0 1 16 0ZM3 14h18M5 17h14M6 20h12"/>',
+ utensils:'<path d="M4 3v6a3 3 0 0 0 6 0V3M7 3v18M20 3v18M20 3c-4 2-6 6-6 11h6"/>',
+ burger:'<path d="M4 11a8 8 0 0 1 16 0H4ZM4 19h16M3 14h18M5 16h14M8 7h.01M12 6h.01M16 7h.01"/>',
  coffee:'<path d="M4 8h13v7a6 6 0 0 1-6 6h-1a6 6 0 0 1-6-6V8ZM17 10h2a3 3 0 0 1 0 6h-2M8 3v3m4-4v4"/>',
- bed:'<path d="M3 5v16M21 14v7M3 17h18M7 10h5a2 2 0 0 1 2 2v5H7zM14 13h7v4h-7"/>',
- school:'<path d="M3 9 12 3l9 6v12H3zM9 21v-7h6v7M7 11h1m8 0h1"/>',
+ bed:'<path d="M3 20v-8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8M3 16h18M3 20v1M21 20v1M7 10V7h10v3M12 7v3"/>',
+ school:'<path d="M3 21V9l9-6 9 6v12H3Z"/><circle cx="12" cy="9" r="2"/><path d="M12 8v1l1 .5M8 21v-7h8v7"/>',
  fitness:'<path d="M2 10v4M5 7v10M8 9v6m8-6v6m3-8v10m3-7v4M8 12h8"/>',
  trees:'<path d="m6 3-4 8h3l-3 5h8l-3-5h3L6 3ZM17 5l-4 7h3l-3 5h8l-3-5h3l-4-7ZM6 16v6m11-5v5"/>',
- paw:'<circle cx="7" cy="6" r="1"/><circle cx="12" cy="4" r="1"/><circle cx="17" cy="6" r="1"/><circle cx="20" cy="10" r="1"/><path d="M12 11c-3 0-3 5-6 6-1 2 0 4 3 4l3-1 3 1c3 0 4-2 3-4-3-1-3-6-6-6Z"/>',
+ paw:'<circle cx="5.5" cy="9" r="1.5"/><circle cx="10" cy="5.5" r="1.5"/><circle cx="15" cy="5.5" r="1.5"/><circle cx="19.5" cy="9" r="1.5"/><path d="M12 12c-2.5 0-3.5 2-5.2 3.3C4 17.4 6 21 9 20c2-1 4-1 6 0 3 1 5-2.6 2.2-4.7C15.5 14 14.5 12 12 12Z"/>',
  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 7 8-7"/>',
  wash:'<path d="M6 15 8 9h8l2 6M5 15h14v5H5zM8 20h1m6 0h1M7 3v2m5-3v3m5-2v2"/>',
  bus:'<rect x="5" y="3" width="14" height="17" rx="3"/><path d="M7 8h10M8 16h1m6 0h1M7 20v2m10-2v2M9 5h6"/>',
@@ -78,10 +78,7 @@ export function iconSvg(type){
  const inner=GLYPHS[glyph]||GLYPHS.alert;
  return '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+inner+'</svg>';
 }
-/** World-anchored 20m-ish cells: unchanged while zooming, rotating or
- * moving the camera. Suppress exact/near duplicates, NOT entire icon categories.
- * Display coverage is limited by REAL loaded provider records, not zoom gating.
- */
+/** Stable world-grid duplicate detection; independent of viewport panning. */
 export function stableWorldCell(coords,_zoom){
  if(!Array.isArray(coords)||coords.length<2||!coords.every(Number.isFinite))return '';
  const z=18,cellSize=30;
@@ -92,34 +89,88 @@ export function stableWorldCell(coords,_zoom){
  const y=(1-merc/Math.PI)/2*world;
  return Math.floor(x/cellSize)+':'+Math.floor(y/cellSize);
 }
+/** Separate budgets for total markers, road signs and semaphores. */
+export function publicPinDensity(viewport,zoom=14,max=52){
+ const width=Number(viewport?.width),height=Number(viewport?.height);
+ const valid=Number.isFinite(width)&&Number.isFinite(height)&&width>0&&height>0;
+ const area=valid?width*height:650000;
+ const zoomFactor=zoom<14?.70:zoom<16?.85:1;
+ const absoluteMax=Math.max(1,Math.floor(Number.isFinite(max)?max:52));
+ const displayMax=valid?Math.max(12,Math.min(86,Math.round(area/10500*zoomFactor))):absoluteMax;
+ const total=Math.min(absoluteMax,displayMax);
+ return {
+  total,
+  roadMax:Math.max(2,Math.min(total,Math.ceil(total*.27))),
+  signalMax:Math.max(2,Math.min(16,Math.round(area/75000*zoomFactor))),
+  minSpacing:zoom<14?53:47,
+  signalSpacing:zoom<16?112:94,
+  typeMax:Math.max(3,Math.ceil(total*.20))
+ };
+}
+const PIN_URGENT=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar','obra']);
+const PIN_SERVICES=new Set([
+ 'hospital','saude','bombeiros','policia-base','combustivel','eletroposto','estacionamento',
+ 'farmacia','escola','estacao-recarga','carregador-eletrico','terminal-onibus',
+ 'estacao-trem','estacao-ferroviaria','aeroporto'
+]);
+const PIN_ROAD=new Set(['semaforo','lombada','pare','preferencia','placa','travessia','ferrovia','rotatoria']);
+const pinPriority=(a,b)=>Number(b.priority||0)-Number(a.priority||0)||String(a.id).localeCompare(String(b.id));
+/** Round-robin across types to keep variety when one class dominates source tiles. */
+function diversePinOrder(list){
+ const buckets=new Map();
+ for(const f of [...list].sort(pinPriority)){
+  if(!buckets.has(f.type))buckets.set(f.type,[]);
+  buckets.get(f.type).push(f);
+ }
+ const groups=[...buckets.values()].sort((a,b)=>pinPriority(a[0],b[0])),ordered=[];
+ let more=true;
+ while(more){more=false;for(const group of groups)if(group.length){ordered.push(group.shift());more=true;}}
+ return ordered;
+}
 export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,viewport=null){
  if(!Array.isArray(features)||!Number.isFinite(zoom))return [];
+ const rules=publicPinDensity(viewport,zoom,max);
  const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]);
- // Reserve a reasonable share for hospitals/fuel/health services even if the
- // visible tile happens to have hundreds of signals with higher priorities.
- const services=new Set(['hospital','saude','bombeiros','policia-base','combustivel','eletroposto','estacionamento','farmacia','escola','estacao-recarga','carregador-eletrico']);
- const urgent=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar']);
- const compare=(a,b)=>Number(b.priority||0)-Number(a.priority||0)||String(a.id).localeCompare(String(b.id));
- const important=candidates.filter(x=>urgent.has(x.type)).sort(compare);
- const reserved=candidates.filter(x=>services.has(x.type)).sort(compare);
- const rest=candidates.filter(x=>!urgent.has(x.type)&&!services.has(x.type)).sort(compare);
- const serviceSlots=Math.max(10,Math.floor(max*.28));
- const ordered=[...important,...reserved.slice(0,serviceSlots),...rest,...reserved.slice(serviceSlots)];
- const output=[],occupied=new Set();
- for(const f of ordered){
-  if(output.length>=max)break;
-  let p;
-  try{p=project(f.coords);}catch{continue;}
-  if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))continue;
-  if(viewport&&Number.isFinite(viewport.width)&&Number.isFinite(viewport.height)&&
-   (p.x< -36||p.y< -36||p.x>viewport.width+36||p.y>viewport.height+36))continue;
-  const cell=stableWorldCell(f.coords,zoom);
-  if(!cell||occupied.has(cell))continue;
-  occupied.add(cell);output.push(f);
+ const urgent=diversePinOrder(candidates.filter(f=>PIN_URGENT.has(f.type)));
+ const services=diversePinOrder(candidates.filter(f=>PIN_SERVICES.has(f.type)&&!PIN_URGENT.has(f.type)));
+ const businesses=diversePinOrder(candidates.filter(f=>!PIN_SERVICES.has(f.type)&&!PIN_ROAD.has(f.type)&&!PIN_URGENT.has(f.type)));
+ const road=diversePinOrder(candidates.filter(f=>PIN_ROAD.has(f.type)));
+ const chosen=[],positions=[],cells=new Set(),counts=new Map();
+ let roadCount=0,signalCount=0;
+ function addFrom(pool,until){
+  for(const f of pool){
+   if(chosen.length>=until||chosen.length>=rules.total)break;
+   if(!PIN_URGENT.has(f.type)&&(counts.get(f.type)||0)>=rules.typeMax)continue;
+   if(PIN_ROAD.has(f.type)&&roadCount>=rules.roadMax)continue;
+   if(f.type==='semaforo'&&signalCount>=rules.signalMax)continue;
+   let p;
+   try{p=project(f.coords);}catch{continue;}
+   if(!p||!Number.isFinite(p.x)||!Number.isFinite(p.y))continue;
+   if(viewport&&Number.isFinite(viewport.width)&&Number.isFinite(viewport.height)&&
+      (p.x< -36||p.y< -36||p.x>viewport.width+36||p.y>viewport.height+36))continue;
+   const cell=stableWorldCell(f.coords,zoom);
+   if(!cell||cells.has(cell))continue;
+   if(positions.some(other=>{
+    const radius=f.type==='semaforo'&&other.type==='semaforo'?rules.signalSpacing:rules.minSpacing;
+    const dx=p.x-other.x,dy=p.y-other.y;
+    return dx*dx+dy*dy<radius*radius;
+   }))continue;
+   chosen.push(f);positions.push({x:p.x,y:p.y,type:f.type});cells.add(cell);
+   counts.set(f.type,(counts.get(f.type)||0)+1);
+   if(PIN_ROAD.has(f.type))roadCount++;
+   if(f.type==='semaforo')signalCount++;
+  }
  }
- // Urgent locations never lose their slot just because a dense POI layer was
- // loaded later; re-rank the final list to make draw order deterministic.
- return output.sort(compare);
+ // Critical warnings are selected first, then services and businesses;
+ // road controls cannot exhaust the available visual slots.
+ addFrom(urgent,rules.total);
+ addFrom(services,Math.min(rules.total,chosen.length+Math.ceil(rules.total*.30)));
+ addFrom(businesses,Math.min(rules.total,chosen.length+Math.ceil(rules.total*.38)));
+ addFrom(road,Math.min(rules.total,chosen.length+rules.roadMax));
+ addFrom(services,rules.total);
+ addFrom(businesses,rules.total);
+ addFrom(road,rules.total);
+ return chosen.sort(pinPriority);
 }
 /** Bound the camera viewport to a small safe geographic query at current zoom. */
 export function mapFeatureBBox(map,backend){
