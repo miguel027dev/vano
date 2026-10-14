@@ -61,7 +61,7 @@ function ensureLoaded(){
  loadedPath=snapshotPath;loadedMtime=stat.mtimeMs;
 }
 export function queryRadarSnapshot(bbox){
- const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
+ const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox,.3,.3);
  if(!b)throw new RangeError('Radar snapshot bbox invalid');
  ensureLoaded();
  if(!meta)return null;
