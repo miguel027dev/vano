@@ -33,7 +33,7 @@ export const ICON_THEME=Object.freeze({
 });
 const GLYPHS={
  camera:'<rect x="3" y="6" width="15" height="12" rx="2.8"/><circle cx="10.5" cy="12" r="3"/><path d="M20 9q3 3 0 6"/>',
- radar-device:'<rect x="5" y="3" width="14" height="12" rx="2.1"/><path d="M5 6h14"/><circle cx="12" cy="10" r="2.5"/><path d="M12 15v6M8.5 21h7"/>',
+ 'radar-device':'<rect x="5" y="3" width="14" height="12" rx="2.1"/><path d="M5 6h14"/><circle cx="12" cy="10" r="2.5"/><path d="M12 15v6M8.5 21h7"/>',
  signal:'<rect x="7" y="2" width="10" height="20" rx="4"/><circle cx="12" cy="6.4" r="1.3" fill="#f34043" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="#ffcb2a" stroke="none"/><circle cx="12" cy="17.6" r="1.3" fill="#21b55f" stroke="none"/>',
  bump:'<path d="M2 18h20M4 17q2-11 8-11t8 11"/><path d="M9 10v6m6-6v6"/>',
  stop:'<path d="m8 2 8 0 6 6v8l-6 6H8l-6-6V8z"/><path d="M8 12h8"/>',
