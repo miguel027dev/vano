@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {transitRegions,transitCapabilities,findTransitRegion,validateTransitRequest,normalizeTransitResult,planTransitTrip,TransitError,verifiedItineraryFare,orderTransitItineraries} from './transit-engine.mjs';
+import {transitRegions,transitCapabilities,findTransitRegion,validateTransitRequest,normalizeTransitResult,planTransitTrip,TransitError,verifiedItineraryFare,orderTransitItineraries,readTransitProviderJson} from './transit-engine.mjs';
 
 const env={VANO_TRANSIT_REGIONS_JSON:JSON.stringify([
  {id:'sp',name:'São Paulo',bbox:[-47.5,-24.4,-45.7,-22.8],timezone:'America/Sao_Paulo',otpUrl:'https://transit.example.org/otp/gtfs/v1'}
@@ -105,4 +105,20 @@ test('estimates show delays but do not claim a fresh GPS/live timestamp',()=>{
  assert.equal(r.itineraries[0].realtimeFreshness,'unknown');
  assert.equal(r.comparison,'fewer_boardings_proxy');
  assert.equal(r.itineraries[0].boardings,1);
+});
+
+test('provider payload memory is bounded and missing stop positions are never 0,0',async()=>{
+ const body=JSON.stringify({data:{planConnection:{edges:[]}}});
+ const response=new Response(body,{headers:{'content-type':'application/json'}});
+ assert.deepEqual(await readTransitProviderJson(response),JSON.parse(body));
+ const huge=new Response('x'.repeat(1400),{headers:{'content-type':'application/json'}});
+ await assert.rejects(readTransitProviderJson(huge,512),{code:'provider_too_large'});
+ const announced=new Response('{}',{headers:{'content-length':'50000'}});
+ await assert.rejects(readTransitProviderJson(announced,512),{code:'provider_too_large'});
+ const bad=new Response('not JSON',{headers:{'content-type':'application/json'}});
+ await assert.rejects(readTransitProviderJson(bad),{code:'provider_invalid'});
+ const withoutCoords=structuredClone(otp);
+ withoutCoords.data.planConnection.edges[0].node.legs[1].from={name:'Parada sem coordenadas',lon:null,lat:null};
+ const parsed=normalizeTransitResult(withoutCoords,regions[0]);
+ assert.equal(parsed.itineraries[0].legs[1].from.coords,null);
 });
