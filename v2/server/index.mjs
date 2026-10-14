@@ -16,6 +16,7 @@ import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs
 import { directionsFromV1 } from './v1-bridge.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
+import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
@@ -346,6 +347,25 @@ async function route(req, res) {
       if(report.error)return json(res,report.status,{ok:false,error:report.error,message:report.message});
       return json(res,200,report);
     }finally{benchmarkInFlight--;}
+  }
+  // Transit remains dormant until both the feature gate and verified regional feeds exist.
+  if(pathname==='/api/transit/capabilities' && req.method==='GET'){
+    if(!limits(req,res,'transit-capabilities',40,60000))return;
+    const enabled=process.env.VANO_TRANSIT_ENABLED==='1';
+    return json(res,200,transitCapabilities(enabled?transitRegions():[]));
+  }
+  if(pathname==='/api/transit/plan' && req.method==='POST'){
+    if(process.env.VANO_TRANSIT_ENABLED!=='1')return err(res,404,'Planejamento de transporte ainda não ativado.');
+    if(!limits(req,res,'transit-plan',12,60000))return;
+    if(!protectedWrite(req,res))return;
+    const body=await getBody(req);
+    try{
+      const result=await planTransitTrip(body,{regions:transitRegions()});
+      return json(res,200,result);
+    }catch(e){
+      if(e instanceof TransitError)return json(res,e.status,{error:e.message,code:e.code,ok:false});
+      throw e;
+    }
   }
   if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,googleIssue:googleStatus.reason,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady,storage:store.kind||'json-ephemeral',persistentDb:store.persistent===true});
   if (pathname === '/api/engine/status' && req.method === 'GET') {
