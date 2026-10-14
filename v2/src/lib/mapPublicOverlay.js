@@ -3,7 +3,7 @@
  */
 import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
-import {iconSvg,selectPublicPins,mapFeatureBBox} from './mapPublicIcons.js';
+import {iconSvg,selectPublicPins,mapFeatureBBox,mapRadarBBox} from './mapPublicIcons.js';
 import {radarDisplayAllowed} from './radarPolicy.js';
 import {readMapboxPoiFeatures} from './mapboxPoiFallback.js';
 import {rememberMapFeatures,cachedMapFeatures} from './mapFeaturePersistence.js';
@@ -180,6 +180,7 @@ export function attachPublicMapOverlay(map,backend){
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
+  const radarBbox=mapRadarBBox(map);
   if(!bbox){
    // The Overpass API only serves small high-zoom bboxes, but previously
    // loaded vector POIs are still real and must not disappear on zoom-out.
@@ -187,7 +188,7 @@ export function attachPublicMapOverlay(map,backend){
   }
   updateVectorPoi();render();
   // Never wait for the slow generic OpenStreetMap POI query to discover speed cameras.
-  void refreshRadars(bbox);
+  if(radarBbox)void refreshRadars(radarBbox);
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
   if(controller)controller.abort();
