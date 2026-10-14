@@ -6,6 +6,7 @@ import {OSM_ATTRIBUTION,parseBBox,normalizeOsmElements} from './map-public-data.
 import {queryRadarSnapshot} from './radar-catalog.mjs';
 import {entirelyBrazilCore,overlapsBrazilBounds} from './radar-geography.mjs';
 import {radarDisplayAllowed,radarFullyRestrictedBBox} from '../src/lib/radarPolicy.js';
+import {queryWorldRadarCatalog} from './world-radar-catalog.mjs';
 
 export const RADAR_OVERPASS_SERVERS=Object.freeze([
  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -14,9 +15,9 @@ export const RADAR_OVERPASS_SERVERS=Object.freeze([
 ]);
 const cache=new Map();
 const successTtl=30*60*1000;
-const failureTtl=45*1000;
+const failureTtl=2*60*1000;
 const staleTtl=24*60*60*1000;
-let running=0;
+let running=0,upstreamDownUntil=0;
 
 export function radarOverpassQuery(bbox){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
@@ -69,7 +70,8 @@ export function mergeRadarSources(national,international){
   internationalUnavailable:Boolean(international.error)
  };
 }
-export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS,useSnapshot=true}={}){
+export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS,useSnapshot=true,
+ useWorldSnapshot=useSnapshot&&fetcher===fetch,worldFetcher=fetch}={}){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
  if(!b)throw new RangeError('Radar bounding box inválida');
  if(radarFullyRestrictedBBox(b))return {features:[],source:'VANO Radar Policy',stale:false,coverage:'restricted'};
@@ -80,9 +82,19 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
  if(snapshot&&entirelyBrazilCore(b))return snapshot;
  const national=snapshot?.features?.length?snapshot:null;
  const withNational=result=>mergeRadarSources(national,result);
+ // Worldwide OSM snapshots are indexed in memory and avoid external network
+ // work on every pan. Keep the existing Brazil interior fast path untouched.
+ if(useWorldSnapshot){
+  const catalog=await queryWorldRadarCatalog(b,{fetcher:worldFetcher,now});
+  if(catalog.available)return withNational(catalog);
+ }
  // Stable ~100 m cells, to reuse results across adjacent camera pans.
  const key=b.map(n=>(Math.round(n*1000)/1000).toFixed(3)).join(',');
  const started=now(),old=cache.get(key);
+ // Prevent repeated 504/timeout storms when external Overpass hosts are down.
+ // Only production fetches influence this breaker, not mocked unit tests.
+ if(fetcher===fetch&&started<upstreamDownUntil)
+  return withNational(fallback(old,started,'Fonte Overpass temporariamente indisponível'));
  if(old?.result&&old.expires>started)return withNational({...old.result,cacheHit:true});
  if(old?.pending)return old.pending.then(withNational);
  if(running>=4)return withNational(fallback(old,started,'Fonte de radares ocupada'));
@@ -111,6 +123,7 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
     console.warn('[VANO radar source]',index+1,error?.message||String(error));
    }
   }
+  if(fetcher===fetch)upstreamDownUntil=now()+5*60*1000;
   const failed=fallback(old,now(),'Radar temporariamente indisponível');
   cache.delete(key);
   cache.set(key,{result:failed,updatedAt:old?.updatedAt||now(),expires:now()+failureTtl});
