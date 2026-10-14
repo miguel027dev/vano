@@ -8,7 +8,7 @@
  */
 import {pointOK} from './routing.mjs';
 
-export const TRANSIT_SORTS=Object.freeze(['balanced','fastest','lessWalking','fewerTransfers']);
+export const TRANSIT_SORTS=Object.freeze(['balanced','fastest','lessWalking','fewerTransfers','economy']);
 const OTP_QUERY=String.raw`query VanoTransitPlan($origin: PlanLabeledLocationInput!, $destination: PlanLabeledLocationInput!, $first: Int!, $dateTime: PlanDateTimeInput!) {
   planConnection(origin: $origin, destination: $destination, first: $first, dateTime: $dateTime) {
     routingErrors { code description }
@@ -17,8 +17,12 @@ const OTP_QUERY=String.raw`query VanoTransitPlan($origin: PlanLabeledLocationInp
       legs {
         mode transitLeg duration distance headsign
         from { name lat lon } to { name lat lon }
-        start { scheduledTime estimated { time } }
-        end { scheduledTime estimated { time } }
+        start { scheduledTime estimated { time delay } }
+        end { scheduledTime estimated { time delay } }
+        fareProducts { id product { __typename id name
+          ... on DefaultFareProduct { price { amount currency { code } } }
+          ... on DependentFareProduct { price { amount currency { code } } }
+        } }
         route { shortName color textColor }
         legGeometry { points }
       }
@@ -83,7 +87,57 @@ const place=p=>{
   const lon=Number(p?.lon),lat=Number(p?.lat);
   return {name:safeLabel(p?.name,110),coords:pointOK([lon,lat])?[lon,lat]:null};
 };
-const stopTime=(s)=>({scheduled:validTime(s?.scheduledTime),estimated:validTime(s?.estimated?.time)});
+const stopTime=(s)=>{
+  const scheduled=validTime(s?.scheduledTime),estimated=validTime(s?.estimated?.time);
+  // The OTP estimate has no observation timestamp. It is a prediction, not proof of a fresh live feed.
+  const delta=scheduled&&estimated?Math.round((Date.parse(estimated)-Date.parse(scheduled))/60000):null;
+  return {scheduled,estimated,delayMinutes:delta};
+};
+const isoMoney=m=>Number.isFinite(m?.amount)&&m.amount>=0&&m.amount<=100000
+  &&typeof m.currency?.code==='string'&&/^[A-Z]{3}$/.test(m.currency.code)
+  ?{amount:m.amount,currency:m.currency.code}:null;
+/**
+ * Conservative pricing: one unambiguous standard fare-product use per transit leg.
+ * FareProductUse.id is a unique ticket instance shared across legs: count it ONCE.
+ * No guessing discounts, missing fares, multi-option products or dependent tickets.
+ */
+export function verifiedItineraryFare(rawLegs=[]){
+  const used=new Map();let count=0,unverified=false;
+  for(const leg of rawLegs){
+    if(leg?.transitLeg!==true)continue;
+    count++;
+    if(!Array.isArray(leg.fareProducts)||leg.fareProducts.length!==1){unverified=true;break;}
+    const use=leg.fareProducts[0];
+    const product=use?.product;
+    const price=isoMoney(product?.price);
+    if(typeof use?.id!=='string'||!use.id||product?.__typename!=='DefaultFareProduct'||!price){unverified=true;break;}
+    if(used.has(use.id)){
+      const old=used.get(use.id);
+      if(old.amount!==price.amount||old.currency!==price.currency){unverified=true;break;}
+    }else used.set(use.id,price);
+  }
+  if(unverified||count===0||used.size===0)return null;
+  const currencies=new Set([...used.values()].map(p=>p.currency));
+  if(currencies.size!==1)return null;
+  const amount=[...used.values()].reduce((s,p)=>s+p.amount,0);
+  return {amount:Math.round(amount*100)/100,currency:[...currencies][0],source:'gtfs-fare-products',verified:true};
+}
+const boardings=(legs)=>legs.filter(l=>l.transit).length;
+export function orderTransitItineraries(itineraries,sort='balanced'){
+ const list=[...itineraries];
+ const comparable=list.length>0&&list.every(x=>x.fare?.verified===true&&x.fare?.currency===list[0].fare.currency);
+ const score=r=>r.durationMinutes + (sort==='lessWalking'?r.walkMeters/65:r.walkMeters/260)
+      +(sort==='fewerTransfers'?r.transfers*28:r.transfers*8);
+ list.sort((a,b)=>{
+   if(sort==='economy'){
+     if(comparable)return a.fare.amount-b.fare.amount||a.durationMinutes-b.durationMinutes;
+     return a.boardings-b.boardings||a.transfers-b.transfers||a.durationMinutes-b.durationMinutes;
+   }
+   if(sort==='fastest')return a.durationMinutes-b.durationMinutes||a.transfers-b.transfers;
+   return score(a)-score(b);
+ });
+ return {itineraries:list,comparison:sort==='economy'?(comparable?'verified_fares':'fewer_boardings_proxy'):'duration_and_transfers'};
+}
 const modeKey=mode=>{
   const m=allowedMode(mode);
   if(m==='WALK')return 'walk';
@@ -120,14 +174,15 @@ export function normalizeTransitResult(data,region,sort='balanced'){
     const walkMeters=Number.isFinite(item.walkDistance)?positive(item.walkDistance):legs.filter(l=>l.mode==='walk').reduce((s,l)=>s+l.distanceMeters,0);
     const transfers=Number.isInteger(item.numberOfTransfers)?Math.max(0,item.numberOfTransfers):Math.max(0,legs.filter(l=>l.transit).length-1);
     const realtime=legs.some(l=>l.transit&&(l.departure.estimated||l.arrival.estimated));
-    return [{id:'transit-'+index,departure:start,arrival:end,durationMinutes:Math.ceil(durationSeconds/60),walkMeters:Math.round(walkMeters),transfers,realtime:Boolean(realtime),fare:null,legs}];
+    const fare=verifiedItineraryFare(item.legs);
+    return [{id:'transit-'+index,departure:start,arrival:end,durationMinutes:Math.ceil(durationSeconds/60),walkMeters:Math.round(walkMeters),transfers,
+      boardings:boardings(legs),realtime:Boolean(realtime),realtimeFreshness:'unknown',fare,legs}];
   });
-  const score=r=>r.durationMinutes + (sort==='lessWalking'?r.walkMeters/65:r.walkMeters/260) +
-    (sort==='fewerTransfers'?r.transfers*28:r.transfers*8);
-  results.sort((a,b)=>sort==='fastest'?a.durationMinutes-b.durationMinutes:score(a)-score(b));
+  const ranked=orderTransitItineraries(results,sort);
   return {source:'otp2-gtfs',coverage:{id:region.id,name:region.name,timezone:region.timezone},sort,
-    itineraries:results.slice(0,6),errors:plan.routingErrors?.map(e=>safeLabel(e.description,120)).filter(Boolean).slice(0,3)||[],
-    notice:'Horários previstos podem mudar. Tempo real somente quando informado pela operadora.'};
+    comparison:ranked.comparison,
+    itineraries:ranked.itineraries.slice(0,6),errors:plan.routingErrors?.map(e=>safeLabel(e.description,120)).filter(Boolean).slice(0,3)||[],
+    notice:'Horários previstos podem mudar. Estimativas não comprovam atualização em tempo real; tarifas podem variar por perfil e forma de pagamento.'};
 }
 export async function planTransitTrip(input,{regions=transitRegions(),fetcher=fetch,now=Date.now(),timeoutMs=8000}={}){
   const request=validateTransitRequest(input,now);
