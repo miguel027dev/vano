@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {decodeTransitPolyline,transitGeojson,transitStopsGeojson,transitBadgeGeojson,valid} from './transitGeometry.mjs';
 
-const encoded='_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 const shape='_p~iF~ps|U_ulLnnqC';
 const start=[-120.2,38.5],stop=[-120.95,40.7],end=[-126.453,43.252];
 const itinerary={legs:[
@@ -12,7 +11,7 @@ const itinerary={legs:[
  {transit:true,mode:'metro',line:'Linha 4',lineColor:'#FFD600',from:{coords:stop,name:'Parada Central'},to:{coords:end,name:'Estação final'},geometryEncoded:null}
 ]};
 test('polyline decoding uses provider-supplied geometry and rejects invalid coordinate data',()=>{
- const decoded=decodeTransitPolyline('_p~iF~ps|U_ulLnnqC_mqNvxq`@');
+ const decoded=decodeTransitPolyline('_p~iF~ps|U_ulLnnqC_mqNvxq');
  assert.deepEqual(decoded,[start,stop,end]);
  assert.deepEqual(decodeTransitPolyline('invalid&polyline'),[]);
  assert.deepEqual(decodeTransitPolyline(null),[]);
