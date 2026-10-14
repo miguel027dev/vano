@@ -67,7 +67,7 @@ function motionController(map,latest,status){
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation&&d.experimentalCameraV2),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';const cameraHalfLife=reduced?85:motorcycle?350:300,pointHalfLife=reduced?90:motorcycle?390:360;
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
@@ -90,7 +90,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,guidance=null,awaitingInitialGps=false}){
+export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,guidance=null,awaitingInitialGps=false,experimentalCameraV2=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -114,7 +114,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   }
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,experimentalCameraV2,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null;const initial=coord(latest.current.userCoords);
@@ -261,7 +261,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       if(backend.current==='leaflet'&&mapRef.current)mapRef.current._vanoFreeLook=false;
       motion.current?.recenter();
     }
-  },[navigation]);
+  },[navigation,experimentalCameraV2]);
   // A single animation clock paints the freshest real GPS point and its traced progress.
   // There is no route simulation, velocity extrapolation, or fabricated GPS input.
   useEffect(()=>{
