@@ -89,3 +89,16 @@
   bottom: 0 !important;
   z-index: 1 !important;
 }
+
+
+/* Navigation only: keep the OpenStreetMap attribution beside the Mapbox logo. */
+.map-page.in-navigation .mapboxgl-ctrl-bottom-right{
+  left:82px !important;
+  right:auto !important;
+}
+
+/* Preserve the speed-limit sign's design; only move it above the left edge of the dial. */
+.map-page .v43-speedometer .v43-speed-limit{
+  top:-7px;
+  bottom:auto;
+}
