@@ -28,8 +28,29 @@ export function classifyOsm(t={}){
  if(h==='construction')return ['obra',62,'Obra na via'];
  if(s)return ['placa',40,'Sinalização'];
  if(h==='crossing')return ['travessia',45,'Travessia de pedestres'];
- const amenities={hospital:['hospital',58,'Hospital'],clinic:['saude',45,'Unidade de saúde'],fire_station:['bombeiros',56,'Bombeiros'],police:['policia-base',50,'Base policial'],fuel:['combustivel',37,'Posto de combustível'],parking:['estacionamento',22,'Estacionamento'],bank:['banco',26,'Banco'],charging_station:['eletroposto',34,'Eletroposto']};
- return amenities[t.amenity]||null;
+ const amenities={
+  hospital:['hospital',58,'Hospital'],clinic:['saude',45,'Unidade de saúde'],
+  fire_station:['bombeiros',56,'Bombeiros'],police:['policia-base',50,'Base policial'],
+  fuel:['combustivel',37,'Posto de combustível'],parking:['estacionamento',22,'Estacionamento'],
+  bank:['banco',26,'Banco'],charging_station:['estacao-recarga',34,'Estação de recarga'],
+  charging_point:['carregador-eletrico',32,'Carregador elétrico'],
+  pharmacy:['farmacia',43,'Farmácia'],school:['escola',38,'Escola'],
+  restaurant:['restaurante',20,'Restaurante'],fast_food:['fastfood',19,'Fast-food'],
+  cafe:['cafeteria',18,'Cafeteria'],post_office:['correios',23,'Correios'],
+  car_wash:['lavarapido',20,'Lava-rápido'],bus_station:['terminal-onibus',27,'Terminal de ônibus']
+ };
+ if(amenities[t.amenity])return amenities[t.amenity];
+ const shops={supermarket:['supermercado',27,'Supermercado'],convenience:['mercado',23,'Mercado'],
+   mall:['shopping',29,'Shopping'],pet:['petshop',20,'Pet shop']};
+ if(shops[t.shop])return shops[t.shop];
+ if(t.leisure==='fitness_centre')return ['academia',25,'Academia'];
+ if(t.leisure==='park')return ['parque',21,'Parque'];
+ if(t.tourism==='hotel')return ['hotel',24,'Hotel'];
+ if(t.aeroway==='aerodrome')return ['aeroporto',32,'Aeroporto'];
+ if(t.railway==='station')return t.station==='subway'||t.subway==='yes'
+  ?['estacao-trem',29,'Estação de trem']:['estacao-ferroviaria',29,'Estação ferroviária'];
+ if(t.public_transport==='station'&&t.bus==='yes')return ['terminal-onibus',27,'Terminal de ônibus'];
+ return null;
 }
 export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
  const items=[],seen=new Set();
@@ -49,7 +70,12 @@ export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
  // hospitals and other services instead of allowing one tag to occupy all 180.
  const quota={radar:70,semaforo:35,lombada:25,pare:12,preferencia:10,placa:8,travessia:12,
   ferrovia:10,obra:15,hospital:22,saude:14,bombeiros:10,'policia-base':12,
-  combustivel:14,estacionamento:9,banco:12,eletroposto:12};
+  combustivel:14,estacionamento:9,banco:12,eletroposto:12,
+  farmacia:7,escola:8,mercado:8,supermercado:7,shopping:5,
+  'estacao-recarga':8,'carregador-eletrico':6,
+  restaurante:8,fastfood:7,cafeteria:7,hotel:6,academia:7,parque:8,
+  petshop:5,correios:6,lavarapido:5,'terminal-onibus':5,
+  'estacao-trem':6,'estacao-ferroviaria':6,aeroporto:5};
  const selected=[],counts=new Map(),cap=Math.max(1,Math.min(MAX_FEATURES,limit));
  for(const item of items){
   if(selected.length>=cap)break;
@@ -69,7 +95,14 @@ export function overpassQuery(bbox){
  'node["traffic_calming"~"^(bump|hump|table|dynamic_bump)$"]('+area+');'+
  'node["highway"~"^(traffic_signals|stop|give_way|crossing|construction)$"]('+area+');'+
  'node["traffic_sign"]('+area+');'+
- 'node["railway"="level_crossing"]('+area+'););out body 1250;';
+ 'node["railway"="level_crossing"]('+area+'););out body 1250;'+
+ '(nwr["shop"~"^(supermarket|convenience|mall|pet)$"]('+area+');'+
+ 'nwr["amenity"~"^(restaurant|fast_food|cafe|school|pharmacy|post_office|car_wash|bus_station|charging_point)$"]('+area+');'+
+ 'nwr["leisure"~"^(fitness_centre|park)$"]('+area+');'+
+ 'nwr["tourism"="hotel"]('+area+');'+
+ 'nwr["railway"="station"]('+area+');'+
+ 'nwr["aeroway"="aerodrome"]('+area+');'+
+ 'nwr["public_transport"="station"]["bus"="yes"]('+area+'););out center 700;';
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function sweep(now){
