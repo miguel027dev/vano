@@ -7,7 +7,10 @@ export function easeGpsPoint(previous,incoming,elapsedMs,{accuracy=10,speed=0,re
   const distance=metersBetween(previous,incoming);
   const uncertainty=Number.isFinite(accuracy)?Math.max(0,accuracy):10;
   // Large relocations must snap rather than animate through unrelated streets.
-  if(distance>Math.max(140,uncertainty*4))return incoming;
+  // A rejected sensor spike must not still become a visible snap when it lands
+  // close to the validation boundary. City-scale relocation still snaps rather
+  // than drawing a vehicle through unrelated streets.
+  if(distance>Math.max(220,uncertainty*5))return incoming;
   // Sub-meter GPS noise is not visible movement.
   if(distance<.35)return previous;
   const moving=Number.isFinite(speed)&&speed>1.5;

@@ -48,7 +48,10 @@ export function evaluateGpsPosition(position, previous=null, now=Date.now()) {
     const meters=Math.hypot(dlat,dlon);
     const elapsed=Math.max(0.5,(timestamp-previous.sourceAt)/1000);
     const tolerance=Math.max(accuracy,Number(previous.accuracy)||0);
-    if(meters>Math.max(150,elapsed*85+60,tolerance*4+50))
+    // GPS multipath frequently projects one isolated point on a parallel road.
+    // Keep a generous recovery envelope after a real gap, but reject a jump
+    // that would require implausible road speed between adjacent samples.
+    if(meters>Math.max(120,elapsed*55+55,tolerance*2+45))
       return {ok:false,reason:'jump'};
   }
   return {ok:true,fix:{coords,receivedAt:timestamp,sourceAt:timestamp,accuracy},heading:Number.isFinite(p.heading)?p.heading:null,speed:Number.isFinite(p.speed)?p.speed:null};

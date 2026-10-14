@@ -13,6 +13,11 @@ test('GPS marker eases real updates, never extrapolates while stationary',()=>{
 test('long GPS relocations snap instead of crossing city blocks',()=>{
   assert.deepEqual(easeGpsPoint(a,[-46.65,-23.59],16,{accuracy:8}),[-46.65,-23.59]);
 });
+test('borderline GPS displacement eases instead of visibly jumping the vehicle',()=>{
+  const nearby=[-46.66855,-23.58]; // about 150 m from a
+  const eased=easeGpsPoint(a,nearby,16,{accuracy:12,speed:8});
+  assert.ok(eased[0]>a[0]&&eased[0]<nearby[0]);
+});
 test('traveled line ends at actual progress along route geometry',()=>{
   const timeline=buildRouteTimeline({type:'LineString',coordinates:[a,b,c]});
   const meters=distanceOnRoute(timeline,b);

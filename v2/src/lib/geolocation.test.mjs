@@ -39,6 +39,13 @@ test('Rejeita teleporte isolado sem bloquear deslocamento normal',()=>{
  assert.equal(evaluateGpsPosition(position(-45.700,-23.600,91000),prev,91000).reason,'jump');
  assert.equal(evaluateGpsPosition(position(-46.6999,-23.600,91000),prev,91000).ok,true);
 });
+test('rejeita salto de corredor paralelo com precisão degradada, mas recupera após lacuna real',()=>{
+ const prev=evaluateGpsPosition(position(-46.700,-23.600,90000,55),null,90000).fix;
+ // ~166 m em um segundo: típico salto de multipath, não condução urbana real.
+ assert.equal(evaluateGpsPosition(position(-46.6984,-23.600,91000,55),prev,91000).reason,'jump');
+ // Após perda intermitente, uma posição nova dentro do envelope de recuperação permanece utilizável.
+ assert.equal(evaluateGpsPosition(position(-46.6967,-23.600,96000,20),prev,96000).ok,true);
+});
 test('Coordenadas inválidas ou sem precisão não viram localização real',()=>{
  assert.equal(evaluateGpsPosition(position(NaN,-23.6,90000),null,100000).reason,'invalid');
  assert.equal(evaluateGpsPosition(position(-46.7,-23.6,90000,3000),null,100000).reason,'inaccurate');
