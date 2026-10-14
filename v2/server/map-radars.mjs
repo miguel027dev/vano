@@ -5,6 +5,7 @@
 import {OSM_ATTRIBUTION,parseBBox,normalizeOsmElements} from './map-public-data.mjs';
 import {queryRadarSnapshot} from './radar-catalog.mjs';
 import {entirelyBrazilCore,overlapsBrazilBounds} from './radar-geography.mjs';
+import {radarDisplayAllowed,radarFullyRestrictedBBox} from '../src/lib/radarPolicy.js';
 
 export const RADAR_OVERPASS_SERVERS=Object.freeze([
  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
@@ -29,7 +30,7 @@ export function radarOverpassQuery(bbox){
 export function normalizeMappedRadars(elements=[]){
  const mapped=(Array.isArray(elements)?elements:[]).filter(e=>e?.type==='node'&&
   (e.tags?.highway==='speed_camera'||e.tags?.enforcement==='maxspeed'));
- return normalizeOsmElements(mapped,120).filter(p=>p.type==='radar');
+ return normalizeOsmElements(mapped,120).filter(p=>p.type==='radar'&&radarDisplayAllowed(p.coords));
 }
 function fallback(old,now,error){
  if(old?.result?.features?.length&&old.updatedAt+staleTtl>now)
@@ -71,6 +72,7 @@ export function mergeRadarSources(national,international){
 export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),servers=RADAR_OVERPASS_SERVERS,useSnapshot=true}={}){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
  if(!b)throw new RangeError('Radar bounding box inválida');
+ if(radarFullyRestrictedBBox(b))return {features:[],source:'VANO Radar Policy',stale:false,coverage:'restricted'};
  // Do not scan the 8,885-point national dataset for viewports outside Brazil.
  // Inside the Brazilian core the existing offline catalog retains priority,
  // including legitimately empty responses. Border/coastal areas merge sources.
