@@ -42,7 +42,7 @@ function popupBody(item){
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,vectorTimer=null,controller=null,latestKey='',lastRead=0,items=[],remoteItems=[],mapTilesItems=[];
+ let done=false,timer=null,vectorTimer=null,controller=null,radarController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
  const markers=new Map();
  const credit=document.createElement('a');
@@ -95,7 +95,7 @@ export function attachPublicMapOverlay(map,backend){
   credit.hidden=!items.some(item=>item.source==='OpenStreetMap');
  }
  function mergeSources(){
-  const combined=[...remoteItems],seen=new Set(combined.map(x=>x.id));
+  const combined=[...radarItems,...remoteItems.filter(item=>!radarItems.some(r=>r.id===item.id))],seen=new Set([...radarItems,...remoteItems].map(x=>x.id));
   // Include only nearby cached real points. Panning never deletes the original
   // observation; a point reappears at exactly the same coordinate when revisited.
   const b=map.getBounds?.();
@@ -138,15 +138,47 @@ export function attachPublicMapOverlay(map,backend){
   scheduleVectorUpdate();
   timer=setTimeout(refresh,540);
  }
+ async function refreshRadars(bbox){
+  const key=bbox.map(n=>n.toFixed(3)).join(',');
+  if(key===radarKey&&Date.now()-radarReadAt<180000)return;
+  radarController?.abort();
+  const request=new AbortController();
+  radarController=request;
+  try{
+   const response=await fetch('/api/map-radars?bbox='+encodeURIComponent(bbox.join(',')),
+    {signal:request.signal,headers:{Accept:'application/json'}});
+   if(!response.ok)throw Error('Radares públicos: '+response.status);
+   const data=await response.json();
+   if(done||request.signal.aborted)return;
+   if(Array.isArray(data?.features)){
+    // Preserve an existing mapped-radar snapshot during transient failures.
+    if(!data.error||data.features.length){
+     radarItems=data.features.filter(x=>x?.type==='radar'&&Array.isArray(x.coords)).slice(0,120);
+    }
+    mergeSources();
+    render();
+   }
+   radarKey=key;
+   radarReadAt=Date.now();
+   if(data.error)radarReadAt-=155000; // retry soon, without tight-looping
+  }catch(error){
+   if(error.name!=='AbortError'){
+    radarKey='';radarReadAt=0;
+    console.warn('VANO radars:',error?.message||String(error));
+   }
+  }
+ }
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
   if(!bbox){
    // The Overpass API only serves small high-zoom bboxes, but previously
    // loaded vector POIs are still real and must not disappear on zoom-out.
-   remoteItems=[];latestKey='';updateVectorPoi();mergeSources();render();setNotice('');return;
+   remoteItems=[];radarItems=[];latestKey='';radarKey='';radarController?.abort();updateVectorPoi();mergeSources();render();setNotice('');return;
   }
   updateVectorPoi();render();
+  // Never wait for the slow generic OpenStreetMap POI query to discover speed cameras.
+  void refreshRadars(bbox);
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
   if(controller)controller.abort();
@@ -190,6 +222,7 @@ export function attachPublicMapOverlay(map,backend){
   if(timer!==null)clearTimeout(timer);
   if(vectorTimer!==null)clearTimeout(vectorTimer);
   controller?.abort();
+  radarController?.abort();
   map.off('moveend',schedule);
   map.off('zoomend',schedule);
   if(backend==='mapbox'){

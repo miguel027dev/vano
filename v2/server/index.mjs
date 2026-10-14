@@ -17,6 +17,7 @@ import { directionsFromV1 } from './v1-bridge.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
+import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
@@ -462,6 +463,14 @@ async function route(req, res) {
   }
   // Open mapped infrastructure within the CURRENT viewport only.
   // OSM is neither exhaustive nor a real-time incident reporting service.
+  // Fetch mapped speed cameras independently of broad POI/traffic-light queries.
+  if(pathname==='/api/map-radars'&&req.method==='GET'){
+    if(!limits(req,res,'public-map-radars',40,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'));
+    if(!bbox)return err(res,400,'Área dos radares inválida ou grande demais.');
+    const result=await queryPublicRadars(bbox);
+    return json(res,200,result,{'Cache-Control':'public, max-age=45'});
+  }
   if(pathname==='/api/map-features/sources'&&req.method==='GET')return json(res,200,{sources:PUBLIC_MAP_SOURCES});
   if(pathname==='/api/map-features'&&req.method==='GET'){
     if(!limits(req,res,'public-map-features',22,60000))return;
