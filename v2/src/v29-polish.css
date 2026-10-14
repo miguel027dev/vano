@@ -26,19 +26,6 @@
 @media(max-width:390px){.vano-direction-arrow svg{width:62px;height:76px}.v29-google-primary{min-height:56px}.v29-auth-divider{margin:13px 0}}
 @media(prefers-reduced-motion:reduce){.v29-google-primary,.v29-layer-control{transition:none!important}.v29-google-primary:hover{transform:none}}
 
-/* Opt-in navigation camera experiment; the original layer switch stays untouched. */
-.map-page .v2-camera-toggle{
-  width:54px!important;height:55px!important;min-width:54px;
-  border-radius:18px;background:#fffaf5;border:1px solid #eee6dc;
-  color:#344139;font-size:14px;font-weight:800;letter-spacing:-.02em;
-  box-shadow:0 4px 18px #1e2b3224;
-}
-.map-page .v2-camera-toggle.is-active{
-  background:#fff1e8;border-color:#ed8c55;color:#d64e12;
-  box-shadow:0 0 0 2px #ee875f35,0 4px 18px #1e2b3224;
-}
-.map-page .v2-camera-toggle:focus-visible{outline:3px solid #ee875f;outline-offset:3px}
-
 /* Beta transport planner entry; only mounted when VITE_TRANSIT_PREVIEW=1. */
 .map-page .v49-transit-entry{
   display:flex;align-items:center;gap:12px;padding:11px 13px;margin-top:11px;
