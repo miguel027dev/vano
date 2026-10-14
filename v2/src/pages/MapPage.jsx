@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
@@ -619,6 +619,11 @@ export default function MapPage({active=true}){
             <Footprints size={19} strokeWidth={2} aria-hidden="true"/><span>{t('A pé')}</span>
           </button>
         </div>
+        {import.meta.env.VITE_TRANSIT_PREVIEW==='1'&&<Link to="/transporte" state={{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}} className="v49-transit-entry" aria-label="Planejar esta viagem em transporte público">
+          <span className="v49-transit-entry-icon"><BusFront size={20}/></span>
+          <span><strong>Transporte público <small>Beta</small></strong><em>Ônibus, metrô, trem e caminhada</em></span>
+          <ChevronUp className="v49-transit-entry-arrow" size={18}/>
+        </Link>}
       </div>
       {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
