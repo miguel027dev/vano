@@ -15,7 +15,7 @@ test('all provider credits are lower-left with a subtle diagonal inset',()=>{
  assert.doesNotMatch(css,/vano-provider-left-shift/);
 });
 test('location card clears legal credits and map stays responsive to narrow screens',()=>{
- assert.match(css,/\.map-page:not\(\.in-navigation\):not\(\.has-sheet\) \.v31-location-card\{[\s\S]*?\+ 94px\)/);
+ assert.match(css,/\.map-page:not\(\.in-navigation\):not\(\.has-sheet\) \.v31-location-card\{[\s\S]*?\+ 16px\)/);
  assert.match(css,/@media\(max-width:600px\)/);
  assert.match(css,/in-navigation \.mapboxgl-ctrl-bottom-left/);
  assert.match(css,/has-sheet \.mapboxgl-ctrl-bottom-right/);
