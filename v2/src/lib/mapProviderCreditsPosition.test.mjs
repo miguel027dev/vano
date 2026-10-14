@@ -25,9 +25,11 @@ test('location card clears legal credits and map stays responsive to narrow scre
  assert.match(gps,/width:min\(357px/);
  assert.doesNotMatch(css,/\.mapboxgl-ctrl-bottom-right\{[^}]*display:none/);
 });
-test('required credit text and copyright link remain intact',()=>{
+test('compact extra OSM logo retains copyright link and native map credits',()=>{
  assert.match(overlay,/https:\/\/www\.openstreetmap\.org\/copyright/);
- assert.match(overlay,/credit\.textContent='© OpenStreetMap contributors'/);
+ assert.match(overlay,/credit\.textContent='OSM'/);
+ assert.match(overlay,/osmLogo\.src='https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/b\/b0\/Openstreetmap_logo\.svg'/);
+ assert.match(overlay,/credit\.setAttribute\('aria-label','© OpenStreetMap contributors/);
  assert.match(overlay,/CC BY 4\.0/);
  assert.match(map,/attributionControl:true/);
 });
