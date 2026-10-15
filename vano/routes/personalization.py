@@ -284,8 +284,8 @@ def personal_route_routines():
     if hour not in range(24):
         return jsonify({"error": "Horário inválido."}), 400
     stops = data.get("stops") or []
-    if not isinstance(stops, list) or len(stops) > 2:
-        return jsonify({"error": "Máximo de duas paradas."}), 400
+    if not isinstance(stops, list) or len(stops) > 1:
+        return jsonify({"error": "Esta versão aceita uma parada intermediária."}), 400
     try:
         stops = [_point(x) for x in stops]
     except ValueError as exc:
