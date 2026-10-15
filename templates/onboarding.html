@@ -110,12 +110,14 @@
               <label for="routeStyleText" class="ob-personality-label">Conte com suas próprias palavras</label>
               <textarea id="routeStyleText" name="route_style_text" rows="4" maxlength="500"
                 placeholder="Ex.: Prefiro ruas tranquilas, não gosto de pedágios e quero evitar estradas de terra."
-                aria-describedby="routeStyleHint" required>{{ user.get('route_style_text','') if user is mapping else '' }}</textarea>
+                aria-describedby="routeStyleHint">{{ user.get('route_style_text','') if user is mapping else '' }}</textarea>
               <p id="routeStyleHint">O VANO vai interpretar seu texto. Você confere o resultado antes de continuar.</p>
               <button type="button" class="ob-personality-analyze" id="routeStyleAnalyze">Interpretar minha preferência <span aria-hidden="true">→</span></button>
               <div id="routeStylePreview" class="ob-personality-preview" aria-live="polite" hidden></div>
               <button type="button" class="ob-personality-confirm" id="routeStyleConfirm" hidden>✓ É isso que eu quero</button>
               <input type="hidden" id="routeStyleConfirmed" name="route_style_confirmed" value="0">
+              <input type="hidden" id="routeStyleSkipped" name="route_style_skipped" value="0">
+              <button type="button" class="ob-personality-skip" id="routeStyleSkip">Pular por enquanto</button>
               <input type="radio" name="route_preference" value="balanced" checked hidden aria-hidden="true">
               <input type="radio" name="route_preference" value="fast_first" hidden aria-hidden="true">
               <input type="radio" name="route_preference" value="safety_first" hidden aria-hidden="true">
@@ -131,6 +133,7 @@
               .ob-personality-v1 button{min-height:48px;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:750;cursor:pointer}
               .ob-personality-analyze{border:1px solid #e97637;background:#242c34;color:#ffad7e}
               .ob-personality-confirm{border:0;background:#f36b21;color:#20150e}
+              .ob-personality-skip{border:1px solid rgba(164,175,190,.32);background:transparent;color:#c3ceda}
               .ob-personality-preview{padding:15px;background:#202b34;border:1px solid #46515d;border-radius:13px;
                 color:#e4ebf2;font-size:13px;line-height:1.65;white-space:pre-line}
               .ob-personality-v1 [hidden]{display:none!important}
