@@ -363,13 +363,16 @@ def onboarding():
             age = 0
         sex = str(request.form.get("sex", "")).strip().lower()
         locale = _normalize_ui_locale(request.form.get("locale", ""))
-        route_style_text = str(request.form.get("route_style_text") or "").strip()
+        style_skipped = request.form.get("route_style_skipped") == "1"
+        route_style_text = "" if style_skipped else str(request.form.get("route_style_text") or "").strip()
         try:
             style = interpret_preference_text(route_style_text)
         except ValueError:
             style = {"route_preference": "balanced", "avoid_tolls": False,
                      "avoid_unpaved": False, "avoid_ferries": False}
-        route_preference = style["route_preference"] if route_style_text else str(request.form.get("route_preference", "balanced")).strip().lower()
+        route_preference = "balanced" if style_skipped else (
+            style["route_preference"] if route_style_text else str(request.form.get("route_preference", "balanced")).strip().lower()
+        )
         map_style = str(request.form.get("map_style", "auto")).strip().lower()
         night_safety_mode = 1 if request.form.get("night_safety_mode") == "1" else 0
         avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" or style.get("avoid_ferries") else 0
@@ -380,10 +383,10 @@ def onboarding():
         allowed_route_preferences = {"balanced", "safety_first", "fast_first"}
         allowed_map_styles = {"auto", "day", "afternoon", "night", "rain"}
         errors = []
-        if not 8 <= len(route_style_text) <= 500:
-            errors.append("Descreva como gosta de dirigir em até 500 caracteres.")
-        if route_style_text and request.form.get("route_style_confirmed") != "1":
-            errors.append("Confira a interpretação de suas preferências antes de continuar.")
+        if not style_skipped and not 8 <= len(route_style_text) <= 500:
+            errors.append("Descreva como gosta de navegar em até 500 caracteres, ou toque em Pular.")
+        if not style_skipped and request.form.get("route_style_confirmed") != "1":
+            errors.append("Confira a interpretação de suas preferências, ou toque em Pular.")
         if len(name) < 2 or len(name) > 80:
             errors.append("Informe um nome válido.")
         if age < 13 or age > 100:
