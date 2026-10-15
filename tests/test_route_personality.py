@@ -58,3 +58,45 @@ def test_optin_history_is_separate_from_route_history():
     assert "completed_optin_trips" in code
     assert "history_enabled" in code
     assert "DELETE FROM completed_optin_trips WHERE user_id=?" in code
+
+
+def test_mapbox_stop_is_a_real_directions_waypoint(monkeypatch):
+    from vano.services import routing
+    seen = []
+    monkeypatch.setattr(routing, "_route_cache_get", lambda *_: None)
+    monkeypatch.setattr(routing, "_route_cache_put", lambda *_: None)
+    def directions(url, params, timeout):
+        seen.append((url, params))
+        return {"code": "Ok", "routes": [{"duration": 300, "distance": 1800, "geometry": {"type":"LineString", "coordinates":[[-46.7,-23.5],[-46.69,-23.5],[-46.68,-23.5]]}, "legs": []}]}
+    monkeypatch.setattr(routing, "_route_mapbox_get", directions)
+    routes = routing.mapbox_routes(-46.7,-23.5,-46.68,-23.5,"driving",
+                                  alternatives=True, via=(-46.69,-23.5))
+    assert routes and seen
+    assert "/-46.7,-23.5;-46.69,-23.5;-46.68,-23.5" in seen[0][0]
+    assert seen[0][1]["alternatives"] == "false"
+
+
+def test_requested_stop_never_falls_back_to_direct_route(monkeypatch):
+    import pytest
+    from vano.services import routing
+    monkeypatch.setattr(routing, "_route_cache_get", lambda *_: None)
+    monkeypatch.setattr(routing, "_route_cache_put", lambda *_: None)
+    monkeypatch.setattr(routing, "_route_mapbox_get", lambda *_, **__: (_ for _ in ()).throw(RuntimeError("offline")))
+    monkeypatch.setattr(routing, "fallback_routes", lambda *_, **__: (_ for _ in ()).throw(AssertionError("must not be called")))
+    with pytest.raises(RuntimeError, match="parada"):
+        routing.mapbox_routes(-46.7,-23.5,-46.68,-23.5,"driving",via=(-46.69,-23.5))
+
+
+def test_optional_preferences_and_confirmed_stop_frontend_contract():
+    root = Path(__file__).resolve().parents[1]
+    html = (root / "templates/onboarding.html").read_text(encoding="utf-8")
+    onboarding = (root / "static/vano-personality-onboarding.js").read_text(encoding="utf-8")
+    server = (root / "vano/routes/auth.py").read_text(encoding="utf-8")
+    mapjs = (root / "static/vano-map.js").read_text(encoding="utf-8")
+    smartjs = (root / "static/vano-personal-routes.js").read_text(encoding="utf-8")
+    assert 'id="routeStyleSkip"' in html
+    assert 'name="route_style_skipped"' in html
+    assert "skipped.value='1'" in onboarding
+    assert 'style_skipped = request.form.get("route_style_skipped") == "1"' in server
+    assert "p.set('via_lat'" in mapjs and "p.set('via_lon'" in mapjs
+    assert "via_stop:x.stops?.[0]||null" in smartjs
