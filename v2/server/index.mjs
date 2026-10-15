@@ -14,7 +14,7 @@ import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeB
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
-import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
+import { calculateMapboxV1Candidates,calculateMapboxViaStop } from './mapbox-v1-fallback.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
 import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
@@ -573,10 +573,25 @@ async function route(req, res) {
       trafficBias:typeof provided.trafficBias==='number'&&Number.isFinite(provided.trafficBias)?provided.trafficBias:undefined,
       departAt:typeof provided.departAt==='string'?provided.departAt:undefined,
     };
+    let stopCoords=null;
+    if(body.routineId!==undefined){
+      const account=requireAccount(req,res);if(!account)return;
+      const routine=db.routines.find(x=>x.owner===account.id&&x.smart&&x.id===body.routineId);
+      if(!routine||!pointOK(routine.coords)||meters(body.destination,routine.coords)>40)
+        return err(res,403,'Rotina não encontrada na sua conta.');
+      if(routine.stop&&!body.stopCompleted){
+        if(!pointOK(routine.stop.coords))return err(res,400,'Parada inválida.');
+        stopCoords=routine.stop.coords;
+      }
+    }
     runtimeMetrics.routeRequests+=1;
     const routeStarted=performance.now();
     let result;
-    try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);}
+    try {
+      result=stopCoords
+        ? await calculateMapboxViaStop(body.origin,stopCoords,body.destination,body.vehicle||'carro',telemetry,language,routeOptions,process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN)
+        : await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);
+    }
     catch(e){runtimeMetrics.routeErrors+=1;throw e;}
     finally {runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
