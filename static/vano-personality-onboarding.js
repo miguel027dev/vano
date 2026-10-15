@@ -6,12 +6,15 @@
   const preview=document.getElementById('routeStylePreview');
   const confirm=document.getElementById('routeStyleConfirm');
   const confirmed=document.getElementById('routeStyleConfirmed');
+  const skip=document.getElementById('routeStyleSkip');
+  const skipped=document.getElementById('routeStyleSkipped');
   if(!form||!textarea||!analyze||!preview||!confirm||!confirmed)return;
   let interpretation=null,loading=false,revision=0;
 
   const csrf=form.querySelector('input[name="csrf_token"]')?.value||'';
   function reset(){
     revision++;interpretation=null;confirmed.value='0';
+    if(skipped)skipped.value='0';
     confirm.hidden=true;preview.hidden=true;preview.textContent='';
     confirm.textContent='✓ É isso que eu quero';
   }
@@ -61,12 +64,26 @@
     preview.textContent+='\n\nTudo certo. Continue para finalizar seu perfil.';
   });
 
+  skip?.addEventListener('click',()=>{
+    // Skipping is explicit and never interpreted as consent or route preference.
+    revision++;interpretation=null;textarea.value='';textarea.required=false;
+    confirmed.value='0';skipped.value='1';confirm.hidden=true;preview.hidden=true;
+    const balanced=form.querySelector('input[name="route_preference"][value="balanced"]');
+    if(balanced){balanced.checked=true;balanced.dispatchEvent(new Event('change',{bubbles:true}));}
+    for(const key of ['avoid_tolls','avoid_unpaved','avoid_ferries']){
+      const input=form.querySelector('input[name="'+key+'"]');
+      if(input){input.checked=false;input.dispatchEvent(new Event('change',{bubbles:true}));}
+    }
+    const next=form.querySelector('[data-ob-step="2"] [data-ob-next]');
+    next?.click();
+  });
   function guard(e){
     const active=form.querySelector('[data-ob-step="2"].is-active');
     const next=e.target.closest('[data-ob-next]');
     const finishing=e.type==='submit';
     if(!active&&!finishing)return;
     if(!finishing&&!next)return;
+    if(skipped?.value==='1'&&textarea.value.trim()==='')return;
     if(confirmed.value==='1'&&interpretation&&textarea.value.trim()===interpretation.text)return;
     e.preventDefault();e.stopImmediatePropagation();
     preview.textContent='Primeiro, toque em “Interpretar minha preferência” e confirme o resultado.';
