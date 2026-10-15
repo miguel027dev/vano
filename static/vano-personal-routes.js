@@ -45,7 +45,7 @@
     for(const x of saved){
       cards.push('<div class="vano-smart-card"><strong>'+esc(x.name)+'</strong><p>'+esc(x.destination.label||'Destino')+
         ' · '+x.weekdays.map(d=>weekdays[d]).join(', ')+' · '+x.hour+'h</p>'+
-        (x.stops.length?'<p>'+x.stops.length+' parada(s) salva(s) como referência.</p>':'')+
+        (x.stops.length?'<p>Parada incluída no cálculo da rota.</p>':'')+
         '<button type="button" data-routine-use="'+Number(x.id)+'">Preparar rota</button>'+
         '<button type="button" data-routine-delete="'+Number(x.id)+'">Excluir rotina</button></div>');
     }
@@ -101,13 +101,20 @@
       const x=saved.find(item=>Number(item.id)===Number(b.dataset.routineUse));
       if(!x)return;
       $('vanoRoutineClose')?.click();
-      const mapBridge=window.__VANO_MAP_BRIDGE;
-      if(mapBridge?.openDestination){
-        await mapBridge.openDestination({...x.destination,name:x.destination.label||x.name,type:'routine'});
-      }else{
-        const search=$('destinationInput');
-        if(search){search.value=x.destination.label||x.name;search.focus();search.dispatchEvent(new Event('input',{bubbles:true}))}
+      let mapBridge=window.__VANO_MAP_BRIDGE;
+      for(let retry=0;retry<12&&!mapBridge?.openDestination;retry++){
+        await new Promise(resolve=>setTimeout(resolve,80));
+        mapBridge=window.__VANO_MAP_BRIDGE;
       }
+      if(!mapBridge?.openDestination){
+        setStatus('O mapa ainda está carregando. Tente abrir a rotina novamente.');
+        return;
+      }
+      const result=await mapBridge.openDestination({
+        ...x.destination,name:x.destination.label||x.name,type:'routine',
+        via_stop:x.stops?.[0]||null
+      });
+      if(!result)setStatus('Não foi possível preparar o trajeto.');
       return;
     }
   });
