@@ -316,7 +316,7 @@ export default function MapPage({active=true}){
     const epoch=++routeEpoch.current;
     setLoadingRoute(true);setSheetOpen(true);setRouteData(null);
     try{
-      const data=await api('/route',{method:'POST',body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,routineId:place.routineId,stopCompleted:stopCompleted.current,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}})});
+      const data=await api('/route',{method:'POST',body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null},routineId:place.routineId,stopCompleted:stopCompleted.current})});
       if(epoch===routeEpoch.current){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
     }catch(e){if(epoch===routeEpoch.current)setToast(e.message);}
     finally{if(epoch===routeEpoch.current)setLoadingRoute(false);}
@@ -514,7 +514,7 @@ export default function MapPage({active=true}){
     rerouteState.current.outsideSince=0;rerouteState.current.lastAttempt=Date.now();
     setRecalculating(true);
     try{
-      const next=await api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,routineId:dest.routineId,stopCompleted:stopCompleted.current,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},reroute:true})});
+      const next=await api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},routineId:dest.routineId,stopCompleted:stopCompleted.current,reroute:true})});
       if(epoch===routeEpoch.current){spoken.current.clear();setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');}
     }catch(e){
       if(epoch===routeEpoch.current)setToast(`Rota atual mantida: ${e.message}`);
