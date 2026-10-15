@@ -26,6 +26,7 @@ import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
+import {interpretRouteStyle,discoverRoutine,meters} from './personal-routes.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -219,7 +220,7 @@ function getBody(req) {
 function ownRecords(name, id) { return db[name].filter(x => x.owner === id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || '')); }
 function prefFor(id, suggestedLanguage='pt-BR') {
   const saved=db.preferences.find(x=>x.owner===id)||{};
-  return {vehicle:'carro',preferredRoute:'safe',theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
+  return {vehicle:'carro',preferredRoute:'safe',theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],routeStyleText:'',routeStyleConfirmed:false,smartHistoryConsent:false,onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
 }
 function bootstrap(req) {
   const id = owner(req);
@@ -563,8 +564,8 @@ async function route(req, res) {
     // The Python original owns risk/traffic/ETA policy. Node only validates input.
     const provided=body.routeOptions&&typeof body.routeOptions==='object'&&!Array.isArray(body.routeOptions)?body.routeOptions:{};
     const routeOptions={
-      avoidTolls:provided.avoidTolls===true, avoidFerries:provided.avoidFerries===true,
-      avoidUnpaved:provided.avoidUnpaved===true, reroute:provided.reroute===true,
+      avoidTolls:provided.avoidTolls===true||prefFor(id).routeRules?.avoidTolls===true, avoidFerries:provided.avoidFerries===true||prefFor(id).routeRules?.avoidFerries===true,
+      avoidUnpaved:provided.avoidUnpaved===true||prefFor(id).routeRules?.avoidUnpaved===true, reroute:provided.reroute===true,
       adaptive:provided.adaptive!==false,includeAdvanced:provided.includeAdvanced===true,
       variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
       localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
@@ -670,6 +671,22 @@ async function route(req, res) {
     if(p.language!==undefined){if(!LANGUAGES.has(p.language))return err(res,400,'Idioma indisponível.');next.language=p.language;next.languageConfirmed=true;}
     if(p.alerts!==undefined){if(typeof p.alerts!=='boolean')return err(res,400,'Alertas inválidos.');next.alerts=p.alerts;}
     if(p.routineTags!==undefined){if(!Array.isArray(p.routineTags))return err(res,400,'Rotina inválida.');const allowed=new Set(['Casa','Trabalho','Faculdade','Academia','Mercado']);next.routineTags=[...new Set(p.routineTags.filter(x=>allowed.has(x)))].slice(0,5);}
+    if(p.routeStyleText!==undefined){
+      if(typeof p.routeStyleText!=='string'||p.routeStyleText.length>500)return err(res,400,'Descrição inválida.');
+      if(typeof p.routeStyleConfirmed!=='boolean')return err(res,400,'Confirmação obrigatória.');
+      const interpreted=interpretRouteStyle(p.routeStyleText);
+      if(p.routeStyleConfirmed&&interpreted.needsReview)return err(res,400,'Reescreva sua preferência para facilitar a interpretação.');
+      next.routeStyleText=interpreted.text;next.routeStyleConfirmed=Boolean(p.routeStyleConfirmed&&interpreted.text);
+      next.routeRules=next.routeStyleConfirmed?{avoidTolls:interpreted.avoidTolls,avoidFerries:interpreted.avoidFerries,avoidUnpaved:interpreted.avoidUnpaved}:{};
+      if(next.routeStyleConfirmed)next.preferredRoute=interpreted.preferredRoute;
+    }
+    if(p.smartHistoryConsent!==undefined){
+      if(typeof p.smartHistoryConsent!=='boolean'||!currentUser(req))return err(res,403,'Entre na conta para ativar o histórico.');
+      next.smartHistoryConsent=p.smartHistoryConsent;
+      if(!p.smartHistoryConsent)for(const record of db.history.filter(x=>x.owner===id)){
+        delete record.origin;delete record.completedAt;delete record.localWeekday;delete record.localHour;
+      }
+    }
     if(p.onboardingComplete!==undefined){if(typeof p.onboardingComplete!=='boolean')return err(res,400,'Preferência inválida.');next.onboardingComplete=p.onboardingComplete;}
     db.preferences=db.preferences.filter(x=>x.owner!==id);db.preferences.push(next);await persist();const {owner:_privateOwner,...publicPref}=next;return json(res,200,publicPref);
   }
@@ -690,7 +707,11 @@ async function route(req, res) {
     if(existing){const {owner:_private,...record}=existing;return json(res,200,record);}
     const proof=verifyRouteProof(b.proof,id,b.destination.coords);
     if(!proof)return err(res,422,'Histórico exige uma rota validada pelo servidor. Calcule novamente.');
-    const rec={id:hex(8),owner:id,journeyId,measurementVersion:1,travelledMeters:0,destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
+    const consent=Boolean(currentUser(req)&&prefFor(id).smartHistoryConsent);
+    const rec={id:hex(8),owner:id,journeyId,measurementVersion:1,travelledMeters:0,
+      ...(consent&&pointOK(b.origin)?{origin:b.origin}:{}),
+      destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},
+      routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
     db.history.push(rec);db.usedProofs.push({hash:sha256(b.proof),expires:proof.expires});
     db.history=db.history.slice(-10000);db.usedProofs=db.usedProofs.filter(x=>x.expires>now()).slice(-3000);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
