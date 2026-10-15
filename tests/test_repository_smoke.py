@@ -18,7 +18,7 @@ def test_no_versioned_static_files():
     offenders = [
         str(p.relative_to(ROOT))
         for p in (ROOT / "static").rglob("*")
-        if p.is_file() and re.search(r"-v\\d+", p.name) and p.name not in canonical
+        if p.is_file() and re.search(r"-v\d+", p.name) and p.name not in canonical
     ]
     assert offenders == []
 
