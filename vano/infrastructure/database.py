@@ -300,6 +300,48 @@ def init_db():
                 created_at TEXT NOT NULL
             );
 
+            -- Histórico de deslocamentos realizados: somente com opt-in explícito.
+            CREATE TABLE IF NOT EXISTS route_personality (
+                user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                free_text TEXT NOT NULL DEFAULT '',
+                interpreted_json TEXT NOT NULL DEFAULT '{}',
+                history_enabled INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS completed_optin_trips (
+                id BIGSERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                trip_id TEXT NOT NULL,
+                origin_label TEXT NOT NULL DEFAULT '',
+                origin_lat REAL NOT NULL,
+                origin_lon REAL NOT NULL,
+                destination_label TEXT NOT NULL DEFAULT '',
+                destination_lat REAL NOT NULL,
+                destination_lon REAL NOT NULL,
+                local_weekday INTEGER NOT NULL CHECK (local_weekday BETWEEN 0 AND 6),
+                local_hour INTEGER NOT NULL CHECK (local_hour BETWEEN 0 AND 23),
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, trip_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_completed_optin_trips_user_time ON completed_optin_trips(user_id, created_at DESC);
+            CREATE TABLE IF NOT EXISTS saved_smart_routines (
+                id BIGSERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                origin_label TEXT NOT NULL DEFAULT '',
+                origin_lat REAL NOT NULL,
+                origin_lon REAL NOT NULL,
+                destination_label TEXT NOT NULL DEFAULT '',
+                destination_lat REAL NOT NULL,
+                destination_lon REAL NOT NULL,
+                weekdays_json TEXT NOT NULL DEFAULT '[]',
+                local_hour INTEGER NOT NULL CHECK (local_hour BETWEEN 0 AND 23),
+                stops_json TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, origin_lat, origin_lon, destination_lat, destination_lon)
+            );
+            CREATE INDEX IF NOT EXISTS idx_saved_smart_routines_user ON saved_smart_routines(user_id);
+            
             CREATE TABLE IF NOT EXISTS route_feedback (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
