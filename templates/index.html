@@ -372,10 +372,37 @@
       <div class="vano-routine-handle" aria-hidden="true"></div>
       <div class="vano-routine-head"><div class="vano-routine-head-copy"><small>SUA SEMANA</small><h3 id="vanoRoutineTitle">Rotina de destinos</h3><p>Deixe cada dia pronto. Toque no destino e comece a rota sem digitar tudo de novo.</p></div><button type="button" class="vano-routine-close" id="vanoRoutineClose" aria-label="Fechar"><i data-lucide="x" width="18"></i></button></div>
       <div class="vano-routine-today"><span class="vano-routine-today-icon"><i data-lucide="calendar-check-2" width="18"></i></span><div class="vano-routine-today-copy" id="vanoRoutineTodayCopy"><small>HOJE</small><b>Carregando rotina…</b><span>Um instante.</span></div><button type="button" class="vano-routine-go" id="vanoRoutineTodayGo" hidden>Ir agora</button></div>
+      {% if current_user %}
+      <section class="vano-smart-routine" id="vanoSmartRoutine" aria-labelledby="vanoSmartTitle">
+        <div class="vano-smart-head"><span>✦</span><strong id="vanoSmartTitle">Rotinas inteligentes</strong></div>
+        <p>O VANO pode sugerir destinos habituais a partir de viagens que você concluiu.</p>
+        <label class="vano-smart-consent"><input id="vanoSmartConsent" type="checkbox"> Permitir análise do meu histórico de viagens concluídas</label>
+        <div id="vanoSmartStatus" aria-live="polite">Histórico desativado.</div>
+        <div id="vanoSmartCandidates"></div>
+        <button type="button" id="vanoSmartErase" class="vano-smart-erase">Apagar dados das rotinas inteligentes</button>
+      </section>
+      {% endif %}
       <div class="vano-routine-scroll"><div class="vano-routine-list" id="vanoRoutineList"></div></div>
       <div class="vano-routine-foot"><div class="vano-routine-foot-copy">O horário é opcional. Os endereços ficam sincronizados na sua conta quando você está conectado.</div><button type="button" class="vano-routine-save" id="vanoRoutineSave">Salvar rotina</button></div>
     </div>
   </section>
+
+  {% if current_user %}
+  <dialog class="vano-smart-dialog" id="vanoSmartDialog" aria-labelledby="vanoSmartDialogTitle">
+    <form id="vanoSmartForm" method="dialog">
+      <h3 id="vanoSmartDialogTitle">Salvar minha rotina</h3>
+      <p>Confira os detalhes. Sua navegação nunca começa automaticamente.</p>
+      <label>Nome<input type="text" id="vanoSmartName" maxlength="55" required value="Minha rotina"></label>
+      <label>Horário habitual<input type="time" id="vanoSmartTime" required></label>
+      <fieldset id="vanoSmartDays"><legend>Dias da semana</legend></fieldset>
+      <label>Parada opcional<input type="text" id="vanoSmartStop" autocomplete="off" placeholder="Busque uma parada (opcional)"></label>
+      <div id="vanoSmartStopResults"></div>
+      <p id="vanoSmartStopNote">Se adicionar uma parada, ela ficará salva como referência. Confira-a no mapa antes de iniciar a rota.</p>
+      <div id="vanoSmartDialogError" role="alert"></div>
+      <div class="vano-smart-dialog-actions"><button type="button" id="vanoSmartCancel">Cancelar</button><button type="submit">Salvar rotina</button></div>
+    </form>
+  </dialog>
+  {% endif %}
 
   <section class="nav-maneuver-top" id="navManeuverTop" aria-live="polite">
     <div class="nav-maneuver-icon"><span class="maneuver-glyph" id="maneuverGlyph">↑</span></div>
@@ -447,6 +474,10 @@
 <script src="{{ url_for('static', filename='vano-ui.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-nearby-cars.js') }}?v={{ vano_build_id }}" defer></script>
 <script src="{{ url_for('static', filename='vano-routine.js') }}?v={{ vano_build_id }}" defer></script>
+  {% if current_user %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vano-personal-routes.css') }}?v={{ vano_build_id }}">
+  <script src="{{ url_for('static', filename='vano-personal-routes.js') }}?v={{ vano_build_id }}" defer></script>
+  {% endif %}
 <script src="{{ url_for('static', filename='vano-nearby-users.js') }}?v={{ vano_build_id }}" defer></script>
 <script src="{{ url_for('static', filename='vano-admob-search.js') }}?v={{ vano_build_id }}" defer></script>
 <script>
