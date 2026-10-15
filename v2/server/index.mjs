@@ -14,6 +14,7 @@ import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeB
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
+import {createRouteFailover} from './route-failover.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
 import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
@@ -267,6 +268,10 @@ async function search(query,language='pt-BR',proximity=null) {
   if(!outcome.providerOk)throw new HttpError(503,'O serviço de endereços não respondeu. Tente novamente.');
   return outcome.results;
 }
+const resilientOriginalRouting=createRouteFailover({
+  cooldownMs:45_000,
+  onFallback:e=>console.warn('VANO routing fallback: original engine failed; using verified Mapbox API candidate calculation.',e?.message||String(e))
+});
 async function directions(originPoint, destination, vehicle = 'carro', telemetry = {}, language = 'pt-BR', options = {}) {
   if (!pointOK(originPoint) || !pointOK(destination)) throw new HttpError(400, 'Coordenadas inválidas.');
   if (!['carro', 'moto', 'a-pe'].includes(vehicle)) throw new HttpError(400, 'Veículo inválido.');
@@ -276,8 +281,21 @@ async function directions(originPoint, destination, vehicle = 'carro', telemetry
     try{return await calculateWalkingRoute(originPoint,destination,LANGUAGES.has(language)?language:'pt-BR',options,token);}
     catch{throw new HttpError(503,'Não foi possível calcular uma rota a pé. Tente novamente.');}
   }
-  if (process.env.VANO_V1_API_URL?.trim()) return directionsFromV1(process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry, { ...options, timeoutMs: Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS) || 65000 });
   const access = process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+  if (process.env.VANO_V1_API_URL?.trim()) {
+    return resilientOriginalRouting({
+      // 2 independent requests are issued by the V1 bridge. If its service
+      // is cold/offline, use a bounded timeout rather than freezing the UI.
+      original:()=>directionsFromV1(
+        process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry,
+        {...options, timeoutMs:Math.min(10_000,Math.max(3_000,Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS)||10_000))}
+      ),
+      alternate:access?()=>calculateMapboxV1Candidates(
+        originPoint,destination,vehicle,telemetry,
+        LANGUAGES.has(language)?language:'pt-BR',options,access
+      ):undefined
+    });
+  }
   if (access) {
     try {
       // Preserve the audited V1 order: base traffic routes, conditional adaptive
