@@ -20,6 +20,7 @@ import './v45-traffic.css';
 import './v47-route-vehicle.css';
 import './v48-moto-focus.css';
 import './native-shell.css';
+import './personal-routes.css';
 import 'leaflet/dist/leaflet.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);

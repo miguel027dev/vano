@@ -14,7 +14,7 @@ import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeB
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
-import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
+import { calculateMapboxV1Candidates,calculateMapboxViaStop } from './mapbox-v1-fallback.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
 import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
@@ -26,6 +26,7 @@ import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
+import {interpretRouteStyle,discoverRoutine,meters} from './personal-routes.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -219,7 +220,7 @@ function getBody(req) {
 function ownRecords(name, id) { return db[name].filter(x => x.owner === id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || '')); }
 function prefFor(id, suggestedLanguage='pt-BR') {
   const saved=db.preferences.find(x=>x.owner===id)||{};
-  return {vehicle:'carro',preferredRoute:'safe',theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
+  return {vehicle:'carro',preferredRoute:'safe',theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],routeStyleText:'',routeStyleConfirmed:false,smartHistoryConsent:false,onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
 }
 function bootstrap(req) {
   const id = owner(req);
@@ -563,8 +564,8 @@ async function route(req, res) {
     // The Python original owns risk/traffic/ETA policy. Node only validates input.
     const provided=body.routeOptions&&typeof body.routeOptions==='object'&&!Array.isArray(body.routeOptions)?body.routeOptions:{};
     const routeOptions={
-      avoidTolls:provided.avoidTolls===true, avoidFerries:provided.avoidFerries===true,
-      avoidUnpaved:provided.avoidUnpaved===true, reroute:provided.reroute===true,
+      avoidTolls:provided.avoidTolls===true||prefFor(id).routeRules?.avoidTolls===true, avoidFerries:provided.avoidFerries===true||prefFor(id).routeRules?.avoidFerries===true,
+      avoidUnpaved:provided.avoidUnpaved===true||prefFor(id).routeRules?.avoidUnpaved===true, reroute:provided.reroute===true,
       adaptive:provided.adaptive!==false,includeAdvanced:provided.includeAdvanced===true,
       variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
       localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
@@ -572,10 +573,25 @@ async function route(req, res) {
       trafficBias:typeof provided.trafficBias==='number'&&Number.isFinite(provided.trafficBias)?provided.trafficBias:undefined,
       departAt:typeof provided.departAt==='string'?provided.departAt:undefined,
     };
+    let stopCoords=null;
+    if(body.routineId!==undefined){
+      const account=requireAccount(req,res);if(!account)return;
+      const routine=db.routines.find(x=>x.owner===account.id&&x.smart&&x.id===body.routineId);
+      if(!routine||!pointOK(routine.coords)||meters(body.destination,routine.coords)>40)
+        return err(res,403,'Rotina não encontrada na sua conta.');
+      if(routine.stop&&!body.stopCompleted){
+        if(!pointOK(routine.stop.coords))return err(res,400,'Parada inválida.');
+        stopCoords=routine.stop.coords;
+      }
+    }
     runtimeMetrics.routeRequests+=1;
     const routeStarted=performance.now();
     let result;
-    try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);}
+    try {
+      result=stopCoords
+        ? await calculateMapboxViaStop(body.origin,stopCoords,body.destination,body.vehicle||'carro',telemetry,language,routeOptions,process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN)
+        : await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);
+    }
     catch(e){runtimeMetrics.routeErrors+=1;throw e;}
     finally {runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
@@ -670,6 +686,22 @@ async function route(req, res) {
     if(p.language!==undefined){if(!LANGUAGES.has(p.language))return err(res,400,'Idioma indisponível.');next.language=p.language;next.languageConfirmed=true;}
     if(p.alerts!==undefined){if(typeof p.alerts!=='boolean')return err(res,400,'Alertas inválidos.');next.alerts=p.alerts;}
     if(p.routineTags!==undefined){if(!Array.isArray(p.routineTags))return err(res,400,'Rotina inválida.');const allowed=new Set(['Casa','Trabalho','Faculdade','Academia','Mercado']);next.routineTags=[...new Set(p.routineTags.filter(x=>allowed.has(x)))].slice(0,5);}
+    if(p.routeStyleText!==undefined){
+      if(typeof p.routeStyleText!=='string'||p.routeStyleText.length>500)return err(res,400,'Descrição inválida.');
+      if(typeof p.routeStyleConfirmed!=='boolean')return err(res,400,'Confirmação obrigatória.');
+      const interpreted=interpretRouteStyle(p.routeStyleText);
+      if(p.routeStyleConfirmed&&interpreted.needsReview)return err(res,400,'Reescreva sua preferência para facilitar a interpretação.');
+      next.routeStyleText=interpreted.text;next.routeStyleConfirmed=Boolean(p.routeStyleConfirmed&&interpreted.text);
+      next.routeRules=next.routeStyleConfirmed?{avoidTolls:interpreted.avoidTolls,avoidFerries:interpreted.avoidFerries,avoidUnpaved:interpreted.avoidUnpaved}:{};
+      if(next.routeStyleConfirmed)next.preferredRoute=interpreted.preferredRoute;
+    }
+    if(p.smartHistoryConsent!==undefined){
+      if(typeof p.smartHistoryConsent!=='boolean'||!currentUser(req))return err(res,403,'Entre na conta para ativar o histórico.');
+      next.smartHistoryConsent=p.smartHistoryConsent;
+      if(!p.smartHistoryConsent)for(const record of db.history.filter(x=>x.owner===id)){
+        delete record.origin;delete record.completedAt;delete record.localWeekday;delete record.localHour;
+      }
+    }
     if(p.onboardingComplete!==undefined){if(typeof p.onboardingComplete!=='boolean')return err(res,400,'Preferência inválida.');next.onboardingComplete=p.onboardingComplete;}
     db.preferences=db.preferences.filter(x=>x.owner!==id);db.preferences.push(next);await persist();const {owner:_privateOwner,...publicPref}=next;return json(res,200,publicPref);
   }
@@ -690,7 +722,11 @@ async function route(req, res) {
     if(existing){const {owner:_private,...record}=existing;return json(res,200,record);}
     const proof=verifyRouteProof(b.proof,id,b.destination.coords);
     if(!proof)return err(res,422,'Histórico exige uma rota validada pelo servidor. Calcule novamente.');
-    const rec={id:hex(8),owner:id,journeyId,measurementVersion:1,travelledMeters:0,destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
+    const consent=Boolean(currentUser(req)&&prefFor(id).smartHistoryConsent);
+    const rec={id:hex(8),owner:id,journeyId,measurementVersion:1,travelledMeters:0,
+      ...(consent&&pointOK(b.origin)?{origin:b.origin}:{}),
+      destination:{name:cleanText(b.destination.name,100)||'Destino',address:cleanText(b.destination.address,200),coords:b.destination.coords},
+      routeType:proof.kind,duration:proof.mins,distance:proof.km,createdAt:stamp()};
     db.history.push(rec);db.usedProofs.push({hash:sha256(b.proof),expires:proof.expires});
     db.history=db.history.slice(-10000);db.usedProofs=db.usedProofs.filter(x=>x.expires>now()).slice(-3000);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
@@ -712,12 +748,66 @@ async function route(req, res) {
     const record={id:hex(8),type:b.type,description:cleanText(b.description,280),coords:b.coords,createdAt:stamp(),status:'nao_verificado',owner:id};
     db.reports.push(record);await persist();return json(res,201,reportPublic(record));
   }
+  if(pathname==='/api/preferences/interpret'&&req.method==='POST'){
+    if(!limits(req,res,'style-interpret',30,3600000))return;
+    const b=await getBody(req);
+    try{return json(res,200,interpretRouteStyle(b.text||''));}
+    catch{return err(res,400,'Descreva sua preferência em até 500 caracteres.');}
+  }
+  if(pathname==='/api/personal-routes/suggestion'&&req.method==='GET'){
+    const account=requireAccount(req,res);if(!account)return;
+    if(!limits(req,res,'smart-routine-read',30,60000))return;
+    const enabled=prefFor(account.id).smartHistoryConsent===true;
+    const result=enabled?discoverRoutine(db.history,account.id):{completed:0,minimum:15,candidate:null};
+    const saved=ownRecords('routines',account.id).filter(x=>x.smart===true);
+    if(result.candidate&&saved.some(x=>meters(x.origin,result.candidate.origin)<150&&meters(x.coords,result.candidate.destination)<150&&Math.abs(Number(x.localHour)-result.candidate.hour)<=1))result.candidate=null;
+    return json(res,200,{enabled,...result});
+  }
+  if(pathname==='/api/personal-routes/history'&&req.method==='DELETE'){
+    const account=requireAccount(req,res);if(!account)return;
+    for(const record of db.history.filter(x=>x.owner===account.id)){
+      delete record.origin;delete record.completedAt;delete record.localHour;delete record.localWeekday;
+    }
+    db.routines=db.routines.filter(x=>x.owner!==account.id||x.smart!==true);
+    const pref=db.preferences.find(x=>x.owner===account.id);if(pref)pref.smartHistoryConsent=false;
+    await persist();return json(res,200,{ok:true,enabled:false});
+  }
+  if(pathname==='/api/history/complete'&&req.method==='POST'){
+    const account=requireAccount(req,res);if(!account)return;
+    if(!limits(req,res,'history-complete',20,3600000))return;
+    if(prefFor(account.id).smartHistoryConsent!==true)return err(res,403,'Ative o histórico de rotinas.');
+    const b=await getBody(req);
+    const record=db.history.find(x=>x.owner===account.id&&x.journeyId===b.journeyId&&x.origin&&pointOK(x.origin));
+    if(!record)return err(res,404,'Viagem iniciada não encontrada.');
+    if(record.completedAt)return json(res,200,{ok:true,duplicate:true});
+    const started=Date.parse(record.createdAt),elapsed=now()-started;
+    if(!Number.isFinite(started)||elapsed<90000||elapsed>86400000||!pointOK(b.arrival)||meters(b.arrival,record.destination.coords)>120)
+      return err(res,422,'A conclusão exige uma chegada real próxima ao destino.');
+    const metres=Number(record.travelledMeters||0);
+    if(metres<150||metres>elapsed/1000*75+100)return err(res,422,'Distância percorrida insuficiente.');
+    if(!Number.isInteger(b.localHour)||b.localHour<0||b.localHour>23||!Number.isInteger(b.localWeekday)||b.localWeekday<0||b.localWeekday>6)return err(res,400,'Horário inválido.');
+    record.completedAt=stamp();record.localHour=b.localHour;record.localWeekday=b.localWeekday;
+    await persist();return json(res,200,{ok:true});
+  }
   if(pathname==='/api/routines'&&req.method==='POST'){
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);
     if(!cleanText(b.name,80)||!cleanText(b.destination,80)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time||''))return err(res,400,'Rotina inválida.');
     if(!listCap(db.routines,id,50))return err(res,429,'Limite de rotinas atingido.');
-    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp()};db.routines.push(item);await persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
+    let smartFields={};
+    if(b.smart===true){
+      if(!currentUser(req)||prefFor(id).smartHistoryConsent!==true)return err(res,403,'Autorize o histórico primeiro.');
+      const discovered=discoverRoutine(db.history,id);
+      const candidate=discovered.candidate;
+      if(!candidate||!pointOK(candidate.origin)||!pointOK(candidate.destination))return err(res,409,'Rotina recorrente ainda não confirmada.');
+      const days=Array.isArray(b.weekdays)?[...new Set(b.weekdays)]:candidate.weekdays;
+      if(!days.length||days.some(x=>!Number.isInteger(x)||x<0||x>6))return err(res,400,'Dias inválidos.');
+      const stop=b.stop==null?null:b.stop;
+      if(stop&&!pointOK(stop.coords))return err(res,400,'Selecione a parada na pesquisa.');
+      smartFields={smart:true,origin:candidate.origin,coords:candidate.destination,
+        localHour:candidate.hour,weekdays:days.slice(0,7),stop:stop?{name:cleanText(stop.name,90),coords:stop.coords}:null};
+    }
+    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp(),...smartFields};db.routines.push(item);await persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/routines/')&&req.method==='DELETE'){
     const id=pathname.split('/').pop(),own=owner(req);db.routines=db.routines.filter(x=>!(x.id===id&&x.owner===own));await persist();return json(res,200,{ok:true});

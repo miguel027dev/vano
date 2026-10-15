@@ -73,6 +73,32 @@ function present(route,id){
     trafficScore:Math.round(traffic(route).score*10)/10,
     routingProvider:route._provider||'mapbox'};
 }
+/** Mandatory stop through Mapbox Directions. Never silently drop the stop. */
+export async function calculateMapboxViaStop(origin,stop,destination,vehicle,telemetry,language,options,token,fetcher=fetch){
+  if(!pointOK(origin)||!pointOK(stop)||!pointOK(destination)||!token)throw Error('Pontos inválidos.');
+  if(vehicle==='a-pe')throw Error('Parada para este meio de transporte ainda não disponível.');
+  const fallbackProfiles=['driving-traffic','driving'];
+  for(const profile of fallbackProfiles){
+    const u=mapboxDirectionsUrl(origin,destination,token,language,vehicle,telemetry,options,{alternatives:false},profile);
+    u.pathname='/directions/v5/mapbox/'+profile+'/'+origin.join(',')+';'+stop.join(',')+';'+destination.join(',');
+    // Three waypoints require three bearing entries. Preserve GPS direction only at origin.
+    if(u.searchParams.has('bearings'))u.searchParams.set('bearings',u.searchParams.get('bearings')+';');
+    u.searchParams.set('alternatives','false');
+    try{
+      const r=await fetcher(u,{signal:AbortSignal.timeout(15000),headers:{Accept:'application/json'}});
+      if(!r.ok)throw Error('Mapbox HTTP '+r.status);
+      const data=await r.json();
+      if(data.code!=='Ok'||!Array.isArray(data.routes)||!data.routes.length)throw Error('Rota indisponível');
+      const raw=data.routes[0];
+      if(!Array.isArray(raw.legs)||raw.legs.length!==2||!raw.geometry?.coordinates?.length)throw Error('Parada não confirmada no trajeto.');
+      return {routes:[present(raw,'fast')],source:'mapbox-via-stop',stopIncluded:true,
+        safetyMessage:'Trajeto calculado passando pela parada escolhida. Não há avaliação de segurança verificada.'};
+    }catch(e){
+      if(profile==='driving')throw Error('Não foi possível calcular a rota passando pela parada. Tente novamente.');
+    }
+  }
+}
+
 async function request(url,fetcher,timeoutMs){
   const r=await fetcher(url,{signal:AbortSignal.timeout(timeoutMs),headers:{Accept:'application/json'}});
   if(!r.ok)throw Error('Mapbox HTTP '+r.status);

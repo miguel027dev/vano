@@ -26,7 +26,7 @@ import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
-  const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
+  const {user,preferences,favorites,routines,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
@@ -44,7 +44,7 @@ export default function MapPage({active=true}){
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
-  const handledDestination=useRef(''),destRef=useRef(null);
+  const handledDestination=useRef(''),handledRoutine=useRef(''),stopCompleted=useRef(false),arrivalRecorded=useRef(false),destRef=useRef(null);
   useEffect(()=>{if(!dest&&!navMode)setRouteVehicle(preferences?.vehicle==='moto'?'moto':'carro');},[preferences?.vehicle]);
   useEffect(()=>()=>{if(routeVehicleTimer.current!==null)clearTimeout(routeVehicleTimer.current);},[]);
   destRef.current=dest;
@@ -316,7 +316,7 @@ export default function MapPage({active=true}){
     const epoch=++routeEpoch.current;
     setLoadingRoute(true);setSheetOpen(true);setRouteData(null);
     try{
-      const data=await api('/route',{method:'POST',body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}})});
+      const data=await api('/route',{method:'POST',body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null},routineId:place.routineId,stopCompleted:stopCompleted.current})});
       if(epoch===routeEpoch.current){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
     }catch(e){if(epoch===routeEpoch.current)setToast(e.message);}
     finally{if(epoch===routeEpoch.current)setLoadingRoute(false);}
@@ -393,6 +393,15 @@ export default function MapPage({active=true}){
     setQuery(s.name==='Restaurantes'?'restaurante':'hospital');setSearchOpen(true);setTimeout(()=>searchInput.current?.focus(),70);
   }
   useEffect(()=>{
+    const id=new URLSearchParams(location.search).get('routine');
+    if(!id||handledRoutine.current===id)return;
+    const entry=(routines||[]).find(x=>x.id===id&&x.smart===true&&validPoint(x.coords));
+    if(!entry)return;
+    handledRoutine.current=id;stopCompleted.current=false;
+    pick({id:'routine-'+id,name:entry.destination,address:entry.destination,coords:entry.coords,
+      routineId:id,stop:entry.stop||null});
+  },[location.search,routines,userCoords?.[0],userCoords?.[1]]);
+  useEffect(()=>{
     const id=new URLSearchParams(location.search).get('destination');
     if(!id || handledDestination.current===id)return;
     const found=favorites.find(x=>x.id===id);
@@ -401,6 +410,20 @@ export default function MapPage({active=true}){
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
   cachePosition.current=userCoords;
   useEffect(()=>{if(!navMode||!hasLiveGPS||!route?.geometry)return;const timeline=buildRouteTimeline(route.geometry);if(!timeline.total)return;const meters=distanceOnRoute(timeline,userCoords);setGuidance({...nextManeuver(route,timeline,meters),progress:meters/timeline.total,preview:false,finished:false});},[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
+  // Record only genuine, consented arrivals, never mere route searches/starts.
+  useEffect(()=>{
+    if(!navMode||!hasLiveGPS||!user||!preferences?.smartHistoryConsent||!dest||!validPoint(userCoords)||!measuredTrip.current||routeData?.source==='demonstracao')return;
+    if(!hasRecentGpsFix(lastGpsFix.current,Date.now(),15000)||!Number.isFinite(telemetry.accuracy)||telemetry.accuracy>45)return;
+    const closeTo=(point)=>Array.isArray(point)&&validPoint(point)&&
+      Math.hypot((point[1]-userCoords[1])*111200,(point[0]-userCoords[0])*101000)<95;
+    if(dest.stop?.coords&&!stopCompleted.current&&closeTo(dest.stop.coords)){stopCompleted.current=true;setToast('Parada alcançada. Seguindo ao destino.');}
+    if(arrivalRecorded.current||!closeTo(dest.coords)||odometer.current.meters<150||Date.now()-measuredTrip.current.startedAt<90000)return;
+    arrivalRecorded.current=true;
+    const id=measuredTrip.current.id,clock=new Date();
+    Promise.resolve(syncMeasuredDistance(true)).then(()=>tripWrites.current).then(()=>
+      api('/history/complete',{method:'POST',body:{journeyId:id,arrival:userCoords,localHour:clock.getHours(),localWeekday:(clock.getDay()+6)%7}})
+    ).catch(err=>{arrivalRecorded.current=false;console.warn('VANO: rota concluída indisponível',err.message);});
+  },[navMode,hasLiveGPS,user?.id,preferences?.smartHistoryConsent,userCoords?.[0],userCoords?.[1],dest?.coords?.[0],dest?.coords?.[1],telemetry.accuracy]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
   // remaining minutes and kilometers shrink only as route progress is reported.
   const navigationStats=navMode?navigationSummary(route,guidance,Date.now()):null;
@@ -470,12 +493,13 @@ export default function MapPage({active=true}){
     if(measuredTrip.current)return;
     measuredTrip.current={id:crypto.randomUUID(),vehicle:routeVehicle,simulated:routeData?.source==='demonstracao',startedAt:Date.now()};
     odometer.current={meters:0,anchor:null,lastSeenAt:null};distanceSync.current=Date.now();
-    queueTripWrite({journeyId:measuredTrip.current.id,destination:dest,routeType:choice,proof:route.proof});
+    arrivalRecorded.current=false;
+    queueTripWrite({journeyId:measuredTrip.current.id,destination:dest,origin:preferences?.smartHistoryConsent&&user?userCoords:undefined,routeType:choice,proof:route.proof});
     setGuidance(null);setNavMode(true);setSheetOpen(false);
     // Called from the user's Start navigation click: unlock browser audio there.
     if(!muted)speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){syncMeasuredDistance(true);measuredTrip.current=null;arrivalRecorded.current=false;stopCompleted.current=false;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
@@ -490,7 +514,7 @@ export default function MapPage({active=true}){
     rerouteState.current.outsideSince=0;rerouteState.current.lastAttempt=Date.now();
     setRecalculating(true);
     try{
-      const next=await api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},reroute:true})});
+      const next=await api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},routineId:dest.routineId,stopCompleted:stopCompleted.current,reroute:true})});
       if(epoch===routeEpoch.current){spoken.current.clear();setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');}
     }catch(e){
       if(epoch===routeEpoch.current)setToast(`Rota atual mantida: ${e.message}`);
