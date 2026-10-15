@@ -217,13 +217,14 @@ def personal_route_suggestion():
     uid = current_user()["id"]
     count, candidates = _groups_for(uid)
     saved = get_db().execute(
-        "SELECT origin_lat,origin_lon,destination_lat,destination_lon FROM saved_smart_routines WHERE user_id=?",
+        "SELECT origin_lat,origin_lon,destination_lat,destination_lon,local_hour FROM saved_smart_routines WHERE user_id=?",
         (uid,),
     ).fetchall()
     for candidate in candidates:
         if not any(
             _distance_m(candidate["origin"], {"lat": s["origin_lat"], "lon": s["origin_lon"]}) < 150
             and _distance_m(candidate["destination"], {"lat": s["destination_lat"], "lon": s["destination_lon"]}) < 150
+            and abs(int(candidate["hour"]) - int(s["local_hour"])) <= 1
             for s in saved
         ):
             return jsonify({"enabled": _consent(uid), "completed": count, "minimum": 15,
@@ -257,8 +258,18 @@ def personal_route_routines():
         return jsonify({"error": "Muitas alterações."}), 429
     count, candidates = _groups_for(uid)
     data = request.get_json(silent=True) or {}
+    saved_rows = db.execute(
+        "SELECT origin_lat,origin_lon,destination_lat,destination_lon,local_hour FROM saved_smart_routines WHERE user_id=?",
+        (uid,),
+    ).fetchall()
+    candidates = [x for x in candidates if not any(
+        _distance_m(x["origin"], {"lat": s["origin_lat"], "lon": s["origin_lon"]}) < 150
+        and _distance_m(x["destination"], {"lat": s["destination_lat"], "lon": s["destination_lon"]}) < 150
+        and abs(int(x["hour"]) - int(s["local_hour"])) <= 1
+        for s in saved_rows
+    )]
     if not candidates:
-        return jsonify({"error": "Ainda não há uma rotina recorrente validada."}), 409
+        return jsonify({"error": "Ainda não há uma nova rotina recorrente validada."}), 409
     candidate = candidates[0]
     name = str(data.get("name") or "Minha rotina").strip()[:55]
     if not name:
