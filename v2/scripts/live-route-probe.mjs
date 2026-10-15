@@ -25,6 +25,6 @@ try{
  headers:{'Content-Type':'application/json','Accept':'application/json','Origin':url,'X-VANO-CSRF':csrf,'Cookie':cookie},
  body:JSON.stringify(body)
  });
- console.log('ROUTE_SMOKE',JSON.stringify({status:result.response.status,elapsedMs:result.elapsed,error:String(result.data?.error||'').slice(0,250),source:result.data?.source,routeCount:result.data?.routes?.length,routeIds:result.data?.routes?.map(r=>r.id)}));
+ console.log('ROUTE_SMOKE_AFTER_RENDER_ORIGIN_FIX',JSON.stringify({status:result.response.status,elapsedMs:result.elapsed,error:String(result.data?.error||'').slice(0,250),source:result.data?.source,routeCount:result.data?.routes?.length,routeIds:result.data?.routes?.map(r=>r.id)}));
  if(result.response.status!==200||!Array.isArray(result.data.routes)||!result.data.routes.length)process.exitCode=1;
 }catch(e){console.error('ROUTE_SMOKE_FAILED',e?.message||String(e));process.exitCode=1;}
