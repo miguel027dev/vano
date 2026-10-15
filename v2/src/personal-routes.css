@@ -1,0 +1,34 @@
+/* VANO personality: follows the current v2 design system without moving map controls */
+.vano-personality-setup{display:grid;gap:13px;width:100%;max-width:670px;margin:10px auto 20px}
+.vano-personality-setup>label{font-size:14px;font-weight:750;color:inherit}
+.vano-personality-setup textarea{box-sizing:border-box;width:100%;resize:vertical;min-height:144px;background:var(--surface,#202630);color:inherit;border:1px solid rgba(155,170,188,.44);border-radius:16px;padding:15px 16px;font:inherit;line-height:1.55;font-size:14px}
+.vano-personality-setup textarea:focus-visible{outline:2px solid #f4772d;outline-offset:2px}
+.vano-personality-caption{font-size:12px;color:var(--text-muted,#9aa7b6);line-height:1.55}
+.vano-personality-review{background:var(--card-bg,#242a32);border:1px solid rgba(244,122,58,.32);border-radius:15px;padding:16px;display:grid;gap:9px}
+.vano-personality-review>strong{font-size:14px}
+.vano-personality-review p{font-size:12px;margin:0;display:flex;gap:8px;align-items:center}
+.vano-personality-review p svg{color:#ef823d;flex:none}
+.vano-personality-review small{color:var(--text-muted,#9aa7b6);font-size:11px}
+.vano-personality-actions{display:flex;flex:1;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.vano-personality-actions button{min-height:46px}
+.vano-smart-panel{display:grid;gap:13px;padding:16px;border:1px solid rgba(244,122,58,.25);border-radius:17px;background:var(--card-bg,#202630)}
+.vano-smart-leading{display:flex;gap:12px;align-items:flex-start}
+.vano-smart-leading strong{font-size:14px}
+.vano-smart-leading p,.vano-smart-muted{font-size:12px;color:var(--text-muted,#9aa7b6);line-height:1.5;margin:5px 0}
+.vano-smart-icon{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:11px;background:rgba(245,116,42,.12);color:#f4772d;font-size:24px}
+.vano-smart-toggle{display:flex;gap:10px;align-items:flex-start;font-size:12px;font-weight:700;line-height:1.5;cursor:pointer}
+.vano-smart-toggle input{width:19px;height:19px;flex:none;accent-color:#f4772d}
+.vano-smart-suggestion{border-radius:13px;border:1px solid rgba(245,117,42,.28);padding:14px;display:grid;gap:9px}
+.vano-smart-suggestion small{font-size:10px;letter-spacing:.08em;color:#f4772d;font-weight:800}
+.vano-smart-suggestion strong{font-size:17px}
+.vano-smart-suggestion p{font-size:12px;line-height:1.5;margin:0}
+.vano-smart-suggestion .btn{justify-self:start;min-height:44px}
+.vano-smart-erase{border:0;background:transparent;color:inherit;opacity:.7;text-decoration:underline;justify-self:start;padding:8px 0;font-size:12px;cursor:pointer}
+.vano-smart-editor{border:1px solid rgba(244,122,58,.34)}
+.vano-smart-editor fieldset{border:0;margin:12px 0;padding:0}
+.vano-smart-editor legend{font-size:12px;font-weight:700;margin-bottom:10px}
+.vano-smart-days{display:flex;gap:7px;flex-wrap:wrap}
+.vano-smart-days label{display:flex;align-items:center;gap:5px;font-size:11px;border-radius:10px;padding:8px;border:1px solid rgba(140,150,160,.3)}
+.vano-smart-days input{accent-color:#f4772d}
+@media(max-width:580px){.vano-personality-actions{width:100%;justify-content:space-between}.vano-personality-actions button{min-height:44px}.vano-smart-panel{padding:13px}}
+@media(prefers-reduced-motion:reduce){.vano-personality-setup *, .vano-smart-panel *{animation:none!important;transition:none!important}}
