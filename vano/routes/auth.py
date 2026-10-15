@@ -79,10 +79,6 @@ def register():
         locale = _normalize_ui_locale(request.form.get("locale") or active_ui_locale()) or active_ui_locale()
 
         errors = []
-        if not 8 <= len(route_style_text) <= 500:
-            errors.append("Descreva como gosta de dirigir em até 500 caracteres.")
-        if route_style_text and request.form.get("route_style_confirmed") != "1":
-            errors.append("Confira a interpretação de suas preferências antes de continuar.")
         if not EMAIL_RE.match(email) or len(email) > 180:
             errors.append("Informe um e-mail válido.")
         if is_admin_email(email):
@@ -384,6 +380,10 @@ def onboarding():
         allowed_route_preferences = {"balanced", "safety_first", "fast_first"}
         allowed_map_styles = {"auto", "day", "afternoon", "night", "rain"}
         errors = []
+        if not 8 <= len(route_style_text) <= 500:
+            errors.append("Descreva como gosta de dirigir em até 500 caracteres.")
+        if route_style_text and request.form.get("route_style_confirmed") != "1":
+            errors.append("Confira a interpretação de suas preferências antes de continuar.")
         if len(name) < 2 or len(name) > 80:
             errors.append("Informe um nome válido.")
         if age < 13 or age > 100:
