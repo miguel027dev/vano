@@ -26,5 +26,9 @@ test('cannot fake success when no alternate provider exists',async()=>{
 test('alternate empty and failed responses are rejected',async()=>{
   const run=createRouteFailover();
   await assert.rejects(run({original:async()=>{throw Error('offline')},alternate:async()=>({routes:[]})}),/Não foi possível calcular/);
-  await assert.rejects(run({original:async()=>({routes:[{}]}),alternate:async()=>{throw Error('broken')}}).then(()=>{throw Error('unexpected alternate call')}),/unexpected alternate/);
+  const healthy=createRouteFailover();
+  let alternateUsed=false;
+  const result=await healthy({original:async()=>({routes:[{id:'fast'}],source:'original'}),alternate:async()=>{alternateUsed=true;throw Error('broken')}});
+  assert.equal(result.source,'original');
+  assert.equal(alternateUsed,false);
 });
