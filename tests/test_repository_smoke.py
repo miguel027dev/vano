@@ -12,10 +12,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_no_versioned_static_files():
+    # V2 is a current, intentional entrypoint; other versioned build leftovers
+    # still fail this repository hygiene check.
+    canonical = {"vano-v2.js", "vano-v2.css"}
     offenders = [
         str(p.relative_to(ROOT))
         for p in (ROOT / "static").rglob("*")
-        if p.is_file() and re.search(r"-v\d+", p.name)
+        if p.is_file() and re.search(r"-v\d+", p.name) and p.name not in canonical
     ]
     assert offenders == []
 
@@ -30,7 +33,7 @@ def test_no_obsolete_static_references():
         for p in base.rglob("*"):
             if p.is_file() and p.suffix.lower() in {".py", ".html", ".css", ".js", ".json", ".xml", ".svg"}:
                 text = p.read_text(encoding="utf-8", errors="ignore")
-                if pattern.search(text):
+                if any(m.group(0) not in {"vano-v2.css", "vano-v2.js"} for m in pattern.finditer(text)):
                     offenders.append(str(p.relative_to(ROOT)))
     assert offenders == []
 
@@ -108,7 +111,7 @@ def test_literal_static_references_exist():
 
 def test_controlled_stylesheet_layers_only():
     css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
-    assert css_files == ["vano-foundation.css", "vano-runtime.css", "vano.css"]
+    assert css_files == ["vano-foundation.css", "vano-runtime.css", "vano-v2.css", "vano.css"]
 
 
 def test_literal_template_endpoints_are_registered():

@@ -6,6 +6,7 @@ business rules. Runtime dependencies are injected once during application startu
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
+from vano.services.personality import interpret_preference_text
 
 # Equalize the expensive password-verification path for unknown accounts so a
 # failed login does not trivially reveal whether an e-mail exists by timing.
@@ -362,17 +363,30 @@ def onboarding():
             age = 0
         sex = str(request.form.get("sex", "")).strip().lower()
         locale = _normalize_ui_locale(request.form.get("locale", ""))
-        route_preference = str(request.form.get("route_preference", "balanced")).strip().lower()
+        style_skipped = request.form.get("route_style_skipped") == "1"
+        route_style_text = "" if style_skipped else str(request.form.get("route_style_text") or "").strip()
+        try:
+            style = interpret_preference_text(route_style_text)
+        except ValueError:
+            style = {"route_preference": "balanced", "avoid_tolls": False,
+                     "avoid_unpaved": False, "avoid_ferries": False}
+        route_preference = "balanced" if style_skipped else (
+            style["route_preference"] if route_style_text else str(request.form.get("route_preference", "balanced")).strip().lower()
+        )
         map_style = str(request.form.get("map_style", "auto")).strip().lower()
         night_safety_mode = 1 if request.form.get("night_safety_mode") == "1" else 0
-        avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" else 0
-        avoid_tolls = 1 if request.form.get("avoid_tolls") == "1" else 0
-        avoid_unpaved = 1 if request.form.get("avoid_unpaved") == "1" else 0
+        avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" or style.get("avoid_ferries") else 0
+        avoid_tolls = 1 if request.form.get("avoid_tolls") == "1" or style.get("avoid_tolls") else 0
+        avoid_unpaved = 1 if request.form.get("avoid_unpaved") == "1" or style.get("avoid_unpaved") else 0
 
         allowed_sex = {"female", "male", "intersex_other", "prefer_not_say"}
         allowed_route_preferences = {"balanced", "safety_first", "fast_first"}
         allowed_map_styles = {"auto", "day", "afternoon", "night", "rain"}
         errors = []
+        if not style_skipped and not 8 <= len(route_style_text) <= 500:
+            errors.append("Descreva como gosta de navegar em até 500 caracteres, ou toque em Pular.")
+        if not style_skipped and request.form.get("route_style_confirmed") != "1":
+            errors.append("Confira a interpretação de suas preferências, ou toque em Pular.")
         if len(name) < 2 or len(name) > 80:
             errors.append("Informe um nome válido.")
         if age < 13 or age > 100:
@@ -392,6 +406,7 @@ def onboarding():
             form_user = dict(user)
             form_user.update({
                 "name": name, "age": age or "", "sex": sex, "locale": locale or active_ui_locale(),
+                "route_style_text": route_style_text,
                 "route_preference": route_preference if route_preference in allowed_route_preferences else "balanced",
                 "map_style": map_style if map_style in allowed_map_styles else "auto",
                 "night_safety_mode": night_safety_mode, "avoid_ferries": avoid_ferries,
@@ -412,6 +427,13 @@ def onboarding():
                 name, age, sex, locale, route_preference, night_safety_mode, map_style,
                 avoid_ferries, avoid_tolls, avoid_unpaved, utcnow_iso(), 0, user["id"],
             ),
+        )
+        db.execute(
+            """INSERT INTO route_personality(user_id,free_text,interpreted_json,history_enabled,updated_at)
+               VALUES(?,?,?,?,?)
+               ON CONFLICT (user_id) DO UPDATE SET free_text=EXCLUDED.free_text,
+                   interpreted_json=EXCLUDED.interpreted_json,updated_at=EXCLUDED.updated_at""",
+            (user["id"], route_style_text, json.dumps(style, ensure_ascii=False), 0, utcnow_iso()),
         )
         db.execute("DELETE FROM nearby_presence WHERE user_id=?", (user["id"],))
         db.commit()

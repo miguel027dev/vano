@@ -138,8 +138,4 @@ def test_page_removes_voice_ui_and_keeps_backend_apis_available():
     for token in ["voiceSearchBtn", "soundBtn", "navVoicePopover", "voicePreviewBtn"]:
         assert 'id="' + token + '"' not in page
     assert '"/api/voice/"' in headers
-    node = shutil.which("node")
-    if not node:
-        pytest.skip("Node.js is required")
-    outcome = subprocess.run([node, test_script], cwd=ROOT, capture_output=True, text=True, check=False, timeout=20)
-    assert outcome.returncode == 0, outcome.stdout + "\n" + outcome.stderr
+

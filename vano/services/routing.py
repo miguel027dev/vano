@@ -240,7 +240,7 @@ def motorized_candidate_routes(start_lon, start_lat, end_lon, end_lat, travel_pr
     )
     return routes, "mapbox", len(routes)
 
-def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walking", depart_at="now", exclusions=None, alternatives=True, extra_excludes=None, start_bearing=None, start_speed=None, reroute=False):
+def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walking", depart_at="now", exclusions=None, alternatives=True, extra_excludes=None, start_bearing=None, start_speed=None, reroute=False, via=None):
     profile_map = {
         "walking": "walking",
         "cycling": "cycling",
@@ -251,7 +251,14 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
         "motorcycle": "driving-traffic",
     }
     profile = profile_map.get(travel_profile, "walking")
-    coords = f"{start_lon},{start_lat};{end_lon},{end_lat}"
+    # A via is a mandatory waypoint, not a silent route-shaping hint.
+    # Never use a direct start -> finish fallback when a stop was requested.
+    if via is not None:
+        via_lon, via_lat = float(via[0]), float(via[1])
+        coords = f"{start_lon},{start_lat};{via_lon},{via_lat};{end_lon},{end_lat}"
+        alternatives = False  # Directions doesn't support alternatives with 3 waypoints.
+    else:
+        coords = f"{start_lon},{start_lat};{end_lon},{end_lat}"
     params = {
         "alternatives": "true" if alternatives else "false",
         "steps": "true",
@@ -274,7 +281,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
         speed = sanitize_start_speed(start_speed)
         direction_guard_active = bearing is not None and speed is not None and speed >= 1.2
         if direction_guard_active:
-            params["bearings"] = f"{bearing:.0f},70;"
+            params["bearings"] = f"{bearing:.0f},70;" + (";" if via is not None else "")
             params["continue_straight"] = "true"
             if reroute:
                 params["avoid_maneuver_radius"] = str(int(clamp(45 + speed * 7.0, 45, 160)))
@@ -296,6 +303,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
         round(float(start_lon), 5), round(float(start_lat), 5),
         round(float(end_lon), 5), round(float(end_lat), 5),
         travel_profile, sanitize_depart_at(depart_at), bool(alternatives), str(params.get("language") or ""),
+        (round(via_lon, 5), round(via_lat, 5)) if via is not None else None,
         str(params.get("bearings") or ""), str(params.get("avoid_maneuver_radius") or ""), bool(reroute),
         tuple(sorted(str(x) for x in (extra_excludes or []))),
         tuple((round(float(x[0]), 5), round(float(x[1]), 5)) for x in (exclusions or [])[:18]),
@@ -316,10 +324,14 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
                 data = _route_mapbox_get(f"{MAPBOX_DIRECTIONS_URL}/driving/{coords}", fallback, timeout=timeout)
                 used_profile = "driving"
             except Exception:
+                if via is not None:
+                    raise RuntimeError("Não foi possível calcular o trajeto passando pela parada.") from None
                 routes = fallback_routes(start_lon, start_lat, end_lon, end_lat, travel_profile, alternatives)
                 _route_cache_put(cache_key, routes)
                 return routes
         else:
+            if via is not None:
+                raise RuntimeError("Não foi possível calcular o trajeto passando pela parada.") from None
             routes = fallback_routes(start_lon, start_lat, end_lon, end_lat, travel_profile, alternatives)
             _route_cache_put(cache_key, routes)
             return routes
@@ -335,6 +347,8 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
             _route_cache_put(cache_key, routes)
             return routes
     if data.get("code") != "Ok":
+        if via is not None:
+            raise RuntimeError("Nenhum trajeto passando pela parada foi encontrado.")
         try:
             routes = fallback_routes(start_lon, start_lat, end_lon, end_lat, travel_profile, alternatives)
             _route_cache_put(cache_key, routes)
@@ -343,6 +357,8 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
             raise RuntimeError((data.get("message") or "Nenhuma rota disponível") + f" · fallback: {fallback_exc}")
     routes = data.get("routes", [])
     if not routes:
+        if via is not None:
+            raise RuntimeError("Nenhuma rota pela parada foi encontrada.")
         try:
             routes = fallback_routes(start_lon, start_lat, end_lon, end_lat, travel_profile, alternatives)
             _route_cache_put(cache_key, routes)

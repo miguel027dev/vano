@@ -106,6 +106,7 @@ _vano_install(globals(), "vano.routes.public")
 _vano_install(globals(), "vano.routes.admin")
 _vano_install(globals(), "vano.routes.api")
 _vano_install(globals(), "vano.routes.routing")
+_vano_install(globals(), "vano.routes.personalization")
 
 # Optional offline-first voice companion; cloud providers are disabled by default.
 from vano.services.voice_assistant import register_voice_assistant as _register_voice_assistant
