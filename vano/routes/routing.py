@@ -187,10 +187,8 @@ def api_route():
     if public_benchmark:
         variant_budget = min(4, variant_budget)
 
+    # Cache key already includes the via_lat/via_lon query arguments.
     result_cache_key = _route_result_cache_key(session.get("user_id"))
-    # Explicit stops must never alias a cached direct route or another stop.
-    if via is not None:
-        result_cache_key = result_cache_key + ":via:" + f"{via[0]:.5f},{via[1]:.5f}"
     cached_result = _route_result_cache_get(result_cache_key)
     if cached_result is not None:
         return _finish_route_payload(
