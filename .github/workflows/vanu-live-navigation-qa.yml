@@ -19,4 +19,5 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm test
+      - run: node scripts/live-route-probe.mjs
       - run: npm run build
