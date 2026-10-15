@@ -1956,16 +1956,26 @@ function updateNavigation(g,simulated=false){
   const routeEraseGap=performanceTier==='eco'?420:performanceTier==='normal'?265:175,routeEraseStep=performanceTier==='eco'?2.0:performanceTier==='normal'?1.2:.75;if(Math.abs(navLastAlong-navLastPaintAlong)>routeEraseStep||now-lastNavRoutePaintAt>routeEraseGap){lastNavRoutePaintAt=now;navLastPaintAlong=navLastAlong;setNavRouteData(navLastAlong)}if(now-lastProgressPaintAt>280){lastProgressPaintAt=now;updateTurnHighlight(m.distanceAlong,step)}
   refreshNavigationAlternatives(false);updateTrafficRadar(false,m.distanceAlong);
   if(!simulated){const rawOff=Number.isFinite(rawMatch?.offRoute)?rawMatch.offRoute:m.offRoute;const shouldReroute=updateOffRouteTracker(raw,rawOff);if(shouldReroute)rerouteFrom(filtered);pushFlowProbe(p,false);checkLiveTraffic(false);checkEventDisruption(false,{pretrip:false});pushLivePosition(p,m,false);maybeSyncPresence(p)}
-  if(m.remaining<22&&m.progress>.92){clearSavedActiveTrip();if(!arrivalTelemetrySent){arrivalTelemetrySent=true;productTelemetry('route',`navigation-complete:${Math.round(elapsed)}s`,'navigation');speak('Você chegou ao destino.','arrival')}showArrivalExperience(m);
-    if(!simulated&&LOGGED_IN&&origin&&destination){
-      try{window.dispatchEvent(new CustomEvent('vano:trip-completed',{detail:{
-        trip_id:globalThis.crypto?.randomUUID?.()||'',
-        origin:{lat:Number(origin.lat),lon:Number(origin.lon),label:String(origin.label||'').slice(0,140)},
-        destination:{lat:Number(destination.lat),lon:Number(destination.lon),label:String(destination.label||'').slice(0,140)},
-        weekday:(new Date().getDay()+6)%7,hour:new Date().getHours()
-      }}))}catch(_){}
+  if(m.remaining<22&&m.progress>.92){
+    clearSavedActiveTrip();
+    if(!arrivalTelemetrySent){
+      arrivalTelemetrySent=true;
+      productTelemetry('route',`navigation-complete:${Math.round(elapsed)}s`,'navigation');
+      speak('Você chegou ao destino.','arrival');
+      if(!simulated&&LOGGED_IN&&origin&&destination){
+        try{
+          const id=globalThis.crypto?.randomUUID?.()||(globalThis.crypto?.getRandomValues?
+            [...globalThis.crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join(''):'');
+          if(id)window.dispatchEvent(new CustomEvent('vano:trip-completed',{detail:{
+            trip_id:id,
+            origin:{lat:Number(origin.lat),lon:Number(origin.lon),label:String(origin.label||'').slice(0,140)},
+            destination:{lat:Number(destination.lat),lon:Number(destination.lon),label:String(destination.label||'').slice(0,140)},
+            weekday:(new Date().getDay()+6)%7,hour:new Date().getHours()
+          }}));
+        }catch(_){}
+      }
     }
-    return}else{persistActiveTrip({position:p,metrics:m});maybeSpeakStep(step)}
+    showArrivalExperience(m);return}else{persistActiveTrip({position:p,metrics:m});maybeSpeakStep(step)}
   scheduleCamera(p,false,m);
 }
 
