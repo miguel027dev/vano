@@ -338,7 +338,7 @@ def init_db():
                 local_hour INTEGER NOT NULL CHECK (local_hour BETWEEN 0 AND 23),
                 stops_json TEXT NOT NULL DEFAULT '[]',
                 created_at TEXT NOT NULL,
-                UNIQUE(user_id, origin_lat, origin_lon, destination_lat, destination_lon)
+                UNIQUE(user_id, origin_lat, origin_lon, destination_lat, destination_lon, local_hour)
             );
             CREATE INDEX IF NOT EXISTS idx_saved_smart_routines_user ON saved_smart_routines(user_id);
             
