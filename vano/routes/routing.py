@@ -130,6 +130,23 @@ def api_route():
     travel_profile = request.args.get("profile", "driving").strip().lower()
     if travel_profile not in {"walking", "cycling", "driving", "motorcycle"}:
         travel_profile = "driving"
+    # Via points are accepted only for authenticated, explicitly saved user trips.
+    via = None
+    requested_via_lat = request.args.get("via_lat")
+    requested_via_lon = request.args.get("via_lon")
+    if requested_via_lat is not None or requested_via_lon is not None:
+        if not session.get("user_id") or public_benchmark:
+            return jsonify({"error": "Paradas exigem uma conta autenticada."}), 403
+        try:
+            vlat, vlon = float(requested_via_lat), float(requested_via_lon)
+        except (ValueError, TypeError):
+            return jsonify({"error": "Parada inválida."}), 400
+        if not (math.isfinite(vlat) and math.isfinite(vlon) and -90 <= vlat <= 90 and -180 <= vlon <= 180):
+            return jsonify({"error": "Coordenadas de parada inválidas."}), 400
+        if haversine_m(slat, slon, vlat, vlon) < 35 or haversine_m(vlat, vlon, elat, elon) < 35:
+            return jsonify({"error": "A parada deve ser diferente da origem e destino."}), 400
+        via = (vlon, vlat)
+
     direct_distance_km = haversine_m(slat, slon, elat, elon) / 1000.0
     if public_benchmark and direct_distance_km > VANO_PUBLIC_BENCHMARK_MAX_KM:
         return jsonify({
@@ -171,6 +188,9 @@ def api_route():
         variant_budget = min(4, variant_budget)
 
     result_cache_key = _route_result_cache_key(session.get("user_id"))
+    # Explicit stops must never alias a cached direct route or another stop.
+    if via is not None:
+        result_cache_key = result_cache_key + ":via:" + f"{via[0]:.5f},{via[1]:.5f}"
     cached_result = _route_result_cache_get(result_cache_key)
     if cached_result is not None:
         return _finish_route_payload(
@@ -184,7 +204,7 @@ def api_route():
     # authentication, guest credits and history. Heavy motorized trips use hedged
     # workers; if the cluster fails, only a lightweight Central fallback is allowed
     # so one pathological route cannot overload the control plane.
-    if is_motorized_profile(travel_profile):
+    if is_motorized_profile(travel_profile) and via is None:
         try:
             requested_safety_bias_remote = clamp(float(request.args.get("safety_bias", 68)), 0, 100)
             requested_traffic_bias_remote = clamp(float(request.args.get("traffic_bias", 62)), 0, 100)
@@ -296,7 +316,17 @@ def api_route():
         )
         candidate_pool_cache_hit = False
         candidate_pool_reuse = "none"
-        if is_motorized_profile(travel_profile):
+        if via is not None:
+            routes = mapbox_routes(
+                slon, slat, elon, elat, travel_profile,
+                depart_at=depart_at, exclusions=route_base_exclusions,
+                extra_excludes=route_extra_excludes, alternatives=False,
+                start_bearing=start_bearing, start_speed=start_speed,
+                reroute=reroute_request, via=via,
+            )
+            primary_provider = "mapbox"
+            mapbox_base_count = len(routes)
+        elif is_motorized_profile(travel_profile):
             def build_candidate_pool():
                 routes_local, provider_local, base_count_local = motorized_candidate_routes(
                     slon, slat, elon, elat, travel_profile, depart_at=depart_at,
@@ -347,7 +377,7 @@ def api_route():
     zone_bounds = _candidate_bounds(routes, slat, slon, elat, elon)
     route_policy_zones = get_risk_zones_for_bounds(*zone_bounds)
     block_points = admin_blocked_zone_points(route_policy_zones, slat, slon, elat, elon, local_hour)
-    if block_points and is_motorized_profile(travel_profile) and primary_provider == "mapbox":
+    if via is None and block_points and is_motorized_profile(travel_profile) and primary_provider == "mapbox":
         try:
             routes.extend(build_safety_bypass_routes(
                 routes, slon, slat, elon, elat, block_points, depart_at=depart_at,
@@ -435,7 +465,7 @@ def api_route():
     # never uses neighborhood/favela labels or demographic proxies. The resulting
     # variants are still rescored against the complete Safety Engine evidence.
     safety_avoidance = []
-    if mode == "safest" and is_motorized_profile(travel_profile) and str((routes[0] if routes else {}).get("_provider") or "mapbox") == "mapbox":
+    if via is None and mode == "safest" and is_motorized_profile(travel_profile) and str((routes[0] if routes else {}).get("_provider") or "mapbox") == "mapbox":
         safety_avoidance = verified_safety_avoidance_points(reports, risk_zones, local_hour, travel_profile, max_points=10)
         if safety_avoidance:
             safe_variants = build_safety_bypass_routes(
