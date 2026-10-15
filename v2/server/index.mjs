@@ -733,12 +733,66 @@ async function route(req, res) {
     const record={id:hex(8),type:b.type,description:cleanText(b.description,280),coords:b.coords,createdAt:stamp(),status:'nao_verificado',owner:id};
     db.reports.push(record);await persist();return json(res,201,reportPublic(record));
   }
+  if(pathname==='/api/preferences/interpret'&&req.method==='POST'){
+    if(!limits(req,res,'style-interpret',30,3600000))return;
+    const b=await getBody(req);
+    try{return json(res,200,interpretRouteStyle(b.text||''));}
+    catch{return err(res,400,'Descreva sua preferência em até 500 caracteres.');}
+  }
+  if(pathname==='/api/personal-routes/suggestion'&&req.method==='GET'){
+    const account=requireAccount(req,res);if(!account)return;
+    if(!limits(req,res,'smart-routine-read',30,60000))return;
+    const enabled=prefFor(account.id).smartHistoryConsent===true;
+    const result=enabled?discoverRoutine(db.history,account.id):{completed:0,minimum:15,candidate:null};
+    const saved=ownRecords('routines',account.id).filter(x=>x.smart===true);
+    if(result.candidate&&saved.some(x=>meters(x.origin,result.candidate.origin)<150&&meters(x.coords,result.candidate.destination)<150&&Math.abs(Number(x.localHour)-result.candidate.hour)<=1))result.candidate=null;
+    return json(res,200,{enabled,...result});
+  }
+  if(pathname==='/api/personal-routes/history'&&req.method==='DELETE'){
+    const account=requireAccount(req,res);if(!account)return;
+    for(const record of db.history.filter(x=>x.owner===account.id)){
+      delete record.origin;delete record.completedAt;delete record.localHour;delete record.localWeekday;
+    }
+    db.routines=db.routines.filter(x=>x.owner!==account.id||x.smart!==true);
+    const pref=db.preferences.find(x=>x.owner===account.id);if(pref)pref.smartHistoryConsent=false;
+    await persist();return json(res,200,{ok:true,enabled:false});
+  }
+  if(pathname==='/api/history/complete'&&req.method==='POST'){
+    const account=requireAccount(req,res);if(!account)return;
+    if(!limits(req,res,'history-complete',20,3600000))return;
+    if(prefFor(account.id).smartHistoryConsent!==true)return err(res,403,'Ative o histórico de rotinas.');
+    const b=await getBody(req);
+    const record=db.history.find(x=>x.owner===account.id&&x.journeyId===b.journeyId&&x.origin&&pointOK(x.origin));
+    if(!record)return err(res,404,'Viagem iniciada não encontrada.');
+    if(record.completedAt)return json(res,200,{ok:true,duplicate:true});
+    const started=Date.parse(record.createdAt),elapsed=now()-started;
+    if(!Number.isFinite(started)||elapsed<90000||elapsed>86400000||!pointOK(b.arrival)||meters(b.arrival,record.destination.coords)>120)
+      return err(res,422,'A conclusão exige uma chegada real próxima ao destino.');
+    const metres=Number(record.travelledMeters||0);
+    if(metres<150||metres>elapsed/1000*75+100)return err(res,422,'Distância percorrida insuficiente.');
+    if(!Number.isInteger(b.localHour)||b.localHour<0||b.localHour>23||!Number.isInteger(b.localWeekday)||b.localWeekday<0||b.localWeekday>6)return err(res,400,'Horário inválido.');
+    record.completedAt=stamp();record.localHour=b.localHour;record.localWeekday=b.localWeekday;
+    await persist();return json(res,200,{ok:true});
+  }
   if(pathname==='/api/routines'&&req.method==='POST'){
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);
     if(!cleanText(b.name,80)||!cleanText(b.destination,80)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(b.time||''))return err(res,400,'Rotina inválida.');
     if(!listCap(db.routines,id,50))return err(res,429,'Limite de rotinas atingido.');
-    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp()};db.routines.push(item);await persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
+    let smartFields={};
+    if(b.smart===true){
+      if(!currentUser(req)||prefFor(id).smartHistoryConsent!==true)return err(res,403,'Autorize o histórico primeiro.');
+      const discovered=discoverRoutine(db.history,id);
+      const candidate=discovered.candidate;
+      if(!candidate||!pointOK(candidate.origin)||!pointOK(candidate.destination))return err(res,409,'Rotina recorrente ainda não confirmada.');
+      const days=Array.isArray(b.weekdays)?[...new Set(b.weekdays)]:candidate.weekdays;
+      if(!days.length||days.some(x=>!Number.isInteger(x)||x<0||x>6))return err(res,400,'Dias inválidos.');
+      const stop=b.stop==null?null:b.stop;
+      if(stop&&!pointOK(stop.coords))return err(res,400,'Selecione a parada na pesquisa.');
+      smartFields={smart:true,origin:candidate.origin,coords:candidate.destination,
+        localHour:candidate.hour,weekdays:days.slice(0,7),stop:stop?{name:cleanText(stop.name,90),coords:stop.coords}:null};
+    }
+    const item={id:hex(8),owner:id,name:cleanText(b.name,80),destination:cleanText(b.destination,80),time:b.time,createdAt:stamp(),...smartFields};db.routines.push(item);await persist();const {owner:_privateOwner,...publicRec}=item;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/routines/')&&req.method==='DELETE'){
     const id=pathname.split('/').pop(),own=owner(req);db.routines=db.routines.filter(x=>!(x.id===id&&x.owner===own));await persist();return json(res,200,{ok:true});
