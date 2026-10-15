@@ -87,11 +87,15 @@ def _groups_for(uid):
         b = {"lat": float(row["destination_lat"]), "lon": float(row["destination_lon"]), "label": row["destination_label"]}
         chosen = None
         for candidate in groups:
-            if _distance_m(a, candidate["origin"]) <= 150 and _distance_m(b, candidate["destination"]) <= 150:
+            # Same origin/destination can be a morning and an evening routine.
+            if (_distance_m(a, candidate["origin"]) <= 150
+                and _distance_m(b, candidate["destination"]) <= 150
+                and abs(int(row["local_hour"]) - candidate["reference_hour"]) <= 1):
                 chosen = candidate
                 break
         if chosen is None:
-            chosen = {"origin": a, "destination": b, "samples": [], "created": set()}
+            chosen = {"origin": a, "destination": b, "samples": [], "created": set(),
+                      "reference_hour": int(row["local_hour"])}
             groups.append(chosen)
         chosen["samples"].append((int(row["local_weekday"]), int(row["local_hour"])))
         chosen["created"].add(str(row["created_at"])[:10])
