@@ -23,6 +23,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
+ const firstMaviTurnRef=useRef(true);
  const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept,onAction});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
  handlersRef.current={onCommand,onAccept,onAction};
@@ -150,7 +151,9 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
    const controller=new AbortController();controllerRef.current=controller;
    const timeout=setTimeout(()=>controller.abort(),14000);
    try{
-     const response=await handlersRef.current.onCommand(text,controller.signal);
+     const firstTurn=firstMaviTurnRef.current;
+     firstMaviTurnRef.current=false;
+     const response=await handlersRef.current.onCommand(text,controller.signal,{firstTurn});
      if(!enabledRef.current||seq!==requestRef.current)return;
      const message=typeof response?.text==='string'?response.text:'Não consegui responder.';
      if(response?.mode==='proposal'&&response.routeData?.routes?.length){
@@ -314,6 +317,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
      cancelEverything();setEnabled(false);setStatus('off');setReply('');setProposal(null);setOfferReady(false);return;
    }
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
+   firstMaviTurnRef.current=true;
    setEnabled(true);setStatus('ready');
    setReply('Pode falar: “Quanto falta?”, “Próxima conversão”, “Outra rota” ou “O que você sabe fazer?”.');
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
