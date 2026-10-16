@@ -9,7 +9,7 @@ import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {notifyNative} from '../lib/nativeShell';
-import {mapboxStyleFor,leafletTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
+import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
@@ -37,6 +37,36 @@ const markerElement=(kind,vehicle='carro')=>{
  return el;
 };
 const styleFor=layer=>mapboxStyleFor(layer,(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE);
+// Recover a raster basemap without recreating route/GPS/POI overlays.
+// Never request the volunteer-run OSM tile host in the fallback renderer.
+const EMPTY_TILE='data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+function installLeafletBasemap(map,layer,token,{onReady=()=>{},onError=()=>{}}={}){
+  const preferred=leafletTilesFor(layer,token);
+  const emergency=leafletBackupTilesFor(layer);
+  if(map._vanoTiles)map.removeLayer(map._vanoTiles);
+  const attach=(definition,isEmergency)=>{
+    const tiles=L.tileLayer(definition.url,{
+      maxZoom:21,maxNativeZoom:definition.maxNativeZoom||19,
+      tileSize:definition.tileSize||256,zoomOffset:definition.zoomOffset||0,
+      attribution:definition.attribution,errorTileUrl:EMPTY_TILE
+    });
+    map._vanoTiles=tiles;
+    map._vanoTilesKey=definition.url;
+    let failed=0,switched=false;
+    tiles.once('load',()=>{if(map._vanoTiles===tiles)onReady();});
+    tiles.on('tileerror',()=>{
+      if(switched||map._vanoTiles!==tiles)return;
+      if(++failed<2)return;
+      switched=true;
+      if(!isEmergency && definition.url!==emergency.url){
+        map.removeLayer(tiles);
+        attach(emergency,true);
+      }else onError();
+    });
+    tiles.addTo(map);
+  };
+  attach(preferred,preferred.url===emergency.url);
+}
 const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 
 /** Single camera writer: route launch, tracking, free-look and recenter all flow through it. */
@@ -186,8 +216,11 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         setError('Não foi possível carregar o mapa. Recarregue a página.');
         return()=>{};
       }
-      const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
-      tiles.once('load',()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'leaflet'});}));map._vanoTiles=tiles;map._vanoLayer=L.layerGroup().addTo(map);
+      installLeafletBasemap(map,latest.current.layer,token,{
+        onReady:()=>requestAnimationFrame(()=>{if(!deleted){setError('');notifyNative({action:'firstFrame',backend:'leaflet'});}}),
+        onError:()=>{if(!deleted)setError('A imagem do mapa está indisponível. Verifique a conexão e recarregue.');}
+      });
+      map._vanoLayer=L.layerGroup().addTo(map);
       backend.current='leaflet';mapRef.current=map;
        latest.current.onTrafficStatus?.('unavailable');
       paintLeaflet(map,latest.current);
@@ -328,11 +361,13 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='leaflet')return;
-    const tiles=leafletTilesFor(layer);
-    if(map._vanoTiles?._url!==tiles.url){
-      // Leaflet has no setAttribution(): replace the layer so legal credits update too.
-      if(map._vanoTiles)map.removeLayer(map._vanoTiles);
-      map._vanoTiles=L.tileLayer(tiles.url,{maxZoom:19,attribution:tiles.attribution}).addTo(map);
+    const tiles=leafletTilesFor(layer,token);
+    if(map._vanoTilesKey!==tiles.url){
+      // Layer changes keep the route, GPS and POI overlays untouched.
+      installLeafletBasemap(map,layer,token,{
+        onReady:()=>setError(''),
+        onError:()=>setError('A imagem do mapa está indisponível. Verifique a conexão e recarregue.')
+      });
     }
   },[layer]);
   useEffect(()=>{
