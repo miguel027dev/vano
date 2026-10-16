@@ -22,6 +22,7 @@ import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mj
 import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
 import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
 import {maviInstantAnswer,MAVI_FAST_OPENING_INTENTS} from './mavi-instant.mjs';
+import {isMaviTalkTurn,maviTalkFallback,limitedMaviTalkHistory} from '../src/lib/maviTalk.mjs';
 import {retrieveMaviKnowledge} from './mavi-grounding.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
@@ -829,21 +830,33 @@ async function route(req, res) {
       (localStreet.kind==='avoid'?'avoid_street':'via_street'):
       (detectMaviResume(body.text)?'resume_original':
        contextualMaviIntent(body.text)||classifyMaviIntent(body.text));
-    // Known navigation commands are already exact/fast, and do not need to
-    // pay the LLM latency. Invoke NVIDIA only for ambiguous language and
-    // optional smalltalk. If a sentence mentions a named road but the local
-    // fallback only found a generic "alternative", ask the LLM to clarify.
+    // Navigation stays deterministic and immediate. Social conversations use
+    // NVIDIA with transient, bounded history; no GPS or destinations are sent.
     // Opening greetings and capabilities are truthful local answers. Do not
     // block the very first voice response on an NVIDIA provider cold start.
+    const talkHistory=limitedMaviTalkHistory(body.context?.conversationHistory);
+    const mayTalk=['unknown','greeting','help','identity','about','thanks'].includes(localIntent);
+    const talkRequested=mayTalk&&isMaviTalkTurn(body.text,{conversationActive:talkHistory.length>0});
     const mentionsNamedRoad=/\b(?:avenida|av|rua|rodovia|estrada|marginal)\s+[\p{L}\p{N}]/iu.test(body.text);
     const needsNvidia=!localStreet&&!localPoi&&(
-      localIntent==='unknown'||
+      talkRequested||localIntent==='unknown'||
       (localIntent==='alternative'&&mentionsNamedRoad));
-    const grounding=localIntent==='unknown'?retrieveMaviKnowledge(body.text,body.context):null;
+    const grounding=localIntent==='unknown'&&!talkRequested?retrieveMaviKnowledge(body.text,body.context):null;
     if(grounding)return respondJev(grounding);
-    const llm=needsNvidia?await interpretMaviWithNvidia(body.text,body.context,{
+    const llm=needsNvidia?await interpretMaviWithNvidia(body.text,{
+      ...body.context,talkMode:talkRequested,
+      ...(talkRequested?{conversationHistory:talkHistory}:{})
+    },{
       requestTimeoutMs:body.context?.firstMaviTurn===true?2000:undefined
     }):null;
+    // A conversational message never directly becomes a model-suggested route
+    // mutation; the user must separately request an explicit navigation action.
+    const conversationReply=talkRequested&&(
+      (llm?.action==='general'&&llm.reply)||
+      (llm?.action==='information'&&['greeting','help','identity','about','thanks'].includes(llm.intent)&&llm.reply)
+    );
+    if(conversationReply)return respondJev({mode:'information',intent:'general',text:conversationReply});
+    if(talkRequested)return respondJev({mode:'information',intent:'general',text:maviTalkFallback(body.text)});
     // Strong local evidence of an actual named street or POI cannot be
     // overwritten by a free-form third-party model response.
     const streetRequest=localStreet||(!localPoi&&llm?.action==='street'?

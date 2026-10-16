@@ -25,6 +25,7 @@ import {acquireNavigationAudioFocus} from '../lib/maviAudioFocus.mjs';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
 import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs';
+import {isMaviTalkTurn,limitedMaviTalkHistory} from '../lib/maviTalk.mjs';
 import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
@@ -39,7 +40,7 @@ export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/v2';
   const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
-  const maviResponseTurn=useRef(0),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
+  const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
   function syncMeasuredDistance(force=false){
@@ -58,6 +59,7 @@ export default function MapPage({active=true}){
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
+  useEffect(()=>{maviTalkHistory.current=[];},[user?.id]);
   useEffect(()=>{if(!dest&&!navMode)setRouteVehicle(preferences?.vehicle==='moto'?'moto':'carro');},[preferences?.vehicle]);
   useEffect(()=>()=>{if(routeVehicleTimer.current!==null)clearTimeout(routeVehicleTimer.current);},[]);
   destRef.current=dest;
@@ -433,6 +435,14 @@ export default function MapPage({active=true}){
     // Informational commands work even before planning a route. The server
     // gates route-changing requests until a real route and vehicle exist.
     const replyVariant=maviResponseTurn.current++%3;
+    const conversation=isMaviTalkTurn(text,{conversationActive:maviTalkHistory.current.length>0});
+    const rememberReply=response=>{
+      if((!conversation&&response?.intent!=='general')||signal?.aborted||response?.mode!=='information'||typeof response.text!=='string')return response;
+      maviTalkHistory.current=limitedMaviTalkHistory([
+        ...maviTalkHistory.current,{role:'user',text},{role:'assistant',text:response.text}
+      ]);
+      return response;
+    };
     const greeting=classifyMaviIntent(text)==='greeting';
     let firstMaviGreeting=false;
     if(greeting){
@@ -465,7 +475,8 @@ export default function MapPage({active=true}){
         nextInstruction:navMode&&hasLiveGPS?guidance?.instruction:null,
         nextStreet:navMode&&hasLiveGPS?guidance?.street:null,
         nextDistanceMeters:navMode&&hasLiveGPS?guidance?.distance:null,
-        currentStreet:navMode&&hasLiveGPS?navigationStreetLabel(currentAddress,true):null
+        currentStreet:navMode&&hasLiveGPS?navigationStreetLabel(currentAddress,true):null,
+        ...(conversation?{conversationHistory:limitedMaviTalkHistory(maviTalkHistory.current)}:{})
       },telemetry:{
         bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null
       }
@@ -473,7 +484,7 @@ export default function MapPage({active=true}){
     // Read-only status and bounded map actions never need an LLM or network.
     // Speech remains cancellable and actual route changes still go to the server.
     const localIntent=classifyMaviIntent(text);
-    if(localIntent!=='repeat'&&localIntent!=='places_unavailable'){
+    if(!conversation&&localIntent!=='repeat'&&localIntent!=='places_unavailable'){
       const instant=answerMaviInformation(localIntent,payload.context);
       if(instant){
         if(greeting&&firstMaviGreeting){try{window.localStorage.setItem('vano-mavi-introduced','1');}catch{}}
@@ -482,7 +493,7 @@ export default function MapPage({active=true}){
         }).then(result=>result.voiceTicket).catch(()=>null)};
       }
     }
-    return api('/v2/assistant',{method:'POST',signal,body:payload});
+    return api('/v2/assistant',{method:'POST',signal,body:payload}).then(rememberReply);
   }
   function handleMaviAction(action){
     if(!jevMode)return false;
