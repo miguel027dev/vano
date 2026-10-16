@@ -713,6 +713,20 @@ export default function MapPage({active=true}){
       }
     }
   },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem,recalculating]);
+  // Low-priority walking detail: play only for a mapped crossing, with fresh
+  // accepted GPS progress. A real imminent turn or active voice has priority.
+  useEffect(()=>{
+    if(!active||routeVehicle!=='a-pe'||routeData?.source!=='mapbox-walking'||
+       recalculating||maneuverAudioRef.current||
+       (jevMode&&language!=='pt-BR'))return;
+    const cue=crossingVoiceCue(mappedCrossing,{
+      navigation:navMode,liveGps:hasLiveGPS,muted,language,maneuverDistance:guidance?.distance
+    });
+    if(!cue||spoken.current.has(cue.key))return;
+    if(!jevMode&&window.speechSynthesis?.speaking)return;
+    speakManeuver(cue.text,cue.key);
+  },[active,routeVehicle,routeData?.source,navMode,hasLiveGPS,muted,
+    mappedCrossing?.id,mappedCrossing?.distance,guidance?.distance,recalculating,language,jevMode]);
   useEffect(()=>{
     if(jevMode&&(!navMode||muted))maneuverAudioRef.current?.abort();
     if(!navMode||muted)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
