@@ -715,7 +715,7 @@ async function route(req, res) {
       !txt||txt.length>220||body.language!=='pt-BR')
       return err(res,403,'Instrução não autorizada.');
     // Restricted command grammar; validated server route proof is mandatory.
-    if(!/^(?:(?:Em|Daqui a) \\d{1,4} metros?, )?(?:vire|siga|continue|pegue|entre|mantenha|faça|saia|retorne|chegou|você chegou|seu destino|navegação iniciada|instruções por voz ativadas|à direita|à esquerda|mude|passe|contorne|atravesse|aproxime|na rotatória|rotatória)/i.test(txt))
+    if(!/^(?:(?:Em|Daqui a) \d{1,4} metros?, )?(?:vire|siga|continue|pegue|entre|mantenha|faça|saia|retorne|chegou|você chegou|seu destino|navegação iniciada|instruções por voz ativadas|à direita|à esquerda|mude|passe|contorne|atravesse|aproxime|na rotatória|rotatória)/i.test(txt))
       return err(res,400,'Comando de navegação inválido.');
     return json(res,200,{voiceTicket:signedToken(secret,{
       type:'mavi-cartesia-tts',purpose:'maneuver',user:id,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
