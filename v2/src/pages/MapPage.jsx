@@ -19,6 +19,8 @@ import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
 import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
+import JevVoiceButton from '../components/JevVoiceButton.jsx';
+import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
@@ -27,6 +29,7 @@ import {isNativeShell,notifyNative} from '../lib/nativeShell';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
+  const jevMode=location.pathname==='/v2';
   const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
@@ -399,6 +402,32 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  // Experimental-only integration: none of these actions are exposed on /mapa.
+  const jevKey=jevMode?jevRouteFingerprint(route):null;
+  async function askJev(text,signal){
+    if(!dest||!route||!validPoint(origin))
+      return {mode:'information',text:'Escolha um destino e calcule uma rota antes de falar comigo.'};
+    if(routeVehicle==='a-pe')
+      return {mode:'information',text:'Este protótipo aceita carro e moto. O modo a pé virá depois.'};
+    const start=navMode&&hasLiveGPS&&validPoint(userCoords)?userCoords:origin;
+    return api('/v2/assistant',{method:'POST',signal,body:{
+      text,origin:start,destination:dest.coords,vehicle:routeVehicle,language,
+      currentRouteKey:jevKey,telemetry:{
+        bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null
+      }
+    }});
+  }
+  function applyJev(proposal){
+    if(!jevMode||!dest||!route||!proposal||proposal.mode!=='proposal')return false;
+    if(proposal.sourceKey!==jevRouteFingerprint(route))return false;
+    if(!validPoint(proposal.destination)||
+      proposal.destination.some((coordinate,index)=>Math.abs(coordinate-dest.coords[index])>0.00001))return false;
+    const routes=proposal.routeData?.routes;
+    if(!Array.isArray(routes)||!routes.some(r=>r.id===proposal.routeId&&jevRouteFingerprint(r)!==proposal.sourceKey))return false;
+    routeEpoch.current++;spoken.current.clear();
+    setRouteData(proposal.routeData);setChoice(proposal.routeId);setGuidance(null);
+    setToast('Alternativa selecionada pelo VANO Assistant.');return true;
+  }
   cachePosition.current=userCoords;
   useEffect(()=>{if(!navMode||!hasLiveGPS||!route?.geometry)return;const timeline=buildRouteTimeline(route.geometry);if(!timeline.total)return;const meters=distanceOnRoute(timeline,userCoords);setGuidance({...nextManeuver(route,timeline,meters),progress:meters/timeline.total,preview:false,finished:false});},[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
@@ -595,6 +624,7 @@ export default function MapPage({active=true}){
       </span>
     </div>}
     {!searchOpen&&<div className="map-controls">
+       {jevMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {navMode&&<button type="button" title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}
       <button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>
