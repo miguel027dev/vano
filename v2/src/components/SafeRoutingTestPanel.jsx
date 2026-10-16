@@ -13,9 +13,11 @@ export default function SafeRoutingTestPanel(){
  }
  return <section className="v3-admin-panel" aria-label="Teste privado de contexto urbano">
   <style>{`.safe-route-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.safe-route-card{border:1px solid #6c7480;border-radius:16px;padding:15px;background:rgba(80,88,100,.09)}.safe-route-card h4{margin:0 0 8px}.safe-route-pct{font-size:30px;font-weight:800}.safe-route-meter{background:#3b434d;height:7px;border-radius:7px;overflow:hidden}.safe-route-meter i{display:block;height:100%;background:#ed9c6c}@media(max-width:720px){.safe-route-cards{grid-template-columns:1fr}}`}</style>
-  <div className="v3-admin-panel-head"><div><h2>Teste de contexto urbano</h2><small>MASP → Parque Ibirapuera · carro · alternativas reais do provedor</small></div>
+  <div className="v3-admin-panel-head"><div><h2>VANO Safe · laboratório privado</h2><small>Comparação entre trajetos reais e evidências urbanas de São Paulo</small></div>
    <button type="button" onClick={compare} disabled={busy}>{busy?'Comparando…':'Comparar rotas de teste'}</button></div>
+  <div style={{display:'flex',gap:8,flexWrap:'wrap',margin:'12px 0'}}><button type="button" disabled={busy} onClick={()=>{setFrom('-23.5615,-46.6557');setTo('-23.5874,-46.6597');}}>MASP → Ibirapuera</button><button type="button" disabled={busy} onClick={()=>{setFrom('-23.57055,-46.69217');setTo('-23.5874,-46.6597');}}>Faria Lima → Ibirapuera</button></div>
   <div style={{display:'flex',gap:12,flexWrap:'wrap',margin:'14px 0'}}><label>Origem (latitude,longitude) <input value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Destino (latitude,longitude) <input value={to} onChange={e=>setTo(e.target.value)}/></label></div>
+  <p style={{fontSize:12,opacity:.8}}>Teste privado e somente informativo. Não há pontuação de segurança pessoal aprovada para esta base. Não altera a navegação.</p>
   <p>Consulta iluminação, vias, calçadas, faixas de ônibus, risco hidrológico e histórico de alagamentos no B2. Dados cadastrais não confirmam condições atuais.</p>
   {error&&<p role="alert">{error}</p>}
   {result&&<div aria-live="polite">
