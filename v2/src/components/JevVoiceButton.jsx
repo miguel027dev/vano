@@ -4,6 +4,7 @@ import {createPortal} from 'react-dom';
 import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCircle} from 'lucide-react';
 import {api} from '../lib/api.js';
 import {playMaviEleven} from '../lib/maviElevenPlayback.mjs';
+import {classifyMaviIntent,maviProposalDecision} from '../lib/maviAssistant.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
 /** The V2-only voice input has three independent paths:
@@ -11,7 +12,7 @@ import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSup
  * getUserMedia/MediaRecorder capture with optional server STT.
  * Navigation voice and all other map screens remain independent.
  */
-export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navigationActive=false,maneuverDistance=null,muted=false}){
+export default function JevVoiceButton({onCommand,onAccept,onAction,routeContextKey,navigationActive=false,maneuverDistance=null,muted=false}){
  const [enabled,setEnabled]=useState(false),[status,setStatus]=useState('off');
  const [reply,setReply]=useState(''),[heard,setHeard]=useState(''),[typed,setTyped]=useState('');
  const [proposal,setProposal]=useState(null),[offerReady,setOfferReady]=useState(false),[diagnostic,setDiagnostic]=useState('');
@@ -22,9 +23,9 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
- const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept});
+ const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept,onAction});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
- handlersRef.current={onCommand,onAccept};
+ handlersRef.current={onCommand,onAccept,onAction};
  navRef.current={navigationActive,maneuverDistance,muted};
  proposalRef.current=proposal;
  const Recognizer=typeof window!=='undefined'?(window.SpeechRecognition||window.webkitSpeechRecognition):null;
@@ -139,13 +140,11 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    const text=String(phrase||'').trim().slice(0,360);
    if(!text||!enabledRef.current||busyRef.current)return;
    stopRecognition();setHeard(text);setTyped('');
-   const simplified=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-   if(proposalRef.current&&/^(sim|pode|aceito|usar|confirma|confirmar|vamos|isso)(\b|$)/.test(simplified)){
-     chooseProposal('accept');return;
-   }
-   if(proposalRef.current&&/^(nao|cancelar|deixa|manter|fica)(\b|$)/.test(simplified)){
-     chooseProposal('reject');return;
-   }
+   const decision=proposalRef.current?maviProposalDecision(text):null;
+   if(decision){chooseProposal(decision);return;}
+   // Repeat the last spoken response without duplicating a provider request
+   // or clearing a still-pending route offer.
+   if(classifyMaviIntent(text)==='repeat'&&reply){speak(reply);return;}
    busyRef.current=true;setStatus('processing');setProposal(null);proposalRef.current=null;setOfferReady(false);
    const seq=++requestRef.current;controllerRef.current?.abort?.();
    const controller=new AbortController();controllerRef.current=controller;
@@ -156,6 +155,9 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      const message=typeof response?.text==='string'?response.text:'Não consegui responder.';
      if(response?.mode==='proposal'&&response.routeData?.routes?.length){
        setProposal(response);proposalRef.current=response;
+     }
+     if(response?.mode==='action'&&typeof response.action==='string'){
+       try{handlersRef.current.onAction?.(response.action);}catch{/* fail safely */}
      }
      setReply(message);speak(message,()=>{
        if(seq===requestRef.current&&proposalRef.current===response&&mountedRef.current)setOfferReady(true);
@@ -313,7 +315,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    }
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
    setEnabled(true);setStatus('ready');
-   setReply('Pode falar: “Procure outra rota” ou “Evite pedágios”.');
+   setReply('Pode falar: “Quanto falta?”, “Próxima conversão”, “Outra rota” ou “O que você sabe fazer?”.');
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
    // Crucial: call start() inside the original click, not after a timeout/effect.
    listenRef.current('remote');

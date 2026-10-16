@@ -13,6 +13,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/jevShared.mjs';
+import {classifyMaviIntent,answerMaviInformation,MAVI_ROUTE_INTENTS} from '../src/lib/maviAssistant.mjs';
 import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence} from '../src/lib/jevStreetRouting.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
@@ -691,7 +692,7 @@ async function route(req, res) {
   }
   if (pathname === '/api/v2/assistant' && req.method === 'POST') {
     if (!protectedWrite(req,res)) return;
-    if (!limits(req,res,'jev-v2',6,60000)) return;
+    if (!limits(req,res,'jev-v2',18,60000)) return;
     const body=await getBody(req);
     const voiceOwner=owner(req);
     const respondJev=reply=>{
@@ -705,11 +706,15 @@ async function route(req, res) {
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
     const streetRequest=extractJevStreetRequest(body.text);
-    const intent=streetRequest?(streetRequest.kind==='avoid'?'avoid_street':'via_street'):classifyJev(body.text);
+    const intent=streetRequest?(streetRequest.kind==='avoid'?'avoid_street':'via_street'):classifyMaviIntent(body.text);
+    // Give informational questions truthful answers without calling a routing provider.
+    const info=answerMaviInformation(intent,body.context);
+    if(info)return respondJev(info);
+    if(MAVI_ROUTE_INTENTS.has(intent)&&!limits(req,res,'jev-v2-route',6,60000))return;
     if(intent==='radar_unavailable')
       return respondJev({mode:'information',intent,text:'Não posso garantir uma rota com menos radares. Siga sempre os limites de velocidade. Posso procurar outro caminho por tempo ou tranquilidade.'});
     if(intent==='unknown')
-      return respondJev({mode:'information',intent,text:'Ainda não entendi esse comando. Tente pedir outra rota, evitar pedágios ou procurar menos trânsito.'});
+      return respondJev({mode:'information',intent,text:'Não entendi esse pedido. Você pode perguntar quanto falta, a hora de chegada ou a próxima conversão. Também posso procurar caminhos diferentes e evitar vias ou pedágios.'});
     if(intent==='slope_unavailable')
       return respondJev({mode:'information',intent,text:'Ainda não consigo verificar ladeiras com segurança. Essa função será adicionada em outra etapa.'});
     if(!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto'].includes(body.vehicle))
@@ -725,6 +730,8 @@ async function route(req, res) {
     const language=normalizeLocale(body.language)||'pt-BR';
     const options={
       avoidTolls:intent==='avoid_tolls',
+      avoidFerries:intent==='avoid_ferries',
+      avoidUnpaved:intent==='avoid_unpaved',
       adaptive:true,
       variantBudget:4,
       trafficBias:intent==='traffic'?1:undefined,
@@ -766,9 +773,12 @@ async function route(req, res) {
         }
       }
     }
-    const candidate=chooseJevProposal(permittedRoutes,currentKey,intent);
+    let candidate=chooseJevProposal(permittedRoutes,currentKey,intent);
+    // A route requested as faster or shorter must actually improve that metric.
+    if(candidate&&intent==='fast_route'&&Number.isFinite(body.currentDuration)&&candidate.duration>=body.currentDuration)candidate=null;
+    if(candidate&&intent==='short_route'&&Number.isFinite(body.currentDistance)&&candidate.distance>=body.currentDistance)candidate=null;
     if(!candidate){
-      const text=streetRequest?
+      const text=intent==='fast_route'?'Não encontrei uma alternativa comprovadamente mais rápida. Mantive a rota atual.':intent==='short_route'?'Não encontrei um percurso confirmado mais curto. Mantive a rota atual.':streetRequest?
         streetRequest.kind==='avoid'
           ?'Não encontrei uma rota comprovadamente diferente que evite '+streetRequest.spokenName+'. Mantive a rota atual.'
           :'Não encontrei uma alternativa confirmada que passe por '+streetRequest.spokenName+'. Mantive a rota atual.'
@@ -782,7 +792,7 @@ async function route(req, res) {
     const previous=Number(body.currentDuration);
     const difference=Number.isFinite(previous)&&previous>0&&previous<10080?Math.round(candidate.duration-previous):null;
     const contrast=difference===null?'':difference>0?', '+difference+' minutos a mais que a atual':difference<0?', '+Math.abs(difference)+' minutos a menos que a atual':', com tempo parecido ao atual';
-    const detail=streetRequest?(streetRequest.kind==='avoid'?'sem a via '+streetRequest.spokenName+' nas orientações da alternativa':'passando por '+streetRequest.spokenName):intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
+    const detail=streetRequest?(streetRequest.kind==='avoid'?'sem a via '+streetRequest.spokenName+' nas orientações da alternativa':'passando por '+streetRequest.spokenName):intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='avoid_ferries'?'com preferência para evitar balsas':intent==='avoid_unpaved'?'com preferência por vias asfaltadas':intent==='quiet_route'?'por uma alternativa para você comparar, sem garantia de menor movimento':intent==='short_route'?'com uma distância menor':intent==='fast_route'?'com menos tempo de viagem':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
     return respondJev({
       mode:'proposal',intent,routeId:candidate.id,
       sourceKey:currentKey,destination:body.destination,

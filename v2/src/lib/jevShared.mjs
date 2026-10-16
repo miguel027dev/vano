@@ -30,6 +30,8 @@ export function chooseJevProposal(routes, currentKey, intent) {
   const valid=routes.filter(r=>r&&['safe','fast'].includes(r.id) && Number.isFinite(r.duration) && r.duration>0 && jevRouteFingerprint(r));
   const candidates=valid.filter(r=>jevRouteFingerprint(r)!==currentKey);
   if(!candidates.length) return null;
-  if(intent==='traffic')return candidates.find(r=>r.id==='safe')||candidates[0];
+  if(intent==='traffic'||intent==='quiet_route')return candidates.find(r=>r.id==='safe')||candidates[0];
+  if(intent==='short_route')return [...candidates].filter(r=>Number.isFinite(r.distance)).sort((a,b)=>a.distance-b.distance||a.duration-b.duration)[0]||null;
+  if(intent==='fast_route')return [...candidates].sort((a,b)=>a.duration-b.duration)[0];
   return candidates.find(r=>r.id==='fast')||candidates[0];
 }
