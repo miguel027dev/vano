@@ -13,10 +13,10 @@ export function extractJevStreetRequest(value){
  if(!text)return null;
  const patterns=[
   {kind:'avoid',rx:/\b(?:nao\s+(?:quero|gostaria|desejo)\s+(?:(?:ir|passar|seguir|pegar)\s+)?(?:pela?|por|na|no)\s+)(.+)$/},
-  {kind:'avoid',rx:/\b(?:nao\s+(?:pega|pegue|passe|passa|passar|entre|entra|siga)\s+(?:pela?|na|no|por)\s+)(.+)$/},
-  {kind:'avoid',rx:/\b(?:sem\s+(?:passar|ir|pegar|seguir)\s+(?:pela?|na|no|por)\s+)(.+)$/},
+  {kind:'avoid',rx:/\b(?:nao\s+(?:pega|pegue|passe|passa|passar|entre|entra|siga)\s+(?:pela?|na|no|por|a|o)\s+)(.+)$/},
+  {kind:'avoid',rx:/\b(?:sem\s+(?:passar|ir|pegar|seguir)\s+(?:pela?|na|no|por|a|o)\s+)(.+)$/},
   {kind:'avoid',rx:/\b(?:(?:evita|evite|evitar|desvia|desviar)\s+(?:de\s+)?(?:a\s+|o\s+|pela?\s+|na\s+|no\s+)?)(.+)$/},
-  {kind:'avoid',rx:/\b(?:tem\s+(?:um\s+)?(?:outro\s+)?caminho\s+(?:que\s+)?(?:nao\s+)?(?:passe|passa|pegue|pega)\s+(?:pela?|na|no|por)\s+)(.+)$/},
+  {kind:'avoid',rx:/\b(?:tem\s+(?:um\s+)?(?:outro\s+)?caminho\s+(?:que\s+)?(?:nao\s+)?(?:passe|passa|pegue|pega)\s+(?:pela?|na|no|por|a|o)\s+)(.+)$/},
   {kind:'via',rx:/\b(?:quero|prefiro|vamos|pode|da\s+pra)\s+(?:ir|passar|pegar|seguir)\s+(?:pela?|por|via|na|no)\s+(.+)$/},
   {kind:'via',rx:/\b(?:sentido\s+)(avenida\s+.+|av\s+.+|rua\s+.+|r\s+.+)$/},
  ];
