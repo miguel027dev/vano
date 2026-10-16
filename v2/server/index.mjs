@@ -716,7 +716,16 @@ async function route(req, res) {
       (localStreet.kind==='avoid'?'avoid_street':'via_street'):
       (detectMaviResume(body.text)?'resume_original':
        contextualMaviIntent(body.text)||classifyMaviIntent(body.text));
-    const llm=await interpretMaviWithNvidia(body.text,body.context);
+    // Known navigation commands are already exact/fast, and do not need to
+    // pay the LLM latency. Invoke NVIDIA only for ambiguous language and
+    // optional smalltalk. If a sentence mentions a named road but the local
+    // fallback only found a generic "alternative", ask the LLM to clarify.
+    const conversational=new Set(['greeting','help','identity','about','thanks']);
+    const mentionsNamedRoad=/\b(?:avenida|av|rua|rodovia|estrada|marginal)\s+[\p{L}\p{N}]/iu.test(body.text);
+    const needsNvidia=!localStreet&&!localPoi&&(
+      localIntent==='unknown'||conversational.has(localIntent)||
+      (localIntent==='alternative'&&mentionsNamedRoad));
+    const llm=needsNvidia?await interpretMaviWithNvidia(body.text,body.context):null;
     // Strong local evidence of an actual named street or POI cannot be
     // overwritten by a free-form third-party model response.
     const streetRequest=localStreet||(!localPoi&&llm?.action==='street'?
