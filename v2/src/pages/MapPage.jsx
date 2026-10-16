@@ -59,6 +59,7 @@ export default function MapPage({active=true}){
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
   const handledDestination=useRef(''),destRef=useRef(null);
+  useEffect(()=>{maviTalkHistory.current=[];},[user?.id]);
   useEffect(()=>{if(!dest&&!navMode)setRouteVehicle(preferences?.vehicle==='moto'?'moto':'carro');},[preferences?.vehicle]);
   useEffect(()=>()=>{if(routeVehicleTimer.current!==null)clearTimeout(routeVehicleTimer.current);},[]);
   destRef.current=dest;
