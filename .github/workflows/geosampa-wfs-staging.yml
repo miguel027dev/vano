@@ -37,4 +37,11 @@ jobs:
           SAFE_ALLOW_IMPORT: '0'
           VANO_SAFE_DB_URL: ''
           DATABASE_URL: ''
-        run: node scripts/safe-routing/import-geosampa.mjs
+        run: node scripts/safe-routing/import-geosampa.mjs --sample-out
+      - name: Save unapproved sample for engineering QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: geosampa-lights-unapproved-sample
+          path: v2/data/safe-staging/geosampa-lighting-sample.json
+          retention-days: 7
+          if-no-files-found: error
