@@ -37,7 +37,7 @@ for(const key of selected){
  if(!Number.isInteger(resumePages)||resumePages<0||resumePages%20!==0||resumePages>pages)throw Error('Checkpoint inválido');
  for(let start=0;start<resumePages;start+=20){
   const path=`snapshots/${snapshotId}/pages/${String(start).padStart(6,'0')}.geojson.gz`;
-  const compressed=await readB2Object({authorization,config,path,maxBytes:25_000_000});
+  const compressed=await retryTransport(()=>readB2Object({authorization,config,path,maxBytes:25_000_000}));
   const stored=JSON.parse(gunzipSync(compressed,{maxOutputLength:50_000_000}));
   if(stored.type!=='FeatureCollection'||!Array.isArray(stored.features)||stored.features.length<9990||stored.features.length>10000)throw Error('Checkpoint incompleto');
   for(const feature of stored.features){if(feature.properties?.snapshotId!==snapshotId||feature.properties?.sourceLayer!==layer||seen.has(feature.id))throw Error('Checkpoint divergente');seen.add(feature.id);}
