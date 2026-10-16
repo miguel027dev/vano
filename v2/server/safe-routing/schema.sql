@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS vano_safe.public_lights_staging (
  PRIMARY KEY(snapshot_id,source_feature_id)
 );
 CREATE INDEX IF NOT EXISTS public_lights_staging_geom_idx ON vano_safe.public_lights_staging USING GIST(geom);
+CREATE INDEX IF NOT EXISTS public_lights_staging_geog_idx ON vano_safe.public_lights_staging USING GIST((geom::geography));
 CREATE TABLE IF NOT EXISTS vano_safe.road_segments (
  segment_id text PRIMARY KEY,
  network_version text NOT NULL,
