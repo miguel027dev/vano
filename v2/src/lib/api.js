@@ -29,6 +29,26 @@ export async function api(path, opts = {}) {
   if (!res.ok) { if(res.status === 403 && String(data.error || '').includes('segurança')) csrfToken=''; throw new Error(data.error || `Erro ${res.status}`); }
   return data;
 }
+/**
+ * V2 MAVI only: fetch an authorized one-shot voice response as binary.
+ * No ElevenLabs key, text, model or voice ID ever crosses from the browser.
+ * This deliberately uses a separate binary path from the normal JSON API.
+ */
+export async function fetchMaviAudio(ticket,{signal}={}){
+ if(typeof ticket!=='string'||ticket.length>2200||!ticket)throw Error('invalid_mavi_ticket');
+ const token=await initializeCsrf();
+ const response=await fetch( ''+BASE+'/v2/assistant/speech',{
+   method:'POST',credentials:'include',signal,
+   headers:{'Content-Type':'application/json','X-VANO-CSRF':token},
+   body:JSON.stringify({ticket})
+ });
+ if(!response.ok)throw Error('mavi_voice_service_unavailable');
+ if(!/audio\/mpeg/.test(response.headers.get('content-type')||''))throw Error('mavi_voice_invalid_audio');
+ const blob=await response.blob();
+ if(blob.size<100||blob.size>2_000_000)throw Error('mavi_voice_invalid_size');
+ return blob;
+}
+
 export const post = (path,body) => api(path, { method:'POST',body });
 export const patch = (path,body) => api(path, { method:'PATCH',body });
 export const remove = (path,body = {}) => api(path, {method:'DELETE',body});
