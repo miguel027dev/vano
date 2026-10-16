@@ -16,7 +16,8 @@ import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/
 import {classifyMaviIntent,answerMaviInformation,MAVI_ROUTE_INTENTS} from '../src/lib/maviAssistant.mjs';
 import {parseMaviPlaceIntent,detectMaviResume,contextualMaviIntent} from '../src/lib/maviFlexible.mjs';
 import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mjs';
-import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence} from '../src/lib/jevStreetRouting.mjs';
+import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
+import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import { queryPlaces } from './search-provider.mjs';
@@ -707,12 +708,34 @@ async function route(req, res) {
     };
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
-    const streetRequest=extractJevStreetRequest(body.text);
-    const poiRequest=parseMaviPlaceIntent(body.text);
-    const intent=poiRequest?'find_poi':streetRequest?
-      (streetRequest.kind==='avoid'?'avoid_street':'via_street'):
+    // NVIDIA NIM is an optional *intent proposal* only. The backend owns
+    // routing/geodata/actions. If disabled, slow or invalid, local rules win.
+    const localStreet=extractJevStreetRequest(body.text);
+    const localPoi=parseMaviPlaceIntent(body.text);
+    const localIntent=localPoi?'find_poi':localStreet?
+      (localStreet.kind==='avoid'?'avoid_street':'via_street'):
       (detectMaviResume(body.text)?'resume_original':
        contextualMaviIntent(body.text)||classifyMaviIntent(body.text));
+    const llm=await interpretMaviWithNvidia(body.text,body.context);
+    // Strong local evidence of an actual named street or POI cannot be
+    // overwritten by a free-form third-party model response.
+    const streetRequest=localStreet||(!localPoi&&llm?.action==='street'?
+      {kind:llm.street_kind,road:roadKey(llm.road),spokenName:llm.road}:null);
+    const poiRequest=localPoi||(!streetRequest&&llm?.action==='poi'?
+      {type:'poi',category:llm.category,scope:llm.scope}:null);
+    // Explicit local readouts about GPS, time, weather, safety etc. have
+    // precedence over model suggestions that could require extra actions.
+    const preservedInformation=localIntent!=='unknown'&&
+      answerMaviInformation(localIntent,body.context)&&
+      !['greeting','help','identity','about','thanks'].includes(localIntent);
+    const interpreted=llm?.action==='route'?llm.intent:
+      llm?.action==='information'?llm.intent:
+      llm?.action==='resume'?'resume_original':
+      llm?.action==='general'?'general':
+      localIntent;
+    const intent=poiRequest?'find_poi':streetRequest?
+      (streetRequest.kind==='avoid'?'avoid_street':'via_street'):
+      preservedInformation?localIntent:interpreted;
     if(intent==='resume_original'){
       const hasStop=body.context?.pendingStop===true;
       return respondJev(hasStop?
@@ -774,7 +797,17 @@ async function route(req, res) {
     }
     // Give informational questions truthful answers without calling a routing provider.
     const info=answerMaviInformation(intent,body.context);
-    if(info)return respondJev(info);
+    if(info){
+      // For static smalltalk only, allow natural variation. Numeric, time,
+      // safety and location claims always originate in VANO deterministic code.
+      if(llm?.action==='information'&&llm.intent===intent&&llm.reply&&
+        ['greeting','help','identity','about','thanks'].includes(intent)){
+        return respondJev({...info,text:llm.reply});
+      }
+      return respondJev(info);
+    }
+    if(intent==='general'&&llm?.action==='general'&&llm.reply)
+      return respondJev({mode:'information',intent,text:llm.reply});
     if(MAVI_ROUTE_INTENTS.has(intent)&&!limits(req,res,'jev-v2-route',6,60000))return;
     if(intent==='radar_unavailable')
       return respondJev({mode:'information',intent,text:'Não posso garantir uma rota com menos radares. Siga sempre os limites de velocidade. Posso procurar outro caminho por tempo ou tranquilidade.'});
