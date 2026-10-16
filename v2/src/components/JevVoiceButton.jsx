@@ -1,5 +1,6 @@
 import '../jev-voice.css';
 import React,{useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCircle} from 'lucide-react';
 import {api} from '../lib/api.js';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
@@ -12,12 +13,13 @@ import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSup
 export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navigationActive=false,maneuverDistance=null,muted=false}){
  const [enabled,setEnabled]=useState(false),[status,setStatus]=useState('off');
  const [reply,setReply]=useState(''),[heard,setHeard]=useState(''),[typed,setTyped]=useState('');
- const [proposal,setProposal]=useState(null),[diagnostic,setDiagnostic]=useState('');
+ const [proposal,setProposal]=useState(null),[offerReady,setOfferReady]=useState(false),[diagnostic,setDiagnostic]=useState('');
  const [localReady,setLocalReady]=useState(false),[serverStt,setServerStt]=useState(false);
  const [captureActive,setCaptureActive]=useState(false);
  const enabledRef=useRef(false),mountedRef=useRef(true),busyRef=useRef(false);
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
+ const speechTimerRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
  const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
@@ -48,7 +50,9 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    controllerRef.current?.abort?.();controllerRef.current=null;
    enabledRef.current=false;busyRef.current=false;
    stopRecognition();stopRecording();
+   clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
    speechRef.current=null;
+   if(mountedRef.current)setOfferReady(false);
    // Do not cancel global speechSynthesis: it also belongs to navigation maneuvers.
  }
  function scheduleNextListen(){
@@ -66,25 +70,45 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    if(recognitionError.current)setStatus('typed');
    else{setStatus('ready');scheduleNextListen();}
  }
- function speak(message){
+ function speak(message,onComplete){
    const {navigationActive,maneuverDistance,muted}=navRef.current;
-   const synth=window.speechSynthesis;
-   const Utterance=window.SpeechSynthesisUtterance;
-   if(!synth||!Utterance||muted||synth.speaking||
-     (navigationActive&&Number.isFinite(maneuverDistance)&&maneuverDistance<250)){
-      done();return;
-   }
-   try{
-     const speech=new Utterance(message);
-     speech.lang='pt-BR';speech.rate=1;speech.volume=1;
-     const voices=synth.getVoices?.()||[];
-     const selected=voices.find(x=>x.lang.toLowerCase()==='pt-br')||voices.find(x=>x.lang.toLowerCase().startsWith('pt'));
-     if(selected)speech.voice=selected;
-     speechRef.current=speech;setStatus('speaking');
-     speech.onend=()=>{if(speechRef.current===speech){speechRef.current=null;done();}};
-     speech.onerror=()=>{if(speechRef.current===speech){speechRef.current=null;done();}};
-     synth.speak(speech);
-   }catch{done();}
+   const synth=window.speechSynthesis,Utterance=window.SpeechSynthesisUtterance;
+   busyRef.current=true;
+   let finished=false,attempts=0;
+   const finish=()=>{
+     if(finished)return;
+     finished=true;
+     clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
+     speechRef.current=null;
+     done();
+     // Offer controls are revealed only once the voice finishes or fails safely.
+     if(enabledRef.current&&mountedRef.current)onComplete?.();
+   };
+   if(!synth||!Utterance||muted){finish();return;}
+   const trySpeak=()=>{
+     if(finished||!enabledRef.current)return;
+     const nav=navRef.current;
+     // Wait for the navigation announcement, rather than silently skip MAVI.
+     if(synth.speaking||(nav.navigationActive&&Number.isFinite(nav.maneuverDistance)&&nav.maneuverDistance<250)){
+       if(++attempts>12){finish();return;}
+       speechTimerRef.current=setTimeout(trySpeak,750);
+       return;
+     }
+     try{
+       const speech=new Utterance(String(message||'').slice(0,400));
+       speech.lang='pt-BR';speech.rate=1;speech.volume=1;
+       const voices=synth.getVoices?.()||[];
+       const selected=voices.find(x=>String(x.lang).toLowerCase()==='pt-br')||
+         voices.find(x=>String(x.lang).toLowerCase().startsWith('pt'));
+       if(selected)speech.voice=selected;
+       speechRef.current=speech;setStatus('speaking');
+       speech.onend=finish;speech.onerror=finish;
+       synth.resume?.();synth.speak(speech);
+       // Some WebViews omit onend; never trap the microphone or route proposal.
+       speechTimerRef.current=setTimeout(finish,15000);
+     }catch{finish();}
+   };
+   trySpeak();
  }
  async function submit(phrase){
    const text=String(phrase||'').trim().slice(0,360);
@@ -92,16 +116,12 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    stopRecognition();setHeard(text);setTyped('');
    const simplified=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
    if(proposalRef.current&&/^(sim|pode|aceito|usar|confirma|confirmar|vamos|isso)(\b|$)/.test(simplified)){
-     const selection=proposalRef.current;setProposal(null);proposalRef.current=null;
-     let ok=false;try{ok=handlersRef.current.onAccept(selection)!==false;}catch{/* stale route */}
-     const text=ok?'Nova rota selecionada.':'A sugestão expirou. Peça outra alternativa.';
-     busyRef.current=true;setReply(text);speak(text);return;
+     chooseProposal('accept');return;
    }
    if(proposalRef.current&&/^(nao|cancelar|deixa|manter|fica)(\b|$)/.test(simplified)){
-     setProposal(null);proposalRef.current=null;setReply('Mantive sua rota atual.');
-     busyRef.current=true;speak('Mantive sua rota atual.');return;
+     chooseProposal('reject');return;
    }
-   busyRef.current=true;setStatus('processing');setProposal(null);proposalRef.current=null;
+   busyRef.current=true;setStatus('processing');setProposal(null);proposalRef.current=null;setOfferReady(false);
    const seq=++requestRef.current;controllerRef.current?.abort?.();
    const controller=new AbortController();controllerRef.current=controller;
    const timeout=setTimeout(()=>controller.abort(),14000);
@@ -112,7 +132,9 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      if(response?.mode==='proposal'&&response.routeData?.routes?.length){
        setProposal(response);proposalRef.current=response;
      }
-     setReply(message);speak(message);
+     setReply(message);speak(message,()=>{
+       if(seq===requestRef.current&&proposalRef.current===response&&mountedRef.current)setOfferReady(true);
+     });
    }catch{
      if(!enabledRef.current||seq!==requestRef.current)return;
      const message=controller.signal.aborted?'A consulta demorou demais. Sua rota continua igual.':
@@ -255,13 +277,13 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    return()=>{disposed=true;};
  },[enabled]);
  useEffect(()=>{requestRef.current++;controllerRef.current?.abort?.();
-   setProposal(null);proposalRef.current=null;
+   setProposal(null);proposalRef.current=null;setOfferReady(false);
  },[routeContextKey]);
  useEffect(()=>()=>{mountedRef.current=false;cancelEverything();},[]);
 
  function toggle(){
    if(enabledRef.current){
-     cancelEverything();setEnabled(false);setStatus('off');setReply('');setProposal(null);return;
+     cancelEverything();setEnabled(false);setStatus('off');setReply('');setProposal(null);setOfferReady(false);return;
    }
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
    setEnabled(true);setStatus('ready');
@@ -270,52 +292,44 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    // Crucial: call start() inside the original click, not after a timeout/effect.
    listenRef.current('remote');
  }
- function accept(){
-   if(!proposal)return;
-   let applied=false;
-   try{applied=handlersRef.current.onAccept(proposal)!==false;}catch{/* stale route */}
+ function chooseProposal(decision){
+   const selection=proposalRef.current;
+   if(!enabledRef.current||!selection)return false;
+   setOfferReady(false);
    setProposal(null);proposalRef.current=null;
-   setReply(applied?'Nova rota selecionada.':'Esta sugestão expirou. Peça outra alternativa.');
+   if(decision==='reject'){
+     setReply('Mantive sua rota atual.');
+     speak('Tudo bem, sua rota atual foi mantida.');
+     return true;
+   }
+   let applied=false;
+   try{applied=handlersRef.current.onAccept(selection)!==false;}catch{/* expired route */}
+   const message=applied?'Nova rota selecionada.':'Esta sugestão expirou. Peça outra alternativa.';
+   setReply(message);speak(message);
+   return applied;
  }
- function reject(){setProposal(null);proposalRef.current=null;setReply('Mantive sua rota atual.');}
+ function accept(){return chooseProposal('accept');}
+ function reject(){return chooseProposal('reject');}
+ const offerTarget=typeof document!=='undefined'?document.getElementById('mavi-offer-host'):null;
  return <div className="jev-control-wrap">
   <button type="button" className={'circle-btn jev-mic '+(enabled?'jev-mic-active ':'')+(status==='listening'?'jev-listening':'')}
    onClick={toggle} aria-label={enabled?'Desativar assistente de voz':'Ativar assistente de voz'}
    aria-pressed={enabled} title={enabled?'Desativar assistente':'Falar com o assistente'}>
    {enabled?<Mic size={21}/>:<MicOff size={21}/>}
   </button>
-  {enabled&&<section className="jev-panel" aria-label="VANO Assistant, protótipo de voz">
-   <div className="jev-head"><strong><Volume2 size={16}/> VANO Assistant</strong>
-    <button type="button" onClick={toggle} aria-label="Fechar assistente"><X size={17}/></button>
-   </div>
-   <small className="jev-status" role="status">{status==='listening'?'Escutando sua voz…':status==='processing'?'Processando comando…':
-    status==='speaking'?'Respondendo por voz…':status==='recording'?'Gravando áudio…':
-    status==='typed'?'Reconhecimento indisponível · tente alternativa':'Pronto para ouvir'}</small>
-   {heard&&<p className="jev-heard">Você: {heard}</p>}
-   {reply&&<p className="jev-reply" aria-live="polite">{reply}</p>}
-   {proposal&&<div className="jev-actions">
-    <button type="button" onClick={accept}><Check size={15}/> Usar rota</button>
-    <button type="button" onClick={reject}>Manter atual</button>
-   </div>}
-   <div className="jev-voice-options">
-    {Recognizer&&<button type="button" onClick={()=>listenRef.current('remote')} disabled={busyRef.current||captureActive}>
-     <RefreshCw size={14}/> Ouvir novamente
-    </button>}
-    {localReady&&<button type="button" onClick={()=>listenRef.current('local')} disabled={busyRef.current||captureActive}>
-     <AudioLines size={14}/> Voz local
-    </button>}
-    <button type="button" onClick={testMicrophone} disabled={captureActive}><ShieldCheck size={14}/> Testar microfone</button>
-    {serverStt&&<button type="button" onClick={captureActive?stopRecording:startRecording} disabled={busyRef.current}>
-     <Mic size={14}/> {captureActive?'Concluir gravação':'Gravar comando'}
-    </button>}
-   </div>
-   {diagnostic&&<small className="jev-diagnostic" role="status"><AlertCircle size={12}/>{diagnostic}</small>}
-   {serverStt&&<small className="jev-privacy">Ao gravar, o áudio é enviado para transcrição por um provedor externo, apenas após você tocar em “Gravar comando”.</small>}
-   <form className="jev-text" onSubmit={event=>{event.preventDefault();void submitRef.current(typed);}}>
-    <input aria-label="Digitar comando para o assistente" placeholder="Ou digite seu pedido" value={typed}
-     onChange={event=>setTyped(event.target.value)} maxLength={360}/>
-    <button type="submit" aria-label="Enviar comando" disabled={!typed.trim()||busyRef.current}><Send size={17}/></button>
-   </form>
-  </section>}
+  {enabled&&offerReady&&proposal&&offerTarget&&createPortal(
+    <section className="mavi-offer-card" role="group" aria-label="Alternativa de rota sugerida pela MAVI">
+      <div className="mavi-offer-header">
+        <span className="mavi-offer-symbol"><Check size={18} aria-hidden="true"/></span>
+        <div><strong>Nova rota encontrada</strong><small>A MAVI apresentou esta alternativa por voz</small></div>
+      </div>
+      <p className="mavi-offer-description">{proposal.text||'Encontrei uma rota alternativa. Quer utilizá-la?'}</p>
+      <div className="mavi-offer-actions">
+        <button type="button" className="mavi-offer-reject" onClick={reject}>Manter atual</button>
+        <button type="button" className="mavi-offer-confirm" onClick={accept}><Check size={16} aria-hidden="true"/> Usar rota</button>
+      </div>
+      <small className="mavi-offer-voice-hint">Ou diga “Pode” ou “Não” para decidir por voz.</small>
+    </section>,offerTarget
+  )}
  </div>;
 }

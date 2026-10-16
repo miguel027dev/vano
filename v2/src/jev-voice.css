@@ -29,3 +29,55 @@
 .jev-diagnostic{display:flex;gap:5px;align-items:flex-start;font-size:10px;line-height:1.35;overflow-wrap:anywhere;color:var(--muted,#637183)}
 .jev-diagnostic svg{flex-shrink:0;margin-top:2px}
 .jev-privacy{font-size:10px;line-height:1.4;color:var(--muted,#637183)}
+
+
+/* MAVI V2 — compact alternative only after the spoken route description.
+   Host sits directly beneath navigation instructions (or route preview header).
+   These selectors never affect the stable /mapa experience. */
+.map-page .mavi-offer-host{
+  position:absolute;top:calc(100% + 11px);left:50%;transform:translateX(-50%);
+  width:min(434px,calc(100vw - 32px));max-width:100%;z-index:15;pointer-events:none;
+}
+.map-page .mavi-offer-card{
+  box-sizing:border-box;pointer-events:auto;width:100%;padding:14px;
+  border:1px solid var(--border,#e5eae6);border-radius:18px;
+  background:var(--panel,#fff);color:var(--ink,#18221d);
+  box-shadow:0 12px 32px #131e251f,0 2px 7px #131e250b;
+  display:flex;flex-direction:column;gap:11px;text-align:left;
+  max-height:min(49dvh,325px);overflow-y:auto;overscroll-behavior:contain;
+  animation:mavi-offer-reveal .23s cubic-bezier(.2,.8,.2,1) both;
+}
+.map-page .mavi-offer-header{display:flex;align-items:center;gap:10px;min-width:0}
+.map-page .mavi-offer-symbol{
+  width:36px;height:36px;flex:0 0 36px;border-radius:12px;
+  display:grid;place-items:center;color:#14784a;background:#e8f6ee;
+}
+.map-page .mavi-offer-header div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.map-page .mavi-offer-header strong{font-size:14px;font-weight:800;line-height:1.3;color:var(--ink,#18221d)}
+.map-page .mavi-offer-header small,.map-page .mavi-offer-voice-hint{
+  color:var(--muted,#737e79);font:500 11px/1.35 'DM Sans',sans-serif;
+}
+.map-page .mavi-offer-description{
+  color:var(--ink,#26332d);font:550 13px/1.5 'DM Sans',sans-serif;
+  margin:0;overflow-wrap:anywhere;
+}
+.map-page .mavi-offer-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.map-page .mavi-offer-actions button{
+  min-height:44px;padding:10px 12px;border:1px solid var(--border,#e2e8e4);
+  border-radius:12px;font:750 13px/1.2 'DM Sans',sans-serif;
+  cursor:pointer;display:flex;gap:5px;align-items:center;justify-content:center;
+  transition:transform .15s ease,background .15s ease;
+}
+.map-page .mavi-offer-actions button:active{transform:scale(.97)}
+.map-page .mavi-offer-reject{color:var(--ink,#26332d);background:var(--bg,#f6f8f7)}
+.map-page .mavi-offer-confirm{color:#fff;background:#168451;border-color:#168451!important}
+.map-page .mavi-offer-actions button:focus-visible{outline:3px solid #e8a16f;outline-offset:2px}
+@keyframes mavi-offer-reveal{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-height:520px) and (orientation:landscape){
+  .map-page .mavi-offer-card{max-height:42dvh;padding:10px;gap:7px}
+  .map-page .mavi-offer-voice-hint{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page .mavi-offer-card{animation:none}
+  .map-page .mavi-offer-actions button{transition:none}
+}
