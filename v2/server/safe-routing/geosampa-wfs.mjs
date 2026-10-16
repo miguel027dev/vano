@@ -12,7 +12,15 @@ export function requestUrl(params){
 export async function getBytes(url,{fetcher=fetch,timeoutMs=14000,maxBytes=maxReply}={}){
  if(url.origin!==new URL(GEOSAMPA_WFS).origin||url.pathname!=='/geoserver/geoportal/wfs')throw Error('GeoSampa WFS: origem inesperada');
  const reply=await fetcher(url,{method:'GET',redirect:'error',headers:{Accept:'application/json,application/xml,text/xml'},signal:AbortSignal.timeout(timeoutMs)});
- if(!reply.ok)throw Error('GeoSampa WFS HTTP '+reply.status);
+ if(!reply.ok){
+  const error=Error('GeoSampa WFS HTTP '+reply.status+' (startIndex='+url.searchParams.get('startIndex')+')');
+  if(reply.status===400&&reply.body){
+   let detail='';
+   for await(const chunk of reply.body){detail+=Buffer.from(chunk).toString('utf8');if(detail.length>16000)break;}
+   if(/transformation exception|reprojecting data/i.test(detail))error.code='SOURCE_REPROJECTION_FAILED';
+  }
+  throw error;
+ }
  const declared=Number(reply.headers.get('content-length')||0);
  if(declared>maxBytes)throw Error('GeoSampa WFS: resposta grande');
  if(!reply.body)throw Error('GeoSampa WFS: resposta vazia');
@@ -94,6 +102,21 @@ export function normalizeWfsLightingPage(page,snapshotId){
  }
  return {accepted,rejected,rejectedCount:Object.values(rejected).reduce((a,b)=>a+b,0),
   count:page.features.length,snapshotId,stage:'staging-unverified'};
+}
+
+/** Isolate source records that GeoServer cannot reproject; no geometry invented. */
+export async function fetchGeoSampaRecoveringPage({layer,startIndex=0,count=500,fetcher=fetch}={}){
+ try{return await fetchGeoSampaLayerPage({layer,startIndex,count,fetcher});}
+ catch(error){
+  if(error.code!=='SOURCE_REPROJECTION_FAILED')throw error;
+  if(count===1)return {features:[{type:'Feature',id:`rejected:${startIndex}`,geometry:null}],returned:1,numberMatched:null,startIndex,
+   sha256:null,sourceRejectedIndices:[startIndex]};
+  const leftCount=Math.floor(count/2);
+  const left=await fetchGeoSampaRecoveringPage({layer,startIndex,count:leftCount,fetcher});
+  const right=await fetchGeoSampaRecoveringPage({layer,startIndex:startIndex+leftCount,count:count-leftCount,fetcher});
+  return {features:[...left.features,...right.features],returned:left.returned+right.returned,numberMatched:left.numberMatched??right.numberMatched,startIndex,
+   sha256:createHash('sha256').update(JSON.stringify([left.sha256,right.sha256])).digest('hex'),sourceRejectedIndices:[...(left.sourceRejectedIndices||[]),...(right.sourceRejectedIndices||[])]};
+ }
 }
 
 
