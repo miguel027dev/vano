@@ -128,7 +128,9 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      if(['not-allowed','service-not-allowed','audio-capture','language-not-supported','language-unavailable'].includes(lastError)){
        turnOff();return;
      }
-     if(!['no-speech','aborted'].includes(lastError)){
+     // Repeated unsolicited browser aborts must not leave a permanently green
+     // microphone in an infinite restart cycle. Programmatic aborts clear the ref.
+     if(!['no-speech'].includes(lastError)){
        hardFailures.current++;
        if(hardFailures.current>=3)turnOff();
      }
@@ -199,10 +201,19 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
          const voices=synth.getVoices?.()||[];
          phrase.voice=voices.find(v=>String(v.lang).toLowerCase()==='pt-br')||
            voices.find(v=>String(v.lang).toLowerCase().startsWith('pt'))||null;
-         phrase.onend=()=>finish(true);phrase.onerror=()=>finish(false);
+         let didStart=false;
+         phrase.onstart=()=>{didStart=true;};
+         phrase.onend=()=>finish(true);
+         phrase.onerror=()=>finish(false);
          speakingRef.current=phrase;
-         speechTimer.current=setTimeout(()=>finish(false),18000);
          synth.speak(phrase);
+         // Some embedded browsers expose TTS but silently refuse to play.
+         // Fail closed instead of indefinitely displaying a green microphone.
+         const maxDuration=Math.max(6000,Math.min(18000,sentence.length*90));
+         speechTimer.current=setTimeout(()=>{
+           if(!didStart&&!synth.speaking)finish(false);
+           else speechTimer.current=setTimeout(()=>finish(false),maxDuration);
+         },3000);
        }catch{finish(false);}
      }
      attempt();
