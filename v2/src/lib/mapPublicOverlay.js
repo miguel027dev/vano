@@ -17,7 +17,7 @@ function buildPin(item){
  element.title=item.name;
  const chip=document.createElement('span');
  const secondaryStyle={
-   travessia:'is-crossing',estacionamento:'is-parking',ferrovia:'is-rail',banco:'is-bank',
+   travessia:'is-crossing',estacionamento:'is-parking',obra:'is-works','relato-obra':'is-works',ferrovia:'is-rail',banco:'is-bank',
    mercado:'is-commerce',supermercado:'is-commerce',shopping:'is-shopping',
    'estacao-recarga':'is-electric','carregador-eletrico':'is-electric',eletroposto:'is-electric',
    restaurante:'is-food',fastfood:'is-food',cafeteria:'is-food',
