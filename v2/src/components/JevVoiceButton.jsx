@@ -1,3 +1,4 @@
+import '../jev-voice.css';
 import React,{useEffect,useRef,useState} from 'react';
 import { Mic, MicOff, Send, X, Check, Volume2 } from 'lucide-react';
 
