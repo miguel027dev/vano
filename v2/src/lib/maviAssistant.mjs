@@ -34,7 +34,7 @@ export function classifyMaviIntent(value){
  if(matches(s,/\b(?:quanto e o limite|limite de velocidade|velocidade maxima|qual o limite|radar de velocidade maxima)\b/))return 'speed_limit';
  if(matches(s,/\b(?:qual minha velocidade|que velocidade|velocidade atual|quanto estou correndo|quantos por hora|a quantos por hora)\b/))return 'speed';
  if(matches(s,/\b(?:gps|sinal do gps|localizacao funcionando|minha posicao|onde estou agora|minha localizacao)\b/))return 'gps_status';
- if(matches(s,/\b(?:qual(?: e| foi)? o destino|para onde estou indo|pra onde vou|onde fica meu destino|nome do destino|aonde vamos)\b/))return 'destination';
+ if(matches(s,/\b(?:qual(?: e| foi)? (?:o|meu) destino|para onde estou indo|pra onde vou|onde fica meu destino|nome do destino|aonde vamos)\b/))return 'destination';
  if(matches(s,/\b(?:que horas sao|qual e a hora|me diz as horas|horario agora)\b/))return 'clock';
  if(matches(s,/\b(?:quando(?: eu| vamos)? cheg\w*|que horas(?: eu| nos)? cheg\w*|horario de chegada|previsao de chegada|hora de chegada|qual(?: e)? a chegada)\b/))return 'arrival';
  if(matches(s,/\b(?:quantos kilometros|quantos quilometros|quantos km|quantos metros falta|distancia restante|quanto falta de distancia|quantos km falta|qual distancia|distancia ate|quanto falta pra chegar em km|quanto falta em (?:km|quilometros)|ta longe|esta longe)\b/))return 'remaining_distance';
