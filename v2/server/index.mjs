@@ -674,7 +674,7 @@ async function route(req, res) {
   // be converted. Never disclose provider credentials to the browser.
   if(pathname==='/api/v2/assistant/speech'&&req.method==='POST'){
     if(!protectedWrite(req,res))return;
-    if(!limits(req,res,'mavi-voice-v2',6,60000))return;
+    if(!limits(req,res,'mavi-voice-v2',12,60000))return;
     const cartesia=maviCartesiaConfig();
     const eleven=maviElevenConfig();
     if(!cartesia.enabled&&!eleven.enabled)return err(res,503,'Voz da MAVI ainda não configurada.');
@@ -693,6 +693,7 @@ async function route(req, res) {
     for(const [key,expires] of usedMaviVoiceTickets)if(expires<now())usedMaviVoiceTickets.delete(key);
     if(usedMaviVoiceTickets.has(claimHash))return err(res,409,'Resposta de áudio já solicitada.');
     usedMaviVoiceTickets.set(claimHash,claim.expires);
+    const voiceStarted=Date.now();
     const abort=new AbortController();
     const deadline=setTimeout(()=>abort.abort(),14000);
     res.once('close',()=>abort.abort());
@@ -701,11 +702,14 @@ async function route(req, res) {
         await fetchMaviCartesiaVoice(claim.text,cartesia,{signal:abort.signal}):
         await fetchMaviVoice(claim.text,eleven,{signal:abort.signal});
       if(res.destroyed)return;
+      if(process.env.VANO_MAVI_METRICS_ENABLED==='1')console.info('MAVI TTS headersMs='+String(Date.now()-voiceStarted)+' provider='+provider);
       res.writeHead(200,{...headers,'Content-Type':'audio/mpeg','Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'});
       let size=0;
       for await(const chunk of upstream.body){
         if(abort.signal.aborted||res.destroyed)break;
         size+=chunk.byteLength;
+        if(size===chunk.byteLength&&process.env.VANO_MAVI_METRICS_ENABLED==='1')
+          console.info('MAVI TTS firstByteMs='+String(Date.now()-voiceStarted));
         if(size>MAVI_VOICE_MAX_BYTES){abort.abort();break;}
         if(!res.write(Buffer.from(chunk)))await once(res,'drain');
       }

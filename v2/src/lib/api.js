@@ -34,7 +34,7 @@ export async function api(path, opts = {}) {
  * No Cartesia/ElevenLabs key, text, model or voice ID crosses from the browser.
  * This deliberately uses a separate binary path from the normal JSON API.
  */
-export async function fetchMaviAudio(ticket,{signal}={}){
+export async function fetchMaviAudioStream(ticket,{signal}={}){
  if(typeof ticket!=='string'||ticket.length>2200||!ticket)throw Error('invalid_mavi_ticket');
  const token=await initializeCsrf();
  const response=await fetch( ''+BASE+'/v2/assistant/speech',{
@@ -44,6 +44,12 @@ export async function fetchMaviAudio(ticket,{signal}={}){
  });
  if(!response.ok)throw Error('mavi_voice_service_unavailable');
  if(!/audio\/mpeg/.test(response.headers.get('content-type')||''))throw Error('mavi_voice_invalid_audio');
+ return response;
+}
+
+/** Legacy whole-blob fallback for browsers without MediaSource MP3 support. */
+export async function fetchMaviAudio(ticket,{signal}={}){
+ const response=await fetchMaviAudioStream(ticket,{signal});
  const blob=await response.blob();
  if(blob.size<100||blob.size>2_000_000)throw Error('mavi_voice_invalid_size');
  return blob;
