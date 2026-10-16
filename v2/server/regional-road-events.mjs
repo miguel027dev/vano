@@ -15,7 +15,6 @@ const REGION=[
 export const KEYLESS_ROAD_SOURCES=Object.freeze(REGION.map(({id,label,region})=>({
  id,label,region,keyRequired:false,enabled:true,routingImpact:'none'
 })));
-const CACHE=new Map(),ACTIVE=new Map(),LAST_ATTEMPT=new Map();
 const MAX_CACHE=36,MAX_BYTES=3_200_000,STALE_MS=15*60000,COOLDOWN_MS=35000;
 const clean=(x,n=160)=>String(x??'').replace(/[<>\u0000-\u001f\u007f]/g,'').trim().slice(0,n);
 const valid=p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])&&Math.abs(p[0])<=180&&Math.abs(p[1])<=85;
@@ -110,34 +109,6 @@ export function normalizeFintrafficRoadEvents(body,bbox,now=Date.now()){
 }
 const PARSERS={'tfl-london':normalizeTflRoadEvents,'drivebc':normalizeDriveBcRoadEvents,
  'fintraffic-works':normalizeFintrafficRoadEvents,'fintraffic-alerts':normalizeFintrafficRoadEvents};
-function cacheWrite(key,item){CACHE.delete(key);CACHE.set(key,item);while(CACHE.size>MAX_CACHE)CACHE.delete(CACHE.keys().next().value);}
-function locationKey(source,bbox){
- if(source.id!=='drivebc')return source.id;
- const snapped=bbox.map((x,i)=>(i<2?Math.floor(x*10)/10:Math.ceil(x*10)/10));
- return source.id+':'+snapped.map(x=>x.toFixed(1)).join(',');
-}
-function sourceRequest(source,key){
- if(source.id!=='drivebc')return source.endpoint;
- const b=key.slice(key.indexOf(':')+1);
- return source.endpoint+'?format=json&status=ACTIVE&limit=120&bbox='+encodeURIComponent(b);
-}
-async function load(source,key,bbox,{fetcher,clock}){
- try{
-  const headers={Accept:'application/json','User-Agent':'VANO-Maps/1.0 (+https://vanomaps.online)'};
-  if(source.id.startsWith('fintraffic'))headers['Digitraffic-User']='VANO-Maps/1.0';
-  const res=await fetcher(sourceRequest(source,key),{headers,signal:AbortSignal.timeout(2500)});
-  if(!res.ok)throw Error('upstream '+res.status);
-  if(Number(res.headers?.get?.('content-length')||0)>MAX_BYTES)throw Error('too-large');
-  const raw=await res.text();
-  if(raw.length>MAX_BYTES)throw Error('too-large');
-  const data=JSON.parse(raw);
-  const events=PARSERS[source.id](data,source.bounds,clock());
-  cacheWrite(key,{events,at:clock(),ok:true});
- }catch{
-  const previous=CACHE.get(key);
-  if(!previous||clock()-previous.at>STALE_MS)cacheWrite(key,{events:[],at:clock(),ok:false});
- }finally{ACTIVE.delete(key);}
-}
 export function createKeylessRegionalGateway({fetcher=fetch,clock=Date.now}={}){
  // A module-shared gateway handles provider caches across requests; tests can
  // inject their own transport. Independent instances should not share state.
@@ -169,7 +140,7 @@ export function createKeylessRegionalGateway({fetcher=fetch,clock=Date.now}={}){
   for(const source of REGION){
    if(!intersection(source.bounds,area))continue;
    const key=locationKey(source,area),saved=cache.get(key),age=saved?now-saved.at:Infinity;
-   if(!active.has(key)&&age>=source.ttl&&now-(attempt.get(key)??-Infinity)>COOLDOWN_MS){
+   if(!active.has(key)&&(!saved?.ok||age>=source.ttl)&&now-(attempt.get(key)??-Infinity)>COOLDOWN_MS){
     attempt.set(key,now);
     // Launch asynchronously, never await a remote API on a map request.
     active.set(key,Promise.resolve().then(()=>refresh(source,key)));
