@@ -40,6 +40,7 @@ import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from 
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
+import {seismicSnapshot} from './global-earthquakes.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
@@ -646,8 +647,10 @@ async function route(req, res) {
     if(process.env.VANO_GLOBAL_CONTEXT_ENABLED==='0')return json(res,200,{events:[],weather:null,sources:[],affectsRouting:false,disabled:true});
     const bbox=parseGlobalBBox(u.searchParams.get('bbox'));
     if(!bbox)return err(res,400,'Área global inválida ou muito ampla.');
+    const quake=seismicSnapshot(bbox); // cache-only, upstream refresh never blocks
     const result=await queryGlobalContext(bbox);
-    return json(res,200,result,{'Cache-Control':'public, max-age=90'});
+    return json(res,200,{...result,events:[...result.events,...quake.events],
+      sources:[...result.sources,quake.source]}, {'Cache-Control':'public, max-age=90'});
   }
   if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
   // Address lookup only after location permission; no coordinates are persisted.
