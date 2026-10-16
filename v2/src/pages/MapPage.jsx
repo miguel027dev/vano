@@ -27,6 +27,8 @@ import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs
 import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
+import {createManeuverTracker} from '../lib/maneuverTracker.js';
+import {evaluateRouteDeviation} from '../lib/routeDeviation.js';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
 import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
@@ -35,8 +37,8 @@ const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusines
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/v2';
-  const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
-  const maviResponseTurn=useRef(0),maneuverAudioRef=useRef(null);
+  const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const maviResponseTurn=useRef(0),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null});
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
   function syncMeasuredDistance(force=false){
@@ -559,7 +561,20 @@ export default function MapPage({active=true}){
     setToast('Alternativa selecionada pela MAVI.');return true;
   }
   cachePosition.current=userCoords;
-  useEffect(()=>{if(!navMode||!hasLiveGPS||!route?.geometry)return;const timeline=buildRouteTimeline(route.geometry);if(!timeline.total)return;const meters=distanceOnRoute(timeline,userCoords);setGuidance({...nextManeuver(route,timeline,meters),progress:meters/timeline.total,preview:false,finished:false});},[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
+  // One accepted GPS fix drives both the instruction and its timing. The map's
+  // animated marker cannot prematurely complete a maneuver.
+  useEffect(()=>{
+    if(!navMode||!hasLiveGPS||!route?.geometry)return;
+    if(guidanceTrackerRef.current.route!==route){
+      guidanceTrackerRef.current={route,tracker:createManeuverTracker(route)};
+      cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};
+    }
+    const next=guidanceTrackerRef.current.tracker.update(userCoords,{
+      accuracy:telemetry.accuracy,speed:telemetry.speed,heading:telemetry.heading,
+      sourceAt:lastGpsFix.current?.sourceAt||Date.now()
+    });
+    if(next)setGuidance(next);
+  },[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
   // remaining minutes and kilometers shrink only as route progress is reported.
   const navigationStats=navMode?navigationSummary(route,guidance,Date.now()):null;
@@ -591,14 +606,19 @@ export default function MapPage({active=true}){
     writeOffline('active-trip',snapshot).then(setStorageReady);
   },[navMode,route,dest,maviPendingStop,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision,routeVehicle]);
   function speakManeuver(text,key=null){
-    lastVoiceAttempt.current={text,key};
     if(jevMode){
       // V2 navigation never invokes browser TTS. Cartesia speaks actual
       // verified turn cues, authorized with the signed route proof.
       if(!route?.proof||language!=='pt-BR'){
         setVoiceProblem(true);return false;
       }
-      maneuverAudioRef.current?.abort();
+      if(maneuverAudioRef.current){
+        const interrupted=lastVoiceAttempt.current;
+        maneuverAudioRef.current.abort();
+        // A canceled voice request was not heard. Keep its cue eligible.
+        if(interrupted?.key)spoken.current.delete(interrupted.key);
+      }
+      lastVoiceAttempt.current={text,key};
       const controller=new AbortController();
       maneuverAudioRef.current=controller;
       if(key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
@@ -620,6 +640,7 @@ export default function MapPage({active=true}){
       })();
       return true;
     }
+    lastVoiceAttempt.current={text,key};
     const result=speakNavigationVoice(text,language,{
       native:isNativeShell(),sendNative:notifyNative,
       onStart:()=>setVoiceProblem(false),
@@ -636,7 +657,17 @@ export default function MapPage({active=true}){
     if(!active||!navMode||muted||voiceProblem)return;
     const fresh=hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(100,(telemetry.accuracy||0)*2);
     const cue=spokenCue(guidance,{fresh,preview:false,muted,speed:telemetry.speed,language});
-    if(cue&&!spoken.current.has(cue.key))speakManeuver(cue.text,cue.key);
+    if(cue&&!spoken.current.has(cue.key)){
+      const previous=cuePlaybackRef.current,now=Date.now(),elapsed=now-previous.at;
+      // An earlier combined cue already announced the imminent second turn.
+      const alreadyCovered=cue.stage==='now'&&previous.followingIndex===cue.stepIndex&&elapsed<5500;
+      // Avoid cutting off a recent combined announcement for the same turn.
+      const interruptedSequence=cue.stage==='now'&&previous.stage==='soon'&&previous.stepIndex===cue.stepIndex&&elapsed<2400&&cue.distance>8;
+      const lowPriorityOverlap=cue.stage==='soon'&&elapsed<1800;
+      if(!alreadyCovered&&!interruptedSequence&&!lowPriorityOverlap&&speakManeuver(cue.text,cue.key)){
+        cuePlaybackRef.current={at:now,stepIndex:cue.stepIndex,stage:cue.stage,followingIndex:cue.followingIndex};
+      }
+    }
   },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem]);
   useEffect(()=>{
     if(jevMode&&(!navMode||muted))maneuverAudioRef.current?.abort();
@@ -686,17 +717,18 @@ export default function MapPage({active=true}){
       if(rerouteRequest.current===epoch){rerouteRequest.current=null;setRecalculating(false);}
     }
   }
-  // Debounced deviation reroute: only on good GPS with sustained off-route signal.
+  // Two coherent GPS fixes confirm a deviation; do not stall for 25 seconds.
   useEffect(()=>{
     if(navigator.onLine===false||!active||!navMode||!hasLiveGPS||!route?.geometry||demoRoute||recalculating||!dest)return;
-    const now=Date.now(),state=rerouteState.current;
-    const accuracy=telemetry.accuracy;
-    if(!hasRecentGpsFix(lastGpsFix.current,now,15000)||!Number.isFinite(accuracy)||accuracy>35){state.outsideSince=0;return;}
-    const deviation=nearestOnRoute(userCoords,route.geometry).distance;
-    if(deviation<75){state.outsideSince=0;return;}
-    if(!state.outsideSince){state.outsideSince=now;return;}
-    if(now-state.outsideSince<2200||now-state.lastAttempt<25000)return;
-    void recalculateNavigationRoute();
+    const now=Date.now(),fix=lastGpsFix.current;
+    const decision=evaluateRouteDeviation(rerouteState.current,{
+      distance:nearestOnRoute(userCoords,route.geometry).distance,
+      accuracy:telemetry.accuracy,speed:telemetry.speed,
+      sourceAt:fix?.sourceAt,now,
+      fresh:hasRecentGpsFix(fix,now,12000)
+    });
+    rerouteState.current=decision.state;
+    if(decision.reroute)void recalculateNavigationRoute();
   },[navMode,userCoords?.[0],userCoords?.[1],telemetry?.accuracy,route,dest?.id,recalculating,routeVehicle]);
 
   // The only readout lives beside the street name when a route is ACTIVE.
@@ -717,7 +749,7 @@ export default function MapPage({active=true}){
   })).filter(lane=>lane.symbols.length):[];
 
   return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap active={active} userCoords={displayCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} onNavigationProgress={setGuidance} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
+    <VanoMap active={active} userCoords={displayCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
       <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
