@@ -32,6 +32,8 @@ import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnima
 import {createManeuverTracker} from '../lib/maneuverTracker.js';
 import {evaluateRouteDeviation} from '../lib/routeDeviation.js';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
+import {previewManeuvers,modeManeuverDetail,nextMappedCrossing,crossingLabel,crossingSafetyNote,crossingVoiceCue} from '../lib/routeModeDetails.mjs';
+import '../route-mode-detail.css';
 import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
@@ -55,6 +57,7 @@ export default function MapPage({active=true}){
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
   const [maviPreview,setMaviPreview]=useState(null); // V2 only, never changes the active route.
+  const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
@@ -421,6 +424,24 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  // Enrichment is loaded after routing, never in the critical directions path.
+  // Route or modal switches cancel the previous lookup and clear stale places.
+  useEffect(()=>{
+    setWalkingFeatures([]);
+    if(routeVehicle!=='a-pe'||!route?.geometry||routeData?.source!=='mapbox-walking')return;
+    const controller=new AbortController();
+    api('/walking/crossings',{method:'POST',signal:controller.signal,
+      body:{geometry:route.geometry}
+    }).then(data=>{
+      if(!controller.signal.aborted&&Array.isArray(data?.features))
+        setWalkingFeatures(data.features.slice(0,15).filter(item=>
+          item?.source==='OpenStreetMap'&&Number.isFinite(item.routeMeters)));
+    }).catch(()=>{/* Optional public-data lookup. Never block walking. */});
+    return()=>controller.abort();
+  },[routeVehicle,route?.geometry,routeData?.source]);
+  const previewDetails=previewManeuvers(route,routeVehicle);
+  const mappedCrossing=routeVehicle==='a-pe'&&navMode&&hasLiveGPS?
+    nextMappedCrossing(walkingFeatures,guidance?.routeMeters):null;
   // Experimental-only integration: none of these actions are exposed on /mapa.
   const jevKey=jevMode?jevRouteFingerprint(route):null;
   const visibleMaviPreview=jevMode&&maviPreview?.sourceKey===jevKey?maviPreview:null;
@@ -692,6 +713,20 @@ export default function MapPage({active=true}){
       }
     }
   },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem,recalculating]);
+  // Low-priority walking detail: play only for a mapped crossing, with fresh
+  // accepted GPS progress. A real imminent turn or active voice has priority.
+  useEffect(()=>{
+    if(!active||routeVehicle!=='a-pe'||routeData?.source!=='mapbox-walking'||
+       recalculating||maneuverAudioRef.current||
+       (jevMode&&language!=='pt-BR'))return;
+    const cue=crossingVoiceCue(mappedCrossing,{
+      navigation:navMode,liveGps:hasLiveGPS,muted,language,maneuverDistance:guidance?.distance
+    });
+    if(!cue||spoken.current.has(cue.key))return;
+    if(!jevMode&&window.speechSynthesis?.speaking)return;
+    speakManeuver(cue.text,cue.key);
+  },[active,routeVehicle,routeData?.source,navMode,hasLiveGPS,muted,
+    mappedCrossing?.id,mappedCrossing?.distance,guidance?.distance,recalculating,language,jevMode]);
   useEffect(()=>{
     if(jevMode&&(!navMode||muted))maneuverAudioRef.current?.abort();
     if(!navMode||muted)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
@@ -820,6 +855,10 @@ export default function MapPage({active=true}){
         <strong className="v46-nav-distance" aria-live="off">{displayManeuverDistance(guidance?.distance,language)}</strong>
         <span className="v46-nav-instruction-text" aria-live="polite">{nextTurnText.instruction}</span>
         {nextTurnText.street&&<span className="v46-nav-street">{nextTurnText.street}</span>}
+         {mappedCrossing?<span className="v70-nav-context" aria-live="off">
+           {crossingLabel(mappedCrossing,language)} · {mappedCrossing.distance} m
+           <small>{crossingSafetyNote(language)} · OpenStreetMap</small>
+         </span>:modeManeuverDetail(routeVehicle,guidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,guidance)}</span>}
         {visualLanes.length>0&&<div className="v28-lane-guidance" role="group" aria-label="Orientação de faixas da rota">
           {visualLanes.map(lane=><span key={lane.index} className={`v46-lane ${lane.valid?'suggested':''}`}
             title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}
@@ -880,7 +919,21 @@ export default function MapPage({active=true}){
           </button>
         </div>
       </div>
-      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div><span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
+      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?'Mais segura':'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
+       <section className="v70-route-details" aria-label="Detalhes e orientações do percurso">
+         <h3>{routeVehicle==='a-pe'?'Caminhada, passo a passo':routeVehicle==='moto'?'Atenção a curvas e acessos':'Orientações da viagem'}</h3>
+         <p className="v70-route-details-intro">{routeVehicle==='a-pe'?'Travessias e ruas mapeadas, sem substituir a sinalização real.':routeVehicle==='moto'?'Manobras reais do provedor, com atenção aos acessos.':'Próximas manobras e faixas somente quando informadas pelo provedor.'}</p>
+         <ol className="v70-route-steps">{previewDetails.map((step,index)=>
+           <li key={index}><span className="v70-route-index">{index+1}</span><span className="v70-route-step-copy"><strong>{step.instruction}</strong>{step.detail&&<small>{step.detail}</small>}</span></li>
+         )}</ol>
+         {routeVehicle==='a-pe'&&<div className="v70-route-crossings">
+           {walkingFeatures.length>0?walkingFeatures.slice(0,3).map(feature=>
+             <p key={feature.id}><strong>{crossingLabel(feature,language)}</strong> · aproximadamente {feature.routeMeters} m desde o início do trajeto</p>
+           ):<p>Faixas específicas aparecem apenas quando há registros públicos compatíveis com o percurso.</p>}
+           <small className="v70-route-source">Fonte das travessias: OpenStreetMap (dados colaborativos). {crossingSafetyNote(language)}</small>
+         </div>}
+       </section>
+       <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
     {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
