@@ -62,7 +62,7 @@ export function secureHeaders(production = false) {
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'no-referrer',
     'Cross-Origin-Resource-Policy': 'same-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), payment=(), geolocation=(self)',
+    'Permissions-Policy': 'camera=(), microphone=(self), payment=(), geolocation=(self)',
     'X-Permitted-Cross-Domain-Policies': 'none',
   };
   if (production) {
