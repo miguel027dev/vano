@@ -32,6 +32,8 @@ import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnima
 import {createManeuverTracker} from '../lib/maneuverTracker.js';
 import {evaluateRouteDeviation} from '../lib/routeDeviation.js';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
+import {previewManeuvers,modeManeuverDetail,nextMappedCrossing,crossingLabel,crossingSafetyNote,crossingVoiceCue} from '../lib/routeModeDetails.mjs';
+import '../route-mode-detail.css';
 import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
