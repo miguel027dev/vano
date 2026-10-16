@@ -654,8 +654,8 @@ export default function MapPage({active=true}){
     return result.ok;
   }
   useEffect(()=>{
-    if(!active||!navMode||muted||voiceProblem)return;
-    const fresh=hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(100,(telemetry.accuracy||0)*2);
+    if(!active||!navMode||muted||voiceProblem||recalculating)return;
+    const fresh=hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(35,(telemetry.accuracy||0)*1.8);
     const cue=spokenCue(guidance,{fresh,preview:false,muted,speed:telemetry.speed,language});
     if(cue&&!spoken.current.has(cue.key)){
       const previous=cuePlaybackRef.current,now=Date.now(),elapsed=now-previous.at;
@@ -668,7 +668,7 @@ export default function MapPage({active=true}){
         cuePlaybackRef.current={at:now,stepIndex:cue.stepIndex,stage:cue.stage,followingIndex:cue.followingIndex};
       }
     }
-  },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem]);
+  },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem,recalculating]);
   useEffect(()=>{
     if(jevMode&&(!navMode||muted))maneuverAudioRef.current?.abort();
     if(!navMode||muted)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
@@ -692,7 +692,11 @@ export default function MapPage({active=true}){
     queueTripWrite({journeyId:measuredTrip.current.id,destination:dest,routeType:choice,proof:route.proof});
     setGuidance(null);setNavMode(true);setSheetOpen(false);
     // Called from the user's Start navigation click: unlock browser audio there.
-    if(!muted)speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
+    // Do not drown an imminent first turn in a generic startup greeting.
+    const planned=buildRouteTimeline(route.geometry);
+    const first=nextManeuver(route,planned,distanceOnRoute(planned,userCoords));
+    if(!muted&&(!Number.isFinite(first?.distance)||first.distance>150))
+      speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
   function reset(){if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
@@ -708,9 +712,12 @@ export default function MapPage({active=true}){
     rerouteRequest.current=epoch;
     rerouteState.current.outsideSince=0;rerouteState.current.lastAttempt=Date.now();
     setRecalculating(true);
+    // Abort instructions tied to the wrong road while obtaining the new route.
+    if(jevMode)maneuverAudioRef.current?.abort();
+    else stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
     try{
       const next=await api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},reroute:true})});
-      if(epoch===routeEpoch.current){spoken.current.clear();setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');}
+      if(epoch===routeEpoch.current){spoken.current.clear();cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');}
     }catch(e){
       if(epoch===routeEpoch.current)setToast(`Rota atual mantida: ${e.message}`);
     }finally{
