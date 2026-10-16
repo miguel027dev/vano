@@ -155,6 +155,8 @@
  overflow:hidden;clip:rect(0,0,0,0);
  white-space:nowrap;pointer-events:none;
 }
+/* Suppress announcements from the deactivated mic; the visible status pill remains gone. */
+.jev-control-wrap.mavi-voice-off .mavi-voice-status{visibility:hidden}
 @keyframes mavi-mic-breathe{
  0%,100%{transform:scale(.98);opacity:.28}50%{transform:scale(1.12);opacity:.8}
 }
