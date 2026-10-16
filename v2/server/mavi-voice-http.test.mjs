@@ -10,6 +10,9 @@ process.env.VANO_DATA_FILE=path.join(privateDataDir,'store.json');
 process.env.NODE_ENV='test';
 process.env.VANO_DISABLE_AUTOSTART='1';
 process.env.VANO_MAVI_ELEVEN_ENABLED='1';
+// CI also runs against Render's live environment. Keep this ElevenLabs fixture
+// deterministic when the production service enables Cartesia as primary.
+process.env.VANO_MAVI_CARTESIA_ENABLED='0';
 process.env.ELEVENLABS_API_KEY='fake-elevenlabs-test-key';
 process.env.ELEVENLABS_VOICE_ID='test-voice-1234567890';
 process.env.VANO_SECURITY_SECRET='test-secret-mavi-integration-123456';
