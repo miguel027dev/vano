@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {mkdtempSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+const privateDataDir=mkdtempSync(path.join(tmpdir(),'mavi-tts-test-'));
+process.env.VANO_DATA_FILE=path.join(privateDataDir,'store.json');
 
 // Fake provider only. No paid API key, upstream network calls or production deploy.
 process.env.NODE_ENV='test';
@@ -58,5 +63,6 @@ test('MAVI route reply authorizes exactly one protected ElevenLabs MP3 playback'
  }finally{
    globalThis.fetch=networkFetch;
    await new Promise(resolve=>server.close(resolve));
+   rmSync(privateDataDir,{recursive:true,force:true});
  }
 });
