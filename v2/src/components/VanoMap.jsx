@@ -176,7 +176,28 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     const detachPublicPins=attachPublicMapOverlay(map,backend.current);
     municipalFeed.current=backend.current==='mapbox'?attachMunicipalTrafficOverlay(map,{enabled:latest.current.trafficEnabled}):null;
     if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation||shouldFollowLocation({navigation:false,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.recenter();
-        else if(validPoint(latest.current.gpsCoords))map.flyTo({center:latest.current.gpsCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.gpsCoords)){map._vanoFreeLook=false;map.panTo(ll(latest.current.motionCoords||latest.current.gpsCoords),{animate:true});}},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt()};
+        else if(validPoint(latest.current.gpsCoords))map.flyTo({center:latest.current.gpsCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.gpsCoords)){map._vanoFreeLook=false;map.panTo(ll(latest.current.motionCoords||latest.current.gpsCoords),{animate:true});}},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt(),
+      overview:()=>{
+        const d=latest.current;
+        const route=(d.routes||[]).find(r=>r.id===d.selectedRoute)||d.routes?.[0];
+        const points=route?.geometry?.coordinates?.filter(validPoint);
+        if(!points?.length)return false;
+        const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
+        if(backend.current==='mapbox'){
+          motion.current?.setFree();
+          const bounds=new mapboxgl.LngLatBounds();points.forEach(p=>bounds.extend(p));
+          if(!bounds.isEmpty())map.fitBounds(bounds,{
+            padding:{top:135,bottom:Math.round(window.innerHeight*.32),left:42,right:42},
+            maxZoom:15.2,duration:reduced?0:650,pitch:0,bearing:0
+          });
+        }else{
+          map._vanoFreeLook=true;
+          map.fitBounds(L.latLngBounds(points.map(ll)),{
+            padding:[48,48],maxZoom:15,animate:!reduced,duration:.6
+          });
+        }
+        return true;
+      }};
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
     return()=>{deleted=true;detachPublicPins?.();municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
