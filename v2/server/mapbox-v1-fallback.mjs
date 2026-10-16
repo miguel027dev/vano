@@ -34,6 +34,10 @@ export function mapboxDirectionsUrl(origin,destination,access,language,vehicle,t
   if(opts.avoidFerries)excluded.push('ferry');
   if(opts.avoidUnpaved||vehicleKind(vehicle)==='moto')excluded.push('unpaved');
   for(const p of (spec.points||[]).slice(0,18))if(pointOK(p))excluded.push('point('+p[0].toFixed(6)+' '+p[1].toFixed(6)+')');
+  // Named-street exclusions are supplied only by the server from the current
+  // provider route geometry. Mapbox point exclusions are best-effort, so the
+  // assistant must independently verify road names before claiming success.
+  for(const p of (opts.excludeRoadPoints||[]).slice(0,5))if(pointOK(p))excluded.push('point('+p[0].toFixed(6)+' '+p[1].toFixed(6)+')');
   if(excluded.length)u.searchParams.set('exclude',excluded.join(','));
   return u;
 }
@@ -124,7 +128,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
     }
     let pool=uniqueCandidates(initial),probeCount=0,probeSuccess=0;
     const baseline=pool[0];
-    if(usedProfile==='driving-traffic'){
+    if(usedProfile==='driving-traffic'&&options.skipCandidateProbes!==true){
       if(options.adaptive!==false){
         const specs=adaptiveSpecs(pool,Math.min(2,options.variantBudget||4));
         if(specs.length){probeCount+=specs.length;
