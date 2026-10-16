@@ -23,10 +23,31 @@ export async function openPostgresStore(connectionString, ClientType=Client){
   // Respect the URL's explicit require mode (Render-managed TLS), without changing verify-ca/verify-full connections.
   const uri=new URL(normalized);
   if(uri.searchParams.get('sslmode')==='require' && !uri.searchParams.has('uselibpqcompat'))uri.searchParams.set('uselibpqcompat','true');
-  const client=new ClientType({connectionString:uri.toString(),connectionTimeoutMillis:10000,query_timeout:15000,application_name:'vano-v2-node'});
-  let broken=null;
-  client.on('error',error=>{broken=error;console.error('VANO V2 PostgreSQL: conexão perdida.');});
+  const config={connectionString:uri.toString(),connectionTimeoutMillis:10000,query_timeout:15000,application_name:'vano-v2-node'};
+  let client=null,broken=null,recovering=null;
+  function freshClient(){
+    const next=new ClientType(config);
+    next.on('error',error=>{
+      if(client===next){broken=error;console.error('VANO V2 PostgreSQL: conexão perdida.');}
+    });
+    return next;
+  }
+  client=freshClient();
   await client.connect();
+  // Single-instance recovery: reconnect on transient network loss rather than
+  // permanently poisoning the promise queue for all future requests.
+  async function ensureConnected(){
+    if(!broken)return;
+    if(!recovering){
+      recovering=(async()=>{
+        const previous=client,next=freshClient();
+        await next.connect();
+        client=next;broken=null;
+        try{await previous.end();}catch{/* old socket already closed */}
+      })().finally(()=>{recovering=null;});
+    }
+    return recovering;
+  }
   try{
     await client.query('CREATE SCHEMA IF NOT EXISTS vano_v2');
     await client.query('CREATE TABLE IF NOT EXISTS vano_v2.app_state (id integer PRIMARY KEY CHECK (id=1), data jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())');
@@ -37,16 +58,23 @@ export async function openPostgresStore(connectionString, ClientType=Client){
     let pending=Promise.resolve();
     return {
       data,kind:'postgres',persistent:true,
-      assertHealthy(){if(broken)throw Error('PostgreSQL indisponível. Aguarde a reconexão do serviço.');},
+      async assertHealthy(){await ensureConnected();},
       save(){
-        if(broken)return Promise.reject(new Error('PostgreSQL indisponível.'));
         const snapshot=JSON.stringify(data);
         if(Buffer.byteLength(snapshot)>64*1024*1024)return Promise.reject(new Error('Estado VANO V2 excedeu 64 MiB.'));
-        pending=pending.then(async()=>{
-          if(broken)throw broken;
-          await client.query('UPDATE vano_v2.app_state SET data=$1::jsonb, updated_at=now() WHERE id=1',[snapshot]);
-        }).catch(e=>{broken=e;console.error('VANO V2 PostgreSQL: falha ao salvar estado.');throw e;});
-        return pending;
+        const work=pending.catch(()=>{}).then(async()=>{
+          await ensureConnected();
+          try{
+            await client.query('UPDATE vano_v2.app_state SET data=$1::jsonb, updated_at=now() WHERE id=1',[snapshot]);
+          }catch(error){
+            broken=error;
+            console.error('VANO V2 PostgreSQL: tentando recuperar uma gravação.');
+            await ensureConnected();
+            await client.query('UPDATE vano_v2.app_state SET data=$1::jsonb, updated_at=now() WHERE id=1',[snapshot]);
+          }
+        });
+        pending=work;
+        return work;
       }
     };
   }catch(e){await client.end().catch(()=>{});throw e;}
