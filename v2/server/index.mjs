@@ -967,4 +967,11 @@ const host=process.env.API_HOST||'127.0.0.1';
  // Do not accept public bind addresses outside the trusted Render runtime.
  if(production && !['127.0.0.1','::1','localhost'].includes(host) && !(renderWeb && host==='0.0.0.0')) throw Error('O backend de produção deve ficar privado ou protegido pelo proxy HTTPS do Render.');
 if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
+// A single asynchronous startup read proves Render can consume the private B2
+// snapshot. This never blocks startup or changes the route provider.
+if(renderWeb&&process.env.VANO_SAFE_B2_TEST_SNAPSHOT){
+ inspectB2Snapshot(process.env.VANO_SAFE_B2_TEST_SNAPSHOT)
+  .then(summary=>console.info('VANO B2 staging verified:',JSON.stringify(summary)))
+  .catch(()=>console.warn('VANO B2 staging verification failed; routing unchanged.'));
+}
 export { server,search,directions };
