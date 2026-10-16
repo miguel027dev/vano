@@ -6,6 +6,7 @@ import http from 'node:http';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
 import {compareLightingInventory} from './safe-routing/lighting-grid.mjs';
 import {compareInfrastructure} from './safe-routing/context-grid.mjs';
+let safeComparisonBusy=false;
 import {readMobileRequest,mobileGrants,mobileCallback,canonicalMobileStart} from './mobile-auth.mjs';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -468,6 +469,8 @@ async function route(req, res) {
     if(!protectedWrite(req,res)||!limits(req,res,'safe-routing-compare',2,60000))return;
     const body=await getBody(req);
     if(!pointOK(body.origin)||!pointOK(body.destination))return err(res,400,'Coordenadas inválidas.');
+    if(safeComparisonBusy)return err(res,429,'Uma comparação já está em andamento. Aguarde.');
+    safeComparisonBusy=true;
     try{
       const result=await directions(body.origin,body.destination,'carro',{},'pt-BR',{adaptive:false,variantBudget:2});
       if(result.source==='demonstracao')return err(res,503,'Motor real de rotas indisponível.');
@@ -475,6 +478,7 @@ async function route(req, res) {
       const infrastructure=await compareInfrastructure(result.routes);
       return json(res,200,{...evidence,infrastructure,provider:result.source,routes:result.routes.map(r=>({id:r.id,duration:r.duration,distance:r.distance})),requestedAt:stamp()});
     }catch{return err(res,503,'Não foi possível comparar este trecho agora. Tente um trajeto curto dentro de São Paulo.');}
+    finally{safeComparisonBusy=false;}
   }
   if ((pathname === '/api/admin' || pathname === '/api/admin/users' || pathname === '/api/admin/safe-routing/storage') && req.method === 'GET') {
     const session=userSession(req);
