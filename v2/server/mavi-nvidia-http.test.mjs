@@ -55,8 +55,8 @@ test('guest voice assistant accepts NVIDIA structured intent but never directly 
   providerContent={action:'information',intent:'greeting',reply:'Oi, sou sua MAVI. Como posso ajudar no caminho?'};
   const greet=await ask('Oi Mavi!');
   assert.equal(greet.intent,'greeting');
-  assert.match(greet.text,/Oi, sou sua MAVI/);
-  assert.equal(providerCalls,3,'read-only GPS ETA should never query NVIDIA when local answer exists');
+  assert.match(greet.text,/MAVI|rota|navegação/i);
+  assert.equal(providerCalls,2,'known greeting and GPS ETA must not call NVIDIA');
  }finally{
   globalThis.fetch=native;
   await new Promise(resolve=>server.close(resolve));

@@ -85,14 +85,15 @@ export function maviNvidiaQuota(now=Date.now(),limit=120){
  quota.used++;return true;
 }
 export async function interpretMaviWithNvidia(value,context={},{
- config=maviNvidiaConfig(),fetcher=fetch,now=Date.now
+ config=maviNvidiaConfig(),fetcher=fetch,now=Date.now,requestTimeoutMs
 }={}){
  if(!config.enabled||typeof value!=='string'||value.length<2||value.length>360)return null;
  if(!maviNvidiaQuota(now()))return null;
  const safeContext={hasRoute:context?.hasRoute===true,
    navigationActive:context?.navigationActive===true,
    pendingStop:context?.pendingStop===true};
- const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),config.timeoutMs);
+ const budget=Number.isFinite(requestTimeoutMs)?Math.min(config.timeoutMs,Math.max(500,requestTimeoutMs)):config.timeoutMs;
+ const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),budget);
  try{
   const res=await fetcher(API,{
    method:'POST',signal:abort.signal,

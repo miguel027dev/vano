@@ -13,7 +13,8 @@ test('MAVI retains proven direct browser microphone activation and route request
  assert.match(s,/recognition\.start\(\)/);
  assert.match(s,/listenRef\.current\('remote'\)/);
  assert.match(s,/async function submit\(phrase\)/);
- assert.match(s,/handlersRef\.current\.onCommand\(text,controller\.signal\)/);
+ assert.match(s,/handlersRef\.current\.onCommand\(text,controller\.signal,\{firstTurn\}\)/);
+ assert.match(s,/firstMaviTurnRef\.current=true/);
  assert.match(s,/onClick=\{toggle\}/);
  assert.doesNotMatch(s,/MaviVoiceController/);
 });
