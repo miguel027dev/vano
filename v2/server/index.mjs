@@ -40,7 +40,7 @@ import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from 
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
-import {seismicSnapshot} from './global-earthquakes.mjs';
+import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
@@ -641,7 +641,7 @@ async function route(req, res) {
   // Read-only global context. It is independent of /api/route so a slow external
   // provider never increases navigation TTFB or changes the VANO route ranking.
   if(pathname==='/api/context/sources'&&req.method==='GET')
-    return json(res,200,{sources:GLOBAL_CONTEXT_SOURCES});
+    return json(res,200,{sources:[...GLOBAL_CONTEXT_SOURCES,SEISMIC_SOURCE]});
   if(pathname==='/api/context/global'&&req.method==='GET'){
     if(!limits(req,res,'global-context',18,60000))return;
     if(process.env.VANO_GLOBAL_CONTEXT_ENABLED==='0')return json(res,200,{events:[],weather:null,sources:[],affectsRouting:false,disabled:true});
