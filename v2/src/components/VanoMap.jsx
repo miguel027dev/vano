@@ -352,8 +352,16 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       if(map&&backend.current==='mapbox'){
         const marker=map._vanoMarker?.current;
         if(marker){
-          marker.setLngLat(point);
-          if(marker.getElement().classList.contains('vano-vehicle-marker'))marker.setRotation(state.bearing||0);
+          if(!validPoint(state.lastMarkerPoint)||metersBetween(state.lastMarkerPoint,point)>.14){
+            marker.setLngLat(point);
+            state.lastMarkerPoint=point;
+          }
+          const nextBearing=state.bearing||0;
+          if(marker.getElement().classList.contains('vano-vehicle-marker')&&
+             (!Number.isFinite(state.lastMarkerBearing)||Math.abs(shortestAngle(state.lastMarkerBearing,nextBearing))>.25)){
+            marker.setRotation(nextBearing);
+            state.lastMarkerBearing=nextBearing;
+          }
         }
         if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
           const near=nearestOnRoute(point,route?.geometry);
@@ -393,14 +401,8 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
           map._vanoOriginMarker.setLatLng(ll(point));
         }
       }
-      if(d.navigation&&now-state.lastReport>380&&timeline.total>0){
-        state.lastReport=now;
-        const near=nearestOnRoute(point,route?.geometry);
-        if(near.distance<100){
-          const meters=distanceOnRoute(timeline,point);
-          d.onNavigationProgress?.({...nextManeuver(route,timeline,meters),progress:meters/timeline.total,preview:false,finished:false});
-        }
-      }
+      // Maneuver state is exclusively updated by accepted sensor fixes in
+      // MapPage; interpolated visual positions must never issue directions.
     }
     raf=requestAnimationFrame(animate);
     return()=>{
