@@ -841,6 +841,10 @@ export default function MapPage({active=true}){
         <strong className="v46-nav-distance" aria-live="off">{displayManeuverDistance(guidance?.distance,language)}</strong>
         <span className="v46-nav-instruction-text" aria-live="polite">{nextTurnText.instruction}</span>
         {nextTurnText.street&&<span className="v46-nav-street">{nextTurnText.street}</span>}
+         {mappedCrossing?<span className="v70-nav-context" aria-live="off">
+           {crossingLabel(mappedCrossing,language)} · {mappedCrossing.distance} m
+           <small>{crossingSafetyNote(language)} · OpenStreetMap</small>
+         </span>:modeManeuverDetail(routeVehicle,guidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,guidance)}</span>}
         {visualLanes.length>0&&<div className="v28-lane-guidance" role="group" aria-label="Orientação de faixas da rota">
           {visualLanes.map(lane=><span key={lane.index} className={`v46-lane ${lane.valid?'suggested':''}`}
             title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}
