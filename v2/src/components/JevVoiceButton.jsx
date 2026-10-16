@@ -348,7 +348,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
    firstMaviTurnRef.current=true;
    setEnabled(true);setStatus('ready');
-   setReply('Pode falar: “Quanto falta?”, “Próxima conversão”, “Outra rota” ou “O que você sabe fazer?”.');
+   setReply('Pode conversar comigo sobre seu dia, tirar dúvidas ou pedir ajuda com uma rota. Tô ouvindo!');
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
    // Crucial: call start() inside the original click, not after a timeout/effect.
    listenRef.current('remote');
