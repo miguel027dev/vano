@@ -27,6 +27,24 @@ export function extractJevStreetRequest(value){
   if(road.length<4||road.length>72||nonRoad.test(road)||!/[a-z]/.test(road))continue;
   return {kind,road,spokenName:raw.slice(0,100)};
  }
+ // Fallback for conversational negation such as "não tenho vontade de
+ // atravessar a Avenida Morumbi. Você acha outro caminho?". Truncate
+ // the road at a discourse word rather than treating the whole sentence
+ // as its name. Real routing must still verify actual named road steps.
+ if(/\b(?:nao|sem|evita|evite|evitar)\b.{0,120}\b(?:atravessar|passar|pegar|seguir|entrar|ir)\b/.test(text)){
+  const explicit=text.match(/\b(avenida|av|rua|r|rodovia|estrada|marginal)\s+([a-z0-9]+(?:\s+[a-z0-9]+){0,8})/);
+  if(explicit){
+   const stop=new Set(['voce','acha','pode','poderia','tem','quero','queria',
+     'que','qual','por','favor','outro','caminho','alternativa','mas','seria',
+     'melhor','algum','como','entao','porque','pois','se','nao','agora']);
+   const name=[];
+   for(const word of explicit[2].split(/\s+/)){if(stop.has(word))break;name.push(word);}
+   const spokenName=(explicit[1]+' '+name.join(' ')).trim();
+   const road=roadKey(spokenName);
+   if(road.length>=4&&road.length<=72&&!nonRoad.test(road))
+    return {kind:'avoid',road,spokenName};
+  }
+ }
  return null;
 }
 function tokenSimilar(a,b){
