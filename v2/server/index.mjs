@@ -682,7 +682,7 @@ async function route(req, res) {
       mode:'proposal',intent,routeId:candidate.id,
       sourceKey:currentKey,destination:body.destination,
       routeData:result,
-      text:'Encontrei uma rota '+detail+', com previsão de '+minutes+' minutos. Quer utilizar?'
+      text:'Encontrei outra rota '+detail+'. Ela leva aproximadamente '+minutes+' minutos'+contrast+'. Quer que eu troque?'
     });
   }
   if (pathname === '/api/route' && req.method === 'POST') {
