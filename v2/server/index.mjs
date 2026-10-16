@@ -1222,7 +1222,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     // Otherwise React redirects /login/google/callback to /inicio before a session is created.
     const requestPath=new URL(req.url||'/','http://localhost').pathname;
     if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'||requestPath==='/.well-known/vano-benchmark.json'){
-      store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
+      await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     const dist=path.join(root,'dist');
