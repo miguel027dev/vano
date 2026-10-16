@@ -2,7 +2,7 @@
  * Optional NVIDIA NIM LLM interpreter for MAVI V2.
  * Models NEVER invoke VANO functions. Only validated intents may be acted on.
  */
-const MODEL='openai/gpt-oss-120b';
+const MODEL='openai/gpt-oss-20b';
 const API='https://integrate.api.nvidia.com/v1/chat/completions';
 export const ROUTE_INTENTS=new Set([
  'alternative','traffic','avoid_tolls','avoid_ferries','avoid_unpaved',
@@ -23,7 +23,7 @@ export function maviNvidiaConfig(env=process.env){
  const key=String(env.NVIDIA_API_KEY||'').trim();
  const model=String(env.NVIDIA_MAVI_MODEL||MODEL).trim();
  const enabled=env.VANO_MAVI_NVIDIA_ENABLED==='1'&&key.length>12&&model.length>=5;
- return {enabled,key,model,timeoutMs:Math.min(7000,Math.max(1800,Number(env.VANO_MAVI_NVIDIA_TIMEOUT_MS)||4200))};
+ return {enabled,key,model,timeoutMs:Math.min(5000,Math.max(900,Number(env.VANO_MAVI_NVIDIA_TIMEOUT_MS)||2400))};
 }
 const SYSTEM=[
  'Você é a MAVI, assistente PT-BR de navegação do VANO Maps.',
@@ -88,7 +88,7 @@ export function maviNvidiaHealth(now=Date.now()){
 function recordNvidiaFailure(reason,started,now){
  const elapsed=Math.round(now()-started);
  health.failures++;
- if(health.failures>=2)health.openUntil=now()+(reason==='auth'||reason==='not_found'?180000:30000);
+ if(health.failures>=2)health.openUntil=now()+(reason==='auth'||reason==='not_found'||reason==='gone'?300000:30000);
  // No utterances, coordinates or credentials are ever logged.
  console.warn('MAVI NVIDIA fallback',reason,'latencyMs='+elapsed);
 }
@@ -124,7 +124,7 @@ export async function interpretMaviWithNvidia(value,context={},{
       reasoning_effort:'low',response_format:{type:'json_object'}
     }:{temperature:0.15,chat_template_kwargs:{enable_thinking:false}})})
   });
-  if(!res?.ok){recordNvidiaFailure(res?.status===401||res?.status===403?'auth':res?.status===404?'not_found':res?.status===429?'rate_limit':'http_'+(Number(res?.status)||'error'),started,now);return null;}
+  if(!res?.ok){recordNvidiaFailure(res?.status===401||res?.status===403?'auth':res?.status===404?'not_found':res?.status===410?'gone':res?.status===429?'rate_limit':'http_'+(Number(res?.status)||'error'),started,now);return null;}
   const response=await res.json();
   const result=parseMaviNvidiaDecision(response?.choices?.[0]?.message?.content);
   if(!result){recordNvidiaFailure('invalid_json',started,now);return null;}
