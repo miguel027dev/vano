@@ -24,10 +24,13 @@ jobs:
         run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate WFS client mock contract
         working-directory: v2
-        run: node --test server/geosampa-wfs.test.mjs
+        run: node --test server/geosampa-wfs.test.mjs server/geosampa-registry.test.mjs
       - name: Discover other official layer names (no writes)
         working-directory: v2
         run: node scripts/safe-routing/inspect-catalog.mjs
+      - name: Inspect eight real GeoSampa source samples (no writes)
+        working-directory: v2
+        run: node scripts/safe-routing/inspect-sources.mjs
       - name: Read real GeoSampa WFS sample (no writes)
         working-directory: v2
         env:
