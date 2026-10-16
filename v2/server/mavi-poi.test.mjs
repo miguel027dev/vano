@@ -22,9 +22,9 @@ test('search category always uses restricted Mapbox POI API and route SAR geomet
  assert.equal(seen[0].searchParams.get('time_deviation'),'7');
  assert.ok(seen[0].searchParams.get('route')?.length>10);
  assert.equal(seen[0].searchParams.get('proximity'),origin.join(','));
- const near=await findMaviPlaces({category:'pharmacy',scope:'nearby',origin,token:'test-token',fetcher});
+ const near=await findMaviPlaces({category:'hospital',scope:'nearby',origin,token:'test-token',fetcher});
  assert.equal(near[0].name,'Mercado A'); // provider mock, not a real category identity
- assert.equal(seen[1].pathname,'/search/searchbox/v1/category/pharmacy');
+ assert.equal(seen[1].pathname,'/search/searchbox/v1/category/hospital');
  assert.equal(seen[1].searchParams.has('sar_type'),false);
  assert.equal(encodePolyline(route).length>10,true);
  assert.equal(MAVI_POI_CATEGORIES.grocery.label,'mercado');
