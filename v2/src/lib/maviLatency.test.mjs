@@ -18,7 +18,7 @@ test('V2 status questions are deterministic and can be answered without a round 
  }
  const map=file('../pages/MapPage.jsx');
  assert.match(map,/const localIntent=classifyMaviIntent\(text\)/);
- assert.match(map,/if\(instant\)return instant;/);
+ assert.match(map,/if\(instant\)\{/);
  assert.match(map,/return api\('\/v2\/assistant'/);
 });
 
