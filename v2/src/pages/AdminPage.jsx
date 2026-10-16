@@ -93,6 +93,10 @@ export default function AdminPage(){
   {stats&&<>
    <section className="v3-kpi-grid" aria-label="Indicadores gerais">
     <Stat label="Contas criadas" value={stats.usersTotal} icon={Users} foot={`${num(stats.signups7d)} nos últimos 7 dias`}/>
+    <Stat label="Pessoas que voltaram (30d)" value={stats.engagement?.returningAccounts30} icon={RefreshCcw} foot="Dois ou mais dias diferentes"/>
+    <Stat label="Taxa de retorno (30d)" value={stats.engagement?.returnRate30} icon={Activity} foot="Percentual entre contas ativas; valor em %"/>
+    <Stat label="Acessos médios por conta" value={stats.engagement?.avgVisitsPerTrackedAccount} icon={CalendarDays} foot="Apenas contas acompanhadas"/>
+    <Stat label="Contas ativas (30d)" value={stats.engagement?.activeAccounts30} icon={UserRoundCheck} foot="Pelo menos um dia registrado"/>
     <Stat label="Novos cadastros (30 dias)" value={stats.signups30d} icon={CalendarDays} foot="Contas novas, não instalações"/>
     <Stat label="Contas verificadas" value={stats.usersVerified} icon={UserRoundCheck} foot={stats.verificationRate===null?'Sem cadastros':`${stats.verificationRate}% do total`}/>
     <Stat label="Rotas registradas" value={stats.routesTotal} icon={Route} foot={`${num(stats.routes7d)} nos últimos 7 dias`}/>
@@ -101,6 +105,15 @@ export default function AdminPage(){
     <Stat label="Consultas de rota" value={stats.routeRequests} icon={Activity} foot={`${num(stats.routeErrors)} erros registrados`}/>
     <Stat label="Latência média das rotas" value={stats.avgApiRouteMs} icon={Clock3} foot="Milissegundos · nesta instância"/>
    </section>
+   <section className="v55-engagement-panel" aria-label="Retenção e frequência de uso">
+     <div className="v55-engagement-head"><div><span className="v55-mini-label">ENGAJAMENTO · ÚLTIMOS 30 DIAS</span><h2>Quem está voltando ao VANO</h2><p>Contas autenticadas, sem rastrear localização, aparelho ou histórico de navegação.</p></div><div className="v55-engagement-orb" aria-hidden="true"><Activity size={29}/></div></div>
+     <div className="v55-engagement-grid">
+      <div><small>Taxa de retorno</small><strong>{stats.engagement?.returnRate30===null?'—':num(stats.engagement?.returnRate30)+'%'}</strong><div className="v55-progress" role="meter" aria-label="Porcentagem de contas que retornaram" aria-valuemin={0} aria-valuemax={100} aria-valuenow={stats.engagement?.returnRate30??0}><span style={{width:(stats.engagement?.returnRate30??0)+'%'}}/></div></div>
+      <div><small>Voltaram em dias diferentes</small><strong>{num(stats.engagement?.returningAccounts30)}</strong><em>de {num(stats.engagement?.activeAccounts30)} contas ativas</em></div>
+      <div><small>Acessos repetidos</small><strong>{num(stats.engagement?.repeatVisitAccounts)}</strong><em>{stats.engagement?.repeatVisitRate===null?'—':num(stats.engagement?.repeatVisitRate)+'%'} das contas acompanhadas</em></div>
+     </div>
+     <p className="v55-engagement-foot">{stats.engagement?.definition||'Indicadores disponíveis após o primeiro acesso acompanhado.'}</p>
+    </section>
    <div className="v3-admin-panels">
     <SourceBreakdown stats={stats}/>
     <section className="v3-admin-panel"><div className="v3-admin-panel-head"><div><h2><Activity size={19}/> Operação</h2><small>Leituras da instância atual</small></div></div>
@@ -130,15 +143,18 @@ export default function AdminPage(){
    </div>
    <section className="v3-admin-panel v3-admin-users" aria-label="Contas cadastradas">
     <div className="v3-admin-panel-head v44-users-head">
-     <div><h2><Users size={19}/> Contas cadastradas</h2><small>{num(users?.total)} contas no total · dados de cadastro essenciais</small></div>
+     <div><h2><Users size={19}/> Contas cadastradas</h2><small>{num(users?.total)} contas · acesso = entrada separada por 30 minutos · contagem iniciada nesta atualização</small></div>
      <label className="v44-users-search"><Search size={17}/><input type="search" value={filter} onChange={event=>setFilter(event.target.value)} placeholder="Buscar nesta página" aria-label="Buscar nas contas desta página"/>{filter&&<button type="button" onClick={()=>setFilter('')} title="Limpar busca" aria-label="Limpar busca"><X size={16}/></button>}</label>
     </div>
     <div className="v3-users-table-wrap" role="region" aria-label="Tabela de contas" tabIndex={0}>
-     <table className="v3-users-table"><thead><tr><th>Conta</th><th>E-mail</th><th>Cadastro</th><th>Situação</th><th>Data</th></tr></thead>
+     <table className="v3-users-table"><thead><tr><th>Conta</th><th>E-mail</th><th>Cadastro</th><th>Acessos</th><th>Sequência atual</th><th>Último acesso</th><th>Situação</th><th>Data</th></tr></thead>
       <tbody>{visibleUsers.map(member=><tr key={member.id}>
        <td><div className="v44-member"><span className="v44-member-avatar" aria-hidden="true">{String(member.name||member.email||'?').trim().slice(0,1).toUpperCase()}</span><strong>{member.name||'Sem nome'}</strong></div></td>
        <td><span className="v44-member-email" title={member.email||''}>{member.email||'—'}</span></td>
        <td><SignupSource method={member.signupMethod}/></td>
+       <td><span className="v55-account-counter">{num(member.activity?.visits)}</span><small className="v55-table-sub">{num(member.activity?.uniqueDays)} dia(s)</small></td>
+       <td><span className="v55-streak">↗ {num(member.activity?.currentStreak)} dias</span><small className="v55-table-sub">Recorde {num(member.activity?.longestStreak)}</small></td>
+       <td><time dateTime={member.activity?.lastVisitAt||undefined}>{shortDate(member.activity?.lastVisitAt)}</time></td>
        <td><span className={`v44-verification ${member.verified?'is-verified':'is-pending'}`}>{member.verified?<CheckCircle2 size={15}/>:<Clock3 size={15}/>} {member.verified?'Verificada':'Pendente'}</span></td>
        <td><time dateTime={member.createdAt||undefined}>{shortDate(member.createdAt)}</time></td>
       </tr>)}</tbody></table>

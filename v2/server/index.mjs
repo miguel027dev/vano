@@ -37,6 +37,8 @@ import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from 
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
+import {visitAccount} from './engagement.mjs';
+import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
@@ -497,7 +499,14 @@ async function route(req, res) {
   }
   if (pathname === '/api/bootstrap' && req.method === 'GET') {
     const session=userSession(req);let refreshCookie=null;
-    if(session){const stored=db.sessions.find(s=>s.tokenHash===session.hash);if(stored&&stored.expires<now()+(SESSION_MAX_AGE-86400)*1000){stored.expires=now()+SESSION_MAX_AGE*1000;await persist();refreshCookie=setCookie('vano_session',cookie(req,'vano_session'),SESSION_MAX_AGE);}}
+    if(session){
+      const stored=db.sessions.find(s=>s.tokenHash===session.hash);
+      const activityChanged=visitAccount(session.user);
+      const renew=stored&&stored.expires<now()+(SESSION_MAX_AGE-86400)*1000;
+      if(renew)stored.expires=now()+SESSION_MAX_AGE*1000;
+      if(activityChanged||renew)await persist();
+      if(renew)refreshCookie=setCookie('vano_session',cookie(req,'vano_session'),SESSION_MAX_AGE);
+    }
     const newGuest=guestCookie(req);return json(res,200,bootstrap(req),(refreshCookie||newGuest)?{'Set-Cookie':refreshCookie||newGuest}:{});
   }
   if (pathname === '/api/auth/google/start' && req.method === 'GET') {
@@ -1031,6 +1040,7 @@ async function route(req, res) {
       avoidTolls:provided.avoidTolls===true, avoidFerries:provided.avoidFerries===true,
       avoidUnpaved:provided.avoidUnpaved===true, reroute:provided.reroute===true,
       adaptive:provided.adaptive!==false,includeAdvanced:provided.includeAdvanced===true,
+      safeComparison:true, // internal: compare provider alternatives only for the safe variant
       variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
       localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
       safetyBias:typeof provided.safetyBias==='number'&&Number.isFinite(provided.safetyBias)?provided.safetyBias:undefined,
@@ -1043,6 +1053,14 @@ async function route(req, res) {
     try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);}
     catch(e){runtimeMetrics.routeErrors+=1;throw e;}
     finally {runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
+    // Risk-first reshuffle is isolated to the 'safe' result; fast/smart stay unchanged.
+    // Historical GeoSampa flooding layers are deliberately excluded until their
+    // licensing/quality snapshots are approved for routing.
+    if(process.env.VANO_SAFE_VERIFIED_ROUTING_ENABLED==='false'){
+      if(result?.safeCandidatePool)delete result.safeCandidatePool;
+    }else{
+      result=applySafeVerifiedReportRanking(result,db.reports,{reroute:routeOptions.reroute});
+    }
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
     return json(res,200,result);
   }

@@ -149,6 +149,8 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       signature:signature(r),microRoute:r._microRoute===true,microStrategy:r._microStrategy||'',
       etaGainSeconds:r._etaGainSeconds||0}));
     return {routes:[present(other,'safe'),present(fastest,'fast')],
+      // Internal-only candidate pool; returned to callers only on safe-comparison requests.
+      ...(options.safeComparison===true?{safeCandidatePool:pool.slice(0,10).map((r,i)=>present(r,'safe-candidate-'+i))}:{}),
       source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),
       safetyMessage:'Rota rápida selecionada pelo menor ETA do provedor após avaliar alternativas e micro-desvios. A outra rota é uma alternativa sem avaliação de segurança verificada.',
       candidateEngine:{version:'v1-eta-candidate-port',provider:usedProfile,
