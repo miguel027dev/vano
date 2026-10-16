@@ -5,6 +5,7 @@ import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCi
 import {api} from '../lib/api.js';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
+import {maviRecognitionRecovery} from '../lib/maviRecognitionRecovery.mjs';
 import {classifyMaviIntent,maviProposalDecision} from '../lib/maviAssistant.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
@@ -21,6 +22,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const [captureActive,setCaptureActive]=useState(false);
  const enabledRef=useRef(false),mountedRef=useRef(true),busyRef=useRef(false);
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
+ const recognitionIdleEnds=useRef(0),recognitionGotSpeech=useRef(false);
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
@@ -65,7 +67,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    if(!enabledRef.current||busyRef.current||recognitionError.current||!Recognizer)return;
    listenTimerRef.current=setTimeout(()=>{
      if(!enabledRef.current||busyRef.current||recognitionError.current||!Recognizer)return;
-     if(window.speechSynthesis?.speaking){scheduleNextListen(480);return;}
+     if(navigationAudioActive()||window.speechSynthesis?.speaking){scheduleNextListen(1100);return;}
      listen('remote');
    },delay);
  }
@@ -193,13 +195,13 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    let recognition;
    try{recognition=new Recognizer();}
    catch{recognitionError.current='unsupported';setStatus('typed');setReply(microphoneMessage('unsupported'));return false;}
-   recognition.lang='pt-BR';recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=1;
+   recognition.lang='pt-BR';recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;
    if(mode==='local'&&'processLocally' in recognition)recognition.processLocally=true;
-   recognitionRef.current=recognition;recognitionError.current='';
+   recognitionRef.current=recognition;recognitionError.current='';recognitionGotSpeech.current=false;
    recognition.onresult=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
      const phrase=Array.from(event.results||[]).map(row=>row?.[0]?.transcript||'').join(' ').trim();
-     if(phrase)void submitRef.current(phrase);
+     if(phrase){recognitionGotSpeech.current=true;recognitionIdleEnds.current=0;void submitRef.current(phrase);}
    };
    recognition.onerror=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
@@ -219,8 +221,23 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    recognition.onend=()=>{
      if(recognitionRef.current!==recognition)return;
      recognitionRef.current=null;recognitionActive.current=false;
-     if(enabledRef.current&&!busyRef.current&&!recognitionError.current){
-       setStatus('ready');scheduleNextListen(320);
+     if(enabledRef.current&&!busyRef.current){
+       if(!recognitionGotSpeech.current)recognitionIdleEnds.current++;
+       const recovery=maviRecognitionRecovery({
+         idleEnds:recognitionIdleEnds.current,
+         hadSpeech:recognitionGotSpeech.current,
+         error:recognitionError.current
+       });
+       if(recovery.retry){setStatus('ready');scheduleNextListen(recovery.delay);}
+       else{
+         // Android/Chromium can repeatedly close an idle recognizer.
+         // Pause after bounded retries instead of flashing the mic forever.
+         setStatus('typed');
+         if(recovery.reason==='idle'){
+           setDiagnostic('Escuta em pausa após períodos de silêncio.');
+           setReply('Escuta pausada. Toque no microfone para voltar a falar comigo.');
+         }
+       }
      }
    };
    try{
@@ -332,6 +349,8 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  useEffect(()=>onNavigationAudioStart(()=>{
    if(!enabledRef.current)return;
    const wasSpeaking=Boolean(elevenAbortRef.current||speechRef.current);
+   // Navigation instructions must never become the assistant's microphone input.
+   if(recognitionRef.current){stopRecognition();setStatus('ready');scheduleNextListen(1400);}
    if(!wasSpeaking)return;
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
    if(speechRef.current){try{window.speechSynthesis?.cancel?.()}catch{}}
@@ -342,11 +361,18 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  useEffect(()=>()=>{mountedRef.current=false;cancelEverything();},[]);
 
  function toggle(){
+   // Explicit reactivation after an idle timeout; a live press still toggles off.
+   if(enabledRef.current&&status==='typed'&&!busyRef.current&&Recognizer){
+     recognitionIdleEnds.current=0;recognitionError.current='';
+     setStatus('ready');setDiagnostic('Escuta reativada pelo usuário.');
+     listenRef.current('remote');return;
+   }
    if(enabledRef.current){
      cancelEverything();handlersRef.current.onDismissPreview?.();setEnabled(false);setStatus('off');setReply('');setProposal(null);setOfferReady(false);return;
    }
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
    firstMaviTurnRef.current=true;
+   recognitionIdleEnds.current=0;recognitionGotSpeech.current=false;
    setEnabled(true);setStatus('ready');
    setReply('Pode conversar comigo sobre seu dia, tirar dúvidas ou pedir ajuda com uma rota. Tô ouvindo!');
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
