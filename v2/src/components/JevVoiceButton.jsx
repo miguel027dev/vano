@@ -114,7 +114,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
        speechTimerRef.current=setTimeout(finish,15000);
      }catch{finish();}
    };
-   if(typeof voiceTicket==='string'&&voiceTicket.length>10){
+   if((typeof voiceTicket==='string'&&voiceTicket.length>10)||voiceTicket?.then){
      const controller=new AbortController();elevenAbortRef.current=controller;
      setStatus('speaking');
      // Wait for turn-by-turn speech to complete before starting MAVI audio.
@@ -133,7 +133,14 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
          trySpeak();
        });
      };
-     startRemote();return;
+     if(voiceTicket?.then){
+       Promise.resolve(voiceTicket).then(ticket=>{
+         if(finished||controller.signal.aborted||!enabledRef.current)return;
+         if(typeof ticket!=='string'||ticket.length<10){trySpeak();return;}
+         voiceTicket=ticket;startRemote();
+       }).catch(()=>{if(!finished&&!controller.signal.aborted)trySpeak();});
+     }else startRemote();
+     return;
    }
    trySpeak();
  }
@@ -166,7 +173,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      }
      setReply(message);speak(message,()=>{
        if(seq===requestRef.current&&proposalRef.current===response&&mountedRef.current)setOfferReady(true);
-     },response?.voiceTicket);
+     },response?.voiceTicket||response?.voiceTicketPromise);
    }catch{
      if(!enabledRef.current||seq!==requestRef.current)return;
      const message=controller.signal.aborted?'A consulta demorou demais. Sua rota continua igual.':
@@ -335,6 +342,12 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    // Crucial: call start() inside the original click, not after a timeout/effect.
    listenRef.current('remote');
  }
+ function fixedVoiceTicket(message){
+   // Fixed, audited phrases; the server never accepts arbitrary TTS text.
+   return api('/v2/assistant/local-voice-ticket',{
+     method:'POST',body:{intent:'confirmation',text:message}
+   }).then(result=>result.voiceTicket).catch(()=>null);
+ }
  function chooseProposal(decision){
    const selection=proposalRef.current;
    if(!enabledRef.current||!selection)return false;
@@ -343,13 +356,14 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    handlersRef.current.onDismissPreview?.();
    if(decision==='reject'){
      setReply('Mantive sua rota atual.');
-     speak('Tudo bem, sua rota atual foi mantida.');
+     speak('Tudo bem, sua rota atual foi mantida.',null,fixedVoiceTicket('Tudo bem, sua rota atual foi mantida.'));
+
      return true;
    }
    let applied=false;
    try{applied=handlersRef.current.onAccept(selection)!==false;}catch{/* expired route */}
    const message=applied?(selection.kind==='poi_stop'?'Parada adicionada. Depois, peça para continuar ao destino original.':'Nova rota selecionada.'):'Esta sugestão expirou. Peça outra alternativa.';
-   setReply(message);speak(message);
+   setReply(message);speak(message,null,fixedVoiceTicket(message));
    return applied;
  }
  function accept(){return chooseProposal('accept');}
