@@ -7,6 +7,8 @@ export function startNavigationWakeLock({
   navigatorObject = globalThis.navigator,
   documentObject = globalThis.document,
   windowObject = globalThis.window,
+  setTimer = setTimeout,
+  clearTimer = clearTimeout,
 } = {}) {
   const nav = navigatorObject;
   const doc = documentObject;
@@ -19,7 +21,16 @@ export function startNavigationWakeLock({
   let sentinel = null;
   let requesting = false;
   let retryAfterRequest = false;
+  let retryTimer = null, releaseRetries = 0;
 
+  function retryUnexpectedRelease(){
+    if(stopped||doc.visibilityState!=='visible'||retryTimer!==null||releaseRetries>=3)return;
+    const delay=Math.min(12000,2000*2**releaseRetries++);
+    retryTimer=setTimer(()=>{
+      retryTimer=null;
+      if(!stopped&&doc.visibilityState==='visible'&&!sentinel)void acquire();
+    },delay);
+  }
   function release() {
     const current = sentinel;
     sentinel = null;
@@ -45,7 +56,11 @@ export function startNavigationWakeLock({
       } else {
         sentinel = acquired;
         acquired.addEventListener?.('release', () => {
-          if (sentinel === acquired) sentinel = null;
+          if (sentinel === acquired) {
+            sentinel = null;
+            // Browser/OS may drop an active screen wake lock unexpectedly.
+            retryUnexpectedRelease();
+          }
         }, { once: true });
       }
     } catch {
@@ -62,12 +77,12 @@ export function startNavigationWakeLock({
   }
 
   function onVisibilityChange() {
-    if (doc.visibilityState === 'visible') void acquire();
-    else release();
+    if (doc.visibilityState === 'visible') {releaseRetries=0;void acquire();}
+    else {if(retryTimer!==null){clearTimer(retryTimer);retryTimer=null;}release();}
   }
-  function onFocus() { void acquire(); }
+  function onFocus() {releaseRetries=0;void acquire(); }
   function onPageHide() { release(); }
-  function onPageShow() { void acquire(); }
+  function onPageShow() {releaseRetries=0;void acquire(); }
 
   doc.addEventListener('visibilitychange', onVisibilityChange);
   win.addEventListener('focus', onFocus);
@@ -77,6 +92,7 @@ export function startNavigationWakeLock({
 
   return () => {
     stopped = true;
+    if(retryTimer!==null){clearTimer(retryTimer);retryTimer=null;}
     doc.removeEventListener('visibilitychange', onVisibilityChange);
     win.removeEventListener('focus', onFocus);
     win.removeEventListener('pagehide', onPageHide);
