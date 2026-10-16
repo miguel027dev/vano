@@ -7,6 +7,8 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
+from vano.services.safe_priority import rank_safe_routes, SAFE_PRIORITY_VERSION
+
 def _heavy_route_central_fallback(slat, slon, elat, elon, travel_profile, mode, depart_at,
                                   avoid_ferries=False, avoid_tolls=False, avoid_unpaved=False,
                                   start_bearing=None, start_speed=None, reroute_request=False,
@@ -234,7 +236,8 @@ def api_route():
             # VANO AI Route Judge runs at the Central even when a Route Node did
             # the heavy geometry/safety work. The model only sees compact numeric
             # route metrics and can choose only one of the already-valid IDs.
-            ai_remote = rerank_routes_with_ai(
+            ai_remote = ({"applied": False, "reason": "safe_deterministic_priority", "enabled": False}
+                     if mode == "safest" else rerank_routes_with_ai(
                 remote_payload.get("routes") or [],
                 mode=mode, profile=travel_profile,
                 safety_bias=safety_bias_remote, traffic_bias=traffic_bias_remote,
@@ -255,6 +258,16 @@ def api_route():
                         if str(route_row.get("id")) == str(proposed.get("id")) and mode in {"safest", "smart"}:
                             badges.append(mode)
                         route_row["badges"] = badges
+            if mode == "safest":
+                ranked_remote = rank_safe_routes(remote_payload.get("routes") or [])
+                if ranked_remote and ranked_remote[0].get("safe_priority_score") is not None:
+                    remote_payload["selected_id"] = ranked_remote[0].get("id")
+                    for candidate in remote_payload.get("routes") or []:
+                        badges = [tag for tag in (candidate.get("badges") or []) if tag != "safest"]
+                        if str(candidate.get("id")) == str(remote_payload["selected_id"]):
+                            badges.append("safest")
+                        candidate["badges"] = badges
+                remote_payload["safe_priority_version"] = SAFE_PRIORITY_VERSION
             return _finish_route_payload(
                 remote_payload, result_cache_key, prefetch_requested, trial_id,
                 slat, slon, elat, elon, mode, cache_hit=False,
@@ -529,6 +542,8 @@ def api_route():
         })
 
     apply_route_intelligence(enriched, travel_profile, safety_bias=safety_bias, traffic_bias=traffic_bias)
+    # The private Safe Lab and the API use the same safety-first calculation.
+    rank_safe_routes(enriched)
     candidate_pool = [r for r in enriched if r.get("professional_ok", True)] if user_nav["professional_driver"] else list(enriched)
     professional_fallback = False
     if not candidate_pool:
@@ -536,24 +551,10 @@ def api_route():
         professional_fallback = bool(user_nav["professional_driver"])
     fastest = min(candidate_pool, key=lambda r: r["duration"])
     fastest_s = max(float(fastest["duration"]), 1.0)
-    # In Segura, safety is the primary objective. We still cap extreme detours, but
-    # allow a wider search than balanced/Vano Maps so a meaningful safety gain can win.
-    if mode == "safest":
-        detour_cap = 1.62 if user_nav["night_active"] else 1.52
-    else:
-        detour_cap = 1.42 if user_nav["night_active"] else 1.35
-    safety_pool = [r for r in candidate_pool if float(r["duration"]) <= fastest_s * detour_cap or int(r.get("safety_level", 0)) >= int(fastest.get("safety_level", 0)) + 2]
-    safest = max(
-        safety_pool or candidate_pool,
-        key=lambda r: (
-            float(r.get("safety_conservative_score", r.get("safety_score", 0)) or 0),
-            int(r.get("safety_level", 0)),
-            -float(r.get("risk_exposure_pct", 0) or 0),
-            -float(r.get("hotspot_risk", 0) or 0),
-            float(r.get("decision_confidence", 0) or 0),
-            -float(r.get("duration", 0) or 0),
-        ),
-    )
+    # Safe mode has no arbitrary time/distance cap: compare every legal candidate.
+    # Road/access restrictions were enforced upstream. ETA only breaks near-ties.
+    safety_pool = list(candidate_pool)
+    safest = rank_safe_routes(safety_pool)[0]
     quietest = max(candidate_pool, key=lambda r: (r["quiet_score"], r.get("safety_level", 0), -r["duration"]))
 
     smart_guard_pool = list(candidate_pool)
@@ -606,7 +607,8 @@ def api_route():
     # choose among IDs already admitted by the current Safest/Smart policy.
     ai_base_selected = safest if mode == "safest" else smart if mode == "smart" else None
     ai_allowed_rows = (safety_pool or candidate_pool) if mode == "safest" else smart_guard_pool if mode == "smart" else []
-    ai_routing = rerank_routes_with_ai(
+    ai_routing = ({"applied": False, "reason": "safe_deterministic_priority", "enabled": False}
+                  if mode == "safest" else rerank_routes_with_ai(
         enriched,
         mode=mode, profile=travel_profile,
         safety_bias=safety_bias, traffic_bias=traffic_bias,
@@ -640,6 +642,7 @@ def api_route():
         "provider": selected.get("routing_provider") or "mapbox", "depart_at": depart_at,
         "engine": "vano-intelligence-v262-local-fallback", "safety_bias": round(safety_bias, 1), "traffic_bias": round(traffic_bias, 1),
         "ai_routing": ai_routing,
+        "safe_priority_version": SAFE_PRIORITY_VERSION,
         "distributed_routing": {"used": False, "fallback": bool(locals().get("remote_meta", {}).get("fallback")), "reason": locals().get("remote_meta", {}).get("reason", "local")},
         "candidate_source": primary_provider, "mapbox_base_candidates": int(mapbox_base_count or 0),
         "candidate_pool_cache_hit": bool(candidate_pool_cache_hit),
