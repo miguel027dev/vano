@@ -31,8 +31,8 @@ export function classifyMaviIntent(value){
  if(matches(s,/\b(?:gps|sinal do gps|localizacao funcionando|minha posicao|onde estou agora|minha localizacao)\b/))return 'gps_status';
  if(matches(s,/\b(?:qual(?: e| foi)? o destino|para onde estou indo|pra onde vou|onde fica meu destino|nome do destino|aonde vamos)\b/))return 'destination';
  if(matches(s,/\b(?:que horas sao|qual e a hora|me diz as horas|horario agora)\b/))return 'clock';
- if(matches(s,/\b(?:quando(?: eu| vamos)? cheg|que horas(?: eu| nos)? cheg|horario de chegada|previsao de chegada|hora de chegada|qual(?: e)? a chegada)\b/))return 'arrival';
- if(matches(s,/\b(?:quanto tempo falta|quantos minutos falta|quanto falta pra chegar|falta muito tempo|tempo restante|quanto demora|quanto tempo ate|quanto tempo pra chegar|em quantos minutos)\b/))return 'remaining_time';
+ if(matches(s,/\b(?:quando(?: eu| vamos)? cheg\w*|que horas(?: eu| nos)? cheg\w*|horario de chegada|previsao de chegada|hora de chegada|qual(?: e)? a chegada)\b/))return 'arrival';
+ if(matches(s,/\b(?:quanto tempo falta|quantos minutos falt\w*|quanto falta pra chegar|falta muito tempo|tempo restante|quanto demora|quanto tempo ate|quanto tempo pra chegar|em quantos minutos)\b/))return 'remaining_time';
  if(matches(s,/\b(?:quantos kilometros|quantos quilometros|quantos km|quantos metros falta|distancia restante|quanto falta de distancia|quantos km falta|qual distancia|distancia ate|quanto falta pra chegar em km|ta longe|esta longe)\b/))return 'remaining_distance';
  if(matches(s,/\b(?:quanto ja andei|quanto percorri|porcentagem da rota|quantos por cento da rota|quanto da rota eu fiz|progresso do trajeto)\b/))return 'progress';
  if(matches(s,/\b(?:proxima conversao|proxima curva|proxima manobra|proxima virada|onde vou virar|para onde eu viro|pra onde viro|viro pra que lado|viro a esquerda|viro a direita|qual a proxima instrucao|qual a proxima orientacao|o que faco agora|qual proximo passo|o que vem agora|repete a orientacao|proximo comando)\b/))return 'next_maneuver';
@@ -50,7 +50,7 @@ export function classifyMaviIntent(value){
  if(matches(s,/\b(?:esta seguro|e perigoso|risco da rota|tem assalto|zona de risco|areas perigosas|a rota e segura)\b/))return 'safety_info';
  if(matches(s,/\b(?:sem balsa|evita balsa|evitar balsa|evita ferry|sem ferry|nao quero balsa|sem barcos)\b/))return 'avoid_ferries';
  if(matches(s,/\b(?:sem estrada de terra|evita estrada de terra|evitar terra|evita via sem asfalto|so asfalto|somente asfalto|evitar vias nao pavimentadas)\b/))return 'avoid_unpaved';
- if(matches(s,/\b(?:mais tranquila|rota tranquila|menos movimentad|menos estressante|quero sossego|rota mais calma|menos agitada)\b/))return 'quiet_route';
+ if(matches(s,/\b(?:mais tranquila|rota tranquila|menos movimentad\w*|menos estressante|quero sossego|rota mais calma|menos agitada)\b/))return 'quiet_route';
  if(matches(s,/\b(?:mais curta|menor distancia|caminho mais curto|economizar quilometros)\b/))return 'short_route';
  if(matches(s,/\b(?:rota mais rapida|mais rapido|menor tempo|chegar mais cedo|economizar tempo|prioriza tempo|priorize tempo)\b/))return 'fast_route';
  return classifyJev(value);
