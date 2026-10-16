@@ -13,7 +13,8 @@ export const INFO_INTENTS=new Set([
  'remaining_time','remaining_distance','progress','next_maneuver','next_street',
  'current_street','destination','navigation_status','gps_status','route_summary',
  'route_mode','speed','speed_limit','traffic_info','tolls_info','safety_info',
- 'vehicle','mute_guidance','unmute_guidance','weather_unavailable',
+ 'vehicle','mute_guidance','unmute_guidance','recenter_map','route_overview',
+ 'show_traffic','hide_traffic','weather_unavailable',
  'incidents_unavailable','places_unavailable'
 ]);
 export const POI_CATEGORIES=new Set(['grocery','hospital','restaurant','cafe','parking']);
