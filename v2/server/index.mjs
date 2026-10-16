@@ -674,7 +674,10 @@ async function route(req, res) {
       return json(res,200,{mode:'information',intent,text:'Não encontrei uma alternativa realmente diferente. Sua rota atual foi mantida.'});
     for(const item of result.routes||[]) item.proof=signedRouteProof(item,body.destination,id);
     const minutes=Math.max(1,Math.round(candidate.duration));
-    const detail=intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas disponíveis para o trânsito':'diferente da atual';
+    const previous=Number(body.currentDuration);
+    const difference=Number.isFinite(previous)&&previous>0&&previous<10080?Math.round(candidate.duration-previous):null;
+    const contrast=difference===null?'':difference>0?', '+difference+' minutos a mais que a atual':difference<0?', '+Math.abs(difference)+' minutos a menos que a atual':', com tempo parecido ao atual';
+    const detail=intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
     return json(res,200,{
       mode:'proposal',intent,routeId:candidate.id,
       sourceKey:currentKey,destination:body.destination,
