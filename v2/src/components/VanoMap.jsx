@@ -112,12 +112,12 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     // to the fallback map center.
     if(backend.current==='mapbox')motion.current?.recenter();
   }
-  const [error,setError]=useState('');
+  const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
   latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,previewRoute,previewFocus,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
-    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null;const initial=coord(latest.current.userCoords);
+    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null;const initial=coord(latest.current.userCoords);
     const report=e=>{if(!deleted){
    const message=e?.error?.message||e?.message||'';
    const source=e?.sourceId||e?.source?.id||'';
@@ -125,10 +125,13 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
      latest.current.onTrafficStatus?.('unavailable');
      return;
    }
-   if(/Unauthorized|Forbidden|Invalid Token|Style not found/i.test(message))setError('Não foi possível carregar o estilo Mapbox. Verifique o token.');
+   if(!isLoaded(map)&&/Unauthorized|Forbidden|Invalid Token|Style not found|Failed to load style/i.test(message)){
+     // Fail closed to a stable raster map; do not leave the user on a blank map.
+     setForceRaster(true);return;
+   }
    console.warn('Mapbox:',message);
  }};
-    if(token && (!mapboxgl.supported || mapboxgl.supported())){
+    if(token && !forceRaster && (!mapboxgl.supported || mapboxgl.supported())){
       try{
         mapboxgl.accessToken=token;
         map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
@@ -150,13 +153,21 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   if(deleted)return;
   ensureTrafficLayers(map,{enabled:latest.current.trafficEnabled,onStatus:latest.current.onTrafficStatus});
   if(!isLoaded(map))return;
-  setError('');paintMapbox(map,latest.current,lastSelection);centerOnFirstGpsFix();if(shouldFollowLocation({navigation:latest.current.navigation,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
+  clearTimeout(styleWatchdog);styleWatchdog=null;
+  try{paintMapbox(map,latest.current,lastSelection);}catch(error){
+    console.warn('Mapbox layers failed; recovering in raster mode:',error?.message||String(error));
+    setForceRaster(true);return;
+  }
+  setError('');centerOnFirstGpsFix();if(shouldFollowLocation({navigation:latest.current.navigation,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
         map.on('style.load',update);
         map.on('load',()=>{attachOpenRouterMark();update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
         map.on('rotatestart',e=>{if(e.originalEvent)motion.current?.setFree();});
         canvas=map.getCanvas();wheelHandler=()=>motion.current?.setFree();canvas?.addEventListener('wheel',wheelHandler);
+        contextLostHandler=e=>{e.preventDefault?.();if(!deleted)setForceRaster(true);};
+        canvas?.addEventListener('webglcontextlost',contextLostHandler,{passive:false});
+        styleWatchdog=setTimeout(()=>{if(!deleted&&backend.current==='mapbox'&&!isLoaded(map))setForceRaster(true);},9500);
       }catch(e){
         // Recover from WebGL initialization failure without retaining a
         // permanent Mapbox error above the working raster fallback.
@@ -214,8 +225,8 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       }};
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;detachPublicPins?.();municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
-  },[token]);
+    return()=>{deleted=true;detachPublicPins?.();municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
+  },[token,forceRaster]);
   // If GPS arrives before Mapbox is ready, the style.load handler performs
   // this same recenter as soon as the map can accept camera operations.
   useEffect(()=>{centerOnFirstGpsFix();},[userCoords?.[0],userCoords?.[1],telemetry?.accuracy,navigation,destination?.id]);
