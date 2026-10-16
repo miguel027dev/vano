@@ -26,6 +26,7 @@ import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnima
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
 import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
+import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
@@ -84,6 +85,7 @@ export default function MapPage({active=true}){
   useEffect(()=>{const native=e=>onPosition(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
   useEffect(()=>{notifyNative({action:'navigation',active:navMode});return()=>notifyNative({action:'navigation',active:false});},[navMode]);
   useEffect(()=>{notifyNative({action:'wake',active:navMode});return()=>notifyNative({action:'wake',active:false});},[navMode]);
+  useEffect(()=>navMode&&active?startNavigationWakeLock():undefined,[navMode,active]);
   useEffect(()=>{const result=e=>{if(e.detail?.id!==offlineGeneration.current)return;setOfflineMap(v=>({...v,status:e.detail.ok?'ready':'partial'}));};window.addEventListener('vano:offline-map',result);return()=>window.removeEventListener('vano:offline-map',result);},[]);
 
   // Floating map controls are positioned against the ACTUAL route panel height.
