@@ -19,6 +19,7 @@ import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mj
 import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
 import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
 import {maviInstantAnswer,MAVI_FAST_OPENING_INTENTS} from './mavi-instant.mjs';
+import {retrieveMaviKnowledge} from './mavi-grounding.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
@@ -720,7 +721,15 @@ async function route(req, res) {
     // NVIDIA NIM is an optional *intent proposal* only. The backend owns
     // routing/geodata/actions. If disabled, slow or invalid, local rules win.
     const localStreet=extractJevStreetRequest(body.text);
-    const localPoi=parseMaviPlaceIntent(body.text);
+    // Follow-up: "MAVI, e no meu caminho?" reuses only the previously verified
+    // POI category, never a guessed destination, stored only in the active tab.
+    const previousCategory=body.context?.previousIntent==='find_poi'&&
+      Object.hasOwn(MAVI_POI_CATEGORIES,String(body.context?.previousCategory||''))?
+      String(body.context.previousCategory):null;
+    const followupText=String(body.text).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const followupPoi=previousCategory&&/^(?:mavi[ ,]*)?(?:e )?(?:no (?:meu )?caminho|na (?:minha )?rota|perto de mim|por perto|mais proximo|mais perto)[?.! ]*$/.test(followupText.trim())?
+      {type:'poi',category:previousCategory,scope:/caminho|rota/.test(followupText)?'route':'nearby'}:null;
+    const localPoi=parseMaviPlaceIntent(body.text)||followupPoi;
     const localIntent=localPoi?'find_poi':localStreet?
       (localStreet.kind==='avoid'?'avoid_street':'via_street'):
       (detectMaviResume(body.text)?'resume_original':
@@ -735,6 +744,8 @@ async function route(req, res) {
     const needsNvidia=!localStreet&&!localPoi&&(
       localIntent==='unknown'||
       (localIntent==='alternative'&&mentionsNamedRoad));
+    const grounding=localIntent==='unknown'?retrieveMaviKnowledge(body.text,body.context):null;
+    if(grounding)return respondJev(grounding);
     const llm=needsNvidia?await interpretMaviWithNvidia(body.text,body.context,{
       requestTimeoutMs:body.context?.firstMaviTurn===true?2000:undefined
     }):null;
