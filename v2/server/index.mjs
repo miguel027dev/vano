@@ -1040,6 +1040,7 @@ async function route(req, res) {
       avoidTolls:provided.avoidTolls===true, avoidFerries:provided.avoidFerries===true,
       avoidUnpaved:provided.avoidUnpaved===true, reroute:provided.reroute===true,
       adaptive:provided.adaptive!==false,includeAdvanced:provided.includeAdvanced===true,
+      safeComparison:true, // internal: compare provider alternatives only for the safe variant
       variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
       localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
       safetyBias:typeof provided.safetyBias==='number'&&Number.isFinite(provided.safetyBias)?provided.safetyBias:undefined,
