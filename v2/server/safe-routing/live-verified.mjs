@@ -27,10 +27,19 @@ function minDistance(point,coordinates){
  return closest;
 }
 export function nearbyVerifiedHazards(reports,routeRows,now=Date.now()){
- const coords=(routeRows||[]).map(geom).filter(Boolean).flat();
- if(!coords.length)return [];
- const bb=[Math.min(...coords.map(x=>x[0]))-.006,Math.min(...coords.map(x=>x[1]))-.006,
-           Math.max(...coords.map(x=>x[0]))+.006,Math.max(...coords.map(x=>x[1]))+.006];
+ let minLon=Infinity,minLat=Infinity,maxLon=-Infinity,maxLat=-Infinity;
+ for(const route of (routeRows||[])){
+  const coords=geom(route);
+  if(!coords)continue;
+  for(const p of coords){
+   if(p[0]<minLon)minLon=p[0];
+   if(p[0]>maxLon)maxLon=p[0];
+   if(p[1]<minLat)minLat=p[1];
+   if(p[1]>maxLat)maxLat=p[1];
+  }
+ }
+ if(!Number.isFinite(minLon))return [];
+ const bb=[minLon-.006,minLat-.006,maxLon+.006,maxLat+.006];
  return (Array.isArray(reports)?reports:[]).filter(r=>{
   const age=now-Date.parse(r?.createdAt||'');
   return r?.status==='verificado'&&Object.hasOwn(TYPE_WEIGHT,r?.type)&&
