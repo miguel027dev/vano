@@ -13,7 +13,9 @@ test('MAVI voice-only UI retains one microphone and does not show text controls'
  assert.match(component,/interimResults=true/);
  assert.match(component,/maviRearmDelay/);
  assert.match(component,/document\.visibilityState==='hidden'/);
- assert.match(component,/await speakVoice\('Certo, vou procurar outra rota\.'\)/);
+ assert.match(component,/dispatchMaviRoute\(command/);
+ assert.match(component,/acceptedCue/);
+ assert.doesNotMatch(component,/const ack=await speakVoice/);
  assert.match(component,/await speakVoice\(reply\?\.text/);
  assert.match(component,/phaseRef\.current==='CONFIRM'/);
 });
