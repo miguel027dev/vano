@@ -415,10 +415,36 @@ export default function MapPage({active=true}){
     const start=navMode&&hasLiveGPS&&validPoint(userCoords)?userCoords:origin;
     return api('/v2/assistant',{method:'POST',signal,body:{
       text,origin:start,destination:dest.coords,vehicle:routeVehicle,language,
-      currentRouteKey:jevKey,currentDuration:route.duration,telemetry:{
+      currentRouteKey:jevKey,currentDuration:route.duration,currentDistance:route.distance,
+      context:{
+        hasRoute:!!route,navigationActive:navMode,gpsReady:hasLiveGPS,
+        destination:String(dest?.name||dest?.address||'').slice(0,100),
+        vehicle:routeVehicle,routeId:route.id,audioMuted:muted,
+        currentDuration:route.duration,currentDistance:route.distance,
+        remainingMinutes:navMode&&hasLiveGPS?navigationStats?.remainingMinutes:null,
+        remainingKm:navMode&&hasLiveGPS?navigationStats?.remainingKm:null,
+        progress:navMode&&hasLiveGPS?navigationStats?.progress:null,
+        arrivalClock:navMode&&hasLiveGPS?estimatedArrival:null,
+        localClock:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}),
+        speedKmh:hasLiveGPS?speedKmh:null,postedLimit:hasLiveGPS?postedLimit:null,
+        nextInstruction:navMode&&hasLiveGPS?guidance?.instruction:null,
+        nextStreet:navMode&&hasLiveGPS?guidance?.street:null,
+        nextDistanceMeters:navMode&&hasLiveGPS?guidance?.distance:null,
+        currentStreet:navMode&&hasLiveGPS?navigationStreetLabel(currentAddress,true):null
+      },telemetry:{
         bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null
       }
     }});
+  }
+  function handleMaviAction(action){
+    if(!jevMode)return false;
+    if(action==='mute_guidance'){
+      setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});return true;
+    }
+    if(action==='unmute_guidance'){
+      setMuted(false);setVoiceProblem(false);spoken.current.clear();return true;
+    }
+    return false;
   }
   function applyJev(proposal){
     if(!jevMode||!dest||!route||!proposal||proposal.mode!=='proposal')return false;
@@ -636,7 +662,7 @@ export default function MapPage({active=true}){
       </span>
     </div>}
     {!searchOpen&&<div className="map-controls">
-       {jevMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}
+       {jevMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {navMode&&<button type="button" title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}
       <button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>
