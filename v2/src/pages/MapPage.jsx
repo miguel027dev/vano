@@ -25,6 +25,7 @@ import {acquireNavigationAudioFocus} from '../lib/maviAudioFocus.mjs';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
 import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs';
+import {isMaviTalkTurn,limitedMaviTalkHistory} from '../lib/maviTalk.mjs';
 import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
