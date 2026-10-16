@@ -12,6 +12,7 @@ export default function SafeRoutingTestPanel(){
   catch(e){setError(e.message);}finally{setBusy(false);}
  }
  return <section className="v3-admin-panel" aria-label="Teste privado de contexto urbano">
+  <style>{`.safe-route-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}.safe-route-card{border:1px solid #6c7480;border-radius:16px;padding:15px;background:rgba(80,88,100,.09)}.safe-route-card h4{margin:0 0 8px}.safe-route-pct{font-size:30px;font-weight:800}.safe-route-meter{background:#3b434d;height:7px;border-radius:7px;overflow:hidden}.safe-route-meter i{display:block;height:100%;background:#ed9c6c}@media(max-width:720px){.safe-route-cards{grid-template-columns:1fr}}`}</style>
   <div className="v3-admin-panel-head"><div><h2>Teste de contexto urbano</h2><small>MASP → Parque Ibirapuera · carro · alternativas reais do provedor</small></div>
    <button type="button" onClick={compare} disabled={busy}>{busy?'Comparando…':'Comparar rotas de teste'}</button></div>
   <div style={{display:'flex',gap:12,flexWrap:'wrap',margin:'14px 0'}}><label>Origem (latitude,longitude) <input value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Destino (latitude,longitude) <input value={to} onChange={e=>setTo(e.target.value)}/></label></div>
@@ -19,10 +20,15 @@ export default function SafeRoutingTestPanel(){
   {error&&<p role="alert">{error}</p>}
   {result&&<div aria-live="polite">
    <p>{result.queriedTiles} áreas consultadas · {result.inventoryPoints.toLocaleString('pt-BR')} pontos cadastrados disponíveis.</p>
-   {result.comparisons.map(item=>{
-    const route=result.routes.find(r=>r.id===item.id);
-    return <p key={item.id}><strong>Alternativa {item.id}</strong>: {route?.duration} min · {route?.distance} km · {Math.round(item.fixtureProximityFraction*100)}% das amostras próximas a pontos cadastrados.</p>;
-   })}
+   <div className="safe-route-cards">{result.comparisons.map((item,i)=>{
+    const route=result.routes.find(r=>String(r.id)===String(item.id));
+    const pct=Math.round(Math.max(0,Math.min(1,Number(item.fixtureProximityFraction)||0))*100);
+    return <article className="safe-route-card" key={item.id}><h4>Alternativa {i+1}</h4><div className="safe-route-pct">{pct}%</div>
+      <div className="safe-route-meter"><i style={{width:pct+'%'}}/></div>
+      <p>{route?.duration} min · {route?.distance} km</p>
+      <small>Amostras próximas a postes cadastrados; não confirma iluminação funcional nem segurança.</small>
+    </article>;
+   })}</div>
    {result.infrastructure&&<>
     <p>Consulta: {new Date(result.infrastructure.requestedAt).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'})} · São Paulo</p>
     {Object.entries(result.infrastructure.layers).map(([key,layer])=><div key={key}>
