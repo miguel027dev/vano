@@ -119,16 +119,16 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
   async function compute(){
     const primaryUrl=mapboxDirectionsUrl(origin,destination,token,language,vehicle,telemetry,options);
     let initial,usedProfile='driving-traffic';
-    try{initial=await request(primaryUrl,fetcher,12500);}
+    try{initial=await request(primaryUrl,fetcher,options.reroute===true?5500:12500);}
     catch(error){
       // V1 also falls back from driving-traffic to ordinary driving; no traffic claim.
       usedProfile='driving';
       const fallback=mapboxDirectionsUrl(origin,destination,token,language,vehicle,telemetry,options,{},usedProfile);
-      initial=await request(fallback,fetcher,12500);
+      initial=await request(fallback,fetcher,options.reroute===true?5500:12500);
     }
     let pool=uniqueCandidates(initial),probeCount=0,probeSuccess=0;
     const baseline=pool[0];
-    if(usedProfile==='driving-traffic'&&options.skipCandidateProbes!==true){
+    if(usedProfile==='driving-traffic'&&options.skipCandidateProbes!==true&&options.reroute!==true){
       if(options.adaptive!==false){
         const specs=adaptiveSpecs(pool,Math.min(2,options.variantBudget||4));
         if(specs.length){probeCount+=specs.length;

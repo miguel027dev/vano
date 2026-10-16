@@ -30,7 +30,8 @@ test('MAVI v2 uses signed local cloud tickets and Cartesia route-proof cues, lea
  assert.match(page,/await playMaviVoice\(result.voiceTicket,\{signal:controller.signal\}\)/);
  assert.match(page,/const result=speakNavigationVoice\(text,language,/);
  assert.match(server,/pathname==='\/api\/v2\/navigation\/voice-ticket'/);
- assert.match(server,/proof\.type!=='trip'/);
+ assert.match(server,/mayUseNavigationVoiceProof\(proof,id\)/);
+ assert.match(server,/refreshedProof/);
  assert.match(server,/type:'mavi-cartesia-tts',purpose:'maneuver'/);
  assert.match(server,/const ticketType=eleven\.enabled\?'mavi-eleven-tts':cartesia\.enabled/);
  assert.match(server,/pathname==='\/api\/v2\/assistant\/local-voice-ticket'/);

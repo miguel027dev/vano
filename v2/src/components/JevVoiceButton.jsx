@@ -4,6 +4,7 @@ import {createPortal} from 'react-dom';
 import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCircle} from 'lucide-react';
 import {api} from '../lib/api.js';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
+import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
 import {classifyMaviIntent,maviProposalDecision} from '../lib/maviAssistant.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
@@ -95,7 +96,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      if(finished||!enabledRef.current)return;
      const nav=navRef.current;
      // Wait for the navigation announcement, rather than silently skip MAVI.
-     if(synth.speaking){
+     if(navigationAudioActive()||synth.speaking){
        if(++attempts>12){finish();return;}
        speechTimerRef.current=setTimeout(trySpeak,750);
        return;
@@ -120,7 +121,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      // Wait for turn-by-turn speech to complete before starting MAVI audio.
      const startRemote=()=>{
        if(finished||!enabledRef.current||controller.signal.aborted)return;
-       if(window.speechSynthesis?.speaking){
+       if(navigationAudioActive()||window.speechSynthesis?.speaking){
          if(++attempts>12){trySpeak();return;}
          speechTimerRef.current=setTimeout(startRemote,500);
          return;
@@ -328,6 +329,16 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    setProposal(null);proposalRef.current=null;setOfferReady(false);
    handlersRef.current.onDismissPreview?.();
  },[routeContextKey]);
+ useEffect(()=>onNavigationAudioStart(()=>{
+   if(!enabledRef.current)return;
+   const wasSpeaking=Boolean(elevenAbortRef.current||speechRef.current);
+   if(!wasSpeaking)return;
+   elevenAbortRef.current?.abort();elevenAbortRef.current=null;
+   if(speechRef.current){try{window.speechSynthesis?.cancel?.()}catch{}}
+   speechRef.current=null;clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
+   // A maneuver preempts assistant audio without disabling hands-free listening.
+   busyRef.current=false;setStatus('ready');scheduleNextListen(1200);
+ }),[]);
  useEffect(()=>()=>{mountedRef.current=false;cancelEverything();},[]);
 
  function toggle(){

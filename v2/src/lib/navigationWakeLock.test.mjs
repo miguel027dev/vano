@@ -81,3 +81,15 @@ test('a pending request releases the lock after navigation ends', async () => {
   await flush();
   assert.equal(lock.released, true);
 });
+
+test('an unexpectedly released wake lock gets one bounded reacquisition while visible',async()=>{
+ const h=harness();const tasks=[];
+ const stop=startNavigationWakeLock({...h,setTimer:(fn,delay)=>{tasks.push({fn,delay});return tasks.length},clearTimer:()=>{}});
+ await flush();assert.equal(h.requests,1);
+ await h.locks[0].release();
+ assert.equal(tasks.length,1);
+ assert.ok(tasks[0].delay>=2000);
+ tasks[0].fn();await flush();
+ assert.equal(h.requests,2,'re-acquire when the OS drops a live lock');
+ stop();
+});

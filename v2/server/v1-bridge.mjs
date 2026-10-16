@@ -113,7 +113,7 @@ export function normalizeV1Route(payload,mode){
 export async function directionsFromV1(base,origin,destination,vehicle,telemetry={},options={},fetcher=fetch){
   engineUrl(base);
   const modes=options.includeAdvanced===true?['safest','fastest','smart','quietest']:['safest','fastest'];
-  const timeout=Math.floor(bounded(options.timeoutMs,10000,90000)??65000);
+  const timeout=Math.floor(bounded(options.timeoutMs,options.reroute===true?2500:10000,90000)??65000);
   const get=async mode=>{
     const url=buildV1Url(base,origin,destination,mode,vehicle,telemetry,options);
     let response;

@@ -25,6 +25,8 @@ export function hasRecentGpsFix(fix, now=Date.now(), maxAgeMs=90000){
 }
 /** Prefer already granted location data when a redundant GPS call fails. */
 export function gpsStateAfterError(error,fix,now=Date.now()){
+  // Permission revocation must be shown immediately even if a recent fix remains.
+  if(error?.code===1)return 'denied';
   return hasRecentGpsFix(fix,now)?'granted':geoAccessStatus(error);
 }
 /** Browser-reported GPS only: reject cached fixes and isolated implausible jumps. */

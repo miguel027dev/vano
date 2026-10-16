@@ -30,6 +30,7 @@ import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import {createRouteFailover} from './route-failover.mjs';
+import {mayUseNavigationVoiceProof,renewedNavigationProofPayload} from './navigation-voice-proof.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
 import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
@@ -347,7 +348,7 @@ async function directions(originPoint, destination, vehicle = 'carro', telemetry
       // is cold/offline, use a bounded timeout rather than freezing the UI.
       original:()=>directionsFromV1(
         process.env.VANO_V1_API_URL.trim(), originPoint, destination, vehicle, telemetry,
-        {...options, timeoutMs:Math.min(10_000,Math.max(3_000,Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS)||10_000))}
+        {...options, timeoutMs:options.reroute===true?3500:Math.min(10_000,Math.max(3_000,Number(process.env.VANO_ORIGINAL_ENGINE_TIMEOUT_MS)||10_000))}
       ),
       alternate:access?()=>calculateMapboxV1Candidates(
         originPoint,destination,vehicle,telemetry,
@@ -719,16 +720,16 @@ async function route(req, res) {
     const proof=typeof body.proof==='string'&&body.proof.length<2200?
       openSignedToken(secret,body.proof):null;
     const txt=maviSpeechText(body.text);
-    if(!proof||proof.type!=='trip'||proof.user!==id||!Number.isFinite(proof.expires)||
-      proof.expires<now()||proof.expires>now()+601000||!['fast','safe'].includes(proof.kind)||
-      !txt||txt.length>220||body.language!=='pt-BR')
+    if(!mayUseNavigationVoiceProof(proof,id)||!txt||txt.length>220||body.language!=='pt-BR')
       return err(res,403,'Instrução não autorizada.');
     // Restricted command grammar; validated server route proof is mandatory.
     if(!/^(?:(?:Em|Daqui a) \d{1,4} metros?, )?(?:vire|siga|continue|pegue|entre|mantenha|faça|saia|retorne|chegou|você chegou|seu destino|navegação iniciada|instruções por voz ativadas|à direita|à esquerda|mude|passe|contorne|atravesse|aproxime|na rotatória|rotatória)/i.test(txt))
       return err(res,400,'Comando de navegação inválido.');
+    const refreshedProof=proof.expires<now()+180000
+      ?signedToken(secret,renewedNavigationProofPayload(proof)):null;
     return json(res,200,{voiceTicket:signedToken(secret,{
       type:'mavi-cartesia-tts',purpose:'maneuver',user:id,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
-    })});
+    }),...(refreshedProof?{refreshedProof}:{})});
   }
   // Public V2 assistant experiment. Guests may try it, but CSRF and IP limits
   // prevent third-party use of the paid routing provider as an open proxy.
@@ -1039,8 +1040,9 @@ async function route(req, res) {
     const routeOptions={
       avoidTolls:provided.avoidTolls===true, avoidFerries:provided.avoidFerries===true,
       avoidUnpaved:provided.avoidUnpaved===true, reroute:provided.reroute===true,
-      adaptive:provided.adaptive!==false,includeAdvanced:provided.includeAdvanced===true,
-      safeComparison:true, // internal: compare provider alternatives only for the safe variant
+      adaptive:provided.reroute===true?false:provided.adaptive!==false,includeAdvanced:provided.reroute===true?false:provided.includeAdvanced===true,
+      safeComparison:provided.reroute!==true, // don't enumerate internal candidates while recovering from a deviation
+      skipCandidateProbes:provided.reroute===true,
       variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
       localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
       safetyBias:typeof provided.safetyBias==='number'&&Number.isFinite(provided.safetyBias)?provided.safetyBias:undefined,
@@ -1220,7 +1222,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     // Otherwise React redirects /login/google/callback to /inicio before a session is created.
     const requestPath=new URL(req.url||'/','http://localhost').pathname;
     if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'||requestPath==='/.well-known/vano-benchmark.json'){
-      store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
+      await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     const dist=path.join(root,'dist');

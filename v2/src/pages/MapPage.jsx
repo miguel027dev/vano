@@ -21,6 +21,7 @@ import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import JevVoiceButton from '../components/JevVoiceButton.jsx';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
+import {acquireNavigationAudioFocus} from '../lib/maviAudioFocus.mjs';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
 import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs';
@@ -38,7 +39,7 @@ export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/v2';
   const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
-  const maviResponseTurn=useRef(0),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null});
+  const maviResponseTurn=useRef(0),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
   function syncMeasuredDistance(force=false){
@@ -189,7 +190,7 @@ export default function MapPage({active=true}){
         },delay);
       }
     }
-    setGpsStatus(fix.accuracy<=100?'granted':'approximate');setGpsMessage('');
+    setGpsStatus(fix.accuracy<=50?'granted':'approximate');setGpsMessage('');
     if(awaitingGpsDestination.current&&!validPoint(manualCoordsRef.current)&&destRef.current){
       awaitingGpsDestination.current=false;setPickOriginMode(false);
       routeCalculator.current?.(destRef.current,fix.coords);
@@ -199,12 +200,12 @@ export default function MapPage({active=true}){
   function onPositionError(error){
     const state=gpsStateAfterError(error,lastGpsFix.current);
     // An old pending request or a temporary indoors accuracy error is not loss of an already valid fix.
-    if(state==='granted'){setGpsStatus(lastGpsFix.current?.accuracy<=100?'granted':'approximate');setGpsMessage('');return;}
+    if(state==='granted'){setGpsStatus(lastGpsFix.current?.accuracy<=50?'granted':'approximate');setGpsMessage('');return;}
     setGpsStatus(state);
     setGpsMessage(geoErrorMessage(error));
   }
   function requestGPS(switchToGPS=true){
-    if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=100){
+    if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=50){
       const coords=lastGpsFix.current.coords;
       setManualCoords(null);setPickOriginMode(false);setGpsStatus('granted');setGpsMessage('');
       if(destRef.current)calculateRoute(destRef.current,coords);
@@ -242,11 +243,11 @@ export default function MapPage({active=true}){
   useEffect(()=>{
     const id=setInterval(()=>{
       setGpsClock(x=>x+1);
-      if(lastGpsFix.current&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))
+      if(lastGpsFix.current&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),navMode?35000:60000))
         setGpsStatus(s=>s==='granted'||s==='approximate'?'reconnecting':s);
     },12000);
     return()=>clearInterval(id);
-  },[]);
+  },[navMode]);
   useEffect(()=>{
     if(!active&&!navMode)return;
     // First login: ONE permission prompt / continuous watch; delayed recovery only if no valid fix.
@@ -265,7 +266,12 @@ export default function MapPage({active=true}){
       setGpsStatus('checking');
       setGpsMessage('');
     }
-    const stop=startGpsSession(navigator.geolocation,{onPosition,onError:onPositionError},{navigation:navMode});
+    const stop=startGpsSession(navigator.geolocation,{
+      onPosition,onError:onPositionError,
+      onRecover:()=>{if(navMode&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
+        setGpsStatus('reconnecting');setGpsMessage('Reconectando ao GPS. Mantendo o último ponto conhecido.');
+      }}
+    },{navigation:navMode,documentObject:document,windowObject:window});
     return()=>{
       stop();
       // getCurrentPosition cannot be canceled by browsers; invalidate any older callbacks.
@@ -619,24 +625,30 @@ export default function MapPage({active=true}){
         if(interrupted?.key)spoken.current.delete(interrupted.key);
       }
       lastVoiceAttempt.current={text,key};
+      if(voiceRouteProofRef.current.route!==route)
+        voiceRouteProofRef.current={route,proof:route?.proof};
       const controller=new AbortController();
+      const releaseAudioFocus=acquireNavigationAudioFocus();
       maneuverAudioRef.current=controller;
       if(key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
       void (async()=>{
         try{
           const result=await api('/v2/navigation/voice-ticket',{
             method:'POST',signal:controller.signal,
-            body:{text,proof:route.proof,language}
+            body:{text,proof:voiceRouteProofRef.current.proof,language}
           });
           if(controller.signal.aborted||!result?.voiceTicket)throw Error('no_voice_ticket');
+          if(typeof result.refreshedProof==='string'&&voiceRouteProofRef.current.route===route)
+            voiceRouteProofRef.current.proof=result.refreshedProof;
           await playMaviVoice(result.voiceTicket,{signal:controller.signal});
           if(!controller.signal.aborted)setVoiceProblem(false);
         }catch{
           if(!controller.signal.aborted){
             if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
+            voiceRetryAfterRef.current=Date.now()+12000;
             setVoiceProblem(true);
           }
-        }finally{if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;}
+        }finally{releaseAudioFocus();if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;}
       })();
       return true;
     }
@@ -654,7 +666,7 @@ export default function MapPage({active=true}){
     return result.ok;
   }
   useEffect(()=>{
-    if(!active||!navMode||muted||voiceProblem||recalculating)return;
+    if(!active||!navMode||muted||recalculating||Date.now()<voiceRetryAfterRef.current)return;
     const fresh=hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(35,(telemetry.accuracy||0)*1.8);
     const cue=spokenCue(guidance,{fresh,preview:false,muted,speed:telemetry.speed,language});
     if(cue&&!spoken.current.has(cue.key)){
@@ -716,8 +728,16 @@ export default function MapPage({active=true}){
     if(jevMode)maneuverAudioRef.current?.abort();
     else stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
     try{
-      const next=await api('/route',{method:'POST',body:JSON.stringify({origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,telemetry:{bearing:telemetry.heading,speed:telemetry.speed},reroute:true})});
-      if(epoch===routeEpoch.current){spoken.current.clear();cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');}
+      const next=await api('/route',{method:'POST',body:JSON.stringify({
+        origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,
+        telemetry:{bearing:telemetry.heading,speed:telemetry.speed},
+        routeOptions:{reroute:true,adaptive:false,variantBudget:2}
+      })});
+      if(epoch===routeEpoch.current){
+        spoken.current.clear();cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};
+        voiceRouteProofRef.current={route:null,proof:null};voiceRetryAfterRef.current=0;
+        setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');
+      }
     }catch(e){
       if(epoch===routeEpoch.current)setToast(`Rota atual mantida: ${e.message}`);
     }finally{

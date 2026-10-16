@@ -29,7 +29,8 @@ test('vehicle picker changes real API route parameter and never leaves stale alt
  assert.match(page,/routeEpoch\.current\+\+;/);
  assert.match(page,/setRouteData\(null\);setLoadingRoute\(true\);setSheetOpen\(true\)/);
  assert.match(page,/calculateRoute\(dest,origin,vehicle\)/);
- assert.match(page,/vehicle:routeVehicle,language,telemetry:/,'reroute must keep selected vehicle');
+ assert.match(page,/vehicle:routeVehicle,language,\s*telemetry:/,'reroute must keep selected vehicle');
+ assert.match(page,/routeOptions:\{reroute:true,adaptive:false,variantBudget:2\}/);
  assert.match(page,/telemetry=\{telemetry\} vehicle=\{routeVehicle\}/,'the navigation map receives the same vehicle');
 });
 test('route caution is removed without suppressing navigation button or pending offline status accessibility',()=>{
