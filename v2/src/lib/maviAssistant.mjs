@@ -71,6 +71,8 @@ const minutes=v=>v<1?'menos de um minuto':v===1?'1 minuto':v+' minutos';
 export function answerMaviInformation(intent,input){
  const c=safeContext(input);
  const active=c.navigationActive===true,gps=c.gpsReady===true;
+ const variant=Math.abs(Math.trunc(Number(c.replyVariant)||0))%3;
+ const choose=(...items)=>items[variant];
  const route=c.hasRoute===true;
  const duration=numeric(c.currentDuration,0,10080);
  const kmTotal=numeric(c.currentDistance,0,3000);
@@ -86,10 +88,15 @@ export function answerMaviInformation(intent,input){
  const eta=active&&gps&&remaining!==null?remaining:duration;
  const remainingDist=active&&gps&&distance!==null?distance:kmTotal;
  switch(intent){
-  case 'greeting':return text(intent,'Olá! Sou a MAVI, sua copilota no VANO Maps. Posso consultar o trajeto ou procurar outra rota. O que você precisa?');
-  case 'identity':return text(intent,'Eu sou a MAVI, assistente de navegação do VANO Maps. Ajudo você a entender o caminho e encontrar alternativas reais.');
+  case 'greeting':return text(intent,c.firstMaviGreeting===true?
+    'Olá! Eu sou a MAVI, sua assistente de voz do VANO Maps. Posso responder sobre o trajeto, encontrar alternativas e mostrar uma rota antes de você decidir. É só falar comigo!':
+    choose('Oi! Pode falar.','Opa! Tô te ouvindo.','Oi, tô aqui. O que precisa?'));
+
+  case 'identity':return text(intent,choose('Sou a MAVI, sua copilota no VANO.','MAVI! Tô aqui pra ajudar no caminho.','Pode me chamar de MAVI. Eu cuido da navegação.'));
+
   case 'about':return text(intent,'Eu entendo comandos de navegação e uso os dados calculados pelo VANO. Não invento rotas, acidentes ou horários.');
-  case 'thanks':return text(intent,'Por nada! Boa viagem. Se precisar de outro caminho, é só chamar.');
+  case 'thanks':return text(intent,choose('Imagina!','Tamo junto!','Por nada!'));
+
   case 'help':return text(intent,'Posso dizer quanto falta, buscar outra rota e mostrar uma prévia antes da troca. Você também pode pedir: centraliza o mapa, mostra o percurso inteiro, liga ou desliga o trânsito e procura um caminho mais rápido.');
   case 'repeat':return text(intent,'Posso repetir. Se a última resposta não foi ouvida, diga novamente seu pedido ou repita a orientação de navegação.');
   case 'recenter_map':return text(intent,gps?'Centralizando o mapa na sua posição.':'Não tenho GPS atualizado para centralizar o mapa.',gps?'recenter_map':undefined);
@@ -102,7 +109,8 @@ export function answerMaviInformation(intent,input){
   case 'hide_traffic':return text(intent,'Ocultando a camada de trânsito no mapa.','hide_traffic');
   case 'mute_guidance':return text(intent,c.audioMuted===true?'As orientações de navegação já estão silenciadas.':'Vou silenciar as orientações de navegação. Você ainda pode falar comigo.','mute_guidance');
   case 'unmute_guidance':return text(intent,c.audioMuted===true?'Vou ativar as orientações de navegação novamente.':'As orientações de navegação já estão ligadas.','unmute_guidance');
-  case 'gps_status':return text(intent,gps?'O GPS está recebendo uma posição recente.':'Ainda não tenho um sinal GPS recente para acompanhar sua posição. Confira a permissão de localização.');
+  case 'gps_status':return text(intent,gps?choose('GPS atualizado.','Seu GPS tá funcionando.','Tô recebendo sua posição.'):choose('Ainda sem GPS recente. Confira a localização.','Não tenho sua posição atualizada.','Ainda aguardando o GPS.'));
+
   case 'navigation_status':return text(intent,!route?'Ainda não há rota calculada.':active?(gps?'A navegação está ativa e o GPS está atualizado.':'A navegação está ativa, mas estou aguardando uma posição GPS recente.'):'A rota está pronta para visualização. A navegação ainda não foi iniciada.');
   case 'destination':return text(intent,target?'Seu destino é '+target+'.':'Ainda não tenho um destino escolhido.');
   case 'vehicle':return text(intent,c.vehicle==='moto'?'O modo moto está selecionado.':c.vehicle==='carro'?'O modo carro está selecionado.':'Ainda não tenho um veículo selecionado.');
@@ -110,8 +118,10 @@ export function answerMaviInformation(intent,input){
   case 'speed':return text(intent,active&&gps&&speed!==null?'Sua velocidade indicada pelo GPS é de '+Math.round(speed)+' quilômetros por hora.':'Não tenho uma velocidade GPS recente e confiável para informar.');
   case 'speed_limit':return text(intent,active&&gps&&posted!==null?'O limite informado pelo provedor para este trecho é de '+Math.round(posted)+' quilômetros por hora. Confira a sinalização da via.':'Não tenho um limite de velocidade confirmado para o seu trecho. Confira as placas.');
   case 'arrival':return text(intent,!route?'Calcule uma rota primeiro para ter a previsão de chegada.':active&&gps&&arrival?'A previsão de chegada é por volta de '+arrival+'. É uma estimativa.': 'Ainda não tenho uma previsão de chegada atualizada por GPS. A rota planejada leva aproximadamente '+(duration===null?'um tempo indisponível':minutes(Math.ceil(duration)))+'.');
-  case 'remaining_time':return text(intent,!route?'Ainda não há rota calculada.':eta!==null?(active&&!gps?'Sem GPS recente, a previsão do trajeto completo é de ':'Faltam aproximadamente ')+minutes(Math.ceil(eta))+'.':'Não tenho um tempo restante confiável agora.');
-  case 'remaining_distance':return text(intent,!route?'Ainda não há rota calculada.':remainingDist!==null?(active&&!gps?'O trajeto completo tem aproximadamente ':'Faltam aproximadamente ')+km(remainingDist)+' quilômetros.':'Não tenho distância restante confiável agora.');
+  case 'remaining_time':return text(intent,!route?'Ainda sem rota.':eta!==null?active&&!gps?'Sem GPS recente, o percurso completo leva cerca de '+minutes(Math.ceil(eta))+'.':choose('Faltam cerca de ','Mais ou menos ','Restam aproximadamente ')+minutes(Math.ceil(eta))+'.':'Ainda sem previsão confiável.');
+
+  case 'remaining_distance':return text(intent,!route?'Ainda sem rota.':remainingDist!==null?(active&&!gps?'O percurso inteiro tem cerca de ':'Faltam cerca de ')+km(remainingDist)+' quilômetros.':'Ainda sem distância confiável.');
+
   case 'progress':{
    const p=numeric(c.progress,0,1);
    return text(intent,active&&gps&&p!==null?'Você percorreu aproximadamente '+Math.round(p*100)+' por cento do trajeto calculado.':'Ainda não tenho progresso confirmado pelo GPS.');
@@ -119,7 +129,7 @@ export function answerMaviInformation(intent,input){
   case 'next_maneuver':return text(intent,active&&gps&&step?'Próxima orientação: '+step+(numeric(c.nextDistanceMeters,0,200000)!==null?', em aproximadamente '+Math.round(c.nextDistanceMeters)+' metros.':''):'Ainda não tenho uma próxima orientação confirmada pelo GPS. Consulte a indicação na tela.');
   case 'next_street':return text(intent,active&&gps&&nextRoad?'A próxima via indicada é '+nextRoad+'.':'Não tenho o nome confirmado da próxima via agora.');
   case 'current_street':return text(intent,active&&gps&&onRoad?'A via indicada neste momento é '+onRoad+'.':'Não tenho o nome da via atual confirmado neste momento.');
-  case 'clock':return text(intent,/^\d\d:\d\d$/.test(c.localClock||'')?'Agora são '+c.localClock+'.':'Não consegui ler a hora local deste dispositivo.');
+  case 'clock':return text(intent,/^\d\d:\d\d$/.test(c.localClock||'')?choose('Agora são ','São ','Aqui marca ')+c.localClock+'.':'Não consegui ler as horas.');
   case 'route_summary':return text(intent,!route?'Ainda não há rota calculada. Peça uma rota para começar.': 'Seu destino é '+(target||'o local selecionado')+'. '+(eta!==null?'O tempo estimado é '+minutes(Math.ceil(eta)): 'O tempo está indisponível')+(remainingDist!==null?' e a distância aproximada é '+km(remainingDist)+' quilômetros.':'.')+(active?' Navegação ativa.':' Navegação ainda não iniciada.'));
   case 'traffic_info':return text(intent,'O VANO considera dados do provedor ao calcular alternativas, mas não tenho um relatório de congestionamento verificado para este trecho nesta resposta. Posso buscar outra rota para comparar.');
   case 'tolls_info':return text(intent,'Não tenho uma cobrança de pedágio confirmada para cada trecho da sua rota. Posso procurar uma alternativa com preferência para evitar pedágios.');
