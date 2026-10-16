@@ -689,7 +689,7 @@ async function route(req, res) {
       const voiceTicket=cfg.enabled&&voiceOwner&&txt?signedToken(secret,{
         type:'mavi-eleven-tts',user:voiceOwner,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
       }):null;
-      return respondJev(voiceTicket?{...reply,voiceTicket}:reply);
+      return json(res,200,voiceTicket?{...reply,voiceTicket}:reply);
     };
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
