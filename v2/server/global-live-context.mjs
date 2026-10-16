@@ -95,7 +95,7 @@ export async function queryGlobalContext(bbox,{fetcher=fetch,clock=Date.now,time
  met.searchParams.set('lat',lat);met.searchParams.set('lon',lon);
  const opts={fetcher,clock,timeoutMs:clamp(timeoutMs,300,2500),ttlMs:DEFAULT_TTL};
  const [events,weather]=await Promise.all([
-  cachedFetch('nasa-eonet','nasa:'+area.map(x=>x.toFixed(2)).join(','),nasa,body=>normalizeEonet(body,area),opts),
+  cachedFetch('nasa-eonet','nasa:'+area.map(x=>x.toFixed(3)).join(','),nasa,body=>normalizeEonet(body,area),opts),
   cachedFetch('met-norway','met:'+lat+','+lon,met,normalizeMet,{...opts,ttlMs:30*60_000})
  ]);
  return {events:events.value||[],weather:weather.value||null,sources:[
