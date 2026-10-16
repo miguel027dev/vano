@@ -25,14 +25,14 @@ export function classifyMaviIntent(value){
  if(matches(s,/\b(?:obrigad[oa]|valeu|agradec|show|perfeito)\b/))return 'thanks';
  if(matches(s,/\b(?:repete|repita|fale de novo|o que voce disse|nao ouvi|pode repetir|repete por favor)\b/))return 'repeat';
  if(matches(s,/\b(?:desligar|desliga|desative|silencia|silenciar|mutar|muta|tirar|sem)\b.*\b(?:voz|som|audio|narracao|instrucoes|orientacoes)\b|\b(?:modo silencioso|ficar sem som)\b/))return 'mute_guidance';
- if(matches(s,/\b(?:ligar|liga|ativar|ative|habilita|habilitar|volta|coloca)\b.*\b(?:voz|som|audio|narracao|instrucoes|orientacoes)\b|\b(?:tirar do mudo|voltar a falar)\b/))return 'unmute_guidance';
+ if(matches(s,/\b(?:ligar|liga|ativar|ative|habilita|habilitar|volta|coloca)\b.*\b(?:voz|som|audio|narracao|instrucoes|orientacoes)\b|\b(?:tirar do mudo|voltar a falar|volta a falar)\b/))return 'unmute_guidance';
  if(matches(s,/\b(?:quanto e o limite|limite de velocidade|velocidade maxima|qual o limite|radar de velocidade maxima)\b/))return 'speed_limit';
  if(matches(s,/\b(?:qual minha velocidade|que velocidade|velocidade atual|quanto estou correndo|quantos por hora|a quantos por hora)\b/))return 'speed';
  if(matches(s,/\b(?:gps|sinal do gps|localizacao funcionando|minha posicao|onde estou agora|minha localizacao)\b/))return 'gps_status';
  if(matches(s,/\b(?:qual(?: e| foi)? o destino|para onde estou indo|pra onde vou|onde fica meu destino|nome do destino|aonde vamos)\b/))return 'destination';
  if(matches(s,/\b(?:que horas sao|qual e a hora|me diz as horas|horario agora)\b/))return 'clock';
  if(matches(s,/\b(?:quando(?: eu| vamos)? cheg\w*|que horas(?: eu| nos)? cheg\w*|horario de chegada|previsao de chegada|hora de chegada|qual(?: e)? a chegada)\b/))return 'arrival';
- if(matches(s,/\b(?:quantos kilometros|quantos quilometros|quantos km|quantos metros falta|distancia restante|quanto falta de distancia|quantos km falta|qual distancia|distancia ate|quanto falta pra chegar em km|ta longe|esta longe)\b/))return 'remaining_distance';
+ if(matches(s,/\b(?:quantos kilometros|quantos quilometros|quantos km|quantos metros falta|distancia restante|quanto falta de distancia|quantos km falta|qual distancia|distancia ate|quanto falta pra chegar em km|quanto falta em (?:km|quilometros)|ta longe|esta longe)\b/))return 'remaining_distance';
  if(matches(s,/\b(?:quanto tempo falta|quantos minutos falt\w*|quanto falta pra chegar|falta muito tempo|tempo restante|quanto demora|quanto tempo ate|quanto tempo pra chegar|em quantos minutos)\b/))return 'remaining_time';
  if(matches(s,/\b(?:quanto ja andei|quanto percorri|porcentagem da rota|quantos por cento da rota|quanto da rota eu fiz|progresso do trajeto)\b/))return 'progress';
  if(matches(s,/\b(?:proxima conversao|proxima curva|proxima manobra|proxima virada|onde vou virar|para onde eu viro|pra onde viro|viro pra que lado|viro a esquerda|viro a direita|qual a proxima instrucao|qual a proxima orientacao|o que faco agora|qual proximo passo|o que vem agora|repete a orientacao|proximo comando)\b/))return 'next_maneuver';
@@ -41,18 +41,19 @@ export function classifyMaviIntent(value){
  if(matches(s,/\b(?:a rota esta ativa|navegacao ativa|estou navegando|ja comecou a rota|a navegacao comecou|status da navegacao)\b/))return 'navigation_status';
  if(matches(s,/\b(?:qual veiculo|estou de carro|estou de moto|modo carro ou moto|qual transporte selecionado)\b/))return 'vehicle';
  if(matches(s,/\b(?:qual rota escolhi|qual rota estou usando|essa rota e rapida|essa rota e tranquila|qual o tipo de rota|modo da rota)\b/))return 'route_mode';
- if(matches(s,/\b(?:como esta o percurso|como esta a rota|me fala da rota|resuma a rota|resumo da viagem|informacoes da rota|como esta minha viagem|situacao do trajeto|resumo do trajeto)\b/))return 'route_summary';
+ if(matches(s,/\b(?:como esta o percurso|como esta (?:a|minha) rota|qual meu percurso|me fala da rota|resuma a rota|resumo da viagem|informacoes da rota|como esta minha viagem|situacao do trajeto|resumo do trajeto)\b/))return 'route_summary';
  if(matches(s,/\b(?:tem pedagio|tem pedagios|essa rota tem pedagio|vou pagar pedagio|quanto custa o pedagio|valor do pedagio|quanto gasto em pedagio)\b/))return 'tolls_info';
  if(matches(s,/\b(?:como esta o transito|tem transito|esta congestionado|ta engarrafado|condicao do transito|transito na minha rota|transito pela frente)\b/))return 'traffic_info';
  if(matches(s,/\b(?:vai chover|tempo agora|como esta o tempo|previsao do tempo|clima no destino|temperatura)\b/))return 'weather_unavailable';
  if(matches(s,/\b(?:tem acidente|tem bloqueio|tem manifestacao|tem enchente|tem alagamento|tem blitz|onde tem policia|rua interditada)\b/))return 'incidents_unavailable';
  if(matches(s,/\b(?:posto mais proximo|farmacia mais proxima|hospital mais proximo|mercado mais proximo|estacionamento mais proximo|procurar posto|preciso de gasolina|preciso de farmacia|onde tem hospital|onde tem banheiro|onde comer)\b/))return 'places_unavailable';
- if(matches(s,/\b(?:esta seguro|e perigoso|risco da rota|tem assalto|zona de risco|areas perigosas|a rota e segura)\b/))return 'safety_info';
+ if(matches(s,/\b(?:esta seguro|essa rota e segura|e perigoso|risco da rota|tem assalto|zona de risco|areas perigosas|a rota e segura)\b/))return 'safety_info';
  if(matches(s,/\b(?:sem balsa|evita balsa|evitar balsa|evita ferry|sem ferry|nao quero balsa|sem barcos)\b/))return 'avoid_ferries';
  if(matches(s,/\b(?:sem estrada de terra|evita estrada de terra|evitar terra|evita via sem asfalto|so asfalto|somente asfalto|evitar vias nao pavimentadas)\b/))return 'avoid_unpaved';
  if(matches(s,/\b(?:mais tranquila|rota tranquila|menos movimentad\w*|menos estressante|quero sossego|rota mais calma|menos agitada)\b/))return 'quiet_route';
  if(matches(s,/\b(?:mais curta|menor distancia|caminho mais curto|economizar quilometros)\b/))return 'short_route';
  if(matches(s,/\b(?:rota mais rapida|mais rapido|menor tempo|chegar mais cedo|economizar tempo|prioriza tempo|priorize tempo)\b/))return 'fast_route';
+ if(matches(s,/\b(?:mais um caminho|me mostra outra opcao|tenta uma rota diferente|nao curti esse trajeto|outra opcao de trajeto)\b/))return 'alternative';
  return classifyJev(value);
 }
 
