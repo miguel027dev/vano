@@ -584,6 +584,7 @@ export default function MapPage({active=true}){
         <button type="button" className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button>
       </div>
       </div></>}
+      {jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"/>}
     </div> : <div className="nav-instruction v28-nav-instruction" aria-label="Instrução da próxima manobra">
       <div className="turn-icon v28-turn-icon">
         <ManeuverGlyph variant={maneuverVariant(guidance)} size={37}/>
@@ -601,6 +602,7 @@ export default function MapPage({active=true}){
         </div>}
       </div>
       <button className="circle-btn" onClick={toggleVoice} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
+      {jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"/>}
     </div>}
     {!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking" role="status">
       <div className="gps-banner-heading"><MapPin size={20}/><strong>{t('Escolha sua origem')}</strong></div>
