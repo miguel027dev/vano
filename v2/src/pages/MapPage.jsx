@@ -407,7 +407,7 @@ export default function MapPage({active=true}){
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
   // Experimental-only integration: none of these actions are exposed on /mapa.
   const jevKey=jevMode?jevRouteFingerprint(route):null;
-  async function askJev(text,signal){
+  async function askJev(text,signal,maviMeta={}){
     // Informational commands work even before planning a route. The server
     // gates route-changing requests until a real route and vehicle exist.
     const start=navMode&&hasLiveGPS&&validPoint(userCoords)?userCoords:origin;
@@ -423,6 +423,7 @@ export default function MapPage({active=true}){
       routeGeometry,
       context:{
         hasRoute:!!route,navigationActive:navMode,gpsReady:hasLiveGPS,pendingStop:!!maviPendingStop,
+        firstMaviTurn:maviMeta.firstTurn===true,
         destination:String(dest?.name||dest?.address||'').slice(0,100),
         vehicle:routeVehicle,routeId:route?.id||null,audioMuted:muted,
         currentDuration:route?.duration??null,currentDistance:route?.distance??null,
