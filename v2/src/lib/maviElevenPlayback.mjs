@@ -1,12 +1,12 @@
 import {fetchMaviAudio} from './api.js';
 
 /**
- * Browser /v2 ElevenLabs player. Deliberately isolated from navigation TTS.
+ * Browser /v2 authorized MAVI voice player (Cartesia/ElevenLabs). Deliberately isolated from navigation TTS.
  * Fetch streamed MP3 securely, decode with the browser and await audio ended.
  * First release prioritizes reliability over experimental MediaSource playback:
  * a provider failure always hands control back to local speechSynthesis.
  */
-export async function playMaviEleven(ticket,{signal,audioFactory=()=>new Audio(),urlApi=URL}={}){
+export async function playMaviVoice(ticket,{signal,audioFactory=()=>new Audio(),urlApi=URL}={}){
  if(signal?.aborted)throw new Error('mavi_voice_cancelled');
  const blob=await fetchMaviAudio(ticket,{signal});
  if(signal?.aborted)throw new Error('mavi_voice_cancelled');
@@ -41,3 +41,6 @@ export async function playMaviEleven(ticket,{signal,audioFactory=()=>new Audio()
    urlApi.revokeObjectURL(url);
  }
 }
+
+// Preserve the public named export for older V2 integrations/tests.
+export const playMaviEleven=playMaviVoice;

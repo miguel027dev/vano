@@ -31,7 +31,7 @@ export async function api(path, opts = {}) {
 }
 /**
  * V2 MAVI only: fetch an authorized one-shot voice response as binary.
- * No ElevenLabs key, text, model or voice ID ever crosses from the browser.
+ * No Cartesia/ElevenLabs key, text, model or voice ID crosses from the browser.
  * This deliberately uses a separate binary path from the normal JSON API.
  */
 export async function fetchMaviAudio(ticket,{signal}={}){

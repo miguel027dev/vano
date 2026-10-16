@@ -19,6 +19,7 @@ import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mj
 import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
 import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
+import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -650,17 +651,20 @@ async function route(req, res) {
   // prevent third-party use of the paid routing provider as an open proxy.
   // Session-bound one-shot voice endpoint: the caller supplies no free-form
   // text, voice ID, model, or upstream URL. Only assistant-generated text may
-  // be converted. Never disclose the ElevenLabs API key to the browser.
+  // be converted. Never disclose provider credentials to the browser.
   if(pathname==='/api/v2/assistant/speech'&&req.method==='POST'){
     if(!protectedWrite(req,res))return;
     if(!limits(req,res,'mavi-voice-v2',6,60000))return;
-    const config=maviElevenConfig();
-    if(!config.enabled)return err(res,503,'Voz da MAVI ainda não configurada.');
+    const cartesia=maviCartesiaConfig();
+    const eleven=maviElevenConfig();
+    if(!cartesia.enabled&&!eleven.enabled)return err(res,503,'Voz da MAVI ainda não configurada.');
     const body=await getBody(req);
     const ticket=typeof body.ticket==='string'&&body.ticket.length<=2200?body.ticket:'';
     const claim=ticket?openSignedToken(secret,ticket):null;
     const identity=owner(req);
-    if(!claim||claim.type!=='mavi-eleven-tts'||!identity||claim.user!==identity||
+    const provider=claim?.type==='mavi-cartesia-tts'?'cartesia':claim?.type==='mavi-eleven-tts'?'eleven':null;
+    if(!claim||!provider||(provider==='cartesia'&&!cartesia.enabled)||(provider==='eleven'&&!eleven.enabled)||
+       !identity||claim.user!==identity||
        !Number.isFinite(claim.expires)||claim.expires<=now()||
        claim.expires>now()+MAVI_VOICE_TICKET_MS+1000||!maviSpeechText(claim.text))
       return err(res,403,'Autorização de áudio inválida ou expirada.');
@@ -673,7 +677,9 @@ async function route(req, res) {
     const deadline=setTimeout(()=>abort.abort(),14000);
     res.once('close',()=>abort.abort());
     try{
-      const upstream=await fetchMaviVoice(claim.text,config,{signal:abort.signal});
+      const upstream=provider==='cartesia'?
+        await fetchMaviCartesiaVoice(claim.text,cartesia,{signal:abort.signal}):
+        await fetchMaviVoice(claim.text,eleven,{signal:abort.signal});
       if(res.destroyed)return;
       res.writeHead(200,{...headers,'Content-Type':'audio/mpeg','Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'});
       let size=0;
@@ -699,10 +705,12 @@ async function route(req, res) {
     const body=await getBody(req);
     const voiceOwner=owner(req);
     const respondJev=reply=>{
-      const cfg=maviElevenConfig();
+      const cartesia=maviCartesiaConfig();
+      const eleven=maviElevenConfig();
+      const ticketType=cartesia.enabled?'mavi-cartesia-tts':eleven.enabled?'mavi-eleven-tts':null;
       const txt=maviSpeechText(reply?.text);
-      const voiceTicket=cfg.enabled&&voiceOwner&&txt?signedToken(secret,{
-        type:'mavi-eleven-tts',user:voiceOwner,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
+      const voiceTicket=ticketType&&voiceOwner&&txt?signedToken(secret,{
+        type:ticketType,user:voiceOwner,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
       }):null;
       return json(res,200,voiceTicket?{...reply,voiceTicket}:reply);
     };
