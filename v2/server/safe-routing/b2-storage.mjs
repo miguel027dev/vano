@@ -1,7 +1,7 @@
 /** Narrow Backblaze B2 native API client for non-routing Safe Routing snapshots. */
 import {createHash} from 'node:crypto';
 
-const AUTH_URL='https://api.backblazeb2.com/b2api/v3/b2_authorize_account';
+const AUTH_URL='https://api.backblazeb2.com/b2api/v4/b2_authorize_account';
 const validValue=value=>typeof value==='string'&&value.length>=8&&value.length<=500&&!/[\s\x00]/.test(value);
 export function assertB2Config(config={}){
  const {keyId,applicationKey,bucketId,bucketName,endpoint}=config;
@@ -15,12 +15,31 @@ export async function authorizeB2(config,{fetcher=fetch}={}){
  const response=await fetcher(AUTH_URL,{headers:{Authorization:`Basic ${basic}`},redirect:'error',signal:AbortSignal.timeout(12000)});
  if(!response.ok)throw Error(`B2 autorização recusada (${response.status})`);
  const body=await response.json();
- if(typeof body?.authorizationToken!=='string'||typeof body?.apiUrl!=='string'||body?.allowed?.bucketId!==config.bucketId)throw Error('B2 não concedeu acesso ao bucket dedicado');
- return body;
+ const storage=body?.apiInfo?.storageApi;
+ const allowed=storage?.allowed;
+ const buckets=allowed?.buckets;
+ if(typeof body?.authorizationToken!=='string'||!/^https:\/\/api[0-9]+\.backblazeb2\.com$/.test(storage?.apiUrl||'')||
+  !Array.isArray(buckets)||buckets.length!==1||buckets[0].id!==config.bucketId||
+  (buckets[0].name!==null&&buckets[0].name!==config.bucketName)||allowed.namePrefix!=='snapshots/'||
+  !allowed.capabilities?.includes('writeFiles'))throw Error('B2 não concedeu acesso ao bucket e prefixo dedicados');
+ return {...body,apiUrl:storage.apiUrl,downloadUrl:storage.downloadUrl,allowed};
 }
 export function b2FileName(path){
  if(typeof path!=='string'||!/^snapshots\/[a-z0-9][a-z0-9._/-]{5,800}$/i.test(path)||path.includes('..'))throw Error('Caminho B2 inválido');
  return encodeURIComponent(path).replace(/%2F/gi,'/');
+}
+/** Bounded authenticated reads; never returns a public download token or URL. */
+export async function readB2Object({authorization,config,path,maxBytes=2_000_000,fetcher=fetch}={}){
+ assertB2Config(config);
+ if(!/^https:\/\/f[0-9]+\.backblazeb2\.com$/.test(authorization?.downloadUrl||'')||!authorization?.authorizationToken)throw Error('Download B2 inválido');
+ if(!Number.isInteger(maxBytes)||maxBytes<1||maxBytes>25_000_000)throw Error('Limite B2 inválido');
+ const url=`${authorization.downloadUrl}/file/${config.bucketName}/${b2FileName(path)}`;
+ const reply=await fetcher(url,{headers:{Authorization:authorization.authorizationToken},redirect:'error',signal:AbortSignal.timeout(15000)});
+ if(!reply.ok)throw Error(`B2 leitura recusada (${reply.status})`);
+ if(Number(reply.headers.get('content-length'))>maxBytes)throw Error('Objeto B2 excede limite');
+ const chunks=[];let size=0;
+ for await(const chunk of reply.body){size+=chunk.byteLength;if(size>maxBytes)throw Error('Objeto B2 excede limite');chunks.push(chunk);}
+ return Buffer.concat(chunks,size);
 }
 export async function uploadB2Object({authorization,config,path,body,contentType='application/octet-stream',fetcher=fetch}={}){
  if(!authorization?.apiUrl||!authorization?.authorizationToken)throw Error('Autorização B2 ausente');

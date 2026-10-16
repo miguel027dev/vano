@@ -3,6 +3,7 @@
  * This small local store is deliberately NOT a multi-instance database.
  */
 import http from 'node:http';
+import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
 import {readMobileRequest,mobileGrants,mobileCallback,canonicalMobileStart} from './mobile-auth.mjs';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -446,11 +447,18 @@ async function route(req, res) {
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
   }
-  if ((pathname === '/api/admin' || pathname === '/api/admin/users') && req.method === 'GET') {
+  if ((pathname === '/api/admin' || pathname === '/api/admin/users' || pathname === '/api/admin/safe-routing/storage') && req.method === 'GET') {
     const session=userSession(req);
     if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
     if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
     if(!limits(req,res,'admin-console',30,60000))return;
+    if(pathname==='/api/admin/safe-routing/storage'){
+      if(!limits(req,res,'safe-storage-diagnostics',2,60000))return;
+      const snapshotId=process.env.VANO_SAFE_B2_TEST_SNAPSHOT;
+      if(!snapshotId)return json(res,503,{available:false,reason:'snapshot-not-configured',usedForRouting:false});
+      try{return json(res,200,{available:true,...await inspectB2Snapshot(snapshotId)});}
+      catch{return json(res,503,{available:false,reason:'snapshot-verification-failed',usedForRouting:false});}
+    }
     if(pathname==='/api/admin/users')return json(res,200,adminUsers(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit')}));
     return json(res,200,adminMetrics(db,runtimeMetrics,{now:Date.now(),startedAt:startupMs,status:{google:googleReady,mapbox:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,v1Router:!!process.env.VANO_V1_API_URL,email:mailReady,persistentDb:store.persistent===true,storage:store.persistent?'PostgreSQL (vano_v2.app_state)':'JSON da instância atual — dados podem desaparecer com reinícios no Render Free'}}));
   }

@@ -12,7 +12,7 @@ test('B2 config is staging-scoped and object paths cannot escape snapshots',()=>
 test('B2 authorizes only the expected dedicated bucket and verifies uploaded SHA-1',async()=>{
  const calls=[];
  const fetcher=async(url,options={})=>{calls.push({url,options});
-  if(url.includes('b2_authorize_account'))return new Response(JSON.stringify({authorizationToken:'auth',apiUrl:'https://api005.backblazeb2.com',allowed:{bucketId:config.bucketId}}));
+  if(url.includes('b2_authorize_account'))return new Response(JSON.stringify({authorizationToken:'auth',apiInfo:{storageApi:{apiUrl:'https://api005.backblazeb2.com',downloadUrl:'https://f005.backblazeb2.com',allowed:{buckets:[{id:config.bucketId,name:config.bucketName}],namePrefix:'snapshots/',capabilities:['readFiles','writeFiles']}}}}));
   if(url.includes('b2_get_upload_url'))return new Response(JSON.stringify({uploadUrl:'https://pod-005-1.backblaze.com/upload',authorizationToken:'upload-token'}));
   return new Response(JSON.stringify({fileId:'file-1',fileName:'snapshots/snap-20261016/manifest.json',contentSha1:'f572d396fae9206628714fb2ce00f72e94f2258f'}));
  };
