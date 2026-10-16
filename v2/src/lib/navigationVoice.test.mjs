@@ -61,7 +61,10 @@ test('application integrates speech on real maneuver, navigation start, unmute a
  assert.match(page,/import \{speakNavigationVoice,stopNavigationVoice\}/);
  assert.match(page,/const result=speakNavigationVoice\(text,language,/);
  assert.match(page,/if\(result.ok&&key\)/);
- assert.match(page,/if\(cue&&!spoken.current.has\(cue.key\)\)speakManeuver\(cue.text,cue.key\)/);
+ assert.match(page,/if\(cue&&!spoken.current.has\(cue.key\)\)/);
+ assert.match(page,/alreadyCovered/);
+ assert.match(page,/interruptedSequence/);
+ assert.match(page,/speakManeuver\(cue.text,cue.key\)/);
  assert.match(page,/Navegação iniciada/);
  assert.match(page,/function toggleVoice\(\)/);
  assert.match(page,/onClick=\{toggleVoice\}/);
