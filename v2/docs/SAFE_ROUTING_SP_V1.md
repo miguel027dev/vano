@@ -109,3 +109,57 @@ como indicador de perigo; a idade considerada no algoritmo é a **idade do regis
 - Conexão real com Mapbox e feature flag no backend, condicionada aos testes.
 - Revisão de UX para rótulos que chamam rota alternativa de “mais segura” quando
   o resultado assinala `verifiedSafety:false` — corrigir separadamente.
+
+
+## Resultados reais do GeoSampa — teste CI de 15/out/2026 (horário de São Paulo)
+
+O workflow `.github/workflows/geosampa-wfs-staging.yml` confirmou por
+consulta HTTPS ao serviço WFS oficial:
+- FeatureType: `geoportal:iluminacao_publica`.
+- `numberMatched` informado pelo provedor: **662945** registros.
+- Página de amostra: 250 registros, 250 aceitos, 0 rejeitados.
+- Capabilities SHA-256: `3cf8e44378bd58fd90a18fd64cb7007f5fb3f65644a324e5dc3a8b9198a664cc`.
+- Amostra SHA-256: `654174838c2778db890e3185596699dea5c90b1df39d81cfb5707afa11493ffa`.
+- Dados: somente dry-run em runner GitHub, não persistidos no app ou PostGIS.
+- Referência de metadados oficial:
+  https://metadados.geosampa.prefeitura.sp.gov.br/geonetwork/intranet/api/records/1a0c8fd5-9273-4d71-8e20-440f9ccc7b5e
+
+**O número 662945 foi declarado pelo WFS; ele não prova que todos esses
+registros foram baixados, verificados, são únicos ou estão atualizados.**
+
+### Componentes adicionados na branch de integração
+- `geosampa-wfs.mjs`: consulta capabilities e amostras GeoJSON reais,
+  normaliza identificadores e recusa reprojeções supostamente corretas.
+- `scripts/safe-routing/import-geosampa.mjs`: executa dry-run por padrão;
+  importa 1 página para banco dedicado apenas com `SAFE_ALLOW_IMPORT=1`,
+  `VANO_SAFE_DB_URL` válido e `--apply`. O script recusa usar o banco principal.
+- `lighting-postgis.mjs`: consultas espaciais de pontos perto da geometria
+  da rota, apenas quando houver um snapshot oficialmente aprovado.
+  **A distância de um poste à rota não confirma iluminação daquela via,
+  não comprova funcionamento e não autoriza alterar a ordem das rotas.**
+- `schema.sql`: páginas brutas, snapshots versionados, staging e
+  aprovação explícita. Não executado em nenhum banco real.
+- Testes de WFS e PostGIS adicionados a `v2/server/*.test.mjs`.
+
+### Bloqueio conhecido de infraestrutura
+A conta Render Miguel PINXS já possui um banco PostgreSQL gratuito
+`tyvon-db`, que pertence a outro produto. Render permite somente
+um banco gratuito ativo por workspace; também expira após 30 dias.
+**Não compartilhar o banco do TYVON, não criar plano pago sem custo aprovado
+e não configurar `DATABASE_URL` de produção para essa integração.**
+Um banco PostGIS dedicado e durável ainda precisa ser provisionado,
+com segredo `VANO_SAFE_DB_URL` somente no serviço de staging.
+
+### Próximas etapas para uso na navegação
+1. Provisionar banco isolado com backup e política de custos, aplicar
+   `schema.sql` manualmente e conferir extensão PostGIS.
+2. Planejar ingestão paginada completa dos 662945 registros:
+   limites de taxa, recomeço após falhas, checksums, limites de volume e
+   inspeção de licença por camada antes de publicar.
+3. Cruzar os pontos de luz com a rede viária respeitando diferenças de
+   nível, viadutos e ruas paralelas, e validar amostras por região.
+4. Conectar provedor de evidências à rota somente após dados completos,
+   snapshots aprovados, testes e modo shadow.
+5. Testar falhas de WFS e banco, alternativas reais Mapbox, uso durante
+   navegação, desempenho e reversão.
+6. Manter sem alterações a produção e a função da MAVI até liberação.
