@@ -29,16 +29,19 @@ export function b2FileName(path){
  return encodeURIComponent(path).replace(/%2F/gi,'/');
 }
 /** Bounded authenticated reads; never returns a public download token or URL. */
-export async function readB2Object({authorization,config,path,maxBytes=2_000_000,fetcher=fetch}={}){
+export async function readB2Object({authorization,config,path,maxBytes=2_000_000,range,fetcher=fetch}={}){
  assertB2Config(config);
  if(!/^https:\/\/f[0-9]+\.backblazeb2\.com$/.test(authorization?.downloadUrl||'')||!authorization?.authorizationToken)throw Error('Download B2 inválido');
  if(!Number.isInteger(maxBytes)||maxBytes<1||maxBytes>25_000_000)throw Error('Limite B2 inválido');
  const url=`${authorization.downloadUrl}/file/${config.bucketName}/${b2FileName(path)}`;
- const reply=await fetcher(url,{headers:{Authorization:authorization.authorizationToken},redirect:'error',signal:AbortSignal.timeout(15000)});
+ if(range&&(!Number.isSafeInteger(range.offset)||range.offset<0||!Number.isSafeInteger(range.length)||range.length<1||range.length>maxBytes))throw Error('Intervalo B2 inválido');
+ const reply=await fetcher(url,{headers:{Authorization:authorization.authorizationToken,...(range?{Range:`bytes=${range.offset}-${range.offset+range.length-1}`}:{})},redirect:'error',signal:AbortSignal.timeout(15000)});
  if(!reply.ok)throw Error(`B2 leitura recusada (${reply.status})`);
+ if(range&&(reply.status!==206||!reply.headers.get('content-range')?.startsWith(`bytes ${range.offset}-${range.offset+range.length-1}/`)))throw Error('B2 não confirmou intervalo');
  if(Number(reply.headers.get('content-length'))>maxBytes)throw Error('Objeto B2 excede limite');
  const chunks=[];let size=0;
  for await(const chunk of reply.body){size+=chunk.byteLength;if(size>maxBytes)throw Error('Objeto B2 excede limite');chunks.push(chunk);}
+ if(range&&size!==range.length)throw Error('Intervalo B2 incompleto');
  return Buffer.concat(chunks,size);
 }
 export async function uploadB2Object({authorization,config,path,body,contentType='application/octet-stream',fetcher=fetch}={}){
