@@ -428,7 +428,7 @@ export default function MapPage({active=true}){
     if(!Array.isArray(routes)||!routes.some(r=>r.id===proposal.routeId&&jevRouteFingerprint(r)!==proposal.sourceKey))return false;
     routeEpoch.current++;spoken.current.clear();
     setRouteData(proposal.routeData);setChoice(proposal.routeId);setGuidance(null);
-    setToast('Alternativa selecionada pelo VANO Assistant.');return true;
+    setToast('Alternativa selecionada pela MAVI.');return true;
   }
   cachePosition.current=userCoords;
   useEffect(()=>{if(!navMode||!hasLiveGPS||!route?.geometry)return;const timeline=buildRouteTimeline(route.geometry);if(!timeline.total)return;const meters=distanceOnRoute(timeline,userCoords);setGuidance({...nextManeuver(route,timeline,meters),progress:meters/timeline.total,preview:false,finished:false});},[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
