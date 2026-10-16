@@ -408,19 +408,17 @@ export default function MapPage({active=true}){
   // Experimental-only integration: none of these actions are exposed on /mapa.
   const jevKey=jevMode?jevRouteFingerprint(route):null;
   async function askJev(text,signal){
-    if(!dest||!route||!validPoint(origin))
-      return {mode:'information',text:'Escolha um destino e calcule uma rota antes de falar comigo.'};
-    if(routeVehicle==='a-pe')
-      return {mode:'information',text:'Este protótipo aceita carro e moto. O modo a pé virá depois.'};
+    // Informational commands work even before planning a route. The server
+    // gates route-changing requests until a real route and vehicle exist.
     const start=navMode&&hasLiveGPS&&validPoint(userCoords)?userCoords:origin;
     return api('/v2/assistant',{method:'POST',signal,body:{
-      text,origin:start,destination:dest.coords,vehicle:routeVehicle,language,
-      currentRouteKey:jevKey,currentDuration:route.duration,currentDistance:route.distance,
+      text,origin:validPoint(start)?start:null,destination:dest?.coords||null,vehicle:routeVehicle,language,
+      currentRouteKey:jevKey,currentDuration:route?.duration??null,currentDistance:route?.distance??null,
       context:{
         hasRoute:!!route,navigationActive:navMode,gpsReady:hasLiveGPS,
         destination:String(dest?.name||dest?.address||'').slice(0,100),
-        vehicle:routeVehicle,routeId:route.id,audioMuted:muted,
-        currentDuration:route.duration,currentDistance:route.distance,
+        vehicle:routeVehicle,routeId:route?.id||null,audioMuted:muted,
+        currentDuration:route?.duration??null,currentDistance:route?.distance??null,
         remainingMinutes:navMode&&hasLiveGPS?navigationStats?.remainingMinutes:null,
         remainingKm:navMode&&hasLiveGPS?navigationStats?.remainingKm:null,
         progress:navMode&&hasLiveGPS?navigationStats?.progress:null,
