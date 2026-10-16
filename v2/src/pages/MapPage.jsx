@@ -22,6 +22,7 @@ import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.j
 import JevVoiceButton from '../components/JevVoiceButton.jsx';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
+import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs';
 import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
@@ -427,7 +428,7 @@ export default function MapPage({active=true}){
     const path=Array.isArray(all)?all.slice(idx):[];
     const stride=Math.max(1,Math.ceil((path.length-1)/159));
     const routeGeometry=path.filter((_,i)=>i%stride===0||i===path.length-1);
-    return api('/v2/assistant',{method:'POST',signal,body:{
+    const payload={
       text,origin:validPoint(start)?start:null,destination:dest?.coords||null,vehicle:routeVehicle,language,
       currentRouteKey:jevKey,currentDuration:route?.duration??null,currentDistance:route?.distance??null,
       routeGeometry,
@@ -450,7 +451,15 @@ export default function MapPage({active=true}){
       },telemetry:{
         bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null
       }
-    }});
+    };
+    // Read-only status and bounded map actions never need an LLM or network.
+    // Speech remains cancellable and actual route changes still go to the server.
+    const localIntent=classifyMaviIntent(text);
+    if(localIntent!=='repeat'&&localIntent!=='places_unavailable'){
+      const instant=answerMaviInformation(localIntent,payload.context);
+      if(instant)return instant;
+    }
+    return api('/v2/assistant',{method:'POST',signal,body:payload});
   }
   function handleMaviAction(action){
     if(!jevMode)return false;
