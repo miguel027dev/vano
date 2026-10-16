@@ -163,12 +163,14 @@ export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,v
    if(f.type==='semaforo')signalCount++;
   }
  }
- // Critical warnings are selected first, then services and businesses;
- // road controls cannot exhaust the available visual slots.
+ // A crowded radar/roadworks layer must not hide EVERY service or road sign.
+ // Each family gets a first-pass chance. The remaining spaces go to the
+ // most important real points; geometric collisions are still enforced.
+ addFrom(urgent,Math.min(rules.total,Math.max(3,Math.ceil(rules.total*.42))));
+ addFrom(services,Math.min(rules.total,chosen.length+Math.max(2,Math.ceil(rules.total*.24))));
+ addFrom(businesses,Math.min(rules.total,chosen.length+Math.max(2,Math.ceil(rules.total*.18))));
+ addFrom(road,Math.min(rules.total,chosen.length+Math.min(rules.roadMax,Math.max(2,Math.ceil(rules.total*.12)))));
  addFrom(urgent,rules.total);
- addFrom(services,Math.min(rules.total,chosen.length+Math.ceil(rules.total*.30)));
- addFrom(businesses,Math.min(rules.total,chosen.length+Math.ceil(rules.total*.38)));
- addFrom(road,Math.min(rules.total,chosen.length+rules.roadMax));
  addFrom(services,rules.total);
  addFrom(businesses,rules.total);
  addFrom(road,rules.total);
