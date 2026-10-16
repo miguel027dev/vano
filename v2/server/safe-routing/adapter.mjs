@@ -15,6 +15,7 @@ export function evaluateApprovedEvidence(providerResult,evidence,{requestedAt=ne
  if(!evidence||typeof evidence!=='object'||Array.isArray(evidence))return {status:'evidence-unavailable',fallback:true};
  const allowed=canUseSnapshotForRanking({datasetApproval:evidence.datasetApproval,snapshot:evidence.snapshot});
  if(!allowed.allowed)return {status:`dataset-${allowed.reason}`,fallback:true};
+ if(allowed.routingUse!=='inventory-context')return {status:'dataset-not-eligible-for-ranking',fallback:true};
  // Only public, approved evidence reaches the pure evaluator.
  return evaluateSafeCandidates(providerResult.routes,{observationsByRoute:evidence.observationsByRoute,
   at:requestedAt,latitude,longitude,preference});

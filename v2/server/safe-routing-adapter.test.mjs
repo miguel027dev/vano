@@ -29,3 +29,9 @@ test('approved public evidence can be evaluated in shadow mode',async()=>{
  assert.equal(r.analysis.shadowMode,true);assert.notEqual(r.analysis.status,'evidence-unavailable');
  assert.strictEqual(r.providerResult,input);
 });
+test('approved historical-hazard records never participate in route ranking',()=>{
+ const hazardApproval={...approval,layer:'geoportal:risco_hidrologico'};
+ const hazardSnapshot={...snapshot,layer:'geoportal:risco_hidrologico'};
+ const r=evaluateApprovedEvidence(input,{datasetApproval:hazardApproval,snapshot:hazardSnapshot,observationsByRoute:observations});
+ assert.equal(r.status,'dataset-not-eligible-for-ranking');assert.equal(r.fallback,true);
+});

@@ -10,8 +10,11 @@ const LAYERS=Object.freeze({
   roads:{layer:'geoportal:segmento_logradouro',kind:'public-road-network',routingUse:'geometry-alignment'},
   sidewalks:{layer:'geoportal:calcada',kind:'public-infrastructure',routingUse:'context-only'},
   busLanes:{layer:'geoportal:faixa_onibus',kind:'public-road-regulation',routingUse:'context-only'},
-  hydrologicalRisk:{layer:'geoportal:risco_hidrologico',kind:'public-historical-hazard',routingUse:'context-only'},
-  floodHistory:{layer:'geoportal:risco_ocorrencia_alagamento',kind:'public-historical-hazard',routingUse:'context-only'},
+  // These records concern areas/occurrences, not people. They must never be
+  // used to penalize neighbourhoods or infer anything about their residents.
+  hydrologicalRisk:{layer:'geoportal:risco_hidrologico',kind:'public-historical-hazard',routingUse:'display-not-routing',sensitivePopulationContext:true,
+    metadataUrl:'https://metadados.geosampa.prefeitura.sp.gov.br/geonetwork/srv/api/records/cefffc6d-8d1d-419b-a267-8d87a37b9e0e'},
+  floodHistory:{layer:'geoportal:risco_ocorrencia_alagamento',kind:'public-historical-hazard',routingUse:'display-not-routing',sensitivePopulationContext:true},
   signals:{layer:'geoportal:semaforo',kind:'public-infrastructure',routingUse:'context-only'},
   structures:{layer:'geoportal:obra_arte',kind:'public-infrastructure',routingUse:'geometry-review'}
 });
@@ -22,7 +25,8 @@ export const SAFE_ROUTING_DATASET_POLICY=Object.freeze(Object.fromEntries(Object
   approval:'pending-license-crs-quality-review',
   mayUploadFullSnapshot:false,
   mayInfluenceAutomaticRanking:false,
-  containsPersonalData:false
+  containsPersonalData:false,
+  sensitivePopulationContext:rule.sensitivePopulationContext===true
 })])));
 
 export const FORBIDDEN_ROUTE_INPUTS=Object.freeze(['name','fullName','email','phone','age','birthDate','accountId','userId','preciseLocationHistory']);

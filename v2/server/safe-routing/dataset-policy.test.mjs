@@ -10,6 +10,12 @@ test('all discovered GeoSampa pilot layers start blocked from routing and bulk s
   assert.equal(rule.mayUploadFullSnapshot,false);assert.equal(rule.mayInfluenceAutomaticRanking,false);
  }
 });
+test('historical hazard data cannot label people or penalize a neighbourhood in ranking',()=>{
+ for(const key of ['hydrologicalRisk','floodHistory']){
+  assert.equal(SAFE_ROUTING_DATASET_POLICY[key].routingUse,'display-not-routing');
+  assert.equal(SAFE_ROUTING_DATASET_POLICY[key].sensitivePopulationContext,true);
+ }
+});
 test('names, age and account information are prohibited from route calculation',()=>{
  assert.equal(assertNoPersonalRouteInputs({requestedAt:'2026-10-16T12:00:00Z'}),true);
  for(const input of [{name:'Miguel'},{age:22},{userId:'u1'},{preciseLocationHistory:[]}])assert.throws(()=>assertNoPersonalRouteInputs(input),/proibido/);
