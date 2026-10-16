@@ -17,6 +17,7 @@ test('Falha tardia do GPS não cancela localização real recente',()=>{
   assert.equal(gpsStateAfterError({code:2},fix,2000),'granted');
   assert.equal(gpsStateAfterError({code:3},fix,5000),'granted');
   assert.equal(gpsStateAfterError({code:1},fix,200000),'denied');
+  assert.equal(gpsStateAfterError({code:1},fix,2000),'denied','permission revocation cannot be masked by an older accepted fix');
 });
 test('Rejeita fix inválido, futuro ou muito antigo',()=>{
   assert.equal(hasRecentGpsFix({coords:[1000,20],receivedAt:10},2000),false);
