@@ -49,5 +49,36 @@ test('live VANO V2 named-road MAVI never confirms a noncompliant route',async()=
      maviMode:response.mode,verifiedNewRoute:response.mode==='proposal',
      durationMs:Date.now()-start
    }));
+
+   const observed=current.steps
+     .filter(x=>typeof x?.street==='string'&&x.street.trim().length>=5&&x.street.trim().length<62&&Number(x.distance)>200)
+     .sort((a,b)=>Number(b.distance)-Number(a.distance))[0];
+   if(observed){
+     // This second sample selects a road genuinely present in the returned
+     // baseline, so it exercises the real avoidance/probe branch.
+     const street=observed.street.trim();
+     const check=await post('/api/v2/assistant',{
+       text:'Mavi, não quero ir pela '+street,
+       origin,destination,vehicle:'carro',language:'pt-BR',
+       currentRouteKey:fingerprint,currentDuration:current.duration,telemetry:{}
+     });
+     assert.equal(check.status,200,'named road currently used');
+     const body=await check.json();
+     assert.ok(['proposal','information'].includes(body.mode));
+     if(body.mode==='proposal'){
+       const verified=body.routeData.routes.find(r=>r.id===body.routeId);
+       assert.ok(verified,'new selected provider route');
+       assert.ok(routeRoadEvidence(verified,street).known);
+       assert.equal(routeRoadEvidence(verified,street).uses,false,
+         'actual route must no longer use the specifically named street');
+       assert.notEqual(jevRouteFingerprint(verified),fingerprint);
+     }else{
+       assert.match(body.text,/nao encontrei|não encontrei|mantid|mantive|nao consegui|não consegui/i);
+     }
+     console.info('MAVI on-road real avoidance:',JSON.stringify({
+       inputStreet:street.slice(0,60),initialStreetVerified:true,
+       maviMode:body.mode,verifiedNewRoute:body.mode==='proposal'
+     }));
+   }else console.info('MAVI on-road real avoidance: baseline had no named step longer than 200m.');
  }finally{clearTimeout(deadline);}
 },{timeout:55000});
