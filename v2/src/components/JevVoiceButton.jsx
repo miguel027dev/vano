@@ -410,12 +410,12 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const voiceLabel={
    off:'Ativar escuta da MAVI',ready:'MAVI ativa · aguardando voz',
    listening:'MAVI escutando',processing:'MAVI processando',
-   speaking:'MAVI respondendo',paused:'Microfone precisa de atenção'
+   speaking:'MAVI respondendo',paused:'MAVI em pausa · toque para retomar'
  }[voicePhase];
  return <div className={'jev-control-wrap mavi-voice-'+voicePhase}>
   <button type="button"
    className={'circle-btn jev-mic '+(enabled?'jev-mic-active ':'')+(status==='listening'?'jev-listening':'')}
-   onClick={toggle} aria-label={enabled?'Desativar escuta contínua da MAVI':'Ativar escuta da MAVI'}
+   onClick={toggle} aria-label={enabled&&status==='typed'?'Retomar escuta da MAVI':enabled?'Desativar escuta da MAVI':'Ativar escuta da MAVI'}
    aria-pressed={enabled} aria-describedby="mavi-voice-status" title={voiceLabel}>
    <span className="mavi-mic-glyph" aria-hidden="true">
      {voicePhase==='off'?<MicOff size={21} strokeWidth={1.9}/>:
