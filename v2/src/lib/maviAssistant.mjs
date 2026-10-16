@@ -18,7 +18,7 @@ export function classifyMaviIntent(value){
  const s=maviNormalize(value);
  // Read-only questions must be recognized BEFORE old routing triggers
  // (e.g. "qual a distância da rota?" is not a request to change it).
- if(matches(s,/^(?:oi|ola|bom dia|boa tarde|boa noite|e ai|tudo bem)\b|(?:mavi )?tudo bem/))return 'greeting';
+ if(matches(s,/^(?:oi|ola|bom dia|boa tarde|boa noite|e ai|tudo bem|tudo certo|fala|salve|opa|alo|ta ai|esta ai|me ouve|esta me ouvindo|mavi)\b|(?:mavi )?tudo (?:bem|certo)/))return 'greeting';
  if(matches(s,/\b(?:quem e voce|qual seu nome|se apresente|quem ta falando|voce e quem)\b/))return 'identity';
  if(matches(s,/\b(?:como voce funciona|como funciona a mavi|voce e uma inteligencia|usa inteligencia artificial)\b/))return 'about';
  if(matches(s,/\b(?:o que voce faz|o que sabe fazer|me ajuda|ajuda|comandos|exemplos|opcoes de voz|o que posso pedir|quais as funcoes|quais funcoes)\b/))return 'help';
