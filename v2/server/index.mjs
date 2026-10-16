@@ -39,6 +39,7 @@ import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from '.
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
+import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
@@ -636,6 +637,18 @@ async function route(req, res) {
     });
     return json(res,200,result,{'Cache-Control':'public, max-age=55'});
   }
+  // Read-only global context. It is independent of /api/route so a slow external
+  // provider never increases navigation TTFB or changes the VANO route ranking.
+  if(pathname==='/api/context/sources'&&req.method==='GET')
+    return json(res,200,{sources:GLOBAL_CONTEXT_SOURCES});
+  if(pathname==='/api/context/global'&&req.method==='GET'){
+    if(!limits(req,res,'global-context',18,60000))return;
+    if(process.env.VANO_GLOBAL_CONTEXT_ENABLED==='0')return json(res,200,{events:[],weather:null,sources:[],affectsRouting:false,disabled:true});
+    const bbox=parseGlobalBBox(u.searchParams.get('bbox'));
+    if(!bbox)return err(res,400,'Área global inválida ou muito ampla.');
+    const result=await queryGlobalContext(bbox);
+    return json(res,200,result,{'Cache-Control':'public, max-age=90'});
+  }
   if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
   // Address lookup only after location permission; no coordinates are persisted.
   // A strict request limit prevents GPS jitter from exhausting provider quotas.
@@ -1083,7 +1096,11 @@ async function route(req, res) {
     let result;
     try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);}
     catch(e){runtimeMetrics.routeErrors+=1;throw e;}
-    finally {runtimeMetrics.routeLatencyMs+=Math.max(0,performance.now()-routeStarted);}
+    finally {
+      const elapsed=Math.max(0,performance.now()-routeStarted);
+      runtimeMetrics.routeLatencyMs+=elapsed;
+      if(!res.headersSent)res.setHeader('Server-Timing','route;dur='+Math.round(elapsed));
+    }
     // Risk-first reshuffle is isolated to the 'safe' result; fast/smart stay unchanged.
     // Historical GeoSampa flooding layers are deliberately excluded until their
     // licensing/quality snapshots are approved for routing.
