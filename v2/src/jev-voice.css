@@ -21,3 +21,11 @@
 .jev-text button:disabled{opacity:.35}
 @media(max-width:720px){.jev-control-wrap,.jev-mic{width:44px;height:44px}.jev-panel{width:min(270px,calc(100vw - 78px));right:calc(100% + 9px)}}
 @media(prefers-reduced-motion:reduce){.jev-listening{animation:none}}
+
+/* Voice recovery actions remain compact on mobile and don't overlap the map. */
+.jev-voice-options{display:flex;flex-wrap:wrap;gap:6px}
+.jev-voice-options button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:30px;padding:6px 8px;border-radius:9px;border:1px solid var(--border,#ddd);background:var(--bg,#f6f7f9);color:var(--ink,#121829);font-size:11px;font-weight:700}
+.jev-voice-options button:disabled{opacity:.42}
+.jev-diagnostic{display:flex;gap:5px;align-items:flex-start;font-size:10px;line-height:1.35;overflow-wrap:anywhere;color:var(--muted,#637183)}
+.jev-diagnostic svg{flex-shrink:0;margin-top:2px}
+.jev-privacy{font-size:10px;line-height:1.4;color:var(--muted,#637183)}
