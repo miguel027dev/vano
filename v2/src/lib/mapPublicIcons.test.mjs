@@ -190,3 +190,15 @@ test('radar bbox includes visible London streets beyond the generic map POI crop
  assert.ok(radar[2]-radar[0]<.3&&radar[3]-radar[1]<.3);
  assert.equal(mapRadarBBox({...m,getZoom:()=>10}),null);
 });
+
+test('official keyless regional roadworks share one work icon; incidents are not disguised as community reports',()=>{
+ const svg=iconSvg('alerta-via');
+ assert.ok(svg.includes('<path'));
+ assert.equal(iconMeta('alerta-via')[0],'alert');
+ const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
+ assert.ok(overlay.includes("void refreshRegional(bbox)"));
+ assert.ok(overlay.includes("item.regional?' · atualização oficial'"));
+ assert.ok(overlay.includes("rememberPublicFeatures(sourceCache,data.features"));
+ assert.ok(css.includes('.v40-public-pin.is-road-alert'));
+});
