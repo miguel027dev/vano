@@ -37,3 +37,16 @@ test('MAVI v2 uses signed local cloud tickets and Cartesia route-proof cues, lea
  assert.match(server,/confirmations\.has\(body\.text\)/);
  assert.match(mic,/response\?\.voiceTicket\|\|response\?\.voiceTicketPromise/);
 });
+
+test('real 150-meter maneuver is permitted by the server; arbitrary speech is rejected',()=>{
+ const server=read('../../server/index.mjs');
+ const expression=server.split('\n').find(line=>line.includes('Daqui a')&&line.includes('.test(txt)'));
+ assert.ok(expression,'maneuver authorization pattern is defined');
+ const parsed=expression.match(/if\(!\/(.+)\/i\.test\(txt\)\)/);
+ assert.ok(parsed,'server uses a static bounded speech grammar');
+ const rule=new RegExp(parsed[1],'i');
+ assert.equal(rule.test('Em 150 metros, vire à direita.'),true);
+ assert.equal(rule.test('Siga em frente.'),true);
+ assert.equal(rule.test('Navegação iniciada.'),true);
+ assert.equal(rule.test('Peça uma pizza grande e envie o cartão de crédito.'),false);
+});
