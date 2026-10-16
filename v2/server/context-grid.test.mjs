@@ -4,6 +4,8 @@ import {geometryBounds,geometryTiles,pointGeometryDistance,inspectLayer} from '.
 import {validateContextIndex,compareInfrastructure} from './safe-routing/context-grid.mjs';
 import {sanitizeGeoSampaFeature} from './safe-routing/ingestion.mjs';
 import {readB2Object} from './safe-routing/b2-storage.mjs';
+import {gzipSync} from 'node:zlib';
+import {createHash} from 'node:crypto';
 const route={id:'candidate',geometry:{type:'LineString',coordinates:[[-46.655,-23.56],[-46.655,-23.561]]}};
 test('spatial context separates nearby parallel roads and does not claim current flooding',()=>{
  const f={id:'road',geometry:route.geometry,properties:{nm_logradouro:'Rua teste'}};
@@ -37,4 +39,20 @@ test('B2 range reads require exact partial response and byte count',async()=>{
  const body=await readB2Object({...args,fetcher:async(url,opts)=>{assert.equal(opts.headers.Range,'bytes=3-4');return new Response('ab',{status:206,headers:{'content-range':'bytes 3-4/10'}});}});assert.equal(body.toString(),'ab');
  await assert.rejects(()=>readB2Object({...args,fetcher:async()=>new Response('ab')}),/intervalo/);
  await assert.rejects(()=>readB2Object({...args,fetcher:async()=>new Response('a',{status:206,headers:{'content-range':'bytes 3-4/10'}})}),/incompleto/);
+});
+test('five-layer integration verifies ranges and hashes for real-shaped candidate geometry',async()=>{
+ const names={roads:'segmento_logradouro',sidewalks:'calcada',busLanes:'faixa_onibus',hydrologicalRisk:'risco_hidrologico',floodHistory:'risco_ocorrencia_alagamento'};
+ const ids=Object.fromEntries(Object.keys(names).map(k=>[k,`geosampa-${k.toLowerCase()}-unit-context`]));
+ const body=gzipSync(JSON.stringify({type:'FeatureCollection',features:[{type:'Feature',id:'fixture',geometry:route.geometry,properties:{sourceUpdatedAt:null}}]}));
+ const env={VANO_SAFE_B2_APPLICATION_KEY_ID:'unit-key-id',VANO_SAFE_B2_APPLICATION_KEY:'not-a-real-secret',VANO_SAFE_B2_BUCKET_ID:'unit-bucket-id',VANO_SAFE_B2_BUCKET:'vano-safe-routing-sp-staging-20261016',VANO_SAFE_B2_CONTEXT_GRIDS:JSON.stringify(ids)};
+ let ranges=0;
+ const fetcher=async(url,options)=>{
+  if(String(url).includes('b2_authorize_account'))return new Response(JSON.stringify({authorizationToken:'test-token',apiInfo:{storageApi:{apiUrl:'https://api005.backblazeb2.com',downloadUrl:'https://f005.backblazeb2.com',allowed:{buckets:[{id:'unit-bucket-id',name:env.VANO_SAFE_B2_BUCKET}],namePrefix:'snapshots/',capabilities:['writeFiles','readFiles']}}}}));
+  const key=Object.keys(ids).find(k=>String(url).includes(ids[k]));assert.ok(key);
+  if(String(url).endsWith('index.json'))return new Response(JSON.stringify({kind:'context-grid-v1',key,sourceLayer:`geoportal:${names[key]}`,snapshotId:ids[key],complete:true,gridScale:50,usedForRouting:false,stage:'private-evaluation-unapproved',features:1,rejected:0,reportedTotal:1,tiles:{'-2333_-1179':{path:`snapshots/${ids[key]}/bundles/0.bin`,offset:10,bytes:body.length,features:1,sha256:createHash('sha256').update(body).digest('hex')}}}));
+  ranges++;assert.equal(options.headers.Range,`bytes=10-${9+body.length}`);
+  return new Response(body,{status:206,headers:{'content-range':`bytes 10-${9+body.length}/${body.length+10}`}});
+ };
+ const result=await compareInfrastructure([route],{env,fetcher});assert.equal(result.complete,true);assert.equal(result.usedForRouting,false);assert.equal(ranges,5);
+ assert.equal(Object.keys(result.layers).length,5);assert.equal(result.layers.roads.comparisons[0].matchedFeatures,1);
 });

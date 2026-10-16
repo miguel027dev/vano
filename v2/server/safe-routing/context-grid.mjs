@@ -27,6 +27,8 @@ export async function compareInfrastructure(routes,{env=process.env,fetcher=fetc
  if(!Array.isArray(routes)||!routes.length||routes.length>4)throw Error('Candidatos inválidos');
  const ids=JSON.parse(env.VANO_SAFE_B2_CONTEXT_GRIDS||'{}'),keys=[...new Set(routes.flatMap(tilesForRoute))];
  if(keys.length>25)throw Error('Área excessiva');
+ const originalFetcher=fetcher,deadline=AbortSignal.timeout(25000);
+ fetcher=(url,options={})=>originalFetcher(url,{...options,signal:options.signal?AbortSignal.any([deadline,options.signal]):deadline});
  const config=b2RuntimeConfig(env),authorization=await authorizeB2(config,{fetcher});
  const layers={};let totalBytes=0,totalFeatures=0;
  for(const [key,radius] of Object.entries(CONTEXT_LAYERS)){
@@ -45,5 +47,5 @@ export async function compareInfrastructure(routes,{env=process.env,fetcher=fetc
   }
   layers[key]={snapshotId:snapshot,sourceFeatures:index.features,rejected:index.rejected,attributeFeatures:index.attributeFeatures,collectedAt:index.collectedAt,queriedFeatures:features.size,comparisons:routes.map(r=>({id:r.id,...inspectLayer(r,[...features.values()],{radius,key})}))};
  }
- return {complete:true,queriedTiles:keys.length,queriedBytes:totalBytes,layers,usedForRouting:false,licenseReviewed:false,requestedAt:new Date().toISOString(),timeZone:'America/Sao_Paulo',warning:'Dados cadastrais e históricos; não confirmam condições atuais. Horários de faixas são informativos e não alteram restrições do provedor.'};
+ return {complete:true,queriedTiles:keys.length,queriedBytes:totalBytes,layers,usedForRouting:false,licenseReviewed:false,requestedAt:new Date().toISOString(),timeZone:'America/Sao_Paulo',warning:'Amostragem a cada 50 m, não uma inspeção contínua. Dados cadastrais e históricos não confirmam condições atuais nem ausência de perigo. Horários de faixas são informativos e não alteram restrições do provedor.'};
 }
