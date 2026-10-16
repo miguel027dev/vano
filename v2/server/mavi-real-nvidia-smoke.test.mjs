@@ -46,5 +46,20 @@ test('real NVIDIA NIM replies via deployed MAVI guest/CSRF assistant',async()=>{
   // intent unknown. At least one generic utterance must reach NVIDIA.
   assert.ok(results.slice(0,2).some(x=>x.intent==='general'),
    'NVIDIA did not supply any conversational response: check credentials, model and inference timeout.');
+  // Non-trivial phrasings deliberately not covered by the exact local regex.
+  // The model may propose an intent, but the VANO engine must *not* act
+  // without a real route and user confirmation.
+  const intents=[
+    ['Mavi, eu queria economizar bastante tempo, dá para ver um percurso que me faça chegar mais cedo?','fast_route'],
+    ['Mavi, não tenho vontade de atravessar a Avenida Morumbi. Você acha um caminho por outro lado?','avoid_street'],
+    ['Mavi, bateu fome, você encontra um supermercado antes de eu chegar?','find_poi']
+  ];
+  for(const [spoken,wanted] of intents){
+    const {data,latency}=await ask(spoken);
+    console.info('MAVI NVIDIA live intent',JSON.stringify({wanted,got:data.intent,mode:data.mode,latencyMs:latency}));
+    assert.equal(data.mode,'information','must not invent or change a missing route');
+    assert.equal(data.intent,wanted,'NVIDIA did not translate the natural request into its safe VANO function');
+  }
+
  }finally{clearTimeout(timeout);}
 },{timeout:37000});
