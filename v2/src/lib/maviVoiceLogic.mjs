@@ -31,7 +31,7 @@ export function maviConfirmation(command){
  if(/^(?:nao|cancelar|cancela|mantem|manter|deixa|prefiro a atual|fica com a atual|nao troca)\b/.test(s) ||
     /\b(nao gostei|nao quero|mantem essa|mantem a atual|deixa como esta)\b/.test(s))return 'reject';
  if(/^(?:sim|aceito|confirma|confirmar|confirmado|pode|ok|fechado)\b/.test(s) ||
-    /\b(gostei dessa|gostei desta|pode ser essa|pode ser esta|pode trocar|troca a rota|trocar a rota|troque a rota|usa essa|usar essa|siga por essa|vamos nessa)\b/.test(s))
+    /\b(gostei dessa|gostei desta|pode ser essa|pode ser esta|pode trocar|usa essa|usar essa|siga por essa|vamos nessa)\b/.test(s))
    return 'accept';
  return null;
 }
