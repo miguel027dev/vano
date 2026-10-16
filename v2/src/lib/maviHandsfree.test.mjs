@@ -1,21 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-test('MAVI voice-only UI retains one microphone and does not show text controls',()=>{
+test('MAVI /v2 has only microphone button and no typing or route action panel',()=>{
  const component=readFileSync(new URL('../components/JevVoiceButton.jsx',import.meta.url),'utf8');
  const css=readFileSync(new URL('../jev-voice.css',import.meta.url),'utf8');
- assert.match(component,/aria-label=\{enabled\?'Desativar Mavi/);
+ assert.match(component,/aria-label=\{active\?'Desativar Mavi/);
+ assert.match(component,/new MaviVoiceController/);
+ assert.match(component,/controller\.start\(\)/);
+ assert.match(component,/role="status"/);
  assert.doesNotMatch(component,/<section\b|<form\b|<input\b|<textarea\b|<select\b|jev-panel/);
  assert.doesNotMatch(css,/\.jev-panel|\.jev-text|\.jev-voice-options/);
- assert.match(component,/consumeMaviTranscript\(phrase/);
- assert.match(component,/maviConfirmation\(command\)/);
- assert.match(component,/instance\.continuous=false/);
- assert.match(component,/interimResults=true/);
- assert.match(component,/maviRearmDelay/);
- assert.match(component,/document\.visibilityState==='hidden'/);
- assert.match(component,/dispatchMaviRoute\(command/);
- assert.match(component,/acceptedCue/);
- assert.doesNotMatch(component,/const ack=await speakVoice/);
- assert.match(component,/await speakVoice\(reply\?\.text/);
- assert.match(component,/phaseRef\.current==='CONFIRM'/);
+ const controller=readFileSync(new URL('./maviVoiceController.mjs',import.meta.url),'utf8');
+ assert.match(controller,/consumeMaviTranscript/);
+ assert.match(controller,/recognition\.continuous=false/);
+ assert.match(controller,/recognition\.interimResults=true/);
+ assert.match(controller,/this\.d\.onCommand\(command,controller\.signal\)/);
 });
