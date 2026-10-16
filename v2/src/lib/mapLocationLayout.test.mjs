@@ -20,7 +20,9 @@ test('first real GPS centers immediately without relying on loading all map tile
  assert.doesNotMatch(map,/if\(backend.current==='mapbox'&&!isLoaded\(map\)\)return/);
  assert.match(map,/map\.jumpTo\(\{center:d\.gpsCoords/);
  assert.doesNotMatch(map,/maskInitialMap/);
- assert.match(map,/paintMapbox\(map,latest\.current,lastSelection\);centerOnFirstGpsFix\(\)/);
+ assert.match(map,/paintMapbox\(map,latest\.current,lastSelection\)/);
+ assert.match(map,/setError\(''\);centerOnFirstGpsFix\(\)/);
+ assert.ok(map.indexOf('paintMapbox(map,latest.current,lastSelection)')<map.indexOf("setError('');centerOnFirstGpsFix()"),'paint and recover must happen before the GPS recenter');
  assert.match(page,/startGpsSession\(navigator\.geolocation/);
  assert.doesNotMatch(page,/useEffect\(\(\)=>\{requestGPS\(false\);\},\[\]\)/);
 });
