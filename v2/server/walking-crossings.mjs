@@ -5,7 +5,7 @@
  */
 import {pointOK} from './routing.mjs';
 
-const ENDPOINT='https://overpass.kumi.systems/api/interpreter';
+const ENDPOINT='https://overpass-api.de/api/interpreter';
 const CACHE_MS=6*60*1000,MAX_CACHE=45,cache=new Map();
 const RAD=Math.PI/180;
 function meters(a,b){
