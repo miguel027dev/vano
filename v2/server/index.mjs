@@ -847,7 +847,7 @@ async function route(req, res) {
       ...body.context,talkMode:talkRequested,
       ...(talkRequested?{conversationHistory:talkHistory}:{})
     },{
-      requestTimeoutMs:body.context?.firstMaviTurn===true&&!talkRequested?2000:undefined
+      requestTimeoutMs:body.context?.firstMaviTurn===true?2000:undefined
     }):null;
     // A conversational message never directly becomes a model-suggested route
     // mutation; the user must separately request an explicit navigation action.
