@@ -22,7 +22,7 @@ export function maviNvidiaConfig(env=process.env){
  const key=String(env.NVIDIA_API_KEY||'').trim();
  const model=String(env.NVIDIA_MAVI_MODEL||MODEL).trim();
  const enabled=env.VANO_MAVI_NVIDIA_ENABLED==='1'&&key.length>12&&model.length>=5;
- return {enabled,key,model,timeoutMs:Math.min(7000,Math.max(2000,Number(env.VANO_MAVI_NVIDIA_TIMEOUT_MS)||4200))};
+ return {enabled,key,model,timeoutMs:Math.min(7000,Math.max(2000,Number(env.VANO_MAVI_NVIDIA_TIMEOUT_MS)||5600))};
 }
 const SYSTEM=[
  'Você é a MAVI, assistente PT-BR de navegação do VANO Maps.',
