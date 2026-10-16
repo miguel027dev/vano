@@ -14,7 +14,7 @@ def test_localization_does_not_block_first_paint_for_pt_br():
 
 def test_repository_has_optimized_controlled_stylesheets():
     css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
-    assert css_files == ["vano-foundation.css", "vano-runtime.css", "vano.css"]
+    assert css_files == ["vano-foundation.css", "vano-runtime.css", "vano-v2.css", "vano.css"]
 
 
 def test_templates_reference_controlled_local_stylesheets():
@@ -22,7 +22,7 @@ def test_templates_reference_controlled_local_stylesheets():
     pattern = re.compile(r"filename=['\"]([^'\"]+\.css)['\"]")
     for path in (ROOT / "templates").glob("*.html"):
         refs.update(pattern.findall(path.read_text(encoding="utf-8", errors="ignore")))
-    assert refs == {"vano-runtime.css", "vano-foundation.css"}
+    assert refs == {"vano-runtime.css", "vano-foundation.css", "vano-v2.css"}
 
 
 def test_onboarding_stays_lightweight_outside_shared_stylesheet():
