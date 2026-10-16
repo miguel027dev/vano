@@ -21,6 +21,7 @@ import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import JevVoiceButton from '../components/JevVoiceButton.jsx';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
+import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
 import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
@@ -46,6 +47,7 @@ export default function MapPage({active=true}){
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
+  const [maviPreview,setMaviPreview]=useState(null); // V2 only, never changes the active route.
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
@@ -407,6 +409,14 @@ export default function MapPage({active=true}){
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
   // Experimental-only integration: none of these actions are exposed on /mapa.
   const jevKey=jevMode?jevRouteFingerprint(route):null;
+  const visibleMaviPreview=jevMode&&maviPreview?.sourceKey===jevKey?maviPreview:null;
+  const focusMaviPreview=!!visibleMaviPreview&&canFocusMaviPreview({
+    navigation:navMode,hasLiveGPS,speedKmh
+  });
+  function showMaviPreview(proposal){
+    if(jevMode)setMaviPreview(selectMaviPreview(proposal,route,dest));
+  }
+  function clearMaviPreview(){setMaviPreview(null);}
   async function askJev(text,signal,maviMeta={}){
     // Informational commands work even before planning a route. The server
     // gates route-changing requests until a real route and vehicle exist.
@@ -444,6 +454,13 @@ export default function MapPage({active=true}){
   }
   function handleMaviAction(action){
     if(!jevMode)return false;
+    if(action==='recenter_map'){mapControl.current?.center?.();return true;}
+    if(action==='show_traffic'){setTrafficEnabled(true);return true;}
+    if(action==='hide_traffic'){setTrafficEnabled(false);return true;}
+    if(action==='route_overview'){
+      if(navMode&&(!hasLiveGPS||!Number.isFinite(speedKmh)||speedKmh>2))return false;
+      mapControl.current?.overview?.();return true;
+    }
     if(action==='mute_guidance'){
       setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});return true;
     }
@@ -647,7 +664,7 @@ export default function MapPage({active=true}){
   })).filter(lane=>lane.symbols.length):[];
 
   return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap active={active} userCoords={displayCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} onNavigationProgress={setGuidance} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
+    <VanoMap active={active} userCoords={displayCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} onNavigationProgress={setGuidance} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
       <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
@@ -715,7 +732,7 @@ export default function MapPage({active=true}){
       </span>
     </div>}
     {!searchOpen&&<div className="map-controls">
-       {jevMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}
+       {jevMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {navMode&&<button type="button" title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}
       <button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>
