@@ -465,7 +465,7 @@ async function route(req, res) {
     if(!limits(req,res,'admin-console',30,60000))return;
     if(pathname==='/api/admin/safe-routing/storage'){
       if(!limits(req,res,'safe-storage-diagnostics',2,60000))return;
-      const snapshotId=process.env.VANO_SAFE_B2_TEST_SNAPSHOT;
+      const snapshotId=u.searchParams.get('snapshotId')||process.env.VANO_SAFE_B2_TEST_SNAPSHOT;
       if(!snapshotId)return json(res,503,{available:false,reason:'snapshot-not-configured',usedForRouting:false});
       try{return json(res,200,{available:true,...await inspectB2Snapshot(snapshotId)});}
       catch{return json(res,503,{available:false,reason:'snapshot-verification-failed',usedForRouting:false});}
