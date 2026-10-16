@@ -191,7 +191,8 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      if(['not-allowed','service-not-allowed','audio-capture','language-not-supported','language-unavailable'].includes(code)){
        disable();return;
      }
-     if(code!=='no-speech'&&code!=='aborted'&&++hardErrorsRef.current>=3){disable();return;}
+     // A spontaneous aborted event is a failure; explicit abort already nulls the ref.
+     if(code!=='no-speech'&&++hardErrorsRef.current>=3){disable();return;}
    };
    recognition.onend=()=>{
      if(recognizerRef.current!==recognition)return;
@@ -207,8 +208,8 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      return true;
    }catch(error){record('recognition_start_'+String(error?.name||'failed'));
      recognizerRef.current=null;
-     if(++hardErrorsRef.current>=3){disable();return false;}
-     scheduleNextListen(2000);return false;
+     // A click without working recognition must not leave a misleading green mic.
+     disable();return false;
    }
  }
  const listenRef=useRef(listen);listenRef.current=listen;
