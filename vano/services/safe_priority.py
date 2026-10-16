@@ -44,8 +44,8 @@ def score_safe_candidate(route, fastest_duration_s):
         route["safe_priority_components"] = {"status": "unavailable"}
         return None
     c = _clamp(conservative)
-    hotspot = _clamp(_number(route.get("hotspot_risk"), 0.0))
-    exposure = _clamp(_number(route.get("risk_exposure_pct"), 0.0))
+    hotspot = _clamp(_number(route.get("hotspot_risk"), 50.0))
+    exposure = _clamp(_number(route.get("risk_exposure_pct"), 50.0))
     confidence = _clamp(_number(route.get("data_confidence"), 30.0))
     observed = {
         "conservative_safety": c,
