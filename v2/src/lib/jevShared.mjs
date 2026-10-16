@@ -2,7 +2,8 @@
 export function classifyJev(text) {
   if (typeof text !== 'string' || !text.trim() || text.length > 360) return 'unknown';
   const s = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
-  if (/\b(pedagio|pedagios|toll)\b/.test(s) && /\b(sem|evit|nao|desvi|fug|tir|quero)\w*/.test(s)) return 'avoid_tolls';
+  if (/\b(radar|radares|camera de velocidade|cameras de velocidade)\b/.test(s) && /\b(menos|sem|evit|desvi|fug|reduz|troca|muda|nao)\w*/.test(s)) return 'radar_unavailable';
+  if (/\b(pedagio|pedagios|toll)\b/.test(s) && /\b(sem|evit|nao|desvi|fug|tir|quero|menos|reduz)\w*/.test(s)) return 'avoid_tolls';
   if (/\b(ladeira|subida|morro|aclive|inclinacao)\b/.test(s)) return 'slope_unavailable';
   if (/\b(transito|congestionamento|engarrafamento|engarrafado|trafego)\b/.test(s)) return 'traffic';
   if (/\b(outra rota|outro caminho|caminho diferente|rota alternativa|troca a rota|trocar a rota|troque a rota|troca rota|muda a rota|nao gostei dessa|nao gostei da rota|recalcula|mudar a rota|desviar|por outro lado|mais rapido)\b/.test(s)) return 'alternative';

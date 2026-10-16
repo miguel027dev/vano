@@ -4,6 +4,8 @@ import { classifyJev,jevRouteFingerprint,chooseJevProposal } from '../src/lib/je
 const shape=(id,variation=0)=>({id,duration:12,distance:5,geometry:{type:'LineString',coordinates:[[-46.70,-23.60],[-46.69+variation,-23.59],[-46.68,-23.58]]}});
 test('JEV understands Brazilian Portuguese requests without LLM',()=>{
  assert.equal(classifyJev('Não quero pagar pedágio.'),'avoid_tolls');
+ assert.equal(classifyJev('Troca a rota para um caminho com menos pedágios.'),'avoid_tolls');
+ assert.equal(classifyJev('Troca a rota para menos radares.'),'radar_unavailable');
  assert.equal(classifyJev('Tá muito trânsito, procura por outro lado.'),'traffic');
  assert.equal(classifyJev('Não gostei dessa rota, tenta outro caminho.'),'alternative');
  assert.equal(classifyJev('Troca a rota pra mim.'),'alternative');

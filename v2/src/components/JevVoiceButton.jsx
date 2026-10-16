@@ -3,6 +3,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {Mic,MicOff} from 'lucide-react';
 import {consumeMaviTranscript,maviConfirmation,maviRearmDelay} from '../lib/maviVoiceLogic.mjs';
 import {classifyJev} from '../lib/jevShared.mjs';
+import {dispatchMaviRoute} from '../lib/maviRouteDispatch.mjs';
 
 /** Only /v2: no text input or driving interaction. Speech recognition is
  * provided by the browser and may involve remote vendor processing.
@@ -18,9 +19,33 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
  const contextRef=useRef({onCommand,onAccept,navigationActive,maneuverDistance,muted});
  contextRef.current={onCommand,onAccept,navigationActive,maneuverDistance,muted};
  const pendingRef=useRef(null),wakeUntilRef=useRef(0),softFailures=useRef(0),hardFailures=useRef(0);
- const acceptingOwnRoute=useRef(false);
+ const acceptingOwnRoute=useRef(false),cueContextRef=useRef(null);
  const Recognizer=typeof window!=='undefined'?(window.SpeechRecognition||window.webkitSpeechRecognition):null;
 
+ function unlockCue(){
+   try{
+     const Ctx=window.AudioContext||window.webkitAudioContext;
+     if(!Ctx)return;
+     if(!cueContextRef.current)cueContextRef.current=new Ctx();
+     const resumed=cueContextRef.current.resume?.();
+     resumed?.catch?.(()=>{});
+   }catch{/* unsupported audio context */}
+ }
+ function acceptedCue(){
+   // A short nonverbal acknowledgement works even when browser TTS is blocked.
+   // The map/navigation audio is never cancelled or interrupted.
+   try{
+     const ctx=cueContextRef.current;
+     if(!ctx||ctx.state!=='running'||window.speechSynthesis?.speaking)return;
+     const oscillator=ctx.createOscillator(),gain=ctx.createGain(),t=ctx.currentTime;
+     oscillator.type='sine';oscillator.frequency.setValueAtTime(660,t);
+     gain.gain.setValueAtTime(.0001,t);
+     gain.gain.exponentialRampToValueAtTime(.065,t+.012);
+     gain.gain.exponentialRampToValueAtTime(.0001,t+.12);
+     oscillator.connect(gain);gain.connect(ctx.destination);
+     oscillator.start(t);oscillator.stop(t+.14);
+   }catch{/* voice command still routes */}
+ }
  function status(phase){
    phaseRef.current=phase;
    if(mountedRef.current)setStateLabel(
@@ -103,7 +128,9 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      if(['not-allowed','service-not-allowed','audio-capture','language-not-supported','language-unavailable'].includes(lastError)){
        turnOff();return;
      }
-     if(!['no-speech','aborted'].includes(lastError)){
+     // Repeated unsolicited browser aborts must not leave a permanently green
+     // microphone in an infinite restart cycle. Programmatic aborts clear the ref.
+     if(!['no-speech'].includes(lastError)){
        hardFailures.current++;
        if(hardFailures.current>=3)turnOff();
      }
@@ -115,7 +142,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      // Safari/embedded browsers sometimes finish without a final result.
      // Only accept an interim with an explicit Mavi wake word and an actionable intent,
      // or a confirmation following an already recognized Mavi.
-     if(!hadFinal&&!handled&&interim){
+     if(!handled&&interim){
        const tentative=consumeMaviTranscript(interim,{wakeUntil:wakeUntilRef.current,now:Date.now()});
        const valid=tentative.kind==='wake'||(
          tentative.kind==='command'&&(
@@ -125,7 +152,8 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
        );
        if(valid && consume(interim))return;
      }
-     if(lastError==='aborted')return;
+     // A spontaneous 'aborted' error still needs a bounded recovery. Explicit
+     // application aborts already clear recognizerRef, so onend is ignored.
      if(!hadFinal)softFailures.current++;else softFailures.current=0;
      const ms=maviRearmDelay({
        silentCount:softFailures.current,
@@ -173,10 +201,19 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
          const voices=synth.getVoices?.()||[];
          phrase.voice=voices.find(v=>String(v.lang).toLowerCase()==='pt-br')||
            voices.find(v=>String(v.lang).toLowerCase().startsWith('pt'))||null;
-         phrase.onend=()=>finish(true);phrase.onerror=()=>finish(false);
+         let didStart=false;
+         phrase.onstart=()=>{didStart=true;};
+         phrase.onend=()=>finish(true);
+         phrase.onerror=()=>finish(false);
          speakingRef.current=phrase;
-         speechTimer.current=setTimeout(()=>finish(false),18000);
          synth.speak(phrase);
+         // Some embedded browsers expose TTS but silently refuse to play.
+         // Fail closed instead of indefinitely displaying a green microphone.
+         const maxDuration=Math.max(6000,Math.min(18000,sentence.length*90));
+         speechTimer.current=setTimeout(()=>{
+           if(!didStart&&!synth.speaking)finish(false);
+           else speechTimer.current=setTimeout(()=>finish(false),maxDuration);
+         },3000);
        }catch{finish(false);}
      }
      attempt();
@@ -187,17 +224,15 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    status('PROCESSING');stopListening();wakeUntilRef.current=0;
    pendingRef.current=null;
    const token=++operationRef.current;
-   // A short spoken acknowledgement guarantees visible progress through audio,
-   // without displaying text fields or a distracting panel.
-   const ack=await speakVoice('Certo, vou procurar outra rota.');
-   if(!enabledRef.current||token!==operationRef.current)return;
-   if(!ack){turnOff();return;}
-   status('PROCESSING');
+   // Call the route API FIRST. Never let SpeechSynthesis.onend or an
+   // unavailable Android/browser voice prevent a navigation calculation.
    abortRef.current?.abort?.();
    const controller=new AbortController();abortRef.current=controller;
    const timeout=setTimeout(()=>controller.abort(),13500);
+   const routePromise=dispatchMaviRoute(command,
+     text=>contextRef.current.onCommand(text,controller.signal),acceptedCue);
    let reply;
-   try{reply=await contextRef.current.onCommand(command,controller.signal);}
+   try{reply=await routePromise;}
    catch{reply={mode:'information',text:controller.signal.aborted?
      'A consulta demorou demais. Sua rota atual foi mantida.':
      'Não consegui consultar as rotas. Mantive seu trajeto.'};}
@@ -234,7 +269,9 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    enabledRef.current=true;pendingRef.current=null;
    wakeUntilRef.current=0;softFailures.current=0;hardFailures.current=0;
    setEnabled(true);status('ARMED');
-   // User gesture unlocks device speech where permitted. No audible startup.
+   // Unlock a tiny confirmation cue synchronously inside the user gesture.
+   // The first click stays silent; the cue only plays after recognizing Mavi.
+   unlockCue();
    try{window.speechSynthesis?.resume?.();}catch{/* unavailable */}
    listen();
  }
@@ -247,7 +284,10 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
  useEffect(()=>{
    const onBackground=()=>{if(document.visibilityState==='hidden')turnOff();};
    document.addEventListener('visibilitychange',onBackground);
-   return()=>{document.removeEventListener('visibilitychange',onBackground);mountedRef.current=false;turnOff();};
+   return()=>{document.removeEventListener('visibilitychange',onBackground);mountedRef.current=false;turnOff();
+     try{cueContextRef.current?.close?.();}catch{/* unavailable */}
+     cueContextRef.current=null;
+   };
  },[]);
  return <div className="jev-control-wrap">
    <button type="button" className={'circle-btn jev-mic '+(enabled?'jev-mic-active jev-listening':'')}
