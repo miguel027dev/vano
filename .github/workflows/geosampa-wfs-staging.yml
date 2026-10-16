@@ -19,11 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: v2/package-lock.json
       - name: Install dependencies
         working-directory: v2
-        run: npm ci --ignore-scripts --no-audit --no-fund
+        run: npm install --ignore-scripts --no-audit --no-fund
       - name: Validate WFS client mock contract
         working-directory: v2
         run: node --test server/geosampa-wfs.test.mjs
