@@ -90,9 +90,9 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,guidance=null,awaitingInitialGps=false}){
+export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
-  const firstGpsCenter=useRef(0),municipalFeed=useRef(null);
+  const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
   function centerOnFirstGpsFix(){
     const map=mapRef.current,d=latest.current;
@@ -114,7 +114,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   }
   const [error,setError]=useState('');
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,previewRoute,previewFocus,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null;const initial=coord(latest.current.userCoords);
@@ -176,7 +176,28 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     const detachPublicPins=attachPublicMapOverlay(map,backend.current);
     municipalFeed.current=backend.current==='mapbox'?attachMunicipalTrafficOverlay(map,{enabled:latest.current.trafficEnabled}):null;
     if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation||shouldFollowLocation({navigation:false,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.recenter();
-        else if(validPoint(latest.current.gpsCoords))map.flyTo({center:latest.current.gpsCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.gpsCoords)){map._vanoFreeLook=false;map.panTo(ll(latest.current.motionCoords||latest.current.gpsCoords),{animate:true});}},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt()};
+        else if(validPoint(latest.current.gpsCoords))map.flyTo({center:latest.current.gpsCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.gpsCoords)){map._vanoFreeLook=false;map.panTo(ll(latest.current.motionCoords||latest.current.gpsCoords),{animate:true});}},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt(),
+      overview:()=>{
+        const d=latest.current;
+        const route=(d.routes||[]).find(r=>r.id===d.selectedRoute)||d.routes?.[0];
+        const points=route?.geometry?.coordinates?.filter(validPoint);
+        if(!points?.length)return false;
+        const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
+        if(backend.current==='mapbox'){
+          motion.current?.setFree();
+          const bounds=new mapboxgl.LngLatBounds();points.forEach(p=>bounds.extend(p));
+          if(!bounds.isEmpty())map.fitBounds(bounds,{
+            padding:{top:135,bottom:Math.round(window.innerHeight*.32),left:42,right:42},
+            maxZoom:15.2,duration:reduced?0:650,pitch:0,bearing:0
+          });
+        }else{
+          map._vanoFreeLook=true;
+          map.fitBounds(L.latLngBounds(points.map(ll)),{
+            padding:[48,48],maxZoom:15,animate:!reduced,duration:.6
+          });
+        }
+        return true;
+      }};
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
     return()=>{deleted=true;detachPublicPins?.();municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
@@ -229,6 +250,41 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     municipalFeed.current?.setEnabled(trafficEnabled);
   },[trafficEnabled]);
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(!active)motion.current?.suspend();else{if(backend.current==='mapbox')map.resize();else map.invalidateSize({animate:false});motion.current?.resume();}},[active]);
+  // The MAVI candidate is separate from the live navigation route. If the driver
+  // is moving we draw the suggestion without stealing the follow-camera.
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map)return;
+    if(backend.current==='mapbox'){
+      if(isLoaded(map))paintMapbox(map,latest.current,lastSelection);
+    }else paintLeaflet(map,latest.current);
+    const points=previewRoute?.geometry?.coordinates?.filter(validPoint);
+    if(!previewFocus||!Array.isArray(points)||points.length<2){
+      if(maviPreviewCameraKey.current!==null){
+        maviPreviewCameraKey.current=null;
+        if(backend.current==='mapbox'){
+          map.stop();motion.current?.resume();
+          if(navigation)motion.current?.recenter();else motion.current?.preview();
+        }
+      }
+      return;
+    }
+    const key=points.length+':'+points[0].join(',')+':'+points.at(-1).join(',');
+    if(maviPreviewCameraKey.current===key)return;
+    maviPreviewCameraKey.current=key;
+    const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
+    if(backend.current==='mapbox'){
+      if(!isLoaded(map))return;
+      motion.current?.suspend();map.stop();
+      const bounds=new mapboxgl.LngLatBounds();points.forEach(p=>bounds.extend(p));
+      if(!bounds.isEmpty())map.fitBounds(bounds,{
+        padding:{top:130,bottom:Math.round(window.innerHeight*.32),left:46,right:46},
+        maxZoom:15.2,bearing:0,pitch:0,duration:reduced?0:650
+      });
+    }else map.fitBounds(L.latLngBounds(points.map(ll)),{
+      padding:[46,46],maxZoom:15,animate:!reduced,duration:.55
+    });
+  },[previewRoute,previewFocus]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
   useEffect(()=>{
@@ -377,7 +433,16 @@ function paintLeaflet(map,data){
     const flowPoints=flowRoute?.geometry?.coordinates?.filter(validPoint).map(ll);
     if(flowPoints?.length>1)map._vanoFlowLine=L.polyline(flowPoints,{color:'#fff2df',weight:2,opacity:.62,dashArray:STATIC_LEAFLET_DASH,lineCap:'butt',interactive:false,className:'vano-v35-flow-leaflet'}).addTo(map);
   }
-  map._vanoFlowLine?.bringToFront();
+  const maviPoints=data.previewRoute?.geometry?.coordinates?.filter(validPoint);
+  if(map._vanoMaviPreviewGeometry!==data.previewRoute?.geometry){
+    map._vanoMaviPreviewLine?.remove();map._vanoMaviPreviewLine=null;
+    map._vanoMaviPreviewGeometry=data.previewRoute?.geometry;
+    if(maviPoints?.length>1)map._vanoMaviPreviewLine=L.polyline(maviPoints.map(ll),{
+      color:'#00a9a1',weight:7,opacity:.94,dashArray:'10 8',interactive:false,
+      className:'vano-mavi-route-preview'
+    }).addTo(map);
+  }
+  map._vanoFlowLine?.bringToFront();map._vanoMaviPreviewLine?.bringToFront();
   if(validPoint(data.destination?.coords)){
     if(!map._vanoDestMarker){
       map._vanoDestMarker=L.marker(ll(data.destination.coords),{interactive:false,icon:L.divIcon({
@@ -411,9 +476,22 @@ function paintMapbox(map,data,selection){
     source.setData(body);routeShapes[id]=shapes;
   };
   upsert('vano-v2-alternatives',othersGeo);upsert('vano-v2-selected',selectedGeo);
+  const maviCandidate=feature(data.previewRoute);
+  upsert('vano-mavi-route-preview',geo(maviCandidate?[maviCandidate]:[]));
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
   if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':13,'line-opacity':.94}});
   if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900','line-width':8,'line-opacity':1,'line-opacity-transition':{duration:250}}});
+  if(!map.getLayer('vano-mavi-preview-halo'))map.addLayer({
+    id:'vano-mavi-preview-halo',type:'line',source:'vano-mavi-route-preview',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':'#ffffff','line-width':11,'line-opacity':.95}
+  });
+  if(!map.getLayer('vano-mavi-preview-line'))map.addLayer({
+    id:'vano-mavi-preview-line',type:'line',source:'vano-mavi-route-preview',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':'#00a9a1','line-width':7,'line-opacity':.96,
+      'line-dasharray':[2,1.5],'line-opacity-transition':{duration:180}}
+  });
   // Motion 3.5: decorative dashes use the SAME source as the existing route.
   // The original orange stroke, white outline and progress layer remain intact.
   if(!map.getLayer('vano-v2-flow'))map.addLayer({

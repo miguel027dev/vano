@@ -81,3 +81,90 @@
   .map-page .mavi-offer-card{animation:none}
   .map-page .mavi-offer-actions button{transition:none}
 }
+
+/* Temporary MAVI stop — V2 only, readable above the existing nav summary. */
+.map-page .mavi-stop-continue{
+ position:absolute;z-index:525;bottom:calc(env(safe-area-inset-bottom,0px) + 142px);
+ left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
+ width:min(500px,calc(100% - 32px));padding:9px 11px;
+ border:1px solid color-mix(in srgb,currentColor 12%,transparent);
+ border-radius:15px;background:var(--card, #fff);box-shadow:0 7px 22px #0002;
+ color:var(--text, #1c2931);font:inherit;
+}
+.map-page .mavi-stop-continue>span{min-width:0;flex:1;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:12px;}
+.map-page .mavi-stop-continue>button{border:0;border-radius:10px;cursor:pointer;
+ min-height:40px;padding:8px 10px;color:white;background:#1373d1;font-size:12px;font-weight:700}
+.map-page .mavi-stop-continue>button:disabled{opacity:.6;cursor:wait}
+@media(max-width:400px){
+ .map-page .mavi-stop-continue{flex-direction:column;align-items:stretch;gap:5px;}
+ .map-page .mavi-stop-continue>button{width:100%}
+}
+
+/* MAVI v2 — stateful microphone design. Overlay only; nav map layout unchanged. */
+.jev-control-wrap{overflow:visible}
+.jev-control-wrap .jev-mic{
+ position:relative;isolation:isolate;overflow:visible;
+ border-radius:50%!important;
+ border:1.5px solid rgba(55,73,82,.19)!important;
+ background:var(--panel,#fff)!important;color:var(--ink,#25364a)!important;
+ box-shadow:0 4px 14px rgba(22,34,46,.12)!important;
+ transition:transform .18s ease,border-color .2s ease,background .2s ease,color .2s ease,box-shadow .2s ease;
+}
+.jev-control-wrap .jev-mic:hover{transform:translateY(-1px)}
+.jev-control-wrap .jev-mic:active{transform:scale(.95)}
+.jev-control-wrap .jev-mic:focus-visible{outline:3px solid #66bcac;outline-offset:4px}
+.jev-control-wrap .mavi-mic-glyph{position:relative;z-index:2;display:grid;place-items:center}
+.jev-control-wrap .mavi-mic-pulse{
+ position:absolute;inset:-5px;z-index:0;
+ border:2px solid transparent;border-radius:50%;pointer-events:none;
+}
+.jev-control-wrap .mavi-mic-indicator{
+ position:absolute;right:3px;top:3px;width:7px;height:7px;
+ box-sizing:border-box;border-radius:50%;border:1.5px solid var(--panel,#fff);
+ background:#a7afb6;z-index:3;pointer-events:none;
+}
+.jev-control-wrap.mavi-voice-ready .jev-mic,
+.jev-control-wrap.mavi-voice-listening .jev-mic{
+ background:#e8f8f0!important;color:#147954!important;border-color:#79cba8!important;
+ box-shadow:0 4px 16px #1879561b!important;
+}
+.jev-control-wrap.mavi-voice-listening .mavi-mic-pulse{
+ border-color:#35aa807d;animation:mavi-mic-breathe 2.1s ease-in-out infinite;
+}
+.jev-control-wrap.mavi-voice-ready .mavi-mic-indicator,
+.jev-control-wrap.mavi-voice-listening .mavi-mic-indicator{background:#1cb47b}
+.jev-control-wrap.mavi-voice-processing .jev-mic{
+ background:#e9f1fc!important;color:#2968a8!important;border-color:#93b9ec!important;
+}
+.jev-control-wrap.mavi-voice-processing .mavi-mic-glyph{animation:mavi-mic-turn 1.15s linear infinite}
+.jev-control-wrap.mavi-voice-processing .mavi-mic-indicator{background:#347fd4}
+.jev-control-wrap.mavi-voice-speaking .jev-mic{
+ background:#f2ebfb!important;color:#7952b3!important;border-color:#c5a9e5!important;
+}
+.jev-control-wrap.mavi-voice-speaking .mavi-mic-glyph{animation:mavi-mic-soft-beat .85s ease-in-out infinite}
+.jev-control-wrap.mavi-voice-speaking .mavi-mic-indicator{background:#9664d0}
+.jev-control-wrap.mavi-voice-paused .jev-mic{
+ background:#fff1e6!important;color:#995b23!important;border-color:#e1ad78!important;
+}
+.jev-control-wrap.mavi-voice-paused .mavi-mic-indicator{background:#e5a04f}
+/* Keep status updates available to screen readers, without a visible pill.
+ * The mic's icon, pulse, title and aria-label still show the current state. */
+.jev-control-wrap .mavi-voice-status{
+ position:absolute;width:1px;height:1px;
+ padding:0;margin:-1px;border:0;
+ overflow:hidden;clip:rect(0,0,0,0);
+ white-space:nowrap;pointer-events:none;
+}
+/* Suppress announcements from the deactivated mic; the visible status pill remains gone. */
+.jev-control-wrap.mavi-voice-off .mavi-voice-status{visibility:hidden}
+@keyframes mavi-mic-breathe{
+ 0%,100%{transform:scale(.98);opacity:.28}50%{transform:scale(1.12);opacity:.8}
+}
+@keyframes mavi-mic-turn{to{transform:rotate(360deg)}}
+@keyframes mavi-mic-soft-beat{
+ 0%,100%{transform:scale(1)}50%{transform:scale(1.13)}
+}
+@media(prefers-reduced-motion:reduce){
+ .jev-control-wrap .jev-mic,.jev-control-wrap .mavi-voice-status{transition:none}
+ .jev-control-wrap .mavi-mic-pulse,.jev-control-wrap .mavi-mic-glyph{animation:none!important}
+}

@@ -14,8 +14,15 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/jevShared.mjs';
-import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence} from '../src/lib/jevStreetRouting.mjs';
+import {classifyMaviIntent,answerMaviInformation,MAVI_ROUTE_INTENTS} from '../src/lib/maviAssistant.mjs';
+import {parseMaviPlaceIntent,detectMaviResume,contextualMaviIntent} from '../src/lib/maviFlexible.mjs';
+import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mjs';
+import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
+import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
+import {maviInstantAnswer,MAVI_FAST_OPENING_INTENTS} from './mavi-instant.mjs';
+import {retrieveMaviKnowledge} from './mavi-grounding.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
+import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -662,17 +669,20 @@ async function route(req, res) {
   // prevent third-party use of the paid routing provider as an open proxy.
   // Session-bound one-shot voice endpoint: the caller supplies no free-form
   // text, voice ID, model, or upstream URL. Only assistant-generated text may
-  // be converted. Never disclose the ElevenLabs API key to the browser.
+  // be converted. Never disclose provider credentials to the browser.
   if(pathname==='/api/v2/assistant/speech'&&req.method==='POST'){
     if(!protectedWrite(req,res))return;
     if(!limits(req,res,'mavi-voice-v2',6,60000))return;
-    const config=maviElevenConfig();
-    if(!config.enabled)return err(res,503,'Voz da MAVI ainda não configurada.');
+    const cartesia=maviCartesiaConfig();
+    const eleven=maviElevenConfig();
+    if(!cartesia.enabled&&!eleven.enabled)return err(res,503,'Voz da MAVI ainda não configurada.');
     const body=await getBody(req);
     const ticket=typeof body.ticket==='string'&&body.ticket.length<=2200?body.ticket:'';
     const claim=ticket?openSignedToken(secret,ticket):null;
     const identity=owner(req);
-    if(!claim||claim.type!=='mavi-eleven-tts'||!identity||claim.user!==identity||
+    const provider=claim?.type==='mavi-cartesia-tts'?'cartesia':claim?.type==='mavi-eleven-tts'?'eleven':null;
+    if(!claim||!provider||(provider==='cartesia'&&!cartesia.enabled)||(provider==='eleven'&&!eleven.enabled)||
+       !identity||claim.user!==identity||
        !Number.isFinite(claim.expires)||claim.expires<=now()||
        claim.expires>now()+MAVI_VOICE_TICKET_MS+1000||!maviSpeechText(claim.text))
       return err(res,403,'Autorização de áudio inválida ou expirada.');
@@ -685,7 +695,9 @@ async function route(req, res) {
     const deadline=setTimeout(()=>abort.abort(),14000);
     res.once('close',()=>abort.abort());
     try{
-      const upstream=await fetchMaviVoice(claim.text,config,{signal:abort.signal});
+      const upstream=provider==='cartesia'?
+        await fetchMaviCartesiaVoice(claim.text,cartesia,{signal:abort.signal}):
+        await fetchMaviVoice(claim.text,eleven,{signal:abort.signal});
       if(res.destroyed)return;
       res.writeHead(200,{...headers,'Content-Type':'audio/mpeg','Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'});
       let size=0;
@@ -707,25 +719,150 @@ async function route(req, res) {
   }
   if (pathname === '/api/v2/assistant' && req.method === 'POST') {
     if (!protectedWrite(req,res)) return;
-    if (!limits(req,res,'jev-v2',6,60000)) return;
+    if (!limits(req,res,'jev-v2',18,60000)) return;
     const body=await getBody(req);
     const voiceOwner=owner(req);
     const respondJev=reply=>{
-      const cfg=maviElevenConfig();
+      const cartesia=maviCartesiaConfig();
+      const eleven=maviElevenConfig();
+      const ticketType=cartesia.enabled?'mavi-cartesia-tts':eleven.enabled?'mavi-eleven-tts':null;
       const txt=maviSpeechText(reply?.text);
-      const voiceTicket=cfg.enabled&&voiceOwner&&txt?signedToken(secret,{
-        type:'mavi-eleven-tts',user:voiceOwner,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
+      const voiceTicket=ticketType&&voiceOwner&&txt?signedToken(secret,{
+        type:ticketType,user:voiceOwner,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
       }):null;
       return json(res,200,voiceTicket?{...reply,voiceTicket}:reply);
     };
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
-    const streetRequest=extractJevStreetRequest(body.text);
-    const intent=streetRequest?(streetRequest.kind==='avoid'?'avoid_street':'via_street'):classifyJev(body.text);
+    // NVIDIA NIM is an optional *intent proposal* only. The backend owns
+    // routing/geodata/actions. If disabled, slow or invalid, local rules win.
+    const localStreet=extractJevStreetRequest(body.text);
+    // Follow-up: "MAVI, e no meu caminho?" reuses only the previously verified
+    // POI category, never a guessed destination, stored only in the active tab.
+    const previousCategory=body.context?.previousIntent==='find_poi'&&
+      Object.hasOwn(MAVI_POI_CATEGORIES,String(body.context?.previousCategory||''))?
+      String(body.context.previousCategory):null;
+    const followupText=String(body.text).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const followupPoi=previousCategory&&/^(?:mavi[ ,]*)?(?:e )?(?:no (?:meu )?caminho|na (?:minha )?rota|perto de mim|por perto|mais proximo|mais perto)[?.! ]*$/.test(followupText.trim())?
+      {type:'poi',category:previousCategory,scope:/caminho|rota/.test(followupText)?'route':'nearby'}:null;
+    const localPoi=parseMaviPlaceIntent(body.text)||followupPoi;
+    const localIntent=localPoi?'find_poi':localStreet?
+      (localStreet.kind==='avoid'?'avoid_street':'via_street'):
+      (detectMaviResume(body.text)?'resume_original':
+       contextualMaviIntent(body.text)||classifyMaviIntent(body.text));
+    // Known navigation commands are already exact/fast, and do not need to
+    // pay the LLM latency. Invoke NVIDIA only for ambiguous language and
+    // optional smalltalk. If a sentence mentions a named road but the local
+    // fallback only found a generic "alternative", ask the LLM to clarify.
+    // Opening greetings and capabilities are truthful local answers. Do not
+    // block the very first voice response on an NVIDIA provider cold start.
+    const mentionsNamedRoad=/\b(?:avenida|av|rua|rodovia|estrada|marginal)\s+[\p{L}\p{N}]/iu.test(body.text);
+    const needsNvidia=!localStreet&&!localPoi&&(
+      localIntent==='unknown'||
+      (localIntent==='alternative'&&mentionsNamedRoad));
+    const grounding=localIntent==='unknown'?retrieveMaviKnowledge(body.text,body.context):null;
+    if(grounding)return respondJev(grounding);
+    const llm=needsNvidia?await interpretMaviWithNvidia(body.text,body.context,{
+      requestTimeoutMs:body.context?.firstMaviTurn===true?2000:undefined
+    }):null;
+    // Strong local evidence of an actual named street or POI cannot be
+    // overwritten by a free-form third-party model response.
+    const streetRequest=localStreet||(!localPoi&&llm?.action==='street'?
+      {kind:llm.street_kind,road:roadKey(llm.road),spokenName:llm.road}:null);
+    const poiRequest=localPoi||(!streetRequest&&llm?.action==='poi'?
+      {type:'poi',category:llm.category,scope:llm.scope}:null);
+    // Explicit local readouts about GPS, time, weather, safety etc. have
+    // precedence over model suggestions that could require extra actions.
+    const preservedInformation=localIntent!=='unknown'&&
+      answerMaviInformation(localIntent,body.context)&&
+      !['greeting','help','identity','about','thanks'].includes(localIntent);
+    const interpreted=llm?.action==='route'?llm.intent:
+      llm?.action==='information'?llm.intent:
+      llm?.action==='resume'?'resume_original':
+      llm?.action==='general'?'general':
+      localIntent;
+    const intent=poiRequest?'find_poi':streetRequest?
+      (streetRequest.kind==='avoid'?'avoid_street':'via_street'):
+      preservedInformation?localIntent:interpreted;
+    if(intent==='resume_original'){
+      const hasStop=body.context?.pendingStop===true;
+      return respondJev(hasStop?
+        {mode:'action',intent,action:'resume_original',text:'Vou procurar o caminho de volta ao seu destino original. A rota da parada será mantida se não for possível calcular.'}:
+        {mode:'information',intent,text:'Não há uma parada temporária ativa para continuar a viagem.'});
+    }
+    if(poiRequest){
+      if(!limits(req,res,'mavi-poi-search',5,60000))return;
+      if(!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto'].includes(body.vehicle))
+        return respondJev({mode:'information',intent,text:'Escolha um destino e uma rota de carro ou moto antes de inserir uma parada.'});
+      const sourceKey=typeof body.currentRouteKey==='string'&&body.currentRouteKey.length<=64?
+        body.currentRouteKey:null;
+      if(!sourceKey)return respondJev({mode:'information',intent,text:'Calcule uma rota antes de pedir uma parada no caminho.'});
+      if(body.context?.pendingStop===true)
+        return respondJev({mode:'information',intent,text:'Você já tem uma parada temporária ativa. Continue até o destino original antes de inserir outra.'});
+      const category=poiRequest.category,scope=poiRequest.scope;
+      const label=MAVI_POI_CATEGORIES[category].label;
+      const route=body.routeGeometry;
+      if(scope==='route'&&!validatePoiRoute(route,body.origin,body.destination))
+        return respondJev({mode:'information',intent,text:'Não consegui confirmar o trajeto atual para procurar locais no caminho. Sua rota foi mantida.'});
+      const key=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+      if(!key)return respondJev({mode:'information',intent,text:'A busca de estabelecimentos está indisponível agora. Mantive o destino original.'});
+      let choices;
+      try{choices=await findMaviPlaces({category,scope,origin:body.origin,
+        route:scope==='route'?route:null,token:key});}
+      catch{
+        return respondJev({mode:'information',intent,text:'Não consegui consultar estabelecimentos reais neste momento. Sua rota foi mantida.'});
+      }
+      if(!choices.length)return respondJev({mode:'information',intent,
+        text:scope==='route'?'Não encontrei '+label+' confirmado perto do trajeto à frente. Mantive sua rota.':
+          'Não encontrei '+label+' confirmado perto de você. Seu destino não mudou.'});
+      const telemetryRaw=body.telemetry&&typeof body.telemetry==='object'?body.telemetry:{};
+      const telemetry={bearing:Number.isFinite(telemetryRaw.bearing)?telemetryRaw.bearing:null,
+        speed:Number.isFinite(telemetryRaw.speed)?telemetryRaw.speed:null};
+      const language=normalizeLocale(body.language)||'pt-BR';
+      for(const poi of choices.slice(0,3)){
+        try{
+          const candidateData=await directions(body.origin,poi.coords,body.vehicle,telemetry,language,
+            {adaptive:false,variantBudget:2,reroute:true});
+          if(candidateData.source==='demonstracao')continue;
+          const candidate=(candidateData.routes||[]).find(r=>r.id==='fast'&&jevRouteFingerprint(r))||
+            (candidateData.routes||[]).find(r=>jevRouteFingerprint(r));
+          if(!candidate)continue;
+          const account=owner(req);
+          if(!account)continue;
+          for(const r of candidateData.routes||[])r.proof=signedRouteProof(r,poi.coords,account);
+          const place={id:poi.id,name:poi.name,address:poi.address,coords:poi.coords,category};
+          const distance=poi.distanceMeters<1000?
+            poi.distanceMeters+' metros':(poi.distanceMeters/1000).toFixed(1).replace('.',',')+' quilômetros';
+          return respondJev({mode:'proposal',kind:'poi_stop',intent,
+            sourceKey,originalDestination:body.destination,poi:place,
+            routeId:candidate.id,routeData:candidateData,
+            text:'Encontrei '+poi.name+', '+label+' a aproximadamente '+distance+
+             ' da sua posição em linha reta. A rota até lá leva cerca de '+
+             Math.max(1,Math.round(candidate.duration))+' minutos. Quer inserir esta parada e depois voltar ao seu destino original?'});
+        }catch{/* Unroutable POI must not be offered as a navigable stop. */}
+      }
+      return respondJev({mode:'information',intent,text:'Encontrei locais próximos, mas não consegui calcular um caminho real até eles. Sua rota atual foi mantida.'});
+    }
+    // Give informational questions truthful answers without calling a routing provider.
+    const info=answerMaviInformation(intent,body.context);
+    if(info){
+      if(MAVI_FAST_OPENING_INTENTS.has(intent))
+        return respondJev({...info,text:maviInstantAnswer(intent)||info.text});
+      // For static smalltalk only, allow natural variation. Numeric, time,
+      // safety and location claims always originate in VANO deterministic code.
+      if(llm?.action==='information'&&llm.intent===intent&&llm.reply&&
+        ['greeting','help','identity','about','thanks'].includes(intent)){
+        return respondJev({...info,text:llm.reply});
+      }
+      return respondJev(info);
+    }
+    if(intent==='general'&&llm?.action==='general'&&llm.reply)
+      return respondJev({mode:'information',intent,text:llm.reply});
+    if(MAVI_ROUTE_INTENTS.has(intent)&&!limits(req,res,'jev-v2-route',6,60000))return;
     if(intent==='radar_unavailable')
       return respondJev({mode:'information',intent,text:'Não posso garantir uma rota com menos radares. Siga sempre os limites de velocidade. Posso procurar outro caminho por tempo ou tranquilidade.'});
     if(intent==='unknown')
-      return respondJev({mode:'information',intent,text:'Ainda não entendi esse comando. Tente pedir outra rota, evitar pedágios ou procurar menos trânsito.'});
+      return respondJev({mode:'information',intent,text:'Não entendi esse pedido. Você pode perguntar quanto falta, a hora de chegada ou a próxima conversão. Também posso procurar caminhos diferentes e evitar vias ou pedágios.'});
     if(intent==='slope_unavailable')
       return respondJev({mode:'information',intent,text:'Ainda não consigo verificar ladeiras com segurança. Essa função será adicionada em outra etapa.'});
     if(!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto'].includes(body.vehicle))
@@ -741,6 +878,8 @@ async function route(req, res) {
     const language=normalizeLocale(body.language)||'pt-BR';
     const options={
       avoidTolls:intent==='avoid_tolls',
+      avoidFerries:intent==='avoid_ferries',
+      avoidUnpaved:intent==='avoid_unpaved',
       adaptive:true,
       variantBudget:4,
       trafficBias:intent==='traffic'?1:undefined,
@@ -782,9 +921,12 @@ async function route(req, res) {
         }
       }
     }
-    const candidate=chooseJevProposal(permittedRoutes,currentKey,intent);
+    let candidate=chooseJevProposal(permittedRoutes,currentKey,intent);
+    // A route requested as faster or shorter must actually improve that metric.
+    if(candidate&&intent==='fast_route'&&Number.isFinite(body.currentDuration)&&candidate.duration>=body.currentDuration)candidate=null;
+    if(candidate&&intent==='short_route'&&Number.isFinite(body.currentDistance)&&candidate.distance>=body.currentDistance)candidate=null;
     if(!candidate){
-      const text=streetRequest?
+      const text=intent==='fast_route'?'Não encontrei uma alternativa comprovadamente mais rápida. Mantive a rota atual.':intent==='short_route'?'Não encontrei um percurso confirmado mais curto. Mantive a rota atual.':streetRequest?
         streetRequest.kind==='avoid'
           ?'Não encontrei uma rota comprovadamente diferente que evite '+streetRequest.spokenName+'. Mantive a rota atual.'
           :'Não encontrei uma alternativa confirmada que passe por '+streetRequest.spokenName+'. Mantive a rota atual.'
@@ -798,7 +940,7 @@ async function route(req, res) {
     const previous=Number(body.currentDuration);
     const difference=Number.isFinite(previous)&&previous>0&&previous<10080?Math.round(candidate.duration-previous):null;
     const contrast=difference===null?'':difference>0?', '+difference+' minutos a mais que a atual':difference<0?', '+Math.abs(difference)+' minutos a menos que a atual':', com tempo parecido ao atual';
-    const detail=streetRequest?(streetRequest.kind==='avoid'?'sem a via '+streetRequest.spokenName+' nas orientações da alternativa':'passando por '+streetRequest.spokenName):intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
+    const detail=streetRequest?(streetRequest.kind==='avoid'?'sem a via '+streetRequest.spokenName+' nas orientações da alternativa':'passando por '+streetRequest.spokenName):intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='avoid_ferries'?'com preferência para evitar balsas':intent==='avoid_unpaved'?'com preferência por vias asfaltadas':intent==='quiet_route'?'por uma alternativa para você comparar, sem garantia de menor movimento':intent==='short_route'?'com uma distância menor':intent==='fast_route'?'com menos tempo de viagem':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
     return respondJev({
       mode:'proposal',intent,routeId:candidate.id,
       sourceKey:currentKey,destination:body.destination,

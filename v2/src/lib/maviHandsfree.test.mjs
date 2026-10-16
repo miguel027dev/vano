@@ -13,7 +13,8 @@ test('MAVI retains proven direct browser microphone activation and route request
  assert.match(s,/recognition\.start\(\)/);
  assert.match(s,/listenRef\.current\('remote'\)/);
  assert.match(s,/async function submit\(phrase\)/);
- assert.match(s,/handlersRef\.current\.onCommand\(text,controller\.signal\)/);
+ assert.match(s,/handlersRef\.current\.onCommand\(text,controller\.signal,\{firstTurn\}\)/);
+ assert.match(s,/firstMaviTurnRef\.current=true/);
  assert.match(s,/onClick=\{toggle\}/);
  assert.doesNotMatch(s,/MaviVoiceController/);
 });
@@ -48,11 +49,11 @@ test('card remains hidden until voice narration settles; accept/reject are expli
  assert.match(s,/proposalRef\.current=null;setOfferReady\(false\)/);
 });
 
-test('ElevenLabs integration is feature gated, route-signed and cannot remove existing mic',()=>{
+test('MAVI cloud voices are feature gated, route-signed and preserve existing microphone',()=>{
  const jsx=mic(),api=readFileSync(new URL('./api.js',import.meta.url),'utf8');
  const server=readFileSync(new URL('../../server/index.mjs',import.meta.url),'utf8');
  const player=readFileSync(new URL('./maviElevenPlayback.mjs',import.meta.url),'utf8');
- assert.match(jsx,/playMaviEleven\(voiceTicket,\{signal:controller\.signal\}\)/);
+ assert.match(jsx,/playMaviVoice\(voiceTicket,\{signal:controller\.signal\}\)/);
  assert.match(jsx,/response\?\.voiceTicket/);
  assert.match(jsx,/if\(controller\.signal\.aborted\|\|finished\|\|!enabledRef\.current\)return;/);
  assert.match(jsx,/elevenAbortRef\.current\?\.abort\(\)/);
@@ -64,7 +65,7 @@ test('ElevenLabs integration is feature gated, route-signed and cannot remove ex
  assert.match(server,/if\(!limits\(req,res,'mavi-voice-v2',6,60000\)\)return/);
  assert.match(server,/claim\.user!==identity/);
  assert.match(server,/usedMaviVoiceTickets\.has\(claimHash\)/);
- assert.match(server,/type:'mavi-eleven-tts'/);
+ assert.match(server,/ticketType=cartesia\.enabled\?'mavi-cartesia-tts':eleven\.enabled\?'mavi-eleven-tts'/);
  assert.match(player,/revokeObjectURL/);
  assert.match(player,/audio\.addEventListener\('ended',complete/);
 });

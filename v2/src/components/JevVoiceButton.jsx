@@ -3,7 +3,8 @@ import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCircle} from 'lucide-react';
 import {api} from '../lib/api.js';
-import {playMaviEleven} from '../lib/maviElevenPlayback.mjs';
+import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
+import {classifyMaviIntent,maviProposalDecision} from '../lib/maviAssistant.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
 /** The V2-only voice input has three independent paths:
@@ -11,7 +12,7 @@ import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSup
  * getUserMedia/MediaRecorder capture with optional server STT.
  * Navigation voice and all other map screens remain independent.
  */
-export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navigationActive=false,maneuverDistance=null,muted=false}){
+export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,onDismissPreview,routeContextKey,navigationActive=false,maneuverDistance=null,muted=false}){
  const [enabled,setEnabled]=useState(false),[status,setStatus]=useState('off');
  const [reply,setReply]=useState(''),[heard,setHeard]=useState(''),[typed,setTyped]=useState('');
  const [proposal,setProposal]=useState(null),[offerReady,setOfferReady]=useState(false),[diagnostic,setDiagnostic]=useState('');
@@ -22,9 +23,10 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
- const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept});
+ const firstMaviTurnRef=useRef(true);
+ const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept,onAction,onPreview,onDismissPreview});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
- handlersRef.current={onCommand,onAccept};
+ handlersRef.current={onCommand,onAccept,onAction,onPreview,onDismissPreview};
  navRef.current={navigationActive,maneuverDistance,muted};
  proposalRef.current=proposal;
  const Recognizer=typeof window!=='undefined'?(window.SpeechRecognition||window.webkitSpeechRecognition):null;
@@ -57,14 +59,14 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    if(mountedRef.current)setOfferReady(false);
    // Do not cancel global speechSynthesis: it also belongs to navigation maneuvers.
  }
- function scheduleNextListen(){
+ function scheduleNextListen(delay=320){
    clearTimeout(listenTimerRef.current);
    if(!enabledRef.current||busyRef.current||recognitionError.current||!Recognizer)return;
    listenTimerRef.current=setTimeout(()=>{
      if(!enabledRef.current||busyRef.current||recognitionError.current||!Recognizer)return;
-     if(window.speechSynthesis?.speaking){scheduleNextListen();return;}
+     if(window.speechSynthesis?.speaking){scheduleNextListen(480);return;}
      listen('remote');
-   },750);
+   },delay);
  }
  function done(){
    busyRef.current=false;
@@ -123,7 +125,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
          speechTimerRef.current=setTimeout(startRemote,500);
          return;
        }
-       void playMaviEleven(voiceTicket,{signal:controller.signal}).then(finish,()=>{
+       void playMaviVoice(voiceTicket,{signal:controller.signal}).then(finish,()=>{
          if(controller.signal.aborted||finished||!enabledRef.current)return;
          // An expired token, 429, unsupported codec or autoplay block must
          // never deadlock a proposal. Existing browser TTS is the fallback.
@@ -139,23 +141,28 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    const text=String(phrase||'').trim().slice(0,360);
    if(!text||!enabledRef.current||busyRef.current)return;
    stopRecognition();setHeard(text);setTyped('');
-   const simplified=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-   if(proposalRef.current&&/^(sim|pode|aceito|usar|confirma|confirmar|vamos|isso)(\b|$)/.test(simplified)){
-     chooseProposal('accept');return;
-   }
-   if(proposalRef.current&&/^(nao|cancelar|deixa|manter|fica)(\b|$)/.test(simplified)){
-     chooseProposal('reject');return;
-   }
+   const decision=proposalRef.current?maviProposalDecision(text):null;
+   if(decision){chooseProposal(decision);return;}
+   // Repeat the last spoken response without duplicating a provider request
+   // or clearing a still-pending route offer.
+   if(classifyMaviIntent(text)==='repeat'&&reply){speak(reply);return;}
+   handlersRef.current.onDismissPreview?.();
    busyRef.current=true;setStatus('processing');setProposal(null);proposalRef.current=null;setOfferReady(false);
    const seq=++requestRef.current;controllerRef.current?.abort?.();
    const controller=new AbortController();controllerRef.current=controller;
    const timeout=setTimeout(()=>controller.abort(),14000);
    try{
-     const response=await handlersRef.current.onCommand(text,controller.signal);
+     const firstTurn=firstMaviTurnRef.current;
+     firstMaviTurnRef.current=false;
+     const response=await handlersRef.current.onCommand(text,controller.signal,{firstTurn});
      if(!enabledRef.current||seq!==requestRef.current)return;
      const message=typeof response?.text==='string'?response.text:'Não consegui responder.';
      if(response?.mode==='proposal'&&response.routeData?.routes?.length){
        setProposal(response);proposalRef.current=response;
+       try{handlersRef.current.onPreview?.(response);}catch{/* preview is optional; never block speech */}
+     }
+     if(response?.mode==='action'&&typeof response.action==='string'){
+       try{handlersRef.current.onAction?.(response.action);}catch{/* fail safely */}
      }
      setReply(message);speak(message,()=>{
        if(seq===requestRef.current&&proposalRef.current===response&&mountedRef.current)setOfferReady(true);
@@ -188,16 +195,24 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    };
    recognition.onerror=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
-     const code=String(event?.error||'unknown');recognitionError.current=code;
+     const code=String(event?.error||'unknown');
+     // Silence is expected while awaiting a wake word; remain hands-free.
+     if(code==='no-speech'){
+       recognitionError.current='';
+       setDiagnostic('Aguardando sua próxima fala.');
+       setStatus('ready');
+       return;
+     }
+     recognitionError.current=code;
      setDiagnostic('Reconhecimento '+(mode==='local'?'local':'do navegador')+': '+code);
      setReply(microphoneMessage(code));
-     setStatus(code==='no-speech'?'ready':'typed');
+     setStatus('typed');
    };
    recognition.onend=()=>{
      if(recognitionRef.current!==recognition)return;
      recognitionRef.current=null;recognitionActive.current=false;
      if(enabledRef.current&&!busyRef.current&&!recognitionError.current){
-       setStatus('ready');scheduleNextListen();
+       setStatus('ready');scheduleNextListen(320);
      }
    };
    try{
@@ -304,16 +319,18 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
  useEffect(()=>{requestRef.current++;controllerRef.current?.abort?.();
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
    setProposal(null);proposalRef.current=null;setOfferReady(false);
+   handlersRef.current.onDismissPreview?.();
  },[routeContextKey]);
  useEffect(()=>()=>{mountedRef.current=false;cancelEverything();},[]);
 
  function toggle(){
    if(enabledRef.current){
-     cancelEverything();setEnabled(false);setStatus('off');setReply('');setProposal(null);setOfferReady(false);return;
+     cancelEverything();handlersRef.current.onDismissPreview?.();setEnabled(false);setStatus('off');setReply('');setProposal(null);setOfferReady(false);return;
    }
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
+   firstMaviTurnRef.current=true;
    setEnabled(true);setStatus('ready');
-   setReply('Pode falar: “Procure outra rota” ou “Evite pedágios”.');
+   setReply('Pode falar: “Quanto falta?”, “Próxima conversão”, “Outra rota” ou “O que você sabe fazer?”.');
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
    // Crucial: call start() inside the original click, not after a timeout/effect.
    listenRef.current('remote');
@@ -323,6 +340,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    if(!enabledRef.current||!selection)return false;
    setOfferReady(false);
    setProposal(null);proposalRef.current=null;
+   handlersRef.current.onDismissPreview?.();
    if(decision==='reject'){
      setReply('Mantive sua rota atual.');
      speak('Tudo bem, sua rota atual foi mantida.');
@@ -330,29 +348,46 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    }
    let applied=false;
    try{applied=handlersRef.current.onAccept(selection)!==false;}catch{/* expired route */}
-   const message=applied?'Nova rota selecionada.':'Esta sugestão expirou. Peça outra alternativa.';
+   const message=applied?(selection.kind==='poi_stop'?'Parada adicionada. Depois, peça para continuar ao destino original.':'Nova rota selecionada.'):'Esta sugestão expirou. Peça outra alternativa.';
    setReply(message);speak(message);
    return applied;
  }
  function accept(){return chooseProposal('accept');}
  function reject(){return chooseProposal('reject');}
  const offerTarget=typeof document!=='undefined'?document.getElementById('mavi-offer-host'):null;
- return <div className="jev-control-wrap">
-  <button type="button" className={'circle-btn jev-mic '+(enabled?'jev-mic-active ':'')+(status==='listening'?'jev-listening':'')}
-   onClick={toggle} aria-label={enabled?'Desativar assistente de voz':'Ativar assistente de voz'}
-   aria-pressed={enabled} title={enabled?'Desativar assistente':'Falar com o assistente'}>
-   {enabled?<Mic size={21}/>:<MicOff size={21}/>}
+ const voicePhase=!enabled?'off':status==='listening'?'listening':status==='processing'?'processing':status==='speaking'?'speaking':status==='typed'?'paused':'ready';
+ const voiceLabel={
+   off:'Ativar escuta da MAVI',ready:'MAVI ativa · aguardando voz',
+   listening:'MAVI escutando',processing:'MAVI processando',
+   speaking:'MAVI respondendo',paused:'Microfone precisa de atenção'
+ }[voicePhase];
+ return <div className={'jev-control-wrap mavi-voice-'+voicePhase}>
+  <button type="button"
+   className={'circle-btn jev-mic '+(enabled?'jev-mic-active ':'')+(status==='listening'?'jev-listening':'')}
+   onClick={toggle} aria-label={enabled?'Desativar escuta contínua da MAVI':'Ativar escuta da MAVI'}
+   aria-pressed={enabled} aria-describedby="mavi-voice-status" title={voiceLabel}>
+   <span className="mavi-mic-glyph" aria-hidden="true">
+     {voicePhase==='off'?<MicOff size={21} strokeWidth={1.9}/>:
+      voicePhase==='processing'?<RefreshCw size={19} strokeWidth={2}/>:
+      voicePhase==='speaking'?<AudioLines size={21} strokeWidth={2}/>:
+      <Mic size={21} strokeWidth={2}/>}
+   </span>
+   <span className="mavi-mic-pulse" aria-hidden="true"/>
+   <span className="mavi-mic-indicator" aria-hidden="true"/>
   </button>
+  <span id="mavi-voice-status" className="mavi-voice-status" role="status" aria-live="polite">
+    {voiceLabel}
+  </span>
   {enabled&&offerReady&&proposal&&offerTarget&&createPortal(
-    <section className="mavi-offer-card" role="group" aria-label="Alternativa de rota sugerida pela MAVI">
+    <section className="mavi-offer-card" role="group" aria-label={proposal.kind==='poi_stop'?'Parada sugerida pela MAVI':'Alternativa de rota sugerida pela MAVI'}>
       <div className="mavi-offer-header">
         <span className="mavi-offer-symbol"><Check size={18} aria-hidden="true"/></span>
-        <div><strong>Nova rota encontrada</strong><small>A MAVI apresentou esta alternativa por voz</small></div>
+        <div><strong>{proposal.kind==='poi_stop'?'Prévia de parada':'Prévia da nova rota'}</strong><small>{proposal.kind==='poi_stop'?'Destino original preservado':'Linha turquesa no mapa · confirme antes de trocar'}</small></div>
       </div>
       <p className="mavi-offer-description">{proposal.text||'Encontrei uma rota alternativa. Quer utilizá-la?'}</p>
       <div className="mavi-offer-actions">
         <button type="button" className="mavi-offer-reject" onClick={reject}>Manter atual</button>
-        <button type="button" className="mavi-offer-confirm" onClick={accept}><Check size={16} aria-hidden="true"/> Usar rota</button>
+        <button type="button" className="mavi-offer-confirm" onClick={accept}><Check size={16} aria-hidden="true"/> {proposal.kind==='poi_stop'?'Adicionar parada':'Usar rota'}</button>
       </div>
       <small className="mavi-offer-voice-hint">Ou diga “Pode” ou “Não” para decidir por voz.</small>
     </section>,offerTarget

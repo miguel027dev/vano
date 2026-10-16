@@ -19,6 +19,19 @@ test('MAVI understands natural named-road avoidance in Brazilian Portuguese',()=
    assert.match(actual.road,/giovanni/,input);
  }
 });
+test('MAVI handles indirect negative avenue requests and never includes conversational suffix in road',()=>{
+ const examples=[
+  'Mavi, não tenho vontade de atravessar a Avenida Morumbi. Você acha um caminho por outro lado?',
+  'Mavi, não quero passar pela avenida Giovanni Gronchi, você pode mudar?',
+  'Mavi, sem atravessar a Rua Itapaiúna por favor'
+ ];
+ for(const phrase of examples){
+  const request=extractJevStreetRequest(phrase);
+  assert.equal(request?.kind,'avoid',phrase);
+  assert.ok(['morumbi','giovanni gronchi','itapaiuna'].includes(request.road),phrase);
+  assert.ok(!/voce|acha|pode|por favor/.test(request.road),request.road);
+ }
+});
 test('MAVI distinguishes via-street requests from generic commands and toll avoidance',()=>{
  for(const input of ['Mavi, quero ir pela Avenida Morumbi','Mavi, prefiro passar pela Avenida Morumbi','Mavi, sentido Avenida Morumbi']){
    const x=extractJevStreetRequest(input);
