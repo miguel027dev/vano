@@ -32,7 +32,7 @@ test('missing lighting evidence returns fastest without misleading classificatio
  assert.equal(result.reason,'insufficient_comparable_evidence');
 });
 test('no valid reliable evidence comparison: no recommendation change',()=>{
- const input=routes();input[0].segments[0].lightingCoverage=undefined;
+ const input=routes();input[0].segments.slice(0,3).forEach(s=>{s.lightingCoverage=undefined;});
  const result=evaluateSafeRouting({routes:input,departureAt:'2026-10-15T22:00:00-03:00',location});
  assert.equal(result.recommendedRouteId,'fast');
 });
