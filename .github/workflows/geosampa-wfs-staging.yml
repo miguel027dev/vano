@@ -25,6 +25,9 @@ jobs:
       - name: Validate WFS client mock contract
         working-directory: v2
         run: node --test server/geosampa-wfs.test.mjs
+      - name: Discover other official layer names (no writes)
+        working-directory: v2
+        run: node scripts/safe-routing/inspect-catalog.mjs
       - name: Read real GeoSampa WFS sample (no writes)
         working-directory: v2
         env:
