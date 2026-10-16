@@ -26,7 +26,7 @@ export function classifyOsm(t={}){
  if(h==='stop'||s.includes('stop'))return ['pare',72,'Parada obrigatória'];
  if(h==='give_way'||s.includes('give_way'))return ['preferencia',67,'Dê a preferência'];
  if(t.railway==='level_crossing')return ['ferrovia',71,'Passagem de nível'];
- if(h==='construction')return ['obra',62,'Obra na via'];
+ if(h==='construction'||(h&&t.construction==='yes'))return ['obra',62,'Obra na via'];
  if(s)return ['placa',40,'Sinalização'];
  if(h==='crossing')return ['travessia',45,'Travessia de pedestres'];
  const amenities={
@@ -93,9 +93,11 @@ export function overpassQuery(bbox){
  // amenities and ordinary signs fill the bounded query response.
  return '[out:json][timeout:12];'+
  '(node["highway"="speed_camera"]('+area+');node["enforcement"="maxspeed"]('+area+'););out body 150;'+
+ // Return real mapped construction nodes and road-way centers, before ordinary POIs.
+ '(node["highway"="construction"]('+area+');way["highway"="construction"]('+area+');way["highway"]["construction"="yes"]('+area+'););out center 100;'+
  '(node["amenity"~"^(hospital|clinic|fire_station|police|fuel|parking|bank|charging_station)$"]('+area+');'+
  'node["traffic_calming"~"^(bump|hump|table|dynamic_bump)$"]('+area+');'+
- 'node["highway"~"^(traffic_signals|stop|give_way|crossing|construction)$"]('+area+');'+
+ 'node["highway"~"^(traffic_signals|stop|give_way|crossing)$"]('+area+');'+
  'node["traffic_sign"]('+area+');'+
  'node["railway"="level_crossing"]('+area+'););out body 1250;'+
  '(nwr["shop"~"^(supermarket|convenience|mall|pet)$"]('+area+');'+
