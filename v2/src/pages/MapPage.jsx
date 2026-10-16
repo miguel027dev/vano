@@ -67,6 +67,7 @@ export default function MapPage({active=true}){
       const error=String(event?.detail?.error||'');
       // Existing Android WebView emits failed TTS here instead of voice-status.
       if(!/voz offline indisponível|instale uma voz local/i.test(error))return;
+      if(jevMode){setVoiceProblem(true);return;} // V2 must not switch maneuvers to browser TTS.
       const attempt=lastVoiceAttempt.current;
       if(!navMode||muted||!attempt){setVoiceProblem(true);return;}
       // If the APK has no offline voice, try device/browser Web Speech once.
