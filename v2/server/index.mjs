@@ -10,6 +10,7 @@ import path from 'node:path';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
+import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/jevShared.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -570,6 +571,58 @@ async function route(req, res) {
     const lon=Number(u.searchParams.get('lng')),lat=Number(u.searchParams.get('lat'));
     const proximity=u.searchParams.has('lng')&&u.searchParams.has('lat')&&pointOK([lon,lat])?[lon,lat]:null;
     return json(res,200,await search(u.searchParams.get('q'),lang,proximity));
+  }
+  // Public V2 assistant experiment. Guests may try it, but CSRF and IP limits
+  // prevent third-party use of the paid routing provider as an open proxy.
+  if (pathname === '/api/v2/assistant' && req.method === 'POST') {
+    if (!protectedWrite(req,res)) return;
+    if (!limits(req,res,'jev-v2',6,60000)) return;
+    const body=await getBody(req);
+    if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
+      return err(res,400,'Comando de voz inválido.');
+    const intent=classifyJev(body.text);
+    if(intent==='unknown')
+      return json(res,200,{mode:'information',intent,text:'Ainda não entendi esse comando. Tente pedir outra rota, evitar pedágios ou procurar menos trânsito.'});
+    if(intent==='slope_unavailable')
+      return json(res,200,{mode:'information',intent,text:'Ainda não consigo verificar ladeiras com segurança. Essa função será adicionada em outra etapa.'});
+    if(!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto'].includes(body.vehicle))
+      return json(res,200,{mode:'information',intent,text:'Escolha um destino e uma rota de carro ou moto antes de pedir uma alternativa.'});
+    const currentKey=typeof body.currentRouteKey==='string'&&body.currentRouteKey.length<=64?body.currentRouteKey:null;
+    if(!currentKey) return json(res,200,{mode:'information',intent,text:'Calcule uma rota primeiro para que eu consiga buscar outra opção.'});
+    const id=owner(req);
+    const telemetryRaw=body.telemetry&&typeof body.telemetry==='object'&&!Array.isArray(body.telemetry)?body.telemetry:{};
+    const telemetry={
+      bearing:Number.isFinite(telemetryRaw.bearing)&&telemetryRaw.bearing>=0&&telemetryRaw.bearing<360?telemetryRaw.bearing:null,
+      speed:Number.isFinite(telemetryRaw.speed)&&telemetryRaw.speed>=0&&telemetryRaw.speed<90?telemetryRaw.speed:null
+    };
+    const language=normalizeLocale(body.language)||'pt-BR';
+    const options={
+      avoidTolls:intent==='avoid_tolls',
+      adaptive:true,
+      variantBudget:4,
+      trafficBias:intent==='traffic'?1:undefined,
+      reroute:true
+    };
+    let result;
+    try { result=await directions(body.origin,body.destination,body.vehicle,telemetry,language,options); }
+    catch(error) {
+      console.warn('JEV route provider unavailable:',error?.message||String(error));
+      return json(res,200,{mode:'information',intent,text:'Não consegui consultar alternativas agora. Sua rota atual foi mantida.'});
+    }
+    if(result.source==='demonstracao')
+      return json(res,200,{mode:'information',intent,text:'O motor real de rotas não está disponível neste ambiente. Não vou sugerir uma rota simulada.'});
+    const candidate=chooseJevProposal(result.routes,currentKey,intent);
+    if(!candidate)
+      return json(res,200,{mode:'information',intent,text:'Não encontrei uma alternativa realmente diferente. Sua rota atual foi mantida.'});
+    for(const item of result.routes||[]) item.proof=signedRouteProof(item,body.destination,id);
+    const minutes=Math.max(1,Math.round(candidate.duration));
+    const detail=intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas disponíveis para o trânsito':'diferente da atual';
+    return json(res,200,{
+      mode:'proposal',intent,routeId:candidate.id,
+      sourceKey:currentKey,destination:body.destination,
+      routeData:result,
+      text:'Encontrei uma rota '+detail+', com previsão de '+minutes+' minutos. Quer utilizar?'
+    });
   }
   if (pathname === '/api/route' && req.method === 'POST') {
     if (!limits(req,res,'route',10,60000)) return;
