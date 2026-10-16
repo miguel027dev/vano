@@ -49,7 +49,8 @@ test('first greeting has no provider cold start, while first unfamiliar query us
   assert.equal(nvidiaCalls,0);
   const general=await send('Mavi, conta uma historinha divertida sobre estrelas?',true);
   assert.equal(general.mode,'information');
-  assert.equal(general.intent,'unknown');
+  assert.equal(general.intent,'general');
+  assert.match(general.text,/te ouvindo|contar|conversar/i);
   assert.equal(nvidiaCalls,1);
   assert.ok(general.elapsed>=1750&&general.elapsed<3600,'first unknown turn must fall back within two seconds + HTTP margin: '+Math.round(general.elapsed));
  }finally{
