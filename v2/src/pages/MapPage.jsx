@@ -414,7 +414,7 @@ export default function MapPage({active=true}){
     const start=navMode&&hasLiveGPS&&validPoint(userCoords)?userCoords:origin;
     return api('/v2/assistant',{method:'POST',signal,body:{
       text,origin:start,destination:dest.coords,vehicle:routeVehicle,language,
-      currentRouteKey:jevKey,telemetry:{
+      currentRouteKey:jevKey,currentDuration:route.duration,telemetry:{
         bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null
       }
     }});
