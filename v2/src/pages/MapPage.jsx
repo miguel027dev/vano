@@ -475,7 +475,8 @@ export default function MapPage({active=true}){
         nextInstruction:navMode&&hasLiveGPS?guidance?.instruction:null,
         nextStreet:navMode&&hasLiveGPS?guidance?.street:null,
         nextDistanceMeters:navMode&&hasLiveGPS?guidance?.distance:null,
-        currentStreet:navMode&&hasLiveGPS?navigationStreetLabel(currentAddress,true):null
+        currentStreet:navMode&&hasLiveGPS?navigationStreetLabel(currentAddress,true):null,
+        ...(conversation?{conversationHistory:limitedMaviTalkHistory(maviTalkHistory.current)}:{})
       },telemetry:{
         bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null
       }
