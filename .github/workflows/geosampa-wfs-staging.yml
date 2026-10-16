@@ -1,0 +1,36 @@
+name: GeoSampa WFS staging probe
+on:
+  pull_request:
+    branches: [preview/vano-react-v2-7]
+    paths:
+      - 'v2/server/safe-routing/**'
+      - 'v2/server/geosampa-wfs.test.mjs'
+      - 'v2/scripts/safe-routing/**'
+      - '.github/workflows/geosampa-wfs-staging.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: v2/package-lock.json
+      - name: Install dependencies
+        working-directory: v2
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate WFS client mock contract
+        working-directory: v2
+        run: node --test server/geosampa-wfs.test.mjs
+      - name: Read real GeoSampa WFS sample (no writes)
+        working-directory: v2
+        env:
+          SAFE_ALLOW_IMPORT: '0'
+          VANO_SAFE_DB_URL: ''
+          DATABASE_URL: ''
+        run: node scripts/safe-routing/import-geosampa.mjs
