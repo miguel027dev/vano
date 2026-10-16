@@ -72,7 +72,10 @@ export async function fetchGeoSampaLayerPage({layer,startIndex=0,count=250,fetch
   startIndex,count});
  const raw=await getBytes(u,{fetcher,maxBytes:6_000_000,timeoutMs:18000});
  let body;
- try{body=JSON.parse(raw.bytes.toString('utf8'))}catch{throw Error('GeoSampa WFS: GeoJSON inválido')}
+ try{body=JSON.parse(raw.bytes.toString('utf8'))}catch{
+  const error=Error('GeoSampa WFS: GeoJSON inválido (startIndex='+startIndex+')');
+  error.code='SOURCE_INVALID_GEOJSON';throw error;
+ }
  if(body?.type!=='FeatureCollection'||!Array.isArray(body.features)||body.features.length>count)
   throw Error('GeoSampa WFS: resposta não é FeatureCollection válida');
  if(body.features.some(f=>f?.type!=='Feature'))throw Error('GeoSampa WFS: feature inválida');
@@ -108,7 +111,7 @@ export function normalizeWfsLightingPage(page,snapshotId){
 export async function fetchGeoSampaRecoveringPage({layer,startIndex=0,count=500,fetcher=fetch}={}){
  try{return await fetchGeoSampaLayerPage({layer,startIndex,count,fetcher});}
  catch(error){
-  if(error.code!=='SOURCE_REPROJECTION_FAILED')throw error;
+  if(!['SOURCE_REPROJECTION_FAILED','SOURCE_INVALID_GEOJSON'].includes(error.code))throw error;
   if(count===1)return {features:[{type:'Feature',id:`rejected:${startIndex}`,geometry:null}],returned:1,numberMatched:null,startIndex,
    sha256:null,sourceRejectedIndices:[startIndex]};
   const leftCount=Math.floor(count/2);
