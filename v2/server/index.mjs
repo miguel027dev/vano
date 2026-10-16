@@ -39,6 +39,7 @@ import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from '.
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
+import {parseGlobalEventQuery,queryGlobalEvents,GLOBAL_EVENT_SOURCES} from './global-events.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
@@ -635,6 +636,16 @@ async function route(req, res) {
       token:process.env.VANO_TRAFFIC_OFFICIAL_TOKEN||''
     });
     return json(res,200,result,{'Cache-Control':'public, max-age=55'});
+  }
+  // International public events: cached in-process, refreshed asynchronously.
+  // These regional observations NEVER enter /api/route scoring or block a road.
+  if(pathname==='/api/global-events/sources'&&req.method==='GET')
+    return json(res,200,{sources:GLOBAL_EVENT_SOURCES});
+  if(pathname==='/api/global-events'&&req.method==='GET'){
+    if(!limits(req,res,'global-events',24,60000))return;
+    const point=parseGlobalEventQuery(u.searchParams);
+    if(!point)return err(res,400,'Coordenadas ou raio inválidos.');
+    return json(res,200,queryGlobalEvents(point),{'Cache-Control':'private, max-age=10'});
   }
   if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
   // Address lookup only after location permission; no coordinates are persisted.
