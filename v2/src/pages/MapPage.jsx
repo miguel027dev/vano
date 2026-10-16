@@ -435,6 +435,14 @@ export default function MapPage({active=true}){
     // Informational commands work even before planning a route. The server
     // gates route-changing requests until a real route and vehicle exist.
     const replyVariant=maviResponseTurn.current++%3;
+    const conversation=isMaviTalkTurn(text,{conversationActive:maviTalkHistory.current.length>0});
+    const rememberReply=response=>{
+      if(!conversation||signal?.aborted||response?.mode!=='information'||typeof response.text!=='string')return response;
+      maviTalkHistory.current=limitedMaviTalkHistory([
+        ...maviTalkHistory.current,{role:'user',text},{role:'assistant',text:response.text}
+      ]);
+      return response;
+    };
     const greeting=classifyMaviIntent(text)==='greeting';
     let firstMaviGreeting=false;
     if(greeting){
