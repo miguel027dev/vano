@@ -46,7 +46,11 @@ export async function fetchMaviVoice(text,config,{fetcher=fetch,signal}={}){
  try{
    response=await fetcher(endpoint,{...init,signal});
  }catch{throw new Error('mavi_voice_unavailable');}
- if(!response?.ok||!response?.body)throw new Error('mavi_voice_provider_failed');
+ if(!response?.ok||!response?.body){
+   const error=new Error('mavi_voice_provider_failed');
+   error.upstreamStatus=Number.isInteger(response?.status)?response.status:null;
+   throw error;
+ }
  const type=String(response.headers?.get?.('content-type')||'');
  if(!/audio\/(mpeg|mp3)|application\/octet-stream/i.test(type))
    throw new Error('mavi_voice_bad_media');
