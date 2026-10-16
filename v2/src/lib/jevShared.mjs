@@ -5,7 +5,7 @@ export function classifyJev(text) {
   if (/\b(pedagio|pedagios|toll)\b/.test(s) && /\b(sem|evit|nao|desvi|fug|tir|quero)\w*/.test(s)) return 'avoid_tolls';
   if (/\b(ladeira|subida|morro|aclive|inclinacao)\b/.test(s)) return 'slope_unavailable';
   if (/\b(transito|congestionamento|engarrafamento|engarrafado|trafego)\b/.test(s)) return 'traffic';
-  if (/\b(outra rota|outro caminho|caminho diferente|rota alternativa|nao gostei dessa|nao gostei da rota|recalcula|mudar a rota|desviar|por outro lado|mais rapido)\b/.test(s)) return 'alternative';
+  if (/\b(outra rota|outro caminho|caminho diferente|rota alternativa|troca a rota|trocar a rota|troque a rota|troca rota|muda a rota|nao gostei dessa|nao gostei da rota|recalcula|mudar a rota|desviar|por outro lado|mais rapido)\b/.test(s)) return 'alternative';
   return 'unknown';
 }
 export function jevRouteFingerprint(route) {
