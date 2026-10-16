@@ -2,16 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {secureHeaders} from '../../server/security.mjs';
-import {leafletTilesFor,mapboxStyleFor} from './mapLayers.js';
+import {leafletTilesFor,mapboxStyleFor,leafletBackupTilesFor} from './mapLayers.js';
 const component=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
 test('production policy permits all genuine raster and fallback map imagery',()=>{
  const policy=secureHeaders(true)['Content-Security-Policy'];
  const img=policy.split('; ').find(x=>x.startsWith('img-src '));
- for(const domain of ['https://*.mapbox.com','https://*.tile.openstreetmap.org','https://server.arcgisonline.com']){
+ for(const domain of ['https://*.mapbox.com','https://server.arcgisonline.com']){
   assert.ok(img.includes(domain),'blocked essential map tile host: '+domain);
  }
- assert.ok(leafletTilesFor('streets').url.includes('tile.openstreetmap.org'));
- assert.ok(leafletTilesFor('satellite').url.includes('server.arcgisonline.com'));
+ assert.ok(leafletTilesFor('streets','pk.test').url.includes('api.mapbox.com'));
+ assert.ok(leafletTilesFor('satellite','pk.test').url.includes('api.mapbox.com'));
+ assert.ok(leafletBackupTilesFor('streets').url.includes('server.arcgisonline.com'));
+ assert.doesNotMatch(component,/https:\\/\\/\\{s\\}\\.tile\\.openstreetmap\\.org/);
  assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json'),'/mapbox/vano-atlas-light.json');
  assert.match(policy,/frame-ancestors 'none'/,'map fallback does not reduce frame protection');
  assert.match(policy,/script-src 'self'/,'map fallback does not relax scripts');
