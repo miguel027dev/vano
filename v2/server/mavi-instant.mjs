@@ -22,7 +22,7 @@ const phrases={
  help:[
   'Pode perguntar quanto falta, a próxima conversão ou a chegada. Também posso procurar lugares no caminho e propor outra rota.',
   'Tente pedir: quanto falta para chegar, tem mercado na minha rota, ou procure um caminho mais rápido. Também ajudo com GPS e voz.',
-  'Posso consultar a previsão de chegada, o destino, a próxima rua e buscar paradas próximas. Quer experimentar?'
+  'Posso consultar a previsão de chegada, o destino, a próxima rua e buscar paradas próximas na sua rota. Quer experimentar?'
  ],
  thanks:[
   'Por nada! Precisando de outra rota, me chama.',
