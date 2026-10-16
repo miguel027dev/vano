@@ -677,8 +677,15 @@ async function route(req, res) {
       'next_street','current_street','clock','route_summary','traffic_info','tolls_info',
       'weather_unavailable','incidents_unavailable','safety_info','recenter_map',
       'route_overview','show_traffic','hide_traffic','mute_guidance','unmute_guidance']);
-    if(!id||!allowed.has(body.intent))return err(res,400,'Resposta local inválida.');
-    const local=answerMaviInformation(body.intent,body.context);
+    const confirmations=new Set([
+      'Tudo bem, sua rota atual foi mantida.','Mantive sua rota atual.',
+      'Nova rota selecionada.','Parada adicionada. Depois, peça para continuar ao destino original.',
+      'Esta sugestão expirou. Peça outra alternativa.'
+    ]);
+    if(!id||!(allowed.has(body.intent)||body.intent==='confirmation'))return err(res,400,'Resposta local inválida.');
+    const local=body.intent==='confirmation'?
+      {text:confirmations.has(body.text)?body.text:null}:
+      answerMaviInformation(body.intent,body.context);
     const txt=maviSpeechText(local?.text);
     const eleven=maviElevenConfig(),cartesia=maviCartesiaConfig();
     const ticketType=eleven.enabled?'mavi-eleven-tts':cartesia.enabled?'mavi-cartesia-tts':null;
