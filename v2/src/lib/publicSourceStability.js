@@ -11,7 +11,8 @@ export function isValidMapPoint(item){
   typeof item?.type==='string'&&Array.isArray(item.coords)&&item.coords.length===2&&
   item.coords.every(finite)&&Math.abs(item.coords[0])<=180&&Math.abs(item.coords[1])<=85;
 }
-const ttlFor=item=>item.verified||item.type?.startsWith('relato-')?5*60_000:
+const ttlFor=item=>item.regional?12*60_000:
+ item.verified||item.type?.startsWith('relato-')?5*60_000:
  item.type==='radar'?15*60_000:45*60_000;
 /** Insertion order is LRU. Retain the first accepted coordinate to stop pin jumps. */
 export function rememberPublicFeatures(cache,features=[],now=Date.now(),max=PUBLIC_SOURCE_CACHE_MAX){

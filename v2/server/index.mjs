@@ -41,6 +41,7 @@ import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
+import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
 import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
@@ -640,6 +641,17 @@ async function route(req, res) {
   }
   // Read-only global context. It is independent of /api/route so a slow external
   // provider never increases navigation TTFB or changes the VANO route ranking.
+  // Geographic keyless public road updates. Cached return is synchronous;
+  // remote transport runs independently of /api/route and map boot.
+  if(pathname==='/api/road-events/regional/sources'&&req.method==='GET')
+    return json(res,200,{sources:KEYLESS_ROAD_SOURCES});
+  if(pathname==='/api/road-events/regional'&&req.method==='GET'){
+    if(!limits(req,res,'regional-road-events',24,60000))return;
+    const bbox=parseRegionalRoadBBox(u.searchParams.get('bbox'));
+    if(!bbox)return err(res,400,'Área regional inválida ou muito ampla.');
+    const result=keylessRegionalSnapshot(bbox);
+    return json(res,200,result,{'Cache-Control':'private, max-age=5'});
+  }
   if(pathname==='/api/context/sources'&&req.method==='GET')
     return json(res,200,{sources:[...GLOBAL_CONTEXT_SOURCES,SEISMIC_SOURCE]});
   if(pathname==='/api/context/global'&&req.method==='GET'){

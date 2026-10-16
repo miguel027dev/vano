@@ -7,7 +7,7 @@ export const ICON_THEME=Object.freeze({
  ferrovia:['rail','#CB713E'],rotatoria:['roundabout','#506879'],obra:['works','#fa8021'],hospital:['medical','#dc3245'],
  saude:['medical','#21a469'],bombeiros:['fire','#ec3a35'],'policia-base':['shield','#2279dc'],
  combustivel:['fuel','#ff8a19'],estacionamento:['parking','#3979BC'],banco:['bank','#596675'],eletroposto:['bolt','#15956b'],
- 'relato-transito':['traffic','#d54c3b'],'relato-obra':['works','#fa8021'],
+ 'relato-transito':['traffic','#d54c3b'],'relato-obra':['works','#fa8021'],'alerta-via':['alert','#c85325'],
  'relato-acidente':['incident','#dc3546'],'relato-risco':['alert','#dc3546'],
  'relato-radar':['radar-device','#ff781e'],
  'mercado':['market','#2E9B63'],
@@ -109,7 +109,7 @@ export function publicPinDensity(viewport,zoom=14,max=52){
   typeMax:Math.max(3,Math.ceil(total*.20))
  };
 }
-const PIN_URGENT=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar','obra']);
+const PIN_URGENT=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar','obra','alerta-via']);
 const PIN_SERVICES=new Set([
  'hospital','saude','bombeiros','policia-base','combustivel','eletroposto','estacionamento',
  'farmacia','escola','estacao-recarga','carregador-eletrico','terminal-onibus',
