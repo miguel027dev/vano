@@ -18,7 +18,10 @@ test('V2 status questions are deterministic and can be answered without a round 
  }
  const map=file('../pages/MapPage.jsx');
  assert.match(map,/const localIntent=classifyMaviIntent\(text\)/);
- assert.match(map,/if\(instant\)return instant;/);
+ // The immediate answer now carries a non-awaited cloud voice promise.
+ // Keep checking instant return without requiring the obsolete return shape.
+ assert.match(map,/if\(instant\)\{/);
+ assert.match(map,/return \{\.\.\.instant,voiceTicketPromise:muted\?null:api\('\/v2\/assistant\/local-voice-ticket'/);
  assert.match(map,/return api\('\/v2\/assistant'/);
 });
 
