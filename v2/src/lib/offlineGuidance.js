@@ -8,7 +8,7 @@ export function spokenCue(guidance,{fresh=true,preview=false,muted=false,speed=0
  const velocity=Number.isFinite(Number(speed))?Math.max(0,Number(speed)):0;
  const ahead=Math.max(180,Math.min(500,velocity*18));
  // Timing is speed-sensitive; "now" must not be spoken for a distant bend.
- const near=Math.max(16,Math.min(65,velocity*2.8+14));
+ const near=Math.max(40,Math.min(65,velocity*2.8+14));
  const stage=distance<=near?'now':distance<=ahead?'soon':null;
  if(!stage)return null;
  const next=guidance.following;
