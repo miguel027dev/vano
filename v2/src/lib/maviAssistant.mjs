@@ -114,13 +114,13 @@ export function answerMaviInformation(intent,input){
 
   case 'navigation_status':return text(intent,!route?'Ainda sem rota.':active?(gps?choose('Navegação ativa, GPS atualizado.','Tá tudo certo: rota e GPS ativos.','Estamos navegando. GPS conectado.'):'Navegação ativa, mas aguardando GPS recente.'):'A rota tá pronta. É só iniciar.');
 
-  case 'destination':return text(intent,target?choose('Seu destino é ','Estamos indo para ','O destino selecionado é ')+target+'.':'Ainda sem destino definido.');
+  case 'destination':return text(intent,target?choose('Seu destino é ','Estamos indo para ','O destino selecionado é ')+target+'.':'Ainda não tenho um destino escolhido.');
 
   case 'vehicle':return text(intent,c.vehicle==='moto'?'O modo moto está selecionado.':c.vehicle==='carro'?'O modo carro está selecionado.':'Ainda não tenho um veículo selecionado.');
   case 'route_mode':return text(intent,!route?'Não há rota selecionada.':'Você está usando a opção de rota '+(c.routeId==='fast'?'mais rápida':c.routeId==='safe'?'alternativa do VANO':'selecionada')+'. Isso não significa garantia de segurança.');
   case 'speed':return text(intent,active&&gps&&speed!==null?'Sua velocidade indicada pelo GPS é de '+Math.round(speed)+' quilômetros por hora.':'Não tenho uma velocidade GPS recente e confiável para informar.');
   case 'speed_limit':return text(intent,active&&gps&&posted!==null?'O limite informado pelo provedor para este trecho é de '+Math.round(posted)+' quilômetros por hora. Confira a sinalização da via.':'Não tenho um limite de velocidade confirmado para o seu trecho. Confira as placas.');
-  case 'arrival':return text(intent,!route?'Primeiro escolha uma rota.':active&&gps&&arrival?choose('Chegada prevista: ','Você deve chegar por volta das ','Previsão de chegada: ')+arrival+'.':duration!==null?'O percurso leva cerca de '+minutes(Math.ceil(duration))+', mas ainda não tenho uma chegada atualizada por GPS.':'Ainda não tenho uma chegada confiável.');
+  case 'arrival':return text(intent,!route?'Calcule uma rota primeiro.':active&&gps&&arrival?choose('Chegada prevista: ','Você deve chegar por volta das ','Previsão de chegada: ')+arrival+'.':duration!==null?'O percurso leva cerca de '+minutes(Math.ceil(duration))+', mas ainda não tenho uma chegada atualizada por GPS.':'Ainda não tenho uma chegada confiável.');
 
   case 'remaining_time':return text(intent,!route?'Ainda sem rota.':eta!==null?active&&!gps?'Sem GPS recente, o percurso completo leva cerca de '+minutes(Math.ceil(eta))+'.':choose('Faltam cerca de ','Mais ou menos ','Restam aproximadamente ')+minutes(Math.ceil(eta))+'.':'Ainda sem previsão confiável.');
 
