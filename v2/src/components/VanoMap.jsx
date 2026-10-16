@@ -128,7 +128,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
    if(/Unauthorized|Forbidden|Invalid Token|Style not found/i.test(message))setError('Não foi possível carregar o estilo Mapbox. Verifique o token.');
    console.warn('Mapbox:',message);
  }};
-    if(token){
+    if(token && (!mapboxgl.supported || mapboxgl.supported())){
       try{
         mapboxgl.accessToken=token;
         map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
@@ -157,10 +157,24 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
         map.on('rotatestart',e=>{if(e.originalEvent)motion.current?.setFree();});
         canvas=map.getCanvas();wheelHandler=()=>motion.current?.setFree();canvas?.addEventListener('wheel',wheelHandler);
-      }catch(e){console.warn('Mapbox startup failed:',e);setError('Falha na renderização Mapbox. Reinicie o mapa.');map?.remove?.();map=null;}
+      }catch(e){
+        // Recover from WebGL initialization failure without retaining a
+        // permanent Mapbox error above the working raster fallback.
+        console.warn('Mapbox startup failed; switching to Leaflet:',e?.message||String(e));
+        try{map?.remove?.();}catch{/* partially constructed Mapbox */}
+        map=null;
+        root.current?.replaceChildren();
+      }
     }
     if(!map){
-      map=L.map(root.current,{zoomControl:false,attributionControl:true}).setView(ll(initial),12);
+      try{
+        map=L.map(root.current,{zoomControl:false,attributionControl:true}).setView(ll(initial),12);
+        setError('');
+      }catch(error){
+        console.warn('Leaflet startup failed:',error?.message||String(error));
+        setError('Não foi possível carregar o mapa. Recarregue a página.');
+        return()=>{};
+      }
       const tiles=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
       tiles.once('load',()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'leaflet'});}));map._vanoTiles=tiles;map._vanoLayer=L.layerGroup().addTo(map);
       backend.current='leaflet';mapRef.current=map;
