@@ -13,6 +13,7 @@ import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/jevShared.mjs';
+import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence} from '../src/lib/jevStreetRouting.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import { queryPlaces } from './search-provider.mjs';
@@ -703,7 +704,8 @@ async function route(req, res) {
     };
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
-    const intent=classifyJev(body.text);
+    const streetRequest=extractJevStreetRequest(body.text);
+    const intent=streetRequest?(streetRequest.kind==='avoid'?'avoid_street':'via_street'):classifyJev(body.text);
     if(intent==='radar_unavailable')
       return respondJev({mode:'information',intent,text:'Não posso garantir uma rota com menos radares. Siga sempre os limites de velocidade. Posso procurar outro caminho por tempo ou tranquilidade.'});
     if(intent==='unknown')
@@ -736,18 +738,55 @@ async function route(req, res) {
     }
     if(result.source==='demonstracao')
       return respondJev({mode:'information',intent,text:'O motor real de rotas não está disponível neste ambiente. Não vou sugerir uma rota simulada.'});
-    const candidate=chooseJevProposal(result.routes,currentKey,intent);
-    if(!candidate)
-      return respondJev({mode:'information',intent,text:'Não encontrei uma alternativa realmente diferente. Sua rota atual foi mantida.'});
+    // A different fingerprint is NOT proof of avoiding the road named by the
+    // driver. Use actual named steps and request a Mapbox point exclusion
+    // calculated from provider-returned route geometry when needed.
+    let permittedRoutes=result.routes||[];
+    if(streetRequest){
+      permittedRoutes=findStreetCandidate(permittedRoutes,currentKey,streetRequest.road,streetRequest.kind);
+      if(!chooseJevProposal(permittedRoutes,currentKey,intent)&&streetRequest.kind==='avoid'){
+        const observed=(result.routes||[]).some(r=>routeRoadEvidence(r,streetRequest.road).uses);
+        const points=observed?excludedRoadPoints(result.routes,streetRequest.road):[];
+        const key=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+        if(points.length&&key){
+          try{
+            const rerouted=await calculateMapboxV1Candidates(
+              body.origin,body.destination,body.vehicle,telemetry,language,
+              {...options,excludeRoadPoints:points,skipCandidateProbes:true},key
+            );
+            if(rerouted.source!=='demonstracao'){
+              const checked=findStreetCandidate(rerouted.routes,currentKey,streetRequest.road,'avoid');
+              if(chooseJevProposal(checked,currentKey,intent)){
+                result=rerouted;permittedRoutes=checked;
+              }
+            }
+          }catch(error){
+            console.warn('MAVI named-road exclusion unavailable:',String(error?.message||'provider').slice(0,90));
+          }
+        }
+      }
+    }
+    const candidate=chooseJevProposal(permittedRoutes,currentKey,intent);
+    if(!candidate){
+      const text=streetRequest?
+        streetRequest.kind==='avoid'
+          ?'Não encontrei uma rota comprovadamente diferente que evite '+streetRequest.spokenName+'. Mantive a rota atual.'
+          :'Não encontrei uma alternativa confirmada que passe por '+streetRequest.spokenName+'. Mantive a rota atual.'
+        :'Não encontrei uma alternativa realmente diferente. Sua rota atual foi mantida.';
+      return respondJev({mode:'information',intent,text});
+    }
+    // Never let the preview or a later "sim" select a non-compliant option.
+    result={...result,routes:streetRequest?permittedRoutes:result.routes};
     for(const item of result.routes||[]) item.proof=signedRouteProof(item,body.destination,id);
     const minutes=Math.max(1,Math.round(candidate.duration));
     const previous=Number(body.currentDuration);
     const difference=Number.isFinite(previous)&&previous>0&&previous<10080?Math.round(candidate.duration-previous):null;
     const contrast=difference===null?'':difference>0?', '+difference+' minutos a mais que a atual':difference<0?', '+Math.abs(difference)+' minutos a menos que a atual':', com tempo parecido ao atual';
-    const detail=intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
+    const detail=streetRequest?(streetRequest.kind==='avoid'?'sem a via '+streetRequest.spokenName+' nas orientações da alternativa':'passando por '+streetRequest.spokenName):intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
     return respondJev({
       mode:'proposal',intent,routeId:candidate.id,
       sourceKey:currentKey,destination:body.destination,
+      ...(streetRequest?{roadConstraint:{kind:streetRequest.kind,road:streetRequest.road}}:{}),
       routeData:result,
       text:'Encontrei outra rota '+detail+'. Ela leva aproximadamente '+minutes+' minutos'+contrast+'. Quer que eu troque?'
     });
