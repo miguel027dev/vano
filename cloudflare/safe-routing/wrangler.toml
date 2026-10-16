@@ -1,0 +1,25 @@
+name = "vano-safe-routing-staging"
+main = "worker.mjs"
+compatibility_date = "2026-10-15"
+workers_dev = true
+
+# Staging only. Replace the placeholder after a Cloudflare account, R2 bucket and
+# least-privilege API token have been explicitly approved. Do not bind a VANO or
+# TYVON database here.
+[[r2_buckets]]
+binding = "SAFE_ROUTING_DATA"
+bucket_name = "vano-safe-routing-staging"
+
+# Optional, dedicated D1 database for request quotas only. It stores a daily
+# hash of the client key, never a route, coordinates or user identifier.
+[[d1_databases]]
+binding = "SAFE_ROUTING_QUOTAS"
+database_name = "vano-safe-routing-quotas-staging"
+database_id = "REPLACE_AFTER_EXPLICIT_PROVISIONING"
+
+[vars]
+ENVIRONMENT = "staging"
+SAFE_ROUTING_ENABLED = "false"
+MAX_QUERY_TILES = "9"
+MAX_QUERY_METERS = "3500"
+DAILY_QUERY_LIMIT = "120"

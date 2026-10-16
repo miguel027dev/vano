@@ -1,21 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-test('MAVI voice-only UI retains one microphone and does not show text controls',()=>{
- const component=readFileSync(new URL('../components/JevVoiceButton.jsx',import.meta.url),'utf8');
+
+test('V2 voice is rolled back to the functional original recognition flow',()=>{
+ const jsx=readFileSync(new URL('../components/JevVoiceButton.jsx',import.meta.url),'utf8');
  const css=readFileSync(new URL('../jev-voice.css',import.meta.url),'utf8');
- assert.match(component,/aria-label=\{enabled\?'Desativar Mavi/);
- assert.doesNotMatch(component,/<section\b|<form\b|<input\b|<textarea\b|<select\b|jev-panel/);
- assert.doesNotMatch(css,/\.jev-panel|\.jev-text|\.jev-voice-options/);
- assert.match(component,/consumeMaviTranscript\(phrase/);
- assert.match(component,/maviConfirmation\(command\)/);
- assert.match(component,/instance\.continuous=false/);
- assert.match(component,/interimResults=true/);
- assert.match(component,/maviRearmDelay/);
- assert.match(component,/document\.visibilityState==='hidden'/);
- assert.match(component,/dispatchMaviRoute\(command/);
- assert.match(component,/acceptedCue/);
- assert.doesNotMatch(component,/const ack=await speakVoice/);
- assert.match(component,/await speakVoice\(reply\?\.text/);
- assert.match(component,/phaseRef\.current==='CONFIRM'/);
+ // The original October 15 implementation started recognition directly from
+ // the user's button click and accepted the full browser transcript.
+ assert.match(jsx,/const Recognizer=typeof window!=='undefined'\?\(window\.SpeechRecognition\|\|window\.webkitSpeechRecognition\):null/);
+ assert.match(jsx,/recognition\.lang='pt-BR';recognition\.continuous=false;recognition\.interimResults=false;recognition\.maxAlternatives=1/);
+ assert.match(jsx,/const phrase=Array\.from\(event\.results\|\|\[\]\)\.map\(row=>row\?\.\[0\]\?\.transcript\|\|''\)\.join\(' '\)\.trim\(\)/);
+ assert.match(jsx,/recognition\.start\(\)/);
+ assert.match(jsx,/listenRef\.current\('remote'\)/);
+ assert.match(jsx,/onClick=\{toggle\}/);
+ assert.match(jsx,/async function submit\(phrase\)/);
+ assert.match(jsx,/handlersRef\.current\.onCommand\(text,controller\.signal\)/);
+ assert.match(jsx,/handlersRef\.current\.onAccept\(selection\)/);
+ // Complete restoration includes the working diagnostic UI and its styles.
+ assert.match(jsx,/<section className="jev-panel"/);
+ assert.match(css,/\.jev-panel/);
+ assert.doesNotMatch(jsx,/MaviVoiceController|consumeMaviTranscript/);
 });
