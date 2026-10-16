@@ -147,18 +147,14 @@
  background:#fff1e6!important;color:#995b23!important;border-color:#e1ad78!important;
 }
 .jev-control-wrap.mavi-voice-paused .mavi-mic-indicator{background:#e5a04f}
+/* Keep status updates available to screen readers, without a visible pill.
+ * The mic's icon, pulse, title and aria-label still show the current state. */
 .jev-control-wrap .mavi-voice-status{
- position:absolute;right:calc(100% + 9px);top:50%;z-index:30;
- transform:translateY(-50%);pointer-events:none;
- max-width:min(175px,calc(100vw - 125px));white-space:nowrap;
- border-radius:999px;padding:6px 9px;
- font:700 10px/1.25 'DM Sans',sans-serif;
- color:#273b4d;background:var(--panel,#fff);
- border:1px solid rgba(42,60,80,.1);
- box-shadow:0 3px 14px #132b4718;
- opacity:1;transition:opacity .16s ease;
+ position:absolute;width:1px;height:1px;
+ padding:0;margin:-1px;border:0;
+ overflow:hidden;clip:rect(0,0,0,0);
+ white-space:nowrap;pointer-events:none;
 }
-.jev-control-wrap.mavi-voice-off .mavi-voice-status{opacity:0;visibility:hidden}
 @keyframes mavi-mic-breathe{
  0%,100%{transform:scale(.98);opacity:.28}50%{transform:scale(1.12);opacity:.8}
 }
