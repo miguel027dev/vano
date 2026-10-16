@@ -16,6 +16,11 @@ const matches=(s,rx)=>rx.test(s);
 export function classifyMaviIntent(value){
  if(typeof value!=='string'||!value.trim()||value.length>360)return 'unknown';
  const s=maviNormalize(value);
+ // Deterministic map tools respond in milliseconds without a remote LLM.
+ if(matches(s,/^(?:centraliza|centralizar|centralize|recentraliza|recentralizar|volta|voltar)(?: o mapa| a camera| a tela| pra mim| para mim| na minha localizacao| no meu carro)$/))return 'recenter_map';
+ if(matches(s,/^(?:mostra|mostrar|mostre|exiba|exibir|quero ver)(?: a| o)? (?:rota inteira|rota toda|trajeto inteiro|trajeto todo|visao geral (?:da rota|do percurso)|percurso completo)$/))return 'route_overview';
+ if(matches(s,/^(?:mostra|mostrar|mostre|liga|ligar|ative|ativar|exiba|exibir)(?: a camada de| o| os)? (?:transito|trafego)(?: no mapa)?$/))return 'show_traffic';
+ if(matches(s,/^(?:esconde|esconder|oculta|ocultar|desliga|desligar|remove|remover|tira|tirar)(?: a camada de| o| os)? (?:transito|trafego)(?: do mapa)?$/))return 'hide_traffic';
  // Read-only questions must be recognized BEFORE old routing triggers
  // (e.g. "qual a distância da rota?" is not a request to change it).
  if(matches(s,/^(?:oi|ola|bom dia|boa tarde|boa noite|e ai|tudo bem|tudo certo|fala|salve|opa|alo|ta ai|esta ai|me ouve|esta me ouvindo|mavi)\b|(?:mavi )?tudo (?:bem|certo)/))return 'greeting';
@@ -85,8 +90,16 @@ export function answerMaviInformation(intent,input){
   case 'identity':return text(intent,'Eu sou a MAVI, assistente de navegação do VANO Maps. Ajudo você a entender o caminho e encontrar alternativas reais.');
   case 'about':return text(intent,'Eu entendo comandos de navegação e uso os dados calculados pelo VANO. Não invento rotas, acidentes ou horários.');
   case 'thanks':return text(intent,'Por nada! Boa viagem. Se precisar de outro caminho, é só chamar.');
-  case 'help':return text(intent,'Você pode perguntar quanto falta, a hora de chegada, a próxima conversão, o destino, o limite de velocidade e o sinal do GPS. Também pode pedir para evitar uma avenida, buscar rota mais rápida, sem pedágio ou mais tranquila, e ligar ou desligar orientações de voz.');
+  case 'help':return text(intent,'Posso dizer quanto falta, buscar outra rota e mostrar uma prévia antes da troca. Você também pode pedir: centraliza o mapa, mostra o percurso inteiro, liga ou desliga o trânsito e procura um caminho mais rápido.');
   case 'repeat':return text(intent,'Posso repetir. Se a última resposta não foi ouvida, diga novamente seu pedido ou repita a orientação de navegação.');
+  case 'recenter_map':return text(intent,gps?'Centralizando o mapa na sua posição.':'Não tenho GPS atualizado para centralizar o mapa.',gps?'recenter_map':undefined);
+  case 'route_overview':{
+   if(!route)return text(intent,'Primeiro escolha um destino para visualizar a rota inteira.');
+   const moving=active&&(!gps||speed===null||speed>2);
+   return text(intent,moving?'Por segurança, só posso afastar a câmera para mostrar a rota inteira quando você estiver parado.':'Vou mostrar o trajeto completo. Para voltar ao acompanhamento, toque em localização.',moving?undefined:'route_overview');
+  }
+  case 'show_traffic':return text(intent,'Exibindo as informações de trânsito disponíveis no mapa.','show_traffic');
+  case 'hide_traffic':return text(intent,'Ocultando a camada de trânsito no mapa.','hide_traffic');
   case 'mute_guidance':return text(intent,c.audioMuted===true?'As orientações de navegação já estão silenciadas.':'Vou silenciar as orientações de navegação. Você ainda pode falar comigo.','mute_guidance');
   case 'unmute_guidance':return text(intent,c.audioMuted===true?'Vou ativar as orientações de navegação novamente.':'As orientações de navegação já estão ligadas.','unmute_guidance');
   case 'gps_status':return text(intent,gps?'O GPS está recebendo uma posição recente.':'Ainda não tenho um sinal GPS recente para acompanhar sua posição. Confira a permissão de localização.');
