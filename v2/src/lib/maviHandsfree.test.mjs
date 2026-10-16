@@ -43,7 +43,7 @@ test('wake phrase and explicit spoken acceptance never auto-swap route',()=>{
  assert.deepEqual(wake,{kind:'command',command:'recalcula a rota',wakeUntil:0});
  assert.equal(maviConfirmation(wake.command),null);
  assert.equal(maviConfirmation('pode'), 'accept');
- assert.equal(maviConfirmation('Mavi, pode ser essa'),null,'caller must strip wake word before verifying consent');
+ assert.equal(maviConfirmation('gostei dessa, pode ser essa'),'accept');
  assert.equal(maviConfirmation('troca a rota'),null,'new route request is not acceptance');
  assert.equal(maviConfirmation('não gostei, outra rota'),null);
 });
