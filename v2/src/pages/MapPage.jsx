@@ -20,6 +20,7 @@ import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineSt
 import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import JevVoiceButton from '../components/JevVoiceButton.jsx';
+import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
 import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs';
@@ -35,6 +36,7 @@ export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/v2';
   const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const maviResponseTurn=useRef(0),maneuverAudioRef=useRef(null);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
   function syncMeasuredDistance(force=false){
@@ -421,6 +423,13 @@ export default function MapPage({active=true}){
   async function askJev(text,signal,maviMeta={}){
     // Informational commands work even before planning a route. The server
     // gates route-changing requests until a real route and vehicle exist.
+    const replyVariant=maviResponseTurn.current++%3;
+    const greeting=classifyMaviIntent(text)==='greeting';
+    let firstMaviGreeting=false;
+    if(greeting){
+      try{firstMaviGreeting=window.localStorage.getItem('vano-mavi-introduced')!=='1';}
+      catch{firstMaviGreeting=maviResponseTurn.current===1;}
+    }
     const start=navMode&&hasLiveGPS&&validPoint(userCoords)?userCoords:origin;
     const all=route?.geometry?.coordinates;
     const idx=navMode&&hasLiveGPS&&Array.isArray(all)?
@@ -434,7 +443,7 @@ export default function MapPage({active=true}){
       routeGeometry,
       context:{
         hasRoute:!!route,navigationActive:navMode,gpsReady:hasLiveGPS,pendingStop:!!maviPendingStop,
-        firstMaviTurn:maviMeta.firstTurn===true,
+        firstMaviTurn:maviMeta.firstTurn===true,replyVariant,firstMaviGreeting,
         destination:String(dest?.name||dest?.address||'').slice(0,100),
         vehicle:routeVehicle,routeId:route?.id||null,audioMuted:muted,
         currentDuration:route?.duration??null,currentDistance:route?.distance??null,
@@ -457,7 +466,12 @@ export default function MapPage({active=true}){
     const localIntent=classifyMaviIntent(text);
     if(localIntent!=='repeat'&&localIntent!=='places_unavailable'){
       const instant=answerMaviInformation(localIntent,payload.context);
-      if(instant)return instant;
+      if(instant){
+        if(greeting&&firstMaviGreeting){try{window.localStorage.setItem('vano-mavi-introduced','1');}catch{}}
+        return {...instant,voiceTicketPromise:muted?null:api('/v2/assistant/local-voice-ticket',{
+          method:'POST',signal,body:{intent:localIntent,context:payload.context}
+        }).then(result=>result.voiceTicket).catch(()=>null)};
+      }
     }
     return api('/v2/assistant',{method:'POST',signal,body:payload});
   }
@@ -577,6 +591,34 @@ export default function MapPage({active=true}){
   },[navMode,route,dest,maviPendingStop,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision,routeVehicle]);
   function speakManeuver(text,key=null){
     lastVoiceAttempt.current={text,key};
+    if(jevMode){
+      // V2 navigation never invokes browser TTS. Cartesia speaks actual
+      // verified turn cues, authorized with the signed route proof.
+      if(!route?.proof||language!=='pt-BR'){
+        setVoiceProblem(true);return false;
+      }
+      maneuverAudioRef.current?.abort();
+      const controller=new AbortController();
+      maneuverAudioRef.current=controller;
+      if(key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
+      void (async()=>{
+        try{
+          const result=await api('/v2/navigation/voice-ticket',{
+            method:'POST',signal:controller.signal,
+            body:{text,proof:route.proof,language}
+          });
+          if(controller.signal.aborted||!result?.voiceTicket)throw Error('no_voice_ticket');
+          await playMaviVoice(result.voiceTicket,{signal:controller.signal});
+          if(!controller.signal.aborted)setVoiceProblem(false);
+        }catch{
+          if(!controller.signal.aborted){
+            if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
+            setVoiceProblem(true);
+          }
+        }finally{if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;}
+      })();
+      return true;
+    }
     const result=speakNavigationVoice(text,language,{
       native:isNativeShell(),sendNative:notifyNative,
       onStart:()=>setVoiceProblem(false),
@@ -596,11 +638,12 @@ export default function MapPage({active=true}){
     if(cue&&!spoken.current.has(cue.key))speakManeuver(cue.text,cue.key);
   },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem]);
   useEffect(()=>{
+    if(jevMode&&(!navMode||muted))maneuverAudioRef.current?.abort();
     if(!navMode||muted)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
-    return()=>{if(navMode)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});};
+    return()=>{if(jevMode)maneuverAudioRef.current?.abort();if(navMode)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});};
   },[navMode,muted]);
   function toggleVoice(){
-    if(!muted){setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});}
+    if(!muted){if(jevMode)maneuverAudioRef.current?.abort();setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});}
     else{
       setMuted(false);setVoiceProblem(false);spoken.current.clear();
       speakManeuver(language==='fr-FR'?'Instructions vocales activées.':language==='en-US'?'Voice guidance enabled.':'Instruções por voz ativadas.');
@@ -619,7 +662,7 @@ export default function MapPage({active=true}){
     // Called from the user's Start navigation click: unlock browser audio there.
     if(!muted)speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
