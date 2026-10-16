@@ -3,7 +3,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCircle} from 'lucide-react';
 import {api} from '../lib/api.js';
-import {playMaviEleven} from '../lib/maviElevenPlayback.mjs';
+import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {classifyMaviIntent,maviProposalDecision} from '../lib/maviAssistant.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
@@ -124,7 +124,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
          speechTimerRef.current=setTimeout(startRemote,500);
          return;
        }
-       void playMaviEleven(voiceTicket,{signal:controller.signal}).then(finish,()=>{
+       void playMaviVoice(voiceTicket,{signal:controller.signal}).then(finish,()=>{
          if(controller.signal.aborted||finished||!enabledRef.current)return;
          // An expired token, 429, unsupported codec or autoplay block must
          // never deadlock a proposal. Existing browser TTS is the fallback.
