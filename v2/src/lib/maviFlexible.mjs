@@ -8,7 +8,6 @@ import {maviNormalize} from './maviAssistant.mjs';
 const norm=s=>maviNormalize(s).replace(/^(?:mas viu|ma vi|mas vi|mavi|mavy|ei mavi)\s+/,'');
 const categoryMatchers=[
  ['grocery',/\b(?:mercad\w*|supermercad\w*|hipermercad\w*|mercear\w*|hortifruti|quitanda)\b/g],
- ['pharmacy',/\b(?:farmac\w*|drogari\w*)\b/g],
  ['hospital',/\b(?:hospital|pronto socorro|upa|unidade de pronto atendimento)\b/g],
  ['restaurant',/\b(?:restaurante\w*|lanchonet\w*|comer|almocar|jantar)\b/g],
  ['cafe',/\b(?:cafeteria\w*|cafe da manha)\b/g],
