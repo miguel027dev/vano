@@ -18,6 +18,7 @@ import {parseMaviPlaceIntent,detectMaviResume,contextualMaviIntent} from '../src
 import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mjs';
 import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
 import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
+import {maviInstantAnswer,MAVI_FAST_OPENING_INTENTS} from './mavi-instant.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
@@ -728,12 +729,15 @@ async function route(req, res) {
     // pay the LLM latency. Invoke NVIDIA only for ambiguous language and
     // optional smalltalk. If a sentence mentions a named road but the local
     // fallback only found a generic "alternative", ask the LLM to clarify.
-    const conversational=new Set(['greeting','help','identity','about','thanks']);
+    // Opening greetings and capabilities are truthful local answers. Do not
+    // block the very first voice response on an NVIDIA provider cold start.
     const mentionsNamedRoad=/\b(?:avenida|av|rua|rodovia|estrada|marginal)\s+[\p{L}\p{N}]/iu.test(body.text);
     const needsNvidia=!localStreet&&!localPoi&&(
-      localIntent==='unknown'||conversational.has(localIntent)||
+      localIntent==='unknown'||
       (localIntent==='alternative'&&mentionsNamedRoad));
-    const llm=needsNvidia?await interpretMaviWithNvidia(body.text,body.context):null;
+    const llm=needsNvidia?await interpretMaviWithNvidia(body.text,body.context,{
+      requestTimeoutMs:body.context?.firstMaviTurn===true?2000:undefined
+    }):null;
     // Strong local evidence of an actual named street or POI cannot be
     // overwritten by a free-form third-party model response.
     const streetRequest=localStreet||(!localPoi&&llm?.action==='street'?
@@ -815,6 +819,8 @@ async function route(req, res) {
     // Give informational questions truthful answers without calling a routing provider.
     const info=answerMaviInformation(intent,body.context);
     if(info){
+      if(MAVI_FAST_OPENING_INTENTS.has(intent))
+        return respondJev({...info,text:maviInstantAnswer(intent)||info.text});
       // For static smalltalk only, allow natural variation. Numeric, time,
       // safety and location claims always originate in VANO deterministic code.
       if(llm?.action==='information'&&llm.intent===intent&&llm.reply&&
