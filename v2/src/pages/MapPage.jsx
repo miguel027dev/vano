@@ -437,7 +437,7 @@ export default function MapPage({active=true}){
     const replyVariant=maviResponseTurn.current++%3;
     const conversation=isMaviTalkTurn(text,{conversationActive:maviTalkHistory.current.length>0});
     const rememberReply=response=>{
-      if(!conversation||signal?.aborted||response?.mode!=='information'||typeof response.text!=='string')return response;
+      if((!conversation&&response?.intent!=='general')||signal?.aborted||response?.mode!=='information'||typeof response.text!=='string')return response;
       maviTalkHistory.current=limitedMaviTalkHistory([
         ...maviTalkHistory.current,{role:'user',text},{role:'assistant',text:response.text}
       ]);
