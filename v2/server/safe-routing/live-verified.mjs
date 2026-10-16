@@ -61,17 +61,22 @@ export function safeEvidenceScore(route,events,now=Date.now()){
 }
 export function applySafeVerifiedReportRanking(result,reports,{reroute=false,now=Date.now()}={}){
  const routes=result?.routes||[];
- if(!Array.isArray(routes)||routes.length<2||result?.source==='demonstracao'||result?.degraded===true)return result;
- const target=routes.find(r=>r?.id==='safe'),valid=routes.filter(r=>r&&geom(r)&&fin(r.duration)&&r.duration>0);
- if(!target||valid.length<2)return result;
+ // Never include internal provider candidate geometries in any API response.
+ if(!result||!Array.isArray(routes))return result;
+ const {safeCandidatePool:_internalCandidates,...publicResult}=result;
+ const extra=Array.isArray(_internalCandidates)?_internalCandidates.slice(0,10):[];
+ if(routes.length<2||result?.source==='demonstracao'||result?.degraded===true)return publicResult;
+ const target=routes.find(r=>r?.id==='safe');
+ const valid=[...routes,...extra].filter(r=>r&&geom(r)&&fin(r.duration)&&r.duration>0);
+ if(!target||valid.length<2)return publicResult;
  // The original Python Safety Engine already has richer risk metrics and rules.
- if(result.source==='vano-original-python')return result;
+ if(result.source==='vano-original-python')return publicResult;
  const evidence=nearbyVerifiedHazards(reports,valid,now);
- if(evidence.length<2)return {...result,safeDataStatus:'insufficient-verified-events'};
+ if(evidence.length<2)return {...publicResult,safeDataStatus:'insufficient-verified-events'};
  const scores=valid.map(route=>({route,metrics:safeEvidenceScore(route,evidence,now)}))
   .filter(x=>x.metrics).sort((a,b)=>b.metrics.score-a.metrics.score);
  const chosen=scores[0],current=scores.find(x=>x.route===target);
- if(!chosen||!current)return result;
+ if(!chosen||!current)return publicResult;
  // Reroute hysteresis resists GPS jitter; no new calls or extra provider cost.
  const gain=chosen.metrics.score-current.metrics.score;
  const minGain=reroute?5:2;
@@ -84,6 +89,6 @@ export function applySafeVerifiedReportRanking(result,reports,{reroute=false,now
    changeApplied:switchRoute,confidenceLabel:'limitada',source:'VANO relatos recentes verificados',
    algorithm:'risk-priority-v1',floodHistory:'staging-display-only'},
  });
- return {...result,routes:nextRoutes,safeDataStatus:'limited-verified-incidents',
+ return {...publicResult,routes:nextRoutes,safeDataStatus:'limited-verified-incidents',
   safetyMessage:'Alternativa avaliada com relatos recentes verificados. Não garante segurança nem ausência de alagamento. Base histórica do GeoSampa ainda não aprovada para influenciar a navegação.'};
 }
