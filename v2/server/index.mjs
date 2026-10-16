@@ -218,6 +218,47 @@ function getBody(req) {
     req.on('error', reject);
   });
 }
+
+// Binary audio is deliberately kept in memory only and never persisted/logged.
+// This optional provider fallback is disabled until explicitly configured.
+const jevSttProvider=()=>{
+ if(process.env.VANO_STT_ENABLED!=='1')return null;
+ if(process.env.GROQ_API_KEY?.trim())return {endpoint:'https://api.groq.com/openai/v1/audio/transcriptions',key:process.env.GROQ_API_KEY,model:'whisper-large-v3-turbo'};
+ if(process.env.OPENAI_API_KEY?.trim())return {endpoint:'https://api.openai.com/v1/audio/transcriptions',key:process.env.OPENAI_API_KEY,model:'whisper-1'};
+ return null;
+};
+const acceptedJevAudio=new Map([['audio/webm','webm'],['audio/ogg','ogg'],['audio/mp4','mp4'],['audio/wav','wav'],['audio/x-m4a','m4a']]);
+function getAudioBytes(req,max=2_500_000){
+ return new Promise((resolve,reject)=>{
+   let size=0,failed=false;const chunks=[];
+   req.on('data',chunk=>{
+     if(failed)return;
+     size+=chunk.length;
+     if(size>max){failed=true;reject(new HttpError(413,'Áudio maior que o limite de 2,5 MB.'));return;}
+     chunks.push(chunk);
+   });
+   req.on('end',()=>{if(!failed)resolve(Buffer.concat(chunks));});
+   req.on('error',reject);
+   req.on('aborted',()=>reject(new HttpError(400,'Envio de áudio interrompido.')));
+ });
+}
+async function jevTranscribe(audio,mime,provider){
+ const ext=acceptedJevAudio.get(mime);
+ if(!ext)throw new HttpError(415,'Formato de gravação não suportado.');
+ const data=new FormData();
+ data.set('file',new Blob([audio],{type:mime}),'jev-command.'+ext);
+ data.set('model',provider.model);data.set('language','pt');data.set('response_format','json');
+ let response;
+ try{response=await fetch(provider.endpoint,{
+   method:'POST',headers:{Authorization:'Bearer '+provider.key},
+   body:data,signal:AbortSignal.timeout(12000)
+ });}catch{throw new HttpError(503,'Serviço de transcrição temporariamente indisponível.');}
+ if(!response.ok)throw new HttpError(503,'O provedor não conseguiu transcrever a gravação.');
+ const jsonBody=await response.json().catch(()=>({}));
+ const words=typeof jsonBody.text==='string'?jsonBody.text.trim().slice(0,360):'';
+ if(!words)throw new HttpError(422,'Não identifiquei palavras na gravação. Tente novamente.');
+ return words;
+}
 function ownRecords(name, id) { return db[name].filter(x => x.owner === id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || '')); }
 function prefFor(id, suggestedLanguage='pt-BR') {
   const saved=db.preferences.find(x=>x.owner===id)||{};
@@ -571,6 +612,23 @@ async function route(req, res) {
     const lon=Number(u.searchParams.get('lng')),lat=Number(u.searchParams.get('lat'));
     const proximity=u.searchParams.has('lng')&&u.searchParams.has('lat')&&pointOK([lon,lat])?[lon,lat]:null;
     return json(res,200,await search(u.searchParams.get('q'),lang,proximity));
+  }
+  if(pathname==='/api/v2/assistant/audio-capabilities'&&req.method==='GET'){
+    return json(res,200,{serverTranscription:!!jevSttProvider(),maxAudioBytes:2500000,maxAudioSeconds:12});
+  }
+  if(pathname==='/api/v2/assistant/transcribe'&&req.method==='POST'){
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'jev-audio-v2',4,60000))return;
+    const provider=jevSttProvider();
+    if(!provider)return err(res,503,'Transcrição de áudio por servidor não configurada.');
+    const mime=String(req.headers['content-type']||'').split(';')[0].trim().toLowerCase();
+    if(!acceptedJevAudio.has(mime))return err(res,415,'Formato de áudio não suportado.');
+    const sizeHeader=Number(req.headers['content-length']||0);
+    if(sizeHeader>2500000)return err(res,413,'Áudio muito grande.');
+    const bytes=await getAudioBytes(req);
+    if(bytes.length<800)return err(res,422,'Gravação muito curta ou vazia.');
+    const transcript=await jevTranscribe(bytes,mime,provider);
+    return json(res,200,{text:transcript});
   }
   // Public V2 assistant experiment. Guests may try it, but CSRF and IP limits
   // prevent third-party use of the paid routing provider as an open proxy.
