@@ -21,6 +21,7 @@ import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import JevVoiceButton from '../components/JevVoiceButton.jsx';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
+import {acquireNavigationAudioFocus} from '../lib/maviAudioFocus.mjs';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
 import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs';
@@ -627,6 +628,7 @@ export default function MapPage({active=true}){
       if(voiceRouteProofRef.current.route!==route)
         voiceRouteProofRef.current={route,proof:route?.proof};
       const controller=new AbortController();
+      const releaseAudioFocus=acquireNavigationAudioFocus();
       maneuverAudioRef.current=controller;
       if(key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
       void (async()=>{
@@ -646,7 +648,7 @@ export default function MapPage({active=true}){
             voiceRetryAfterRef.current=Date.now()+12000;
             setVoiceProblem(true);
           }
-        }finally{if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;}
+        }finally{releaseAudioFocus();if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;}
       })();
       return true;
     }
