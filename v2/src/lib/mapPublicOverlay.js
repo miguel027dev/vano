@@ -19,7 +19,7 @@ function buildPin(item){
  const chip=document.createElement('span');
  const secondaryStyle={
    travessia:'is-crossing',estacionamento:'is-parking',ferrovia:'is-rail',banco:'is-bank',
-   obra:'is-works','relato-obra':'is-works',
+   obra:'is-works','relato-obra':'is-works','alerta-via':'is-road-alert',
    mercado:'is-commerce',supermercado:'is-commerce',shopping:'is-shopping',
    'estacao-recarga':'is-electric','carregador-eletrico':'is-electric',eletroposto:'is-electric',
    restaurante:'is-food',fastfood:'is-food',cafeteria:'is-food',
@@ -38,14 +38,14 @@ function popupBody(item){
  const wrapper=document.createElement('div');wrapper.className='v40-public-popup';
  const title=document.createElement('strong');title.textContent=item.name;
  const source=document.createElement('small');
- source.textContent='Fonte: '+item.source+(item.verified?' · relato verificado':' · cadastro público');
+ source.textContent='Fonte: '+item.source+(item.regional?' · atualização oficial':item.verified?' · relato verificado':' · cadastro público');
  wrapper.append(title,source);
  if(item.description){const desc=document.createElement('p');desc.textContent=item.description;wrapper.append(desc);}
  return wrapper;
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,vectorTimer=null,controller=null,radarController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
+ let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
  const sourceCache=new Map(); // OSM, verified reports and radar points; never erased on viewport changes.
  const markers=new Map();
@@ -198,6 +198,40 @@ export function attachPublicMapOverlay(map,backend){
    }
   }
  }
+ async function refreshRegional(bbox){
+  // Region gating is server-side, with no request to a foreign provider
+  // unless the viewport intersects that provider's configured coverage.
+  const key=bbox.map(x=>x.toFixed(3)).join(',');
+  if(key===regionalKey&&Date.now()-regionalReadAt<120000)return;
+  regionalController?.abort();
+  const request=new AbortController();regionalController=request;
+  try{
+   const response=await fetch('/api/road-events/regional?bbox='+encodeURIComponent(bbox.join(',')),
+    {signal:request.signal,headers:{Accept:'application/json'}});
+   if(!response.ok)throw Error('Regional roads: '+response.status);
+   const data=await response.json();
+   if(done||request.signal.aborted)return;
+   if(Array.isArray(data?.features)&&data.features.length){
+    rememberPublicFeatures(sourceCache,data.features.filter(x=>x?.regional===true).slice(0,100));
+    mergeSources();render();
+   }
+   regionalKey=key;regionalReadAt=Date.now();
+   if(data?.sources?.some(x=>x.status==='loading')){
+    // An upstream cold start is deliberately nonblocking; fetch the new
+    // snapshot once after the server-side asynchronous refresh.
+    if(regionalTimer!==null)clearTimeout(regionalTimer);
+    regionalTimer=setTimeout(()=>{
+     regionalTimer=null;
+     if(done||document.hidden)return;
+     regionalReadAt=0;
+     const latest=mapFeatureBBox(map,backend);
+     if(latest)void refreshRegional(latest);
+    },4600);
+   }
+  }catch(error){
+   if(error?.name!=='AbortError'){regionalKey='';regionalReadAt=0;}
+  }
+ }
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
@@ -210,6 +244,7 @@ export function attachPublicMapOverlay(map,backend){
   updateVectorPoi();render();
   // Never wait for the slow generic OpenStreetMap POI query to discover speed cameras.
   if(radarBbox)void refreshRadars(radarBbox);
+  void refreshRegional(bbox);
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
   if(controller)controller.abort();
@@ -256,8 +291,10 @@ export function attachPublicMapOverlay(map,backend){
   done=true;
   if(timer!==null)clearTimeout(timer);
   if(vectorTimer!==null)clearTimeout(vectorTimer);
+  if(regionalTimer!==null)clearTimeout(regionalTimer);
   controller?.abort();
   radarController?.abort();
+  regionalController?.abort();
   map.off('moveend',schedule);
   map.off('zoomend',schedule);
   if(backend==='mapbox'){
