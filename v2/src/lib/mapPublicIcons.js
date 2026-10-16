@@ -42,7 +42,8 @@ const GLYPHS={
  crossing:'<circle cx="12" cy="5" r="1"/><path d="m9 20 3-6 3 6"/><path d="m6 8 6 2 6-2"/><path d="M12 10v4"/>',
  rail:'<path d="M8 3.1V7a4 4 0 0 0 8 0V3.1"/><path d="m9 15-1-1"/><path d="m15 15 1-1"/><path d="M9 19c-2.8 0-5-2.2-5-5v-4a8 8 0 0 1 16 0v4c0 2.8-2.2 5-5 5Z"/><path d="m8 19-2 3"/><path d="m16 19 2 3"/>',
  roundabout:'<circle cx="12" cy="12" r="2.2"/><path d="M7.7 5.6a7.7 7.7 0 0 1 10.7 3.1m-.1 0-.3-3.5m.3 3.5-3.5-.6M19 11.8a7.7 7.7 0 0 1-7 7.8m0 0 2.9 2m-2.9-2 2.8-2.1M9 18.8a7.7 7.7 0 0 1-4.2-10m0 0-2.2 2.6m2.2-2.6 2.9 1.7"/>',
- works:'<path d="M8 3h8l5 18H3zM6 15h12M8 10h8"/>',
+ // Closed static SVG: amber beacons, reflective barricade slats and grounded feet.
+ works:'<circle cx="12" cy="3.9" r="1.45" fill="#F9AA2D" stroke="#945017" stroke-width=".75"/><rect x="3.1" y="7.3" width="17.8" height="9.4" rx="1.7" fill="#FFF4DE" stroke="#995115" stroke-width="1.35"/><path d="M7.6 7.9 3.7 13.2M13.4 7.9 7.5 16M19.1 7.9 13.4 16" stroke="#ED7928" stroke-width="2.5" stroke-linecap="butt"/><path d="M7.4 17v3.7m9.2-3.7v3.7M5.3 21h4.3m4.8 0h4.3" stroke="#995115" stroke-width="1.6" stroke-linecap="round"/>',
  medical:'<path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/>',
  fire:'<path d="M12 2q3 6-1 10q5-1 6-5q7 12-4 15Q2 22 5 12q1-4 7-10Z"/>',
  shield:'<path d="M12 2 21 6v7q0 6-9 9q-9-3-9-9V6z"/><path d="m8 13 3 3 5-6"/>',
