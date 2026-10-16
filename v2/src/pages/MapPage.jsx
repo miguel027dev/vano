@@ -190,7 +190,7 @@ export default function MapPage({active=true}){
         },delay);
       }
     }
-    setGpsStatus(fix.accuracy<=100?'granted':'approximate');setGpsMessage('');
+    setGpsStatus(fix.accuracy<=50?'granted':'approximate');setGpsMessage('');
     if(awaitingGpsDestination.current&&!validPoint(manualCoordsRef.current)&&destRef.current){
       awaitingGpsDestination.current=false;setPickOriginMode(false);
       routeCalculator.current?.(destRef.current,fix.coords);
@@ -205,7 +205,7 @@ export default function MapPage({active=true}){
     setGpsMessage(geoErrorMessage(error));
   }
   function requestGPS(switchToGPS=true){
-    if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=100){
+    if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=50){
       const coords=lastGpsFix.current.coords;
       setManualCoords(null);setPickOriginMode(false);setGpsStatus('granted');setGpsMessage('');
       if(destRef.current)calculateRoute(destRef.current,coords);
@@ -243,11 +243,11 @@ export default function MapPage({active=true}){
   useEffect(()=>{
     const id=setInterval(()=>{
       setGpsClock(x=>x+1);
-      if(lastGpsFix.current&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))
+      if(lastGpsFix.current&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),navMode?35000:60000))
         setGpsStatus(s=>s==='granted'||s==='approximate'?'reconnecting':s);
     },12000);
     return()=>clearInterval(id);
-  },[]);
+  },[navMode]);
   useEffect(()=>{
     if(!active&&!navMode)return;
     // First login: ONE permission prompt / continuous watch; delayed recovery only if no valid fix.
