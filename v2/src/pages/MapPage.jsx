@@ -21,6 +21,7 @@ import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import JevVoiceButton from '../components/JevVoiceButton.jsx';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
+import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
@@ -426,6 +427,13 @@ export default function MapPage({active=true}){
       proposal.destination.some((coordinate,index)=>Math.abs(coordinate-dest.coords[index])>0.00001))return false;
     const routes=proposal.routeData?.routes;
     if(!Array.isArray(routes)||!routes.some(r=>r.id===proposal.routeId&&jevRouteFingerprint(r)!==proposal.sourceKey))return false;
+    const selected=routes.find(r=>r.id===proposal.routeId);
+    if(proposal.roadConstraint){
+      const {road,kind}=proposal.roadConstraint;
+      if(typeof road!=='string'||road.length>72||!['avoid','via'].includes(kind))return false;
+      const evidence=routeRoadEvidence(selected,road);
+      if(!evidence.known||evidence.uses!==(kind==='via'))return false;
+    }
     routeEpoch.current++;spoken.current.clear();
     setRouteData(proposal.routeData);setChoice(proposal.routeId);setGuidance(null);
     setToast('Alternativa selecionada pela MAVI.');return true;
