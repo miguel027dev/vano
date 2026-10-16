@@ -42,7 +42,7 @@ export default function MapPage({active=true}){
   }
   useEffect(()=>{const flush=()=>syncMeasuredDistance(true);window.addEventListener('pagehide',flush);return()=>{window.removeEventListener('pagehide',flush);flush();};},[]);
   useEffect(()=>{if(!active)syncMeasuredDistance(true);},[active]);
-  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
+  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[maviPendingStop,setMaviPendingStop]=useState(null),[maviResuming,setMaviResuming]=useState(false),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
@@ -55,7 +55,7 @@ export default function MapPage({active=true}){
   destRef.current=dest;
   useEffect(()=>{if(!tripBooted.current)setChoice(initialChoice);},[initialChoice]);
   useEffect(()=>{try{window.localStorage.setItem('vano-traffic-layer',trafficEnabled?'on':'off');}catch{/* Private-mode storage unavailable. */}},[trafficEnabled]);
-  useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;if(value.measuredTrip?.id){measuredTrip.current=value.measuredTrip;odometer.current={meters:Number(value.measuredTrip.meters)||0,anchor:null,lastSeenAt:null};}setDest(value.destination);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setRouteVehicle(['carro','moto','a-pe'].includes(value.vehicle)?value.vehicle:preferences?.vehicle==='moto'?'moto':'carro');setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
+  useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;if(value.measuredTrip?.id){measuredTrip.current=value.measuredTrip;odometer.current={meters:Number(value.measuredTrip.meters)||0,anchor:null,lastSeenAt:null};}setDest(value.destination);setMaviPendingStop(value.maviPendingStop?.originalDestination?.coords?.length===2?value.maviPendingStop:null);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setRouteVehicle(['carro','moto','a-pe'].includes(value.vehicle)?value.vehicle:preferences?.vehicle==='moto'?'moto':'carro');setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
   useEffect(()=>{
     const status=()=>setVoiceProblem(true);
     const nativeFailure=event=>{
@@ -345,7 +345,7 @@ export default function MapPage({active=true}){
   }
   function pick(place){
     if(!validPoint(place.coords)){setToast('Este destino ainda não tem coordenadas.');return;}
-    setDest(place);setQuery('');setSearchOpen(false);setEditor(null);setPointMenu(null);setNavMode(false);setGuidance(null);setRouteData(null);
+    setMaviPendingStop(null);setDest(place);setQuery('');setSearchOpen(false);setEditor(null);setPointMenu(null);setNavMode(false);setGuidance(null);setRouteData(null);
     if(!validPoint(origin)){
       awaitingGpsDestination.current=true;
       routeEpoch.current++;
@@ -358,7 +358,7 @@ export default function MapPage({active=true}){
   }
   function chooseOrigin(coords,label='Origem selecionada no mapa'){
     if(!validPoint(coords))return;
-    awaitingGpsDestination.current=false;setManualCoords(coords);setManualLabel(label);setPickOriginMode(false);setNavMode(false);setEditor(null);setPointMenu(null);
+    awaitingGpsDestination.current=false;setMaviPendingStop(null);setManualCoords(coords);setManualLabel(label);setPickOriginMode(false);setNavMode(false);setEditor(null);setPointMenu(null);
     setToast('Origem manual definida. Você já pode calcular rotas sem GPS.');
     if(dest)calculateRoute(dest,coords);
   }
@@ -375,7 +375,7 @@ export default function MapPage({active=true}){
   function swapPoints(){
     const flipped=swapJourney(origin,dest,usingManual?manualLabel:'Ponto de partida anterior');
     if(!flipped){setToast('Defina origem e destino para inverter.');return;}
-    setManualCoords(flipped.manualCoords);setManualLabel(flipped.manualLabel);setDest(flipped.destination);
+    setMaviPendingStop(null);setManualCoords(flipped.manualCoords);setManualLabel(flipped.manualLabel);setDest(flipped.destination);
     setPointMenu(null);setEditor(null);setNavMode(false);setRouteData(null);
     setSheetOpen(true);setPickOriginMode(false);setQuery('');
     calculateRoute(flipped.destination,flipped.manualCoords);
@@ -411,11 +411,18 @@ export default function MapPage({active=true}){
     // Informational commands work even before planning a route. The server
     // gates route-changing requests until a real route and vehicle exist.
     const start=navMode&&hasLiveGPS&&validPoint(userCoords)?userCoords:origin;
+    const all=route?.geometry?.coordinates;
+    const idx=navMode&&hasLiveGPS&&Array.isArray(all)?
+      Math.max(0,nearestOnRoute(userCoords,route.geometry)?.index||0):0;
+    const path=Array.isArray(all)?all.slice(idx):[];
+    const stride=Math.max(1,Math.ceil((path.length-1)/159));
+    const routeGeometry=path.filter((_,i)=>i%stride===0||i===path.length-1);
     return api('/v2/assistant',{method:'POST',signal,body:{
       text,origin:validPoint(start)?start:null,destination:dest?.coords||null,vehicle:routeVehicle,language,
       currentRouteKey:jevKey,currentDuration:route?.duration??null,currentDistance:route?.distance??null,
+      routeGeometry,
       context:{
-        hasRoute:!!route,navigationActive:navMode,gpsReady:hasLiveGPS,
+        hasRoute:!!route,navigationActive:navMode,gpsReady:hasLiveGPS,pendingStop:!!maviPendingStop,
         destination:String(dest?.name||dest?.address||'').slice(0,100),
         vehicle:routeVehicle,routeId:route?.id||null,audioMuted:muted,
         currentDuration:route?.duration??null,currentDistance:route?.distance??null,
@@ -439,13 +446,60 @@ export default function MapPage({active=true}){
     if(action==='mute_guidance'){
       setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});return true;
     }
+    if(action==='resume_original'){void resumeMaviDestination();return true;}
     if(action==='unmute_guidance'){
       setMuted(false);setVoiceProblem(false);spoken.current.clear();return true;
     }
     return false;
   }
+  async function resumeMaviDestination(){
+    const stop=maviPendingStop,original=stop?.originalDestination;
+    if(!jevMode||!original||!validPoint(original.coords)||maviResuming)return false;
+    if(navMode&&!hasLiveGPS){
+      setToast('Aguarde o GPS atualizar antes de continuar até o destino original.');return false;
+    }
+    const departure=navMode&&hasLiveGPS?userCoords:origin;
+    if(!validPoint(departure)){setToast('Localização de partida indisponível.');return false;}
+    const epoch=++routeEpoch.current;setMaviResuming(true);
+    try{
+      const result=await api('/route',{method:'POST',body:JSON.stringify({
+        origin:departure,destination:original.coords,vehicle:routeVehicle,language,
+        telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}
+      })});
+      if(epoch!==routeEpoch.current)return false;
+      if(result.source==='demonstracao'||!result.routes?.some(r=>validPoint(r.geometry?.coordinates?.at(-1)))){
+        setToast('Não consegui uma rota real ao destino original. Mantive a parada.');return false;
+      }
+      setDest(original);setRouteData(result);
+      setChoice(result.routes.some(r=>r.id===stop.originalChoice)?stop.originalChoice:
+        (result.routes.find(r=>r.id==='fast')?.id||result.routes[0].id));
+      setMaviPendingStop(null);setGuidance(null);spoken.current.clear();
+      setToast('Rota retomada até '+original.name+'.');return true;
+    }catch{
+      if(epoch===routeEpoch.current)setToast('Não consegui calcular a continuação. Mantive a rota para a parada.');
+      return false;
+    }finally{setMaviResuming(false);}
+  }
   function applyJev(proposal){
     if(!jevMode||!dest||!route||!proposal||proposal.mode!=='proposal')return false;
+    if(proposal.kind==='poi_stop'){
+      const place=proposal.poi,results=proposal.routeData?.routes;
+      if(maviPendingStop||proposal.sourceKey!==jevRouteFingerprint(route)||
+        !validPoint(place?.coords)||!validPoint(proposal.originalDestination)||
+        !proposal.originalDestination.every((v,i)=>Math.abs(v-dest.coords[i])<0.00001)||
+        !Array.isArray(results)||!results.some(r=>r.id===proposal.routeId&&r.proof&&
+          Array.isArray(r.geometry?.coordinates)&&r.geometry.coordinates.length>=2))return false;
+      const selected=results.find(r=>r.id===proposal.routeId);
+      const endpoint=selected.geometry.coordinates.at(-1);
+      if(!validPoint(endpoint)||Math.abs(endpoint[0]-place.coords[0])>0.005||
+        Math.abs(endpoint[1]-place.coords[1])>0.005)return false;
+      setMaviPendingStop({originalDestination:dest,originalChoice:choice,
+        stop:{name:place.name,coords:place.coords}});
+      routeEpoch.current++;spoken.current.clear();
+      setDest(place);setRouteData(proposal.routeData);setChoice(proposal.routeId);
+      setGuidance(null);setSheetOpen(false);
+      setToast('Parada inserida: '+place.name+'. Destino original salvo.');return true;
+    }
     if(proposal.sourceKey!==jevRouteFingerprint(route))return false;
     if(!validPoint(proposal.destination)||
       proposal.destination.some((coordinate,index)=>Math.abs(coordinate-dest.coords[index])>0.00001))return false;
@@ -491,9 +545,9 @@ export default function MapPage({active=true}){
     if(!navMode||!route||!dest)return;
     const options=JSON.stringify([muted,layer,offlineMap.status,spokenRevision]);
     if(lastSaveRoute.current===route&&lastSaveOptions.current===options&&Date.now()-lastSave.current<4000)return;lastSave.current=Date.now();lastSaveRoute.current=route;lastSaveOptions.current=options;
-    const snapshot={version:1,owner:user?.id||'guest',savedAt:Date.now(),destination:dest,route,source:routeData?.source,safetyMessage:routeData?.safetyMessage,vehicle:routeVehicle,layer,muted,measuredTrip:measuredTrip.current?{...measuredTrip.current,meters:odometer.current.meters}:null,mapPrepared:offlineMap.status==='ready',position:userCoords?{coords:userCoords,telemetry}:null,spoken:[...spoken.current]};
+    const snapshot={version:1,owner:user?.id||'guest',savedAt:Date.now(),destination:dest,...(maviPendingStop?{maviPendingStop}:{}),route,source:routeData?.source,safetyMessage:routeData?.safetyMessage,vehicle:routeVehicle,layer,muted,measuredTrip:measuredTrip.current?{...measuredTrip.current,meters:odometer.current.meters}:null,mapPrepared:offlineMap.status==='ready',position:userCoords?{coords:userCoords,telemetry}:null,spoken:[...spoken.current]};
     writeOffline('active-trip',snapshot).then(setStorageReady);
-  },[navMode,route,dest,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision,routeVehicle]);
+  },[navMode,route,dest,maviPendingStop,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision,routeVehicle]);
   function speakManeuver(text,key=null){
     lastVoiceAttempt.current={text,key};
     const result=speakNavigationVoice(text,language,{
@@ -538,7 +592,7 @@ export default function MapPage({active=true}){
     // Called from the user's Start navigation click: unlock browser audio there.
     if(!muted)speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
@@ -693,6 +747,12 @@ export default function MapPage({active=true}){
       <div className="v36-nav-road-pill" title={navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}>
         <strong>{navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}</strong>
       </div>
+    </div>}
+    {jevMode&&maviPendingStop&&navMode&&<div className="mavi-stop-continue" role="group" aria-label="Parada temporária da MAVI">
+      <span>Parada: {dest?.name||'local escolhido'}</span>
+      <button type="button" disabled={maviResuming} onClick={()=>void resumeMaviDestination()}>
+        {maviResuming?'Calculando…':'Continuar ao destino original'}
+      </button>
     </div>}
     {navMode&&<div className="nav-bottom v37-nav-bottom" aria-label="Resumo da navegação">
       <span className="v37-nav-handle" aria-hidden="true"/>

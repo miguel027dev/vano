@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/jevShared.mjs';
 import {classifyMaviIntent,answerMaviInformation,MAVI_ROUTE_INTENTS} from '../src/lib/maviAssistant.mjs';
+import {parseMaviPlaceIntent,detectMaviResume,contextualMaviIntent} from '../src/lib/maviFlexible.mjs';
+import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mjs';
 import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence} from '../src/lib/jevStreetRouting.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
@@ -706,7 +708,70 @@ async function route(req, res) {
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
     const streetRequest=extractJevStreetRequest(body.text);
-    const intent=streetRequest?(streetRequest.kind==='avoid'?'avoid_street':'via_street'):classifyMaviIntent(body.text);
+    const poiRequest=parseMaviPlaceIntent(body.text);
+    const intent=poiRequest?'find_poi':streetRequest?
+      (streetRequest.kind==='avoid'?'avoid_street':'via_street'):
+      (detectMaviResume(body.text)?'resume_original':
+       contextualMaviIntent(body.text)||classifyMaviIntent(body.text));
+    if(intent==='resume_original'){
+      const hasStop=body.context?.pendingStop===true;
+      return respondJev(hasStop?
+        {mode:'action',intent,action:'resume_original',text:'Vou procurar o caminho de volta ao seu destino original. A rota da parada será mantida se não for possível calcular.'}:
+        {mode:'information',intent,text:'Não há uma parada temporária ativa para continuar a viagem.'});
+    }
+    if(poiRequest){
+      if(!limits(req,res,'mavi-poi-search',5,60000))return;
+      if(!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto'].includes(body.vehicle))
+        return respondJev({mode:'information',intent,text:'Escolha um destino e uma rota de carro ou moto antes de inserir uma parada.'});
+      const sourceKey=typeof body.currentRouteKey==='string'&&body.currentRouteKey.length<=64?
+        body.currentRouteKey:null;
+      if(!sourceKey)return respondJev({mode:'information',intent,text:'Calcule uma rota antes de pedir uma parada no caminho.'});
+      if(body.context?.pendingStop===true)
+        return respondJev({mode:'information',intent,text:'Você já tem uma parada temporária ativa. Continue até o destino original antes de inserir outra.'});
+      const category=poiRequest.category,scope=poiRequest.scope;
+      const label=MAVI_POI_CATEGORIES[category].label;
+      const route=body.routeGeometry;
+      if(scope==='route'&&!validatePoiRoute(route,body.origin,body.destination))
+        return respondJev({mode:'information',intent,text:'Não consegui confirmar o trajeto atual para procurar locais no caminho. Sua rota foi mantida.'});
+      const key=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+      if(!key)return respondJev({mode:'information',intent,text:'A busca de estabelecimentos está indisponível agora. Mantive o destino original.'});
+      let choices;
+      try{choices=await findMaviPlaces({category,scope,origin:body.origin,
+        route:scope==='route'?route:null,token:key});}
+      catch{
+        return respondJev({mode:'information',intent,text:'Não consegui consultar estabelecimentos reais neste momento. Sua rota foi mantida.'});
+      }
+      if(!choices.length)return respondJev({mode:'information',intent,
+        text:scope==='route'?'Não encontrei '+label+' confirmado perto do trajeto à frente. Mantive sua rota.':
+          'Não encontrei '+label+' confirmado perto de você. Seu destino não mudou.'});
+      const telemetryRaw=body.telemetry&&typeof body.telemetry==='object'?body.telemetry:{};
+      const telemetry={bearing:Number.isFinite(telemetryRaw.bearing)?telemetryRaw.bearing:null,
+        speed:Number.isFinite(telemetryRaw.speed)?telemetryRaw.speed:null};
+      const language=normalizeLocale(body.language)||'pt-BR';
+      for(const poi of choices.slice(0,3)){
+        try{
+          const candidateData=await directions(body.origin,poi.coords,body.vehicle,telemetry,language,
+            {adaptive:false,variantBudget:2,reroute:true});
+          if(candidateData.source==='demonstracao')continue;
+          const candidate=(candidateData.routes||[]).find(r=>r.id==='fast'&&jevRouteFingerprint(r))||
+            (candidateData.routes||[]).find(r=>jevRouteFingerprint(r));
+          if(!candidate)continue;
+          const account=owner(req);
+          if(!account)continue;
+          for(const r of candidateData.routes||[])r.proof=signedRouteProof(r,poi.coords,account);
+          const place={id:poi.id,name:poi.name,address:poi.address,coords:poi.coords,category};
+          const distance=poi.distanceMeters<1000?
+            poi.distanceMeters+' metros':(poi.distanceMeters/1000).toFixed(1).replace('.',',')+' quilômetros';
+          return respondJev({mode:'proposal',kind:'poi_stop',intent,
+            sourceKey,originalDestination:body.destination,poi:place,
+            routeId:candidate.id,routeData:candidateData,
+            text:'Encontrei '+poi.name+', '+label+' a aproximadamente '+distance+
+             ' da sua posição em linha reta. A rota até lá leva cerca de '+
+             Math.max(1,Math.round(candidate.duration))+' minutos. Quer inserir esta parada e depois voltar ao seu destino original?'});
+        }catch{/* Unroutable POI must not be offered as a navigable stop. */}
+      }
+      return respondJev({mode:'information',intent,text:'Encontrei locais próximos, mas não consegui calcular um caminho real até eles. Sua rota atual foi mantida.'});
+    }
     // Give informational questions truthful answers without calling a routing provider.
     const info=answerMaviInformation(intent,body.context);
     if(info)return respondJev(info);

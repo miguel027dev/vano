@@ -332,7 +332,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
    }
    let applied=false;
    try{applied=handlersRef.current.onAccept(selection)!==false;}catch{/* expired route */}
-   const message=applied?'Nova rota selecionada.':'Esta sugestão expirou. Peça outra alternativa.';
+   const message=applied?(selection.kind==='poi_stop'?'Parada adicionada. Depois, peça para continuar ao destino original.':'Nova rota selecionada.'):'Esta sugestão expirou. Peça outra alternativa.';
    setReply(message);speak(message);
    return applied;
  }
@@ -346,15 +346,15 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
    {enabled?<Mic size={21}/>:<MicOff size={21}/>}
   </button>
   {enabled&&offerReady&&proposal&&offerTarget&&createPortal(
-    <section className="mavi-offer-card" role="group" aria-label="Alternativa de rota sugerida pela MAVI">
+    <section className="mavi-offer-card" role="group" aria-label={proposal.kind==='poi_stop'?'Parada sugerida pela MAVI':'Alternativa de rota sugerida pela MAVI'}>
       <div className="mavi-offer-header">
         <span className="mavi-offer-symbol"><Check size={18} aria-hidden="true"/></span>
-        <div><strong>Nova rota encontrada</strong><small>A MAVI apresentou esta alternativa por voz</small></div>
+        <div><strong>{proposal.kind==='poi_stop'?'Parada encontrada':'Nova rota encontrada'}</strong><small>{proposal.kind==='poi_stop'?'O destino original será preservado':'A MAVI apresentou esta alternativa por voz'}</small></div>
       </div>
       <p className="mavi-offer-description">{proposal.text||'Encontrei uma rota alternativa. Quer utilizá-la?'}</p>
       <div className="mavi-offer-actions">
         <button type="button" className="mavi-offer-reject" onClick={reject}>Manter atual</button>
-        <button type="button" className="mavi-offer-confirm" onClick={accept}><Check size={16} aria-hidden="true"/> Usar rota</button>
+        <button type="button" className="mavi-offer-confirm" onClick={accept}><Check size={16} aria-hidden="true"/> {proposal.kind==='poi_stop'?'Adicionar parada':'Usar rota'}</button>
       </div>
       <small className="mavi-offer-voice-hint">Ou diga “Pode” ou “Não” para decidir por voz.</small>
     </section>,offerTarget
