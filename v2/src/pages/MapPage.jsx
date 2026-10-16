@@ -200,7 +200,7 @@ export default function MapPage({active=true}){
   function onPositionError(error){
     const state=gpsStateAfterError(error,lastGpsFix.current);
     // An old pending request or a temporary indoors accuracy error is not loss of an already valid fix.
-    if(state==='granted'){setGpsStatus(lastGpsFix.current?.accuracy<=100?'granted':'approximate');setGpsMessage('');return;}
+    if(state==='granted'){setGpsStatus(lastGpsFix.current?.accuracy<=50?'granted':'approximate');setGpsMessage('');return;}
     setGpsStatus(state);
     setGpsMessage(geoErrorMessage(error));
   }
