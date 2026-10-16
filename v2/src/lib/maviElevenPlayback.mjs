@@ -91,7 +91,7 @@ export async function playMaviVoice(ticket,{signal,audioFactory=()=>new Audio(),
  if(signal?.aborted)throw new Error('mavi_voice_cancelled');
  const progressive=typeof MediaSource!=='undefined'&&
   typeof MediaSource.isTypeSupported==='function'&&MediaSource.isTypeSupported('audio/mpeg')&&
-  typeof Response!=='undefined'&&Boolean(Response.prototype?.body);
+  typeof ReadableStream!=='undefined';
  if(progressive)return playMaviStream(ticket,{signal,audioFactory,urlApi});
  const blob=await fetchMaviAudio(ticket,{signal});
  if(signal?.aborted)throw new Error('mavi_voice_cancelled');
