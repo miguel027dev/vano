@@ -3,6 +3,8 @@
  * A display name, arbitrary env allowlist, or unrelated Google sub is NOT a
  * valid grant. The owner must be signed in with verified e-mail/Google identity.
  */
+import {activitySummary,userActivity} from './engagement.mjs';
+
 export const ADMIN_EMAIL='miguelpinxs@gmail.com';
 export function isAdminAccount(user){
  return Boolean(user&&user.verifiedAt&&['email','google'].includes(user.verificationMethod)
@@ -36,6 +38,7 @@ export function adminMetrics(data,stats,{now=Date.now(),startedAt=Date.now(),sta
    since:new Date(startedAt).toISOString(),uptimeSeconds:Math.max(0,Math.floor((now-startedAt)/1000)),
    usersTotal:users.length,usersVerified:users.filter(u=>Boolean(u.verifiedAt)).length,usersGoogle:users.filter(u=>Boolean(u.googleSub)).length,
    signups7d:new7d,signups30d:new30d,
+   engagement:activitySummary(users,now),
    verificationRate:users.length?Math.round(users.filter(u=>Boolean(u.verifiedAt)).length/users.length*100):null,
     signupsEmail:users.filter(u=>signupMethod(u).startsWith('E-mail')).length,
     signupsGoogle:users.filter(u=>signupMethod(u).startsWith('Google')).length,
@@ -54,5 +57,5 @@ export function adminUsers(data,{offset=0,limit=25}={}){
  const safeOffset=Math.max(0,Math.min(100000,Math.floor(Number(offset)||0)));
  const safeLimit=Math.max(1,Math.min(50,Math.floor(Number(limit)||25)));
  const recent=users.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
- return {total:users.length,offset:safeOffset,limit:safeLimit,items:recent.slice(safeOffset,safeOffset+safeLimit).map(u=>({id:u.id,name:String(u.name||'').slice(0,80),email:String(u.email||'').slice(0,180),createdAt:u.createdAt||null,verified:Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub),signupMethod:signupMethod(u)}))};
+ return {total:users.length,offset:safeOffset,limit:safeLimit,items:recent.slice(safeOffset,safeOffset+safeLimit).map(u=>({id:u.id,name:String(u.name||'').slice(0,80),email:String(u.email||'').slice(0,180),createdAt:u.createdAt||null,verified:Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub),signupMethod:signupMethod(u),activity:userActivity(u)}))};
 }
