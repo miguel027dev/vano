@@ -672,7 +672,9 @@ async function route(req, res) {
       }
       if(!res.destroyed&&size<=MAVI_VOICE_MAX_BYTES&&!abort.signal.aborted)res.end();
       else if(!res.destroyed)res.destroy();
-    }catch{
+    }catch(error){
+      // Provider status and safe reason only; never log keys, text, audio or tokens.
+      console.warn('MAVI TTS upstream failure',String(error?.message||'unknown').slice(0,50),Number.isInteger(error?.upstreamStatus)?error.upstreamStatus:'transport');
       if(!res.headersSent&&!res.destroyed)err(res,503,'Voz temporariamente indisponível.');
       else if(!res.destroyed)res.destroy();
     }finally{clearTimeout(deadline);}
