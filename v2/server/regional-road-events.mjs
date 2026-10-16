@@ -109,6 +109,16 @@ export function normalizeFintrafficRoadEvents(body,bbox,now=Date.now()){
 }
 const PARSERS={'tfl-london':normalizeTflRoadEvents,'drivebc':normalizeDriveBcRoadEvents,
  'fintraffic-works':normalizeFintrafficRoadEvents,'fintraffic-alerts':normalizeFintrafficRoadEvents};
+function locationKey(source,bbox){
+ if(source.id!=='drivebc')return source.id;
+ const snapped=bbox.map((x,i)=>(i<2?Math.floor(x*10)/10:Math.ceil(x*10)/10));
+ return source.id+':'+snapped.map(x=>x.toFixed(1)).join(',');
+}
+function sourceRequest(source,key){
+ if(source.id!=='drivebc')return source.endpoint;
+ const bbox=key.slice(key.indexOf(':')+1);
+ return source.endpoint+'?format=json&status=ACTIVE&limit=120&bbox='+encodeURIComponent(bbox);
+}
 export function createKeylessRegionalGateway({fetcher=fetch,clock=Date.now}={}){
  // A module-shared gateway handles provider caches across requests; tests can
  // inject their own transport. Independent instances should not share state.
