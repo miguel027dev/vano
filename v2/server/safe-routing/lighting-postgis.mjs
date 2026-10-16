@@ -16,13 +16,13 @@ export async function inspectApprovedRouteLighting(routes,{client,limitMs=800}={
  if(!Array.isArray(routes)||!routes.length||routes.length>MAX_ROUTES)throw Error('Limite de rotas inválido');
  if(!Number.isInteger(limitMs)||limitMs<50||limitMs>2000)throw Error('Limite de consulta inválido');
  const descriptions=routes.map(r=>({id:String(r.id),geometry:routeLineJson(r)}));
- const approved=await client.query(
+ const approved=await client.query({text:
   `SELECT a.snapshot_id,s.source_updated_at,s.collected_at
    FROM vano_safe.approved_dataset a
    JOIN vano_safe.source_snapshots s ON s.snapshot_id=a.snapshot_id
    WHERE a.dataset_name='geosampa-lighting'
-    AND s.status='approved' AND s.license_reviewed=true AND s.approved_at IS NOT NULL`
- );
+    AND s.status='approved' AND s.license_reviewed=true AND s.approved_at IS NOT NULL`,query_timeout:limitMs
+ });
  if(approved.rowCount!==1)return {available:false,reason:'no-fully-approved-snapshot',results:[]};
  const snapshot=approved.rows[0];
  const results=[];
@@ -46,7 +46,7 @@ export async function inspectApprovedRouteLighting(routes,{client,limitMs=800}={
        AND ST_DWithin(l.geom::geography,ST_Transform(sample.p,4326)::geography,35)
      ) THEN 1 ELSE 0 END),0)::int AS near_points
    FROM sample`;
-  const query=await client.query(sql,[r.geometry,snapshot.snapshot_id]);
+  const query=await client.query({text:sql,values:[r.geometry,snapshot.snapshot_id],query_timeout:limitMs});
   const row=query.rows[0]||{};
   const samples=Number(row.samples)||0,near=Number(row.near_points)||0;
   results.push({id:r.id,fixtureProximityFraction:samples>0?+(near/samples).toFixed(4):null,
