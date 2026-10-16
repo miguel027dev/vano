@@ -95,9 +95,9 @@ export function parseGeoSampaFeatureCatalog(xml){
  if(typeof xml!=='string'||xml.length>4_000_000||!xml.includes('FeatureTypeList'))
   throw Error('Catálogo de layers inválido');
  const all=[];
- for(const block of xml.matchAll(/<(?:\\w+:)?FeatureType(?:\\s[^>]*)?>([\\s\\S]*?)<\\/(?:\\w+:)?FeatureType>/g)){
-  const match=block[1].match(/<(?:\\w+:)?Name>([^<]+)<\\/(?:\\w+:)?Name>/);
-  if(match&&/^[\\w.:-]{1,130}$/.test(match[1]))all.push(match[1]);
+ for(const block of xml.matchAll(/<(?:\w+:)?FeatureType(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?FeatureType>/g)){
+  const match=block[1].match(/<(?:\w+:)?Name>([^<]+)<\/(?:\w+:)?Name>/);
+  if(match&&/^[\w.:-]{1,130}$/.test(match[1]))all.push(match[1]);
  }
  const useful=all.filter(name=>/ilumina|logradouro|semafor|cruzamento|pontes?|viadut|tuneis?|t[uú]neis?|passarela|cal[cç]ada|alagamento|risco|faixa.*onibus|infraestrutura|obra|rotat[oó]ria|ciclovia|pedestre/i.test(name));
  return {count:all.length,candidates:[...new Set(useful)].sort().slice(0,160),snapshotIsApproved:false};
