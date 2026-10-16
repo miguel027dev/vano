@@ -1,300 +1,59 @@
 import '../jev-voice.css';
 import React,{useEffect,useRef,useState} from 'react';
 import {Mic,MicOff} from 'lucide-react';
-import {consumeMaviTranscript,maviConfirmation,maviRearmDelay} from '../lib/maviVoiceLogic.mjs';
-import {classifyJev} from '../lib/jevShared.mjs';
-import {dispatchMaviRoute} from '../lib/maviRouteDispatch.mjs';
+import {MaviVoiceController} from '../lib/maviVoiceController.mjs';
 
-/** Only /v2: no text input or driving interaction. Speech recognition is
- * provided by the browser and may involve remote vendor processing.
- * A green mic means the browser recognizer is armed or doing voice work;
- * persistent failures turn it off instead of silently pretending to listen.
- */
+// Experimental /v2 only: a single control, with no typing or modal while driving.
 export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navigationActive=false,maneuverDistance=null,muted=false}){
- const [enabled,setEnabled]=useState(false);
- const [stateLabel,setStateLabel]=useState('Desligada');
- const enabledRef=useRef(false),mountedRef=useRef(true),phaseRef=useRef('OFF');
- const recognizerRef=useRef(null),listenTimer=useRef(null),speechTimer=useRef(null);
- const speakingRef=useRef(null),abortRef=useRef(null),operationRef=useRef(0);
- const contextRef=useRef({onCommand,onAccept,navigationActive,maneuverDistance,muted});
- contextRef.current={onCommand,onAccept,navigationActive,maneuverDistance,muted};
- const pendingRef=useRef(null),wakeUntilRef=useRef(0),softFailures=useRef(0),hardFailures=useRef(0);
- const acceptingOwnRoute=useRef(false),cueContextRef=useRef(null);
- const Recognizer=typeof window!=='undefined'?(window.SpeechRecognition||window.webkitSpeechRecognition):null;
-
- function unlockCue(){
-   try{
-     const Ctx=window.AudioContext||window.webkitAudioContext;
-     if(!Ctx)return;
-     if(!cueContextRef.current)cueContextRef.current=new Ctx();
-     const resumed=cueContextRef.current.resume?.();
-     resumed?.catch?.(()=>{});
-   }catch{/* unsupported audio context */}
+ const [phase,setPhase]=useState('OFF');
+ const mounted=useRef(true),controllerRef=useRef(null);
+ if(!controllerRef.current){
+  controllerRef.current=new MaviVoiceController({
+   Recognizer:typeof window!=='undefined'?(window.SpeechRecognition||window.webkitSpeechRecognition):null,
+   synth:typeof window!=='undefined'?window.speechSynthesis:null,
+   Utterance:typeof window!=='undefined'?window.SpeechSynthesisUtterance:null
+  });
  }
- function acceptedCue(){
-   // A short nonverbal acknowledgement works even when browser TTS is blocked.
-   // The map/navigation audio is never cancelled or interrupted.
-   try{
-     const ctx=cueContextRef.current;
-     if(!ctx||ctx.state!=='running'||window.speechSynthesis?.speaking)return;
-     const oscillator=ctx.createOscillator(),gain=ctx.createGain(),t=ctx.currentTime;
-     oscillator.type='sine';oscillator.frequency.setValueAtTime(660,t);
-     gain.gain.setValueAtTime(.0001,t);
-     gain.gain.exponentialRampToValueAtTime(.065,t+.012);
-     gain.gain.exponentialRampToValueAtTime(.0001,t+.12);
-     oscillator.connect(gain);gain.connect(ctx.destination);
-     oscillator.start(t);oscillator.stop(t+.14);
-   }catch{/* voice command still routes */}
- }
- function status(phase){
-   phaseRef.current=phase;
-   if(mountedRef.current)setStateLabel(
-     phase==='ARMED'?'Ouvindo Mavi':phase==='CONFIRM'?'Aguardando confirmação por voz':
-     phase==='PROCESSING'?'Calculando outra rota':phase==='SPEAKING'?'Mavi respondendo':'Desligada'
-   );
- }
- function stopListening(){
-   clearTimeout(listenTimer.current);listenTimer.current=null;
-   const instance=recognizerRef.current;recognizerRef.current=null;
-   if(instance){try{instance.abort();}catch{/* already ended */}}
- }
- function turnOff(){
-   enabledRef.current=false;status('OFF');stopListening();
-   ++operationRef.current;
-   abortRef.current?.abort?.();abortRef.current=null;
-   clearTimeout(speechTimer.current);speechTimer.current=null;
-   speakingRef.current=null;pendingRef.current=null;wakeUntilRef.current=0;
-   softFailures.current=0;hardFailures.current=0;
-   if(mountedRef.current)setEnabled(false);
-   // Do not cancel speechSynthesis: it also owns turn-by-turn navigation.
- }
- function arm(delay=650){
-   clearTimeout(listenTimer.current);
-   if(!enabledRef.current||!['ARMED','CONFIRM'].includes(phaseRef.current))return;
-   listenTimer.current=setTimeout(()=>{
-     listenTimer.current=null;
-     if(!enabledRef.current||!['ARMED','CONFIRM'].includes(phaseRef.current))return;
-     if(document.visibilityState==='hidden'){turnOff();return;}
-     if(speakingRef.current||window.speechSynthesis?.speaking){arm(1200);return;}
-     listen();
-   },Math.max(350,delay));
- }
- function consume(phrase){
-   if(!enabledRef.current||!['ARMED','CONFIRM'].includes(phaseRef.current))return false;
-   const result=consumeMaviTranscript(phrase,{wakeUntil:wakeUntilRef.current,now:Date.now()});
-   wakeUntilRef.current=result.wakeUntil||0;
-   if(result.kind==='ignore')return false;
-   softFailures.current=0;hardFailures.current=0;
-   if(result.kind==='wake')return false; // Bare "Mavi": listen for the next phrase.
-   const command=result.command;
-   stopListening();
-   const pending=pendingRef.current;
-   if(pending&&phaseRef.current==='CONFIRM'){
-     const decision=maviConfirmation(command);
-     if(decision==='accept'||decision==='reject'){
-       void confirm(decision);return true;
-     }
-   }
-   // For tentative finalization, unrecognized ambient text is never forwarded.
-   void lookup(command);return true;
- }
- function listen(){
-   if(!enabledRef.current||!['ARMED','CONFIRM'].includes(phaseRef.current)||recognizerRef.current)return;
-   if(!Recognizer){turnOff();return;}
-   if(document.visibilityState==='hidden'){turnOff();return;}
-   let instance;
-   try{instance=new Recognizer();}catch{turnOff();return;}
-   instance.lang='pt-BR';
-   // A finite session can deliver complete short commands on mobile Chrome;
-   // automatic restart is handled by a bounded explicit state machine.
-   instance.continuous=false;instance.interimResults=true;instance.maxAlternatives=1;
-   recognizerRef.current=instance;
-   let interim='',handled=false,hadFinal=false,lastError='';
-   instance.onresult=event=>{
-     if(!enabledRef.current||recognizerRef.current!==instance)return;
-     for(let i=event.resultIndex||0;i<(event.results?.length||0);i++){
-       const part=event.results[i];
-       const words=String(part?.[0]?.transcript||'').trim();
-       if(!words)continue;
-       if(part.isFinal){
-         hadFinal=true;interim='';
-         if(consume(words)){handled=true;return;}
-       }else interim=words;
-     }
-   };
-   instance.onerror=event=>{
-     if(recognizerRef.current!==instance||!enabledRef.current)return;
-     lastError=String(event?.error||'unknown');
-     if(['not-allowed','service-not-allowed','audio-capture','language-not-supported','language-unavailable'].includes(lastError)){
-       turnOff();return;
-     }
-     // Repeated unsolicited browser aborts must not leave a permanently green
-     // microphone in an infinite restart cycle. Programmatic aborts clear the ref.
-     if(!['no-speech'].includes(lastError)){
-       hardFailures.current++;
-       if(hardFailures.current>=3)turnOff();
-     }
-   };
-   instance.onend=()=>{
-     if(recognizerRef.current!==instance)return;
-     recognizerRef.current=null;
-     if(!enabledRef.current||!['ARMED','CONFIRM'].includes(phaseRef.current))return;
-     // Safari/embedded browsers sometimes finish without a final result.
-     // Only accept an interim with an explicit Mavi wake word and an actionable intent,
-     // or a confirmation following an already recognized Mavi.
-     if(!handled&&interim){
-       const tentative=consumeMaviTranscript(interim,{wakeUntil:wakeUntilRef.current,now:Date.now()});
-       const valid=tentative.kind==='wake'||(
-         tentative.kind==='command'&&(
-           classifyJev(tentative.command)!=='unknown'||
-           (pendingRef.current&&maviConfirmation(tentative.command)!==null)
-         )
-       );
-       if(valid && consume(interim))return;
-     }
-     // A spontaneous 'aborted' error still needs a bounded recovery. Explicit
-     // application aborts already clear recognizerRef, so onend is ignored.
-     if(!hadFinal)softFailures.current++;else softFailures.current=0;
-     const ms=maviRearmDelay({
-       silentCount:softFailures.current,
-       hardCount:hardFailures.current,
-       wakePending:wakeUntilRef.current>Date.now()
-     });
-     if(ms===null){turnOff();return;}
-     arm(ms);
-   };
-   try{instance.start();}
-   catch{
-     recognizerRef.current=null;hardFailures.current++;
-     const ms=maviRearmDelay({hardCount:hardFailures.current});
-     if(ms===null)turnOff();else arm(ms);
-   }
- }
- function speakVoice(sentence){
-   // Resolves true only when TTS actually finishes.
-   return new Promise(resolve=>{
-     if(!enabledRef.current){resolve(false);return;}
-     status('SPEAKING');
-     stopListening();
-     const synth=window.speechSynthesis,Speech=window.SpeechSynthesisUtterance;
-     if(!synth||!Speech||contextRef.current.muted){resolve(false);return;}
-     const seq=operationRef.current;
-     let trials=0,finished=false;
-     function finish(ok){
-       if(finished)return;
-       finished=true;
-       clearTimeout(speechTimer.current);speechTimer.current=null;
-       speakingRef.current=null;
-       resolve(ok&&enabledRef.current&&seq===operationRef.current);
-     }
-     function attempt(){
-       if(!enabledRef.current||seq!==operationRef.current){finish(false);return;}
-       const nav=contextRef.current;
-       if(synth.speaking||(nav.navigationActive&&Number.isFinite(nav.maneuverDistance)&&nav.maneuverDistance<230)){
-         if(++trials>=10){finish(false);return;}
-         speechTimer.current=setTimeout(attempt,950);return;
-       }
-       try{
-         synth.resume?.();
-         const phrase=new Speech(sentence);
-         phrase.lang='pt-BR';phrase.rate=1;phrase.volume=1;
-         const voices=synth.getVoices?.()||[];
-         phrase.voice=voices.find(v=>String(v.lang).toLowerCase()==='pt-br')||
-           voices.find(v=>String(v.lang).toLowerCase().startsWith('pt'))||null;
-         let didStart=false;
-         phrase.onstart=()=>{didStart=true;};
-         phrase.onend=()=>finish(true);
-         phrase.onerror=()=>finish(false);
-         speakingRef.current=phrase;
-         synth.speak(phrase);
-         // Some embedded browsers expose TTS but silently refuse to play.
-         // Fail closed instead of indefinitely displaying a green microphone.
-         const maxDuration=Math.max(6000,Math.min(18000,sentence.length*90));
-         speechTimer.current=setTimeout(()=>{
-           if(!didStart&&!synth.speaking)finish(false);
-           else speechTimer.current=setTimeout(()=>finish(false),maxDuration);
-         },3000);
-       }catch{finish(false);}
-     }
-     attempt();
-   });
- }
- async function lookup(command){
-   if(!enabledRef.current)return;
-   status('PROCESSING');stopListening();wakeUntilRef.current=0;
-   pendingRef.current=null;
-   const token=++operationRef.current;
-   // Call the route API FIRST. Never let SpeechSynthesis.onend or an
-   // unavailable Android/browser voice prevent a navigation calculation.
-   abortRef.current?.abort?.();
-   const controller=new AbortController();abortRef.current=controller;
-   const timeout=setTimeout(()=>controller.abort(),13500);
-   const routePromise=dispatchMaviRoute(command,
-     text=>contextRef.current.onCommand(text,controller.signal),acceptedCue);
-   let reply;
-   try{reply=await routePromise;}
-   catch{reply={mode:'information',text:controller.signal.aborted?
-     'A consulta demorou demais. Sua rota atual foi mantida.':
-     'Não consegui consultar as rotas. Mantive seu trajeto.'};}
-   finally{clearTimeout(timeout);if(abortRef.current===controller)abortRef.current=null;}
-   if(!enabledRef.current||token!==operationRef.current)return;
-   const isProposal=reply?.mode==='proposal'&&Array.isArray(reply.routeData?.routes)&&reply.routeData.routes.length>0;
-   pendingRef.current=isProposal?reply:null;
-   const spoken=await speakVoice(reply?.text||'Não consegui encontrar uma alternativa. A rota atual foi mantida.');
-   if(!enabledRef.current||token!==operationRef.current)return;
-   if(!spoken){turnOff();return;}
-   status(isProposal?'CONFIRM':'ARMED');arm(500);
- }
- async function confirm(decision){
-   if(!enabledRef.current)return;
-   status('PROCESSING');stopListening();wakeUntilRef.current=0;
-   const chosen=pendingRef.current;pendingRef.current=null;
-   let message='Tudo bem. Mantive sua rota atual.';
-   if(decision==='accept'&&chosen){
-     acceptingOwnRoute.current=true;
-     let success=false;
-     try{success=contextRef.current.onAccept(chosen)!==false;}catch{/* stale proposal */}
-     if(!success)acceptingOwnRoute.current=false;
-     message=success?'Pronto. Nova rota selecionada.':'A sugestão expirou. Mantive sua rota atual.';
-   }
-   const token=++operationRef.current;
-   const said=await speakVoice(message);
-   if(!enabledRef.current||token!==operationRef.current)return;
-   if(!said){turnOff();return;}
-   status('ARMED');arm(550);
- }
- function toggle(){
-   if(enabledRef.current){turnOff();return;}
-   if(!Recognizer||document.visibilityState==='hidden')return;
-   enabledRef.current=true;pendingRef.current=null;
-   wakeUntilRef.current=0;softFailures.current=0;hardFailures.current=0;
-   setEnabled(true);status('ARMED');
-   // Unlock a tiny confirmation cue synchronously inside the user gesture.
-   // The first click stays silent; the cue only plays after recognizing Mavi.
-   unlockCue();
-   try{window.speechSynthesis?.resume?.();}catch{/* unavailable */}
-   listen();
- }
+ const controller=controllerRef.current;
+ controller.configure({
+  onCommand,onAccept,muted:()=>muted,
+  isVisible:()=>typeof document!=='undefined'&&document.visibilityState!=='hidden',
+  isNavigationSpeaking:()=>navigationActive&&Number.isFinite(maneuverDistance)&&maneuverDistance<230,
+  onStatus:state=>{if(mounted.current)setPhase(state);},
+  onEvent:(event,state)=>{
+   // Transient diagnostic for testers; no transcript, precise position or audio retained.
+   if(typeof window==='undefined')return;
+   const previous=window.__MAVI_DIAG__||{events:[]};
+   window.__MAVI_DIAG__={state,lastEvent:event,events:[...previous.events.slice(-19),event]};
+  }
+ });
  useEffect(()=>{
-   if(acceptingOwnRoute.current){acceptingOwnRoute.current=false;return;}
-   ++operationRef.current;abortRef.current?.abort?.();pendingRef.current=null;
-   wakeUntilRef.current=0;
-   if(phaseRef.current==='CONFIRM'){status('ARMED');arm(650);}
- },[routeContextKey]);
+  controller.routeChanged();
+ },[controller,routeContextKey]);
  useEffect(()=>{
-   const onBackground=()=>{if(document.visibilityState==='hidden')turnOff();};
-   document.addEventListener('visibilitychange',onBackground);
-   return()=>{document.removeEventListener('visibilitychange',onBackground);mountedRef.current=false;turnOff();
-     try{cueContextRef.current?.close?.();}catch{/* unavailable */}
-     cueContextRef.current=null;
-   };
- },[]);
+  mounted.current=true;
+  const hide=()=>{if(document.visibilityState==='hidden')controller.stop();};
+  document.addEventListener('visibilitychange',hide);
+  return()=>{
+   document.removeEventListener('visibilitychange',hide);
+   mounted.current=false;
+   controller.dispose();
+  };
+ },[controller]);
+ const active=phase!=='OFF';
+ const label=phase==='CONFIRM'?'Aguardando confirmação por voz':
+   phase==='PROCESSING'?'Consultando nova rota':
+   phase==='SPEAKING'?'Mavi respondendo':
+   active?'Ouvindo: diga Mavi antes do comando':'Ativar Mavi por voz';
+ function toggle(){if(controller.enabled)controller.stop();else controller.start();}
  return <div className="jev-control-wrap">
-   <button type="button" className={'circle-btn jev-mic '+(enabled?'jev-mic-active jev-listening':'')}
-      onClick={toggle} aria-pressed={enabled}
-      aria-label={enabled?'Desativar Mavi: '+stateLabel:'Ativar Mavi, assistente de voz'}
-      title={enabled?'MAVI: '+stateLabel:'Ativar MAVI (somente por voz)'}>
-     {enabled?<Mic size={21}/>:<MicOff size={21}/>}
-   </button>
+  <button type="button" className={'circle-btn jev-mic '+(active?'jev-mic-active ':'')+
+    (phase==='ARMED'||phase==='CONFIRM'?'jev-listening':'')}
+    onClick={toggle} aria-pressed={active}
+    aria-label={active?'Desativar Mavi: '+label:'Ativar Mavi, assistente de voz'}
+    title={label}>
+    {active?<Mic size={21}/>:<MicOff size={21}/>}
+  </button>
+  <span className="sr-only" role="status" aria-live="polite">{label}</span>
  </div>;
 }
