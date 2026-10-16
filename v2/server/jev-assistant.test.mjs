@@ -6,6 +6,8 @@ test('JEV understands Brazilian Portuguese requests without LLM',()=>{
  assert.equal(classifyJev('Não quero pagar pedágio.'),'avoid_tolls');
  assert.equal(classifyJev('Tá muito trânsito, procura por outro lado.'),'traffic');
  assert.equal(classifyJev('Não gostei dessa rota, tenta outro caminho.'),'alternative');
+ assert.equal(classifyJev('Troca a rota pra mim.'),'alternative');
+ assert.equal(classifyJev('Recalcula a rota.'),'alternative');
  assert.equal(classifyJev('Tem uma ladeira perto de casa.'),'slope_unavailable');
  assert.equal(classifyJev('me diga a senha'),'unknown');
  assert.equal(classifyJev('A'.repeat(400)),'unknown');
