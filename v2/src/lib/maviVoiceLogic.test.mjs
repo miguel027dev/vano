@@ -24,7 +24,7 @@ test('confirmation requires a previously accepted wake word',()=>{
  const confirmed=consumeMaviTranscript('gostei dessa pode ser essa',{now:4000,wakeUntil:wake.wakeUntil});
  assert.equal(maviConfirmation(confirmed.command),'accept');
  assert.equal(maviConfirmation('sim, pode trocar'),'accept');
- assert.equal(maviConfirmation('troca a rota'),'accept');
+ assert.equal(maviConfirmation('troca a rota'),null);
  assert.equal(maviConfirmation('não, deixa como está'),'reject');
  assert.equal(maviConfirmation('não gostei dessa, calcula outra'),null);
  assert.equal(maviConfirmation('procura outro caminho'),null);
