@@ -3,6 +3,7 @@
  * keep only a tiny in-memory snapshot and NEVER delay routing or map start.
  */
 const SOURCE='usgs-earthquakes';
+export const SEISMIC_SOURCE=Object.freeze({id:SOURCE,label:'USGS',kind:'earthquake',affectsRouting:false});
 const URL='https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_week.geojson';
 const TTL=90_000,RETRY=60_000,STALE=3_600_000,MAX_BYTES=600_000;
 const finite=Number.isFinite;
@@ -19,7 +20,7 @@ export function normalizeUsgsEarthquakes(payload){
    id:'usgs-'+clean(item.id,90),category:'earthquake',
    name:clean(item?.properties?.title||'Terremoto'),
    coords:[lon,lat],
-   observedAt:finite(ms)&&ms>0?new Date(ms).toISOString():null,
+   observedAt:finite(ms)&&ms>0&&ms<=8.64e15?new Date(ms).toISOString():null,
    magnitude:finite(magnitude)?magnitude:null,source:'USGS',
    routingVerified:false
   });
