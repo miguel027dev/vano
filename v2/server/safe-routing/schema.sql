@@ -36,3 +36,19 @@ CREATE TABLE IF NOT EXISTS vano_safe.segment_lighting (
 );
 -- No personal routes, origins or destinations are stored.
 -- Only approved, licensing-reviewed snapshots may be published.
+
+CREATE TABLE IF NOT EXISTS vano_safe.source_pages (
+ snapshot_id text NOT NULL REFERENCES vano_safe.source_snapshots(snapshot_id) ON DELETE CASCADE,
+ page_offset integer NOT NULL CHECK (page_offset>=0),
+ feature_count integer NOT NULL CHECK (feature_count>=0),
+ raw_data bytea NOT NULL,
+ sha256 char(64) NOT NULL,
+ PRIMARY KEY(snapshot_id,page_offset)
+);
+-- Approval is a separate privileged operation after CRS, quality and license checks.
+CREATE TABLE IF NOT EXISTS vano_safe.approved_dataset (
+ dataset_name text PRIMARY KEY,
+ snapshot_id text NOT NULL REFERENCES vano_safe.source_snapshots(snapshot_id),
+ approved_at timestamptz NOT NULL DEFAULT now(),
+ reviewed_by text NOT NULL
+);
