@@ -34,6 +34,7 @@ import {createRouteFailover} from './route-failover.mjs';
 import {mayUseNavigationVoiceProof,renewedNavigationProofPayload} from './navigation-voice-proof.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
+import {findWalkingCrossings} from './walking-crossings.mjs';
 import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
@@ -1040,6 +1041,21 @@ async function route(req, res) {
       routeData:result,
       text:'Encontrei outra rota '+detail+'. Ela leva aproximadamente '+minutes+' minutos'+contrast+'. Quer que eu troque?'
     });
+  }
+  // Non-blocking walk-only detail request: the route is already available in
+  // the UI. A slow OSM community server must NEVER block Mapbox directions.
+  if(pathname==='/api/walking/crossings'&&req.method==='POST'){
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'walking-crossings',5,60000))return;
+    if(process.env.VANO_WALKING_CROSSINGS_ENABLED==='0')return json(res,200,{features:[],source:'disabled'});
+    const body=await getBody(req),geometry=body?.geometry;
+    if(geometry?.type!=='LineString'||!Array.isArray(geometry.coordinates)||
+       geometry.coordinates.length<2||geometry.coordinates.length>2500||
+       !geometry.coordinates.every(pointOK))
+      return err(res,400,'Geometria de caminhada inválida.');
+    const features=await findWalkingCrossings(geometry);
+    return json(res,200,{features,source:'OpenStreetMap',verifiedCurrent:false,
+      notice:'Pontos cadastrados na comunidade; confira a sinalização real antes de atravessar.'});
   }
   if (pathname === '/api/route' && req.method === 'POST') {
     if (!limits(req,res,'route',10,60000)) return;
