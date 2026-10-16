@@ -22,7 +22,7 @@ export function extractJevStreetRequest(value){
  ];
  for(const {kind,rx} of patterns){
   const m=text.match(rx);if(!m)continue;
-  const raw=m[1].replace(/\s+(?:por\s+favor|tem\s+(?:um\s+)?outro\s+caminho|outra\s+rota|em\s+vez\s+disso).*$/,'').trim();
+  const raw=m[1].replace(/\s+(?:por\s+favor|tem\s+(?:um\s+)?outro\s+caminho|outra\s+rota|em\s+vez\s+disso|voce\s+(?:pode|acha|consegue|sabe)|pode\s+(?:mudar|trocar|recalcular)|me\s+(?:ajuda|diz)).*$/,'').trim();
   const road=roadKey(raw);
   if(road.length<4||road.length>72||nonRoad.test(road)||!/[a-z]/.test(road))continue;
   return {kind,road,spokenName:raw.slice(0,100)};
