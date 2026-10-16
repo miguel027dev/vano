@@ -100,7 +100,8 @@ export async function interpretMaviWithNvidia(value,context={},{
    body:JSON.stringify({model:config.model,
     messages:[{role:'system',content:SYSTEM},
       {role:'user',content:JSON.stringify({spoken:value,context:safeContext})}],
-    max_tokens:360,temperature:0.15,top_p:0.85,stream:false})
+    max_tokens:360,temperature:0.15,stream:false,
+    chat_template_kwargs:{enable_thinking:false}})
   });
   if(!res?.ok)return null;
   const response=await res.json();
