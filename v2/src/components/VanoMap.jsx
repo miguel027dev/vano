@@ -4,6 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetween,nearestOnRoute,nextRouteBearing,shortestAngle,shouldFollowLocation,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
+import {matchVisualFix,pointAlongRoute} from '../lib/visualRouteMatching.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
@@ -51,6 +52,7 @@ function motionController(map,latest,status){
     const d=latest.current;
     const userHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry?.speed>1.5&&d.telemetry?.accuracy<=75?d.motionBearing:null;
     const route=d.navigation?(d.routes?.find(r=>r.id===d.selectedRoute)||d.routes?.[0]):null;
+     const visualMatch=d.navigation?d.visualMatch:null;
     const viewport=d.viewport||{padding:{top:100,bottom:100,left:20,right:20},compact:false};
     let maneuverPlan;
     if(d.vehicle==='moto'&&d.navigation){
@@ -67,7 +69,7 @@ function motionController(map,latest,status){
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx,visualMatch});
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';const cameraHalfLife=reduced?85:motorcycle?350:300,pointHalfLife=reduced?90:motorcycle?390:360;
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
@@ -113,8 +115,8 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     if(backend.current==='mapbox')motion.current?.recenter();
   }
   const [error,setError]=useState('');
-  const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,previewRoute,previewFocus,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0,match:null,matchTarget:null,matchedMeters:null,matchGeometry:null});
+  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,previewRoute,previewFocus,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing,visualMatch:null};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null;const initial=coord(latest.current.userCoords);
@@ -327,7 +329,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     let raf=0,stopped=false;
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
-    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0};
+    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,match:null,matchTarget:null,matchedMeters:null,matchGeometry:null};
     // Reduced-motion still controls GPS/camera smoothing, not static markings.
     function preferenceChanged(){reduced=Boolean(preference?.matches);}
     preference?.addEventListener?.('change',preferenceChanged);
@@ -341,13 +343,40 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       state.last=now;
       const d=latest.current,target=d.gpsCoords;
       if(!validPoint(target))return;
-      const point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
+      const geometry=d.navigation?route?.geometry:null;
+      // GPS remains authoritative; this projection is for marker/camera only.
+      // Perform segment selection just once per accepted fix, not every frame.
+      if(state.matchTarget!==target||state.matchGeometry!==geometry){
+        const previous=state.matchGeometry===geometry?state.match:null;
+        state.match=geometry?matchVisualFix(target,geometry,{
+          accuracy:d.telemetry?.accuracy,heading:d.telemetry?.heading,
+          speed:d.telemetry?.speed,previous,sourceAt:d.gpsFixAt
+        }):null;
+        state.matchTarget=target;state.matchGeometry=geometry;
+        if(!state.match?.matched)state.matchedMeters=null;
+      }
+      const matched=Boolean(state.match?.matched&&geometry);
+      let point;
+      if(matched){
+        const desired=state.match.routeMeters,old=state.matchedMeters;
+        state.matchedMeters=old===null||Math.abs(old-desired)>145||reduced?desired:
+          damp(old,desired,dt,Number(d.telemetry?.speed)>2?175:275);
+        point=pointAlongRoute(geometry,state.matchedMeters)?.point||state.match.point;
+      }else point=easeGpsPoint(state.point,target,dt,{
+        accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced
+      });
       if(!validPoint(point))return;
       state.point=point;
-      const heading=(d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
-        ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
+      const roadSample=matched?pointAlongRoute(geometry,state.matchedMeters):null;
+      const heading=matched&&Number(d.telemetry?.speed)>1.4?roadSample?.bearing:
+        (d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
+          ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
       if(Number.isFinite(heading))state.bearing=blendAngle(state.bearing||0,heading,1-Math.pow(.5,dt/(reduced?75:240)));
       d.motionCoords=point;d.motionBearing=state.bearing||0;
+      d.visualMatch=matched?{
+        ...state.match,point,bearing:roadSample?.bearing??state.match.bearing,
+        sampleAhead:meters=>pointAlongRoute(geometry,state.matchedMeters+meters)?.point||point
+      }:null;
       const map=mapRef.current;
       if(map&&backend.current==='mapbox'){
         const marker=map._vanoMarker?.current;
@@ -510,7 +539,7 @@ function paintMapbox(map,data,selection){
     map._vanoTraveledCleared=true;
   }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
-  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
+  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else if(!data.navigation||type!=='vehicle')map._vanoMarker[key].setLngLat(point);};
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
 }
