@@ -57,6 +57,7 @@ export default function MapPage({active=true}){
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
   const [maviPreview,setMaviPreview]=useState(null); // V2 only, never changes the active route.
+  const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
   const initialChoice=preferences?.preferredRoute==='fast'?'fast':'safe';
@@ -423,6 +424,24 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  // Enrichment is loaded after routing, never in the critical directions path.
+  // Route or modal switches cancel the previous lookup and clear stale places.
+  useEffect(()=>{
+    setWalkingFeatures([]);
+    if(routeVehicle!=='a-pe'||!route?.geometry||routeData?.source!=='mapbox-walking')return;
+    const controller=new AbortController();
+    api('/walking/crossings',{method:'POST',signal:controller.signal,
+      body:{geometry:route.geometry}
+    }).then(data=>{
+      if(!controller.signal.aborted&&Array.isArray(data?.features))
+        setWalkingFeatures(data.features.slice(0,15).filter(item=>
+          item?.source==='OpenStreetMap'&&Number.isFinite(item.routeMeters)));
+    }).catch(()=>{/* Optional public-data lookup. Never block walking. */});
+    return()=>controller.abort();
+  },[routeVehicle,route?.geometry,routeData?.source]);
+  const previewDetails=previewManeuvers(route,routeVehicle);
+  const mappedCrossing=routeVehicle==='a-pe'&&navMode&&hasLiveGPS?
+    nextMappedCrossing(walkingFeatures,guidance?.routeMeters):null;
   // Experimental-only integration: none of these actions are exposed on /mapa.
   const jevKey=jevMode?jevRouteFingerprint(route):null;
   const visibleMaviPreview=jevMode&&maviPreview?.sourceKey===jevKey?maviPreview:null;
