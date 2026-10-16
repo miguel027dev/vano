@@ -189,7 +189,7 @@ test('roadworks take one marker slot for nearby construction records',()=>{
  const pins=[
   {id:'works-node',type:'obra',priority:62,coords:[-46.62,-23.55]},
   {id:'works-way',type:'obra',priority:62,coords:[-46.62001,-23.55001]},
-  {id:'parking',type:'estacionamento',priority:22,coords:[-46.621,-23.55]}
+  {id:'parking',type:'estacionamento',priority:22,coords:[-46.624,-23.55]}
  ];
  const chosen=selectPublicPins(pins,([lon,lat])=>({x:(lon+46.63)*40000,y:(lat+23.56)*40000}),15,20);
  assert.equal(chosen.filter(x=>x.type==='obra').length,1);
