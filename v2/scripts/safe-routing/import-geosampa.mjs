@@ -5,7 +5,7 @@
  * Never use the VANO production DATABASE_URL. Writes require a dedicated safe database.
  */
 import {Client} from 'pg';
-import {readFile} from 'node:fs/promises';
+import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve,dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -21,7 +21,7 @@ export function assertDedicatedSafeDatabase(dbUrl,mainUrl){
  if(!uri.hostname||!uri.pathname||uri.password.length<10)throw Error('Credenciais isoladas incompletas');
  return true;
 }
-export async function stageSamplePage({fetcher=fetch,dbUrl=null,apply=false,ClientClass=Client}={}){
+export async function stageSamplePage({fetcher=fetch,dbUrl=null,apply=false,ClientClass=Client,outputSamplePath=null}={}){
  const inspected=await inspectGeoSampaLighting({fetcher});
  const page=await fetchGeoSampaLightPage({layer:inspected.layer,count:250,startIndex:0,fetcher});
  const snapshotId='geosampa-lights-'+Date.now()+'-'+randomUUID().slice(0,8);
@@ -35,7 +35,20 @@ export async function stageSamplePage({fetcher=fetch,dbUrl=null,apply=false,Clie
   capabilitySha256:inspected.capabilitySha256,pageSha256:page.sha256,
   matched:page.numberMatched,complete:false,usedForRouting:false
  };
- if(!apply)return summary;
+ if(!apply){
+  if(outputSamplePath){
+   const approvedOutput=resolve(dirname(fileURLToPath(import.meta.url)),'../../data/safe-staging/geosampa-lighting-sample.json');
+   if(resolve(outputSamplePath)!==approvedOutput)throw Error('Local da amostra não autorizado');
+   await mkdir(dirname(approvedOutput),{recursive:true,mode:0o700});
+   await writeFile(approvedOutput,JSON.stringify({
+    status:'unapproved-sample',metadataUrl:inspected.metadataUrl,
+    sourceSha256:page.sha256,capabilitiesSha256:inspected.capabilitySha256,
+    reportedTotal:page.numberMatched,sampleSize:norm.accepted.length,
+    features:norm.accepted
+   }),{mode:0o600,flag:'w'});
+  }
+  return summary;
+ }
  if(process.env.SAFE_ALLOW_IMPORT!=='1')throw Error('SAFE_ALLOW_IMPORT não autorizado');
  assertDedicatedSafeDatabase(dbUrl,process.env.DATABASE_URL);
  const client=new ClientClass({connectionString:dbUrl,connectionTimeoutMillis:9000,
@@ -71,7 +84,9 @@ export async function stageSamplePage({fetcher=fetch,dbUrl=null,apply=false,Clie
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const apply=process.argv.includes('--apply');
  try{
-  const report=await stageSamplePage({dbUrl:apply?process.env.VANO_SAFE_DB_URL:null,apply});
+  const out=process.argv.includes('--sample-out')?
+  resolve(dirname(fileURLToPath(import.meta.url)),'../../data/safe-staging/geosampa-lighting-sample.json'):null;
+  const report=await stageSamplePage({dbUrl:apply?process.env.VANO_SAFE_DB_URL:null,apply,outputSamplePath:out});
   console.log(JSON.stringify(report,null,2));
  }catch(e){console.error('Safe Routing staging:',e?.message||'Falha desconhecida');process.exitCode=1}
 }
