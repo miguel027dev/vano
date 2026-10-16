@@ -2,14 +2,19 @@ import React,{useState} from 'react';
 import {api} from '../lib/api';
 export default function SafeRoutingTestPanel(){
  const [busy,setBusy]=useState(false),[result,setResult]=useState(null),[error,setError]=useState('');
+ const [from,setFrom]=useState('-23.5615,-46.6557'),[to,setTo]=useState('-23.5874,-46.6597');
  async function compare(){
+  const pair=v=>{const x=v.split(',').map(Number);return x.length===2&&x.every(Number.isFinite)&&Math.abs(x[0])<=90&&Math.abs(x[1])<=180?[x[1],x[0]]:null};
+  const origin=pair(from),destination=pair(to);
+  if(!origin||!destination){setError('Coordenadas inválidas.');return;}
   setBusy(true);setError('');
-  try{setResult(await api('/admin/safe-routing/compare',{method:'POST',body:{origin:[-46.6557,-23.5615],destination:[-46.6597,-23.5874]}}));}
+  try{setResult(await api('/admin/safe-routing/compare',{method:'POST',body:{origin,destination}}));}
   catch(e){setError(e.message);}finally{setBusy(false);}
  }
  return <section className="v3-admin-panel" aria-label="Teste privado de contexto urbano">
   <div className="v3-admin-panel-head"><div><h2>Teste de contexto urbano</h2><small>MASP → Parque Ibirapuera · carro · alternativas reais do provedor</small></div>
    <button type="button" onClick={compare} disabled={busy}>{busy?'Comparando…':'Comparar rotas de teste'}</button></div>
+  <div style={{display:'flex',gap:12,flexWrap:'wrap',margin:'14px 0'}}><label>Origem (latitude,longitude) <input value={from} onChange={e=>setFrom(e.target.value)}/></label><label>Destino (latitude,longitude) <input value={to} onChange={e=>setTo(e.target.value)}/></label></div>
   <p>Consulta iluminação, vias, calçadas, faixas de ônibus, risco hidrológico e histórico de alagamentos no B2. Dados cadastrais não confirmam condições atuais.</p>
   {error&&<p role="alert">{error}</p>}
   {result&&<div aria-live="polite">
