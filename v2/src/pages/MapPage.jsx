@@ -452,8 +452,54 @@ export default function MapPage({active=true}){
     }
     return false;
   }
+  async function resumeMaviDestination(){
+    const stop=maviPendingStop,original=stop?.originalDestination;
+    if(!jevMode||!original||!validPoint(original.coords)||maviResuming)return false;
+    if(navMode&&!hasLiveGPS){
+      setToast('Aguarde o GPS atualizar antes de continuar até o destino original.');return false;
+    }
+    const departure=navMode&&hasLiveGPS?userCoords:origin;
+    if(!validPoint(departure)){setToast('Localização de partida indisponível.');return false;}
+    const epoch=++routeEpoch.current;setMaviResuming(true);
+    try{
+      const result=await api('/route',{method:'POST',body:JSON.stringify({
+        origin:departure,destination:original.coords,vehicle:routeVehicle,language,
+        telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}
+      })});
+      if(epoch!==routeEpoch.current)return false;
+      if(result.source==='demonstracao'||!result.routes?.some(r=>validPoint(r.geometry?.coordinates?.at(-1)))){
+        setToast('Não consegui uma rota real ao destino original. Mantive a parada.');return false;
+      }
+      setDest(original);setRouteData(result);
+      setChoice(result.routes.some(r=>r.id===stop.originalChoice)?stop.originalChoice:
+        (result.routes.find(r=>r.id==='fast')?.id||result.routes[0].id));
+      setMaviPendingStop(null);setGuidance(null);spoken.current.clear();
+      setToast('Rota retomada até '+original.name+'.');return true;
+    }catch{
+      if(epoch===routeEpoch.current)setToast('Não consegui calcular a continuação. Mantive a rota para a parada.');
+      return false;
+    }finally{setMaviResuming(false);}
+  }
   function applyJev(proposal){
     if(!jevMode||!dest||!route||!proposal||proposal.mode!=='proposal')return false;
+    if(proposal.kind==='poi_stop'){
+      const place=proposal.poi,results=proposal.routeData?.routes;
+      if(maviPendingStop||proposal.sourceKey!==jevRouteFingerprint(route)||
+        !validPoint(place?.coords)||!validPoint(proposal.originalDestination)||
+        !proposal.originalDestination.every((v,i)=>Math.abs(v-dest.coords[i])<0.00001)||
+        !Array.isArray(results)||!results.some(r=>r.id===proposal.routeId&&r.proof&&
+          Array.isArray(r.geometry?.coordinates)&&r.geometry.coordinates.length>=2))return false;
+      const selected=results.find(r=>r.id===proposal.routeId);
+      const endpoint=selected.geometry.coordinates.at(-1);
+      if(!validPoint(endpoint)||Math.abs(endpoint[0]-place.coords[0])>0.005||
+        Math.abs(endpoint[1]-place.coords[1])>0.005)return false;
+      setMaviPendingStop({originalDestination:dest,originalChoice:choice,
+        stop:{name:place.name,coords:place.coords}});
+      routeEpoch.current++;spoken.current.clear();
+      setDest(place);setRouteData(proposal.routeData);setChoice(proposal.routeId);
+      setGuidance(null);setSheetOpen(false);
+      setToast('Parada inserida: '+place.name+'. Destino original salvo.');return true;
+    }
     if(proposal.sourceKey!==jevRouteFingerprint(route))return false;
     if(!validPoint(proposal.destination)||
       proposal.destination.some((coordinate,index)=>Math.abs(coordinate-dest.coords[index])>0.00001))return false;
