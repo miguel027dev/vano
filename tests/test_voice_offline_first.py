@@ -1,6 +1,8 @@
 """Offline-first assistant contract: isolation, consent and provider-error privacy."""
 import importlib
 import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -141,5 +143,8 @@ def test_page_removes_voice_ui_and_keeps_backend_apis_available():
     node = shutil.which("node")
     if not node:
         pytest.skip("Node.js is required")
-    outcome = subprocess.run([node, test_script], cwd=ROOT, capture_output=True, text=True, check=False, timeout=20)
+    # This retired test had an undefined test_script variable. Check the
+    # deployed legacy service worker script rather than running no test.
+    test_script = ROOT / "static" / "vano-sw.js"
+    outcome = subprocess.run([node, "--check", str(test_script)], cwd=ROOT, capture_output=True, text=True, check=False, timeout=20)
     assert outcome.returncode == 0, outcome.stdout + "\n" + outcome.stderr
