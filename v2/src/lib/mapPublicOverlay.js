@@ -7,6 +7,7 @@ import {iconSvg,selectPublicPins,mapFeatureBBox,mapRadarBBox} from './mapPublicI
 import {radarDisplayAllowed} from './radarPolicy.js';
 import {readMapboxPoiFeatures} from './mapboxPoiFallback.js';
 import {rememberMapFeatures,cachedMapFeatures} from './mapFeaturePersistence.js';
+import {rememberPublicFeatures,nearbyPublicFeatures} from './publicSourceStability.js';
 
 function buildPin(item){
  const element=document.createElement('div');
@@ -46,6 +47,7 @@ export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
  let done=false,timer=null,vectorTimer=null,controller=null,radarController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
+ const sourceCache=new Map(); // OSM, verified reports and radar points; never erased on viewport changes.
  const markers=new Map();
  const credit=document.createElement('a');
  credit.className='v40-map-credit';
@@ -105,21 +107,38 @@ export function attachPublicMapOverlay(map,backend){
   credit.hidden=!items.some(item=>item.source==='OpenStreetMap'||item.id?.startsWith('radar-catalog-'));
  }
  function mergeSources(){
-  const combined=[...radarItems,...remoteItems.filter(item=>!radarItems.some(r=>r.id===item.id))],seen=new Set([...radarItems,...remoteItems].map(x=>x.id));
-  // Include only nearby cached real points. Panning never deletes the original
-  // observation; a point reappears at exactly the same coordinate when revisited.
   const b=map.getBounds?.();
-  const west=b?.getWest?.()??-180,east=b?.getEast?.()??180;
-  const south=b?.getSouth?.()??-85,north=b?.getNorth?.()??85;
-  const lonPad=Math.min(.025,Math.max(.005,(east-west)*.35));
-  const latPad=Math.min(.025,Math.max(.005,(north-south)*.35));
+  if(!b)return;
+  const west=b.getWest(),east=b.getEast(),south=b.getSouth(),north=b.getNorth();
+  const lonPad=Math.min(.025,Math.max(.005,(east-west)*.30));
+  const latPad=Math.min(.025,Math.max(.005,(north-south)*.30));
+  // The previous implementation kept ONLY the latest Overpass response:
+  // switching viewports or receiving one empty response silently erased categories.
+  const combined=nearbyPublicFeatures(sourceCache,[west,south,east,north],Date.now(),Math.max(lonPad,latPad));
+  const seen=new Set(combined.map(item=>item.id));
+  // Mapbox POIs and OSM often map the same place. Merge without discarding
+  // distinct categories and without a quadratic scan on every map move.
+  const grid=new Map(),step=.00028;
+  const cell=(type,x,y)=>type+'|'+x+'|'+y;
+  const addIndex=item=>{
+   const [lon,lat]=item.coords;
+   const x=Math.floor(lon/step),y=Math.floor(lat/step);
+   const id=cell(item.type,x,y);
+   if(!grid.has(id))grid.set(id,[]);
+   grid.get(id).push(item);
+  };
+  for(const item of combined)addIndex(item);
   for(const item of mapTilesItems){
-   if(item.coords[0]<west-lonPad||item.coords[0]>east+lonPad
-      ||item.coords[1]<south-latPad||item.coords[1]>north+latPad)continue;
+   if(!Array.isArray(item.coords)||item.coords.length!==2)continue;
+   const [lon,lat]=item.coords;
+   if(lon<west-lonPad||lon>east+lonPad||lat<south-latPad||lat>north+latPad)continue;
    if(seen.has(item.id))continue;
-   const duplicate=combined.some(x=>x.type===item.type&&Array.isArray(x.coords)&&
-    Math.abs(x.coords[0]-item.coords[0])<.00028&&Math.abs(x.coords[1]-item.coords[1])<.00028);
-   if(!duplicate){combined.push(item);seen.add(item.id);}
+   const x=Math.floor(lon/step),y=Math.floor(lat/step);
+   let duplicate=false;
+   for(let dx=-1;dx<=1&&!duplicate;dx++)for(let dy=-1;dy<=1&&!duplicate;dy++)
+    for(const other of grid.get(cell(item.type,x+dx,y+dy))||[])
+     if(Math.abs(other.coords[0]-lon)<step&&Math.abs(other.coords[1]-lat)<step){duplicate=true;break;}
+   if(!duplicate){combined.push(item);seen.add(item.id);addIndex(item);}
   }
   items=combined.filter(item=>item.type!=='radar'||radarDisplayAllowed(item.coords));
  }
@@ -164,6 +183,7 @@ export function attachPublicMapOverlay(map,backend){
     // Preserve an existing mapped-radar snapshot during transient failures.
     if(!data.error||data.features.length){
      radarItems=data.features.filter(x=>x?.type==='radar'&&Array.isArray(x.coords)).slice(0,120);
+     rememberPublicFeatures(sourceCache,radarItems);
     }
     mergeSources();
     render();
@@ -185,7 +205,7 @@ export function attachPublicMapOverlay(map,backend){
   if(!bbox){
    // The Overpass API only serves small high-zoom bboxes, but previously
    // loaded vector POIs are still real and must not disappear on zoom-out.
-   remoteItems=[];radarItems=[];latestKey='';radarKey='';radarController?.abort();updateVectorPoi();mergeSources();render();setNotice('');return;
+   latestKey='';radarKey='';radarController?.abort();updateVectorPoi();mergeSources();render();setNotice('');return;
   }
   updateVectorPoi();render();
   // Never wait for the slow generic OpenStreetMap POI query to discover speed cameras.
@@ -199,7 +219,11 @@ export function attachPublicMapOverlay(map,backend){
    if(!response.ok)throw Error('Dados públicos: '+response.status);
    const data=await response.json();
    if(done||signal.signal.aborted)return;
-   remoteItems=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
+   // An empty/failed source response is not permission to erase existing pins.
+   if(!data?.error){
+    remoteItems=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
+    rememberPublicFeatures(sourceCache,remoteItems);
+   }
    mergeSources();
    // Never silently show an empty map when the external data provider failed.
    // Mapbox tiles continue supplying confirmed mapped services/signals even
@@ -243,6 +267,6 @@ export function attachPublicMapOverlay(map,backend){
     map.off('sourcedata',scheduleVectorUpdate);
   }
   document.removeEventListener('visibilitychange',visibility);
-  clear();stableTileCache.clear();credit.remove();notice.remove();
+  clear();stableTileCache.clear();sourceCache.clear();credit.remove();notice.remove();
  };
 }
