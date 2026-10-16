@@ -14,8 +14,9 @@ async function initializeCsrf(){
 export async function api(path, opts = {}) {
   const write = Boolean(opts.method && opts.method.toUpperCase() !== 'GET');
   if (write){try{await initializeCsrf();}catch(cause){const failure=new Error('Este recurso precisa de conexão. Seu trajeto atual continua salvo.');failure.offline=true;throw failure;}}
-  const init = { credentials:'include', ...opts, headers: { ...(opts.body ? {'Content-Type':'application/json'} : {}), ...(write ? {'X-VANO-CSRF':csrfToken} : {}), ...opts.headers } };
-  if (init.body && typeof init.body !== 'string') init.body = JSON.stringify(init.body);
+  const binary = typeof Blob !== 'undefined' && opts.body instanceof Blob;
+  const init = { credentials:'include', ...opts, headers: { ...(opts.body ? {'Content-Type':binary?(opts.body.type||'application/octet-stream'):'application/json'} : {}), ...(write ? {'X-VANO-CSRF':csrfToken} : {}), ...opts.headers } };
+  if (init.body && typeof init.body !== 'string' && !binary) init.body = JSON.stringify(init.body);
   let res;
   try{res=await fetch(`${BASE}${path}`,init);}catch(error){
     if(!write&&['/bootstrap','/places'].includes(path)){const cached=await readOffline(path.slice(1));if(cached)return path==='/bootstrap'?{...cached,offline:true}:cached;}
