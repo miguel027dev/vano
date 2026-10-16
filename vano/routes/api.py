@@ -481,6 +481,26 @@ def api_weather_now():
     })
 
 
+# VANO global-events gateway: advisory-only, never in the synchronous route path.
+from vano.services.global_data_gateway import get_global_context
+
+
+@app.route("/api/global-context")
+def api_global_context():
+    if not rate_limit("global-context", 24, 60):
+        return jsonify({"ok": False, "error": "rate_limited"}), 429
+    try:
+        lat = float(request.args["lat"])
+        lon = float(request.args["lon"])
+        radius_km = float(request.args.get("radius_km", 100))
+        context = get_global_context(lat, lon, radius_km)
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"ok": False, "error": "invalid_coordinates_or_radius"}), 400
+    response = jsonify({"ok": True, **context})
+    response.headers["Cache-Control"] = "private, max-age=10"
+    return response
+
+
 @app.route("/api/live-context")
 def api_live_context():
     if not rate_limit("live-context", 24, 60):
