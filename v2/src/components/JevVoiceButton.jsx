@@ -59,14 +59,14 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
    if(mountedRef.current)setOfferReady(false);
    // Do not cancel global speechSynthesis: it also belongs to navigation maneuvers.
  }
- function scheduleNextListen(){
+ function scheduleNextListen(delay=320){
    clearTimeout(listenTimerRef.current);
    if(!enabledRef.current||busyRef.current||recognitionError.current||!Recognizer)return;
    listenTimerRef.current=setTimeout(()=>{
      if(!enabledRef.current||busyRef.current||recognitionError.current||!Recognizer)return;
-     if(window.speechSynthesis?.speaking){scheduleNextListen();return;}
+     if(window.speechSynthesis?.speaking){scheduleNextListen(480);return;}
      listen('remote');
-   },750);
+   },delay);
  }
  function done(){
    busyRef.current=false;
@@ -193,16 +193,24 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
    };
    recognition.onerror=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
-     const code=String(event?.error||'unknown');recognitionError.current=code;
+     const code=String(event?.error||'unknown');
+     // Silence is expected while awaiting a wake word; remain hands-free.
+     if(code==='no-speech'){
+       recognitionError.current='';
+       setDiagnostic('Aguardando sua próxima fala.');
+       setStatus('ready');
+       return;
+     }
+     recognitionError.current=code;
      setDiagnostic('Reconhecimento '+(mode==='local'?'local':'do navegador')+': '+code);
      setReply(microphoneMessage(code));
-     setStatus(code==='no-speech'?'ready':'typed');
+     setStatus('typed');
    };
    recognition.onend=()=>{
      if(recognitionRef.current!==recognition)return;
      recognitionRef.current=null;recognitionActive.current=false;
      if(enabledRef.current&&!busyRef.current&&!recognitionError.current){
-       setStatus('ready');scheduleNextListen();
+       setStatus('ready');scheduleNextListen(320);
      }
    };
    try{
@@ -343,12 +351,29 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
  function accept(){return chooseProposal('accept');}
  function reject(){return chooseProposal('reject');}
  const offerTarget=typeof document!=='undefined'?document.getElementById('mavi-offer-host'):null;
- return <div className="jev-control-wrap">
-  <button type="button" className={'circle-btn jev-mic '+(enabled?'jev-mic-active ':'')+(status==='listening'?'jev-listening':'')}
-   onClick={toggle} aria-label={enabled?'Desativar assistente de voz':'Ativar assistente de voz'}
-   aria-pressed={enabled} title={enabled?'Desativar assistente':'Falar com o assistente'}>
-   {enabled?<Mic size={21}/>:<MicOff size={21}/>}
+ const voicePhase=!enabled?'off':status==='listening'?'listening':status==='processing'?'processing':status==='speaking'?'speaking':status==='typed'?'paused':'ready';
+ const voiceLabel={
+   off:'Ativar escuta da MAVI',ready:'MAVI ativa · aguardando voz',
+   listening:'MAVI escutando',processing:'MAVI processando',
+   speaking:'MAVI respondendo',paused:'Microfone precisa de atenção'
+ }[voicePhase];
+ return <div className={'jev-control-wrap mavi-voice-'+voicePhase}>
+  <button type="button"
+   className={'circle-btn jev-mic '+(enabled?'jev-mic-active ':'')+(status==='listening'?'jev-listening':'')}
+   onClick={toggle} aria-label={enabled?'Desativar escuta contínua da MAVI':'Ativar escuta da MAVI'}
+   aria-pressed={enabled} aria-describedby="mavi-voice-status" title={voiceLabel}>
+   <span className="mavi-mic-glyph" aria-hidden="true">
+     {voicePhase==='off'?<MicOff size={21} strokeWidth={1.9}/>:
+      voicePhase==='processing'?<RefreshCw size={19} strokeWidth={2}/>:
+      voicePhase==='speaking'?<AudioLines size={21} strokeWidth={2}/>:
+      <Mic size={21} strokeWidth={2}/>}
+   </span>
+   <span className="mavi-mic-pulse" aria-hidden="true"/>
+   <span className="mavi-mic-indicator" aria-hidden="true"/>
   </button>
+  <span id="mavi-voice-status" className="mavi-voice-status" role="status" aria-live="polite">
+    {voiceLabel}
+  </span>
   {enabled&&offerReady&&proposal&&offerTarget&&createPortal(
     <section className="mavi-offer-card" role="group" aria-label={proposal.kind==='poi_stop'?'Parada sugerida pela MAVI':'Alternativa de rota sugerida pela MAVI'}>
       <div className="mavi-offer-header">
