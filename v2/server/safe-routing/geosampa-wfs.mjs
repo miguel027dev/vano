@@ -1,5 +1,6 @@
 /** Official São Paulo GeoSampa WFS interface. Read-only, bounded, strict origin. */
 import {createHash} from 'node:crypto';
+import {SAFE_ROUTING_DATASET_POLICY} from './dataset-policy.mjs';
 export const GEOSAMPA_WFS='https://wfs.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/wfs';
 export const GEOSAMPA_LIGHTING_METADATA='https://metadados.geosampa.prefeitura.sp.gov.br/geonetwork/intranet/api/records/1a0c8fd5-9273-4d71-8e20-440f9ccc7b5e';
 const maxReply=4_000_000;
@@ -49,6 +50,12 @@ export async function inspectGeoSampaLighting({fetcher=fetch}={}){
 }
 export async function fetchGeoSampaLightPage({layer,startIndex=0,count=250,fetcher=fetch}={}){
  if(!/^(?:[a-z][\w.-]*:)?iluminacao_publica$/i.test(String(layer||'')))throw Error('WFS layer not verified');
+ return fetchGeoSampaLayerPage({layer,startIndex,count,fetcher});
+}
+/** Bounded page fetch for the explicitly reviewed pilot inventory only. */
+export async function fetchGeoSampaLayerPage({layer,startIndex=0,count=250,fetcher=fetch}={}){
+ const approvedNames=new Set(Object.values(SAFE_ROUTING_DATASET_POLICY).map(rule=>rule.layer));
+ if(!approvedNames.has(layer))throw Error('WFS layer not registered for Safe Routing discovery');
  if(!Number.isInteger(startIndex)||startIndex<0||startIndex>5000000||
     !Number.isInteger(count)||count<1||count>500)throw Error('Paginação WFS fora dos limites');
  // No BBOX until confirmed axis-order/DescribeFeatureType: avoids geographic mix-ups.
