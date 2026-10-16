@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dryRunSafeRouting} from './safe-routing/adapter.mjs';
+import {dryRunSafeRouting,evaluateApprovedEvidence} from './safe-routing/adapter.mjs';
 const input={routes:[
  {id:'A',duration:10,geometry:{type:'LineString',coordinates:[[0,0],[1,1]]}},
  {id:'B',duration:12,geometry:{type:'LineString',coordinates:[[0,0],[1,1]]}}
@@ -16,4 +16,16 @@ test('data service timeout keeps provider route',async()=>{
 test('evidence failure is isolated and does not throw',async()=>{
  const r=await dryRunSafeRouting(input,{evidenceProvider:async()=>{throw Error('database unavailable')}});
  assert.strictEqual(r.providerResult,input);assert.equal(r.analysis.status,'evidence-unavailable');
+});
+const approval={layer:'geoportal:iluminacao_publica',licenseAccepted:true,crsValidated:true,geometryValidated:true,freshnessValidated:true,approvedForRouting:true,approvedBy:'operador',approvedAt:new Date().toISOString()};
+const snapshot={stage:'approved',licenseReviewed:true,usedForRouting:true,layer:'geoportal:iluminacao_publica'};
+const observations={A:[{lighting:'registered',lengthMeters:1000,sourceId:'geo',updatedAt:new Date().toISOString(),inventoryComplete:true,associationConfidence:.9}],B:[{lighting:'registered',lengthMeters:1000,sourceId:'geo',updatedAt:new Date().toISOString(),inventoryComplete:true,associationConfidence:.9}]};
+test('unapproved snapshots never reach candidate ranking',()=>{
+ const r=evaluateApprovedEvidence(input,{datasetApproval:approval,snapshot:{...snapshot,stage:'staging'},observationsByRoute:observations});
+ assert.equal(r.status,'dataset-snapshot-not-approved');assert.equal(r.fallback,true);
+});
+test('approved public evidence can be evaluated in shadow mode',async()=>{
+ const r=await dryRunSafeRouting(input,{requestedAt:new Date().toISOString(),latitude:-23.55,longitude:-46.63,evidenceProvider:async()=>({datasetApproval:approval,snapshot,observationsByRoute:observations})});
+ assert.equal(r.analysis.shadowMode,true);assert.notEqual(r.analysis.status,'evidence-unavailable');
+ assert.strictEqual(r.providerResult,input);
 });

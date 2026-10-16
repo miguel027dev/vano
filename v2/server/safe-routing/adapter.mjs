@@ -2,6 +2,23 @@
  * No live route endpoint imports this file. Production output is unchanged.
  */
 import {evaluateSafeCandidates} from './engine.mjs';
+import {assertNoPersonalRouteInputs,canUseSnapshotForRanking} from './dataset-policy.mjs';
+
+/**
+ * Converts an approved evidence response into an analysis. This remains a
+ * shadow-only contract: it deliberately never mutates Mapbox/provider output.
+ */
+export function evaluateApprovedEvidence(providerResult,evidence,{requestedAt=new Date().toISOString(),latitude,longitude,preference='balanced'}={}){
+ if(!providerResult||!Array.isArray(providerResult.routes))return {status:'invalid-provider-result',fallback:true};
+ try{assertNoPersonalRouteInputs({requestedAt,latitude,longitude,preference});}
+ catch{return {status:'personal-context-rejected',fallback:true};}
+ if(!evidence||typeof evidence!=='object'||Array.isArray(evidence))return {status:'evidence-unavailable',fallback:true};
+ const allowed=canUseSnapshotForRanking({datasetApproval:evidence.datasetApproval,snapshot:evidence.snapshot});
+ if(!allowed.allowed)return {status:`dataset-${allowed.reason}`,fallback:true};
+ // Only public, approved evidence reaches the pure evaluator.
+ return evaluateSafeCandidates(providerResult.routes,{observationsByRoute:evidence.observationsByRoute,
+  at:requestedAt,latitude,longitude,preference});
+}
 export async function dryRunSafeRouting(providerResult,{
  evidenceProvider,requestedAt=new Date().toISOString(),latitude,longitude,preference='balanced',
  timeoutMs=400
@@ -23,10 +40,7 @@ export async function dryRunSafeRouting(providerResult,{
    )),
    new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('timeout')),timeoutMs)})
   ]);
-  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('invalid evidence');
-  const analysis=evaluateSafeCandidates(providerResult.routes,{
-   observationsByRoute:data,at:requestedAt,latitude,longitude,preference
-  });
+  const analysis=evaluateApprovedEvidence(providerResult,data,{requestedAt,latitude,longitude,preference});
   // Shadow-mode: return provider response byte-for-byte logically unchanged.
   return {providerResult,analysis:{...analysis,shadowMode:true}};
  }catch{
