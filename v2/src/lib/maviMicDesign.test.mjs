@@ -35,8 +35,9 @@ test('silence does not disable listening; speech is gated until response playbac
  assert.match(jsx,/if\(code==='no-speech'\)\{/);
  assert.match(jsx,/recognitionError\.current='';/);
  assert.match(jsx,/setStatus\('ready'\);\s*return;/);
- assert.match(jsx,/scheduleNextListen\(320\)/);
- assert.match(jsx,/if\(window\.speechSynthesis\?\.speaking\)\{scheduleNextListen\(480\);return;\}/);
+ assert.match(jsx,/maviRecognitionRecovery\(\{/);
+ assert.match(jsx,/scheduleNextListen\(recovery\.delay\)/);
+ assert.match(jsx,/if\(navigationAudioActive\(\)\|\|window\.speechSynthesis\?\.speaking\)\{scheduleNextListen\(1100\);return;\}/);
  assert.match(jsx,/if\(!enabledRef\.current\|\|busyRef\.current\|\|recognitionError\.current\|\|!Recognizer\)return/);
  assert.match(jsx,/if\(finished\|\|!enabledRef\.current\|\|controller\.signal\.aborted\)return/);
  assert.match(jsx,/done\(\);\s*\/\/ Offer controls are revealed/);
