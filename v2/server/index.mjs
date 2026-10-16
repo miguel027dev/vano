@@ -4,6 +4,7 @@
  */
 import http from 'node:http';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
+import {compareLightingInventory} from './safe-routing/lighting-grid.mjs';
 import {readMobileRequest,mobileGrants,mobileCallback,canonicalMobileStart} from './mobile-auth.mjs';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -450,6 +451,21 @@ async function route(req, res) {
       const safeBody=upstream.ok?await upstream.json().catch(()=>({})):{};
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
+  }
+  if(pathname==='/api/admin/safe-routing/compare'&&req.method==='POST'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para testar as rotas.');
+    if(!isAdminAccount(session.user))return err(res,403,'Teste restrito ao administrador.');
+    if(process.env.VANO_SAFE_ROUTING_TEST_MODE!=='true')return err(res,404,'Teste de contexto urbano não ativado.');
+    if(!protectedWrite(req,res)||!limits(req,res,'safe-routing-compare',2,60000))return;
+    const body=await getBody(req);
+    if(!pointOK(body.origin)||!pointOK(body.destination))return err(res,400,'Coordenadas inválidas.');
+    try{
+      const result=await directions(body.origin,body.destination,'carro',{},'pt-BR',{adaptive:false,variantBudget:2});
+      if(result.source==='demonstracao')return err(res,503,'Motor real de rotas indisponível.');
+      const evidence=await compareLightingInventory(result.routes);
+      return json(res,200,{...evidence,provider:result.source,routes:result.routes.map(r=>({id:r.id,duration:r.duration,distance:r.distance})),requestedAt:stamp()});
+    }catch{return err(res,503,'Não foi possível comparar este trecho agora. Tente um trajeto curto dentro de São Paulo.');}
   }
   if ((pathname === '/api/admin' || pathname === '/api/admin/users' || pathname === '/api/admin/safe-routing/storage') && req.method === 'GET') {
     const session=userSession(req);
@@ -1012,5 +1028,14 @@ if(renderWeb&&process.env.VANO_SAFE_B2_TEST_SNAPSHOT){
  inspectB2Snapshot(process.env.VANO_SAFE_B2_TEST_SNAPSHOT)
   .then(summary=>console.info('VANO B2 staging verified:',JSON.stringify(summary)))
   .catch(()=>console.warn('VANO B2 staging verification failed; routing unchanged.'));
+}
+if(renderWeb&&process.env.VANO_SAFE_ROUTING_TEST_MODE==='true'&&process.env.VANO_SAFE_ROUTING_SMOKE_ON_START==='true'){
+ directions([-46.6557,-23.5615],[-46.6597,-23.5874],'carro',{},'pt-BR',{adaptive:false,variantBudget:2})
+  .then(async result=>{
+    if(result.source==='demonstracao')throw Error('Real provider required');
+    const evidence=await compareLightingInventory(result.routes);
+    console.info('VANO private route smoke verified:',JSON.stringify({provider:result.source,snapshotId:evidence.snapshotId,
+      queriedTiles:evidence.queriedTiles,inventoryPoints:evidence.inventoryPoints,comparisons:evidence.comparisons,usedForRouting:false}));
+  }).catch(()=>console.warn('VANO private route smoke unavailable; route selection unchanged.'));
 }
 export { server,search,directions };

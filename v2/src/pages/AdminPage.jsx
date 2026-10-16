@@ -8,6 +8,7 @@ import {
 import {api} from '../lib/api';
 import {useVano} from '../context';
 import '../admin-console.css';
+import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
 
 const num=value=>typeof value==='number'&&Number.isFinite(value)?value.toLocaleString('pt-BR'):'—';
 const shortDate=value=>{
@@ -87,6 +88,7 @@ export default function AdminPage(){
     <button onClick={()=>refresh(0)} type="button" disabled={busy}><RefreshCcw size={17} className={busy?'v44-refreshing':''}/>{busy?'Atualizando…':'Atualizar'}</button></div>
   </header>
   {failure&&<p className="v3-admin-error" role="alert">Não foi possível carregar o console: {failure}</p>}
+  <SafeRoutingTestPanel/>
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
   {stats&&<>
    <section className="v3-kpi-grid" aria-label="Indicadores gerais">

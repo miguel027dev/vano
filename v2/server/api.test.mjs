@@ -49,6 +49,8 @@ test('Autorização, sessão segura, CSRF, perfil e histórico validado',async()
  const s=await start(),a=client(s.origin),b=client(s.origin);
  try{
   assert.equal((await a.call('/api/bootstrap')).status,200);
+  assert.equal((await a.call('/api/admin/safe-routing/compare','POST',{origin:coords,destination:coords})).status,401);
+  assert.equal((await a.call('/api/admin/safe-routing/storage')).status,401);
   await b.call('/api/bootstrap');
   assert.notEqual(a.csrf,b.csrf);
   assert.equal((await b.call('/api/preferences','PATCH',{vehicle:'moto'}, {'Origin':'https://evil.example'})).status,403);
