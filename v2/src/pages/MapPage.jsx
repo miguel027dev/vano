@@ -484,7 +484,7 @@ export default function MapPage({active=true}){
     // Read-only status and bounded map actions never need an LLM or network.
     // Speech remains cancellable and actual route changes still go to the server.
     const localIntent=classifyMaviIntent(text);
-    if(localIntent!=='repeat'&&localIntent!=='places_unavailable'){
+    if(!conversation&&localIntent!=='repeat'&&localIntent!=='places_unavailable'){
       const instant=answerMaviInformation(localIntent,payload.context);
       if(instant){
         if(greeting&&firstMaviGreeting){try{window.localStorage.setItem('vano-mavi-introduced','1');}catch{}}
@@ -493,7 +493,7 @@ export default function MapPage({active=true}){
         }).then(result=>result.voiceTicket).catch(()=>null)};
       }
     }
-    return api('/v2/assistant',{method:'POST',signal,body:payload});
+    return api('/v2/assistant',{method:'POST',signal,body:payload}).then(rememberReply);
   }
   function handleMaviAction(action){
     if(!jevMode)return false;
