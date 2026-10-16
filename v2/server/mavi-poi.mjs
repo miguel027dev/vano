@@ -6,7 +6,6 @@ import {pointOK} from './routing.mjs';
 
 export const MAVI_POI_CATEGORIES=Object.freeze({
  grocery:{id:'grocery',label:'mercado'},
- pharmacy:{id:'pharmacy',label:'farmácia'},
  hospital:{id:'hospital',label:'hospital'},
  restaurant:{id:'restaurant',label:'restaurante'},
  cafe:{id:'coffee',label:'cafeteria'},
