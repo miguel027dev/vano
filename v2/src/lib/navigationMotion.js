@@ -22,7 +22,7 @@ export function cameraTarget({position,destination,route,telemetry={},vehicle='c
 // A stopped or uncertain motorcycle does not chase fluctuating GPS bearings.
 // Never mistake the direction of travel for physical motorcycle lean.
 const roadAlignedBearing=visualMatch?.matched&&reliable&&speed>=1.4&&Number.isFinite(visualMatch.bearing)?visualMatch.bearing:roadBearing;
-const bearing=isMoto&&(!reliable||speed<2.2)?null:roadAlignedBearing??(reliable?heading:null);const remaining=validPoint(destination)?metersBetween(pos,destination):Infinity;const arriving=remaining<90;const highway=speed>21,turnFocus=vehicle!=='moto'&&!highway&&speed>2&&roadBearing!==null&&heading!==null&&Math.abs(shortestAngle(heading,roadBearing))>38;let zoom=isMoto?(highway?16.05:speed>12?16.75:17.25):(highway?16.0:speed>12?16.9:17.25);
+const bearing=isMoto&&(!reliable||speed<2.2)?null:roadAlignedBearing??(reliable?heading:null);const remaining=validPoint(destination)?metersBetween(pos,destination):Infinity;const arriving=remaining<90;const highway=speed>21,turnFocus=vehicle!=='moto'&&!highway&&speed>2&&roadAlignedBearing!==null&&heading!==null&&Math.abs(shortestAngle(heading,roadAlignedBearing))>38;let zoom=isMoto?(highway?16.05:speed>12?16.75:17.25):(highway?16.0:speed>12?16.9:17.25);
 let pitch=isMoto?(highway?22:28):(highway?39:42);if(turnFocus){zoom-=.3;pitch=32;}if(arriving){zoom=isMoto?16.8:17.1;pitch=isMoto?12:20;}
 const focus=maneuverPlan?.strength||0;
 if(focus>0){zoom=clamp(zoom-(maneuverPlan.zoomOut||0),14.8,18.2);pitch=clamp(pitch-(maneuverPlan.pitchDrop||0),0,55);}
