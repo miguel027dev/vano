@@ -1056,8 +1056,11 @@ async function route(req, res) {
     // Risk-first reshuffle is isolated to the 'safe' result; fast/smart stay unchanged.
     // Historical GeoSampa flooding layers are deliberately excluded until their
     // licensing/quality snapshots are approved for routing.
-    if(process.env.VANO_SAFE_VERIFIED_ROUTING_ENABLED!=='false')
+    if(process.env.VANO_SAFE_VERIFIED_ROUTING_ENABLED==='false'){
+      if(result?.safeCandidatePool)delete result.safeCandidatePool;
+    }else{
       result=applySafeVerifiedReportRanking(result,db.reports,{reroute:routeOptions.reroute});
+    }
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
     return json(res,200,result);
   }
