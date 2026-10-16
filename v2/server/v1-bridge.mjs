@@ -5,6 +5,7 @@
  * This adapter NEVER generates invented roads or 'verified' safety scores.
  */
 import { pointOK } from './routing.mjs';
+import {shareV1Work} from './v1-singleflight.mjs';
 
 const MODES = Object.freeze({ safest: 'safe', fastest: 'fast', smart: 'smart', quietest: 'quiet' });
 const TRUE_OPTIONS = Object.freeze({ avoidTolls:'avoid_tolls', avoidFerries:'avoid_ferries', avoidUnpaved:'avoid_unpaved', reroute:'reroute' });
@@ -110,7 +111,7 @@ export function normalizeV1Route(payload,mode){
  * a heuristic to the safest response. The original response retains all the
  * candidate/micro-route computations, risk scoring and AI guardrails.
  */
-export async function directionsFromV1(base,origin,destination,vehicle,telemetry={},options={},fetcher=fetch){
+async function calculateV1Original(base,origin,destination,vehicle,telemetry={},options={},fetcher=fetch){
   engineUrl(base);
   const modes=options.includeAdvanced===true?['safest','fastest','smart','quietest']:['safest','fastest'];
   const timeout=Math.floor(bounded(options.timeoutMs,options.reroute===true?2500:10000,90000)??65000);
@@ -136,4 +137,12 @@ export async function directionsFromV1(base,origin,destination,vehicle,telemetry
       ?'Motor VANO operando em contingência; avaliação avançada de segurança reduzida.'
       :'Rotas calculadas pela engenharia original VANO. Segurança é estimativa, não garantia; respeite a sinalização real.',
   };
+}
+
+/** Coalesce duplicate in-flight route calculations without caching navigation data. */
+export function directionsFromV1(base,origin,destination,vehicle,telemetry={},options={},fetcher=fetch){
+ return shareV1Work(
+  ()=>calculateV1Original(base,origin,destination,vehicle,telemetry,options,fetcher),
+  [base,origin,destination,vehicle,telemetry,options],fetcher
+ );
 }
