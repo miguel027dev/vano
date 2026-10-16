@@ -1,23 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+const mic=()=>readFileSync(new URL('../components/JevVoiceButton.jsx',import.meta.url),'utf8');
+const map=()=>readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+const css=()=>readFileSync(new URL('../jev-voice.css',import.meta.url),'utf8');
 
-test('V2 voice is rolled back to the functional original recognition flow',()=>{
- const jsx=readFileSync(new URL('../components/JevVoiceButton.jsx',import.meta.url),'utf8');
- const css=readFileSync(new URL('../jev-voice.css',import.meta.url),'utf8');
- // The original October 15 implementation started recognition directly from
- // the user's button click and accepted the full browser transcript.
- assert.match(jsx,/const Recognizer=typeof window!=='undefined'\?\(window\.SpeechRecognition\|\|window\.webkitSpeechRecognition\):null/);
- assert.match(jsx,/recognition\.lang='pt-BR';recognition\.continuous=false;recognition\.interimResults=false;recognition\.maxAlternatives=1/);
- assert.match(jsx,/const phrase=Array\.from\(event\.results\|\|\[\]\)\.map\(row=>row\?\.\[0\]\?\.transcript\|\|''\)\.join\(' '\)\.trim\(\)/);
- assert.match(jsx,/recognition\.start\(\)/);
- assert.match(jsx,/listenRef\.current\('remote'\)/);
- assert.match(jsx,/onClick=\{toggle\}/);
- assert.match(jsx,/async function submit\(phrase\)/);
- assert.match(jsx,/handlersRef\.current\.onCommand\(text,controller\.signal\)/);
- assert.match(jsx,/handlersRef\.current\.onAccept\(selection\)/);
- // Complete restoration includes the working diagnostic UI and its styles.
- assert.match(jsx,/<section className="jev-panel"/);
- assert.match(css,/\.jev-panel/);
- assert.doesNotMatch(jsx,/MaviVoiceController|consumeMaviTranscript/);
+test('MAVI retains proven direct browser microphone activation and route request',()=>{
+ const s=mic();
+ assert.match(s,/const Recognizer=typeof window!=='undefined'\?\(window\.SpeechRecognition\|\|window\.webkitSpeechRecognition\):null/);
+ assert.match(s,/recognition\.lang='pt-BR';recognition\.continuous=false;recognition\.interimResults=false;recognition\.maxAlternatives=1/);
+ assert.match(s,/const phrase=Array\.from\(event\.results\|\|\[\]\)\.map\(row=>row\?\.\[0\]\?\.transcript\|\|''\)\.join\(' '\)\.trim\(\)/);
+ assert.match(s,/recognition\.start\(\)/);
+ assert.match(s,/listenRef\.current\('remote'\)/);
+ assert.match(s,/async function submit\(phrase\)/);
+ assert.match(s,/handlersRef\.current\.onCommand\(text,controller\.signal\)/);
+ assert.match(s,/onClick=\{toggle\}/);
+ assert.doesNotMatch(s,/MaviVoiceController/);
+});
+
+test('only MAVI V2 shows compact route proposal under guidance or preview',()=>{
+ const s=map(),m=mic();
+ assert.match(s,/jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"\/>/);
+ assert.equal((s.match(/id="mavi-offer-host"/g)||[]).length,2,'one host per exclusive navigation state');
+ assert.match(s,/jevMode&&<JevVoiceButton/);
+ assert.match(m,/createPortal\(/);
+ assert.match(m,/offerTarget&&createPortal\(/);
+ assert.match(m,/className="mavi-offer-card"/);
+ assert.match(m,/className="mavi-offer-reject"/);
+ assert.match(m,/className="mavi-offer-confirm"/);
+ assert.doesNotMatch(m,/<section className="jev-panel"/);
+ assert.doesNotMatch(m,/<form className="jev-text"/);
+ assert.match(css(),/\.map-page \.mavi-offer-host/);
+ assert.match(css(),/top:calc\(100% \+ 11px\)/);
+});
+
+test('card remains hidden until voice narration settles; accept/reject are explicit',()=>{
+ const s=mic(),p=s.indexOf('setReply(message);speak(message,()=>{');
+ assert.ok(p>0);
+ assert.ok(s.indexOf('setOfferReady(true)',p)>p);
+ assert.match(s,/speech\.onend=finish;speech\.onerror=finish/);
+ assert.match(s,/speechTimerRef\.current=setTimeout\(finish,15000\)/);
+ assert.match(s,/enabled&&offerReady&&proposal&&offerTarget&&createPortal/);
+ assert.match(s,/function chooseProposal\(decision\)/);
+ assert.match(s,/handlersRef\.current\.onAccept\(selection\)/);
+ assert.match(s,/onClick=\{reject\}/);
+ assert.match(s,/onClick=\{accept\}/);
+ assert.match(s,/proposalRef\.current=null;setOfferReady\(false\)/);
 });
