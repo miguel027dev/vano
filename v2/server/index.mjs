@@ -671,6 +671,56 @@ async function route(req, res) {
     const transcript=await jevTranscribe(bytes,mime,provider);
     return json(res,200,{text:transcript});
   }
+  // V2-only signed voice tickets for local answers. Only server-computed
+  // phrases are allowed; user text is never forwarded to a TTS provider.
+  if(pathname==='/api/v2/assistant/local-voice-ticket'&&req.method==='POST'){
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'mavi-local-voice',15,60000))return;
+    const body=await getBody(req),id=owner(req);
+    const allowed=new Set(['greeting','identity','about','help','thanks','gps_status',
+      'navigation_status','destination','vehicle','route_mode','speed','speed_limit',
+      'arrival','remaining_time','remaining_distance','progress','next_maneuver',
+      'next_street','current_street','clock','route_summary','traffic_info','tolls_info',
+      'weather_unavailable','incidents_unavailable','safety_info','recenter_map',
+      'route_overview','show_traffic','hide_traffic','mute_guidance','unmute_guidance']);
+    const confirmations=new Set([
+      'Tudo bem, sua rota atual foi mantida.','Mantive sua rota atual.',
+      'Nova rota selecionada.','Parada adicionada. Depois, peça para continuar ao destino original.',
+      'Esta sugestão expirou. Peça outra alternativa.'
+    ]);
+    if(!id||!(allowed.has(body.intent)||body.intent==='confirmation'))return err(res,400,'Resposta local inválida.');
+    const local=body.intent==='confirmation'?
+      {text:confirmations.has(body.text)?body.text:null}:
+      answerMaviInformation(body.intent,body.context);
+    const txt=maviSpeechText(local?.text);
+    const eleven=maviElevenConfig(),cartesia=maviCartesiaConfig();
+    const ticketType=eleven.enabled?'mavi-eleven-tts':cartesia.enabled?'mavi-cartesia-tts':null;
+    if(!ticketType||!txt)return err(res,503,'Voz indisponível.');
+    return json(res,200,{text:txt,voiceTicket:signedToken(secret,{
+      type:ticketType,user:id,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
+    })});
+  }
+  // V2-only voice cues require a fresh signed route. No arbitrary TTS text:
+  // short plausible guidance forms and explicit navigation-start messages only.
+  if(pathname==='/api/v2/navigation/voice-ticket'&&req.method==='POST'){
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'mavi-navigation-cues',22,60000))return;
+    const body=await getBody(req),id=owner(req),cartesia=maviCartesiaConfig();
+    if(!id||!cartesia.enabled)return err(res,503,'Orientação Cartesia indisponível.');
+    const proof=typeof body.proof==='string'&&body.proof.length<2200?
+      openSignedToken(secret,body.proof):null;
+    const txt=maviSpeechText(body.text);
+    if(!proof||proof.type!=='trip'||proof.user!==id||!Number.isFinite(proof.expires)||
+      proof.expires<now()||proof.expires>now()+601000||!['fast','safe'].includes(proof.kind)||
+      !txt||txt.length>220||body.language!=='pt-BR')
+      return err(res,403,'Instrução não autorizada.');
+    // Restricted command grammar; validated server route proof is mandatory.
+    if(!/^(?:(?:Em|Daqui a) \\d{1,4} metros?, )?(?:vire|siga|continue|pegue|entre|mantenha|faça|saia|retorne|chegou|você chegou|seu destino|navegação iniciada|instruções por voz ativadas|à direita|à esquerda|mude|passe|contorne|atravesse|aproxime|na rotatória|rotatória)/i.test(txt))
+      return err(res,400,'Comando de navegação inválido.');
+    return json(res,200,{voiceTicket:signedToken(secret,{
+      type:'mavi-cartesia-tts',purpose:'maneuver',user:id,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
+    })});
+  }
   // Public V2 assistant experiment. Guests may try it, but CSRF and IP limits
   // prevent third-party use of the paid routing provider as an open proxy.
   // Session-bound one-shot voice endpoint: the caller supplies no free-form
@@ -678,7 +728,6 @@ async function route(req, res) {
   // be converted. Never disclose provider credentials to the browser.
   if(pathname==='/api/v2/assistant/speech'&&req.method==='POST'){
     if(!protectedWrite(req,res))return;
-    if(!limits(req,res,'mavi-voice-v2',12,60000))return;
     const cartesia=maviCartesiaConfig();
     const eleven=maviElevenConfig();
     if(!cartesia.enabled&&!eleven.enabled)return err(res,503,'Voz da MAVI ainda não configurada.');
@@ -687,6 +736,7 @@ async function route(req, res) {
     const claim=ticket?openSignedToken(secret,ticket):null;
     const identity=owner(req);
     const provider=claim?.type==='mavi-cartesia-tts'?'cartesia':claim?.type==='mavi-eleven-tts'?'eleven':null;
+    if(!limits(req,res,claim?.purpose==='maneuver'?'mavi-voice-cues':'mavi-voice-v2',claim?.purpose==='maneuver'?22:15,60000))return;
     if(!claim||!provider||(provider==='cartesia'&&!cartesia.enabled)||(provider==='eleven'&&!eleven.enabled)||
        !identity||claim.user!==identity||
        !Number.isFinite(claim.expires)||claim.expires<=now()||
@@ -699,14 +749,23 @@ async function route(req, res) {
     usedMaviVoiceTickets.set(claimHash,claim.expires);
     const voiceStarted=Date.now();
     const abort=new AbortController();
-    const deadline=setTimeout(()=>abort.abort(),14000);
+    const deadline=setTimeout(()=>abort.abort(),8500);
     res.once('close',()=>abort.abort());
     try{
-      const upstream=provider==='cartesia'?
-        await fetchMaviCartesiaVoice(claim.text,cartesia,{signal:abort.signal}):
-        await fetchMaviVoice(claim.text,eleven,{signal:abort.signal});
+      let actualProvider=provider,upstream;
+      if(provider==='eleven'){
+        const first=new AbortController();
+        const firstTimer=setTimeout(()=>first.abort(),3600);
+        const stopFirst=()=>first.abort();abort.signal.addEventListener('abort',stopFirst,{once:true});
+        try{upstream=await fetchMaviVoice(claim.text,eleven,{signal:first.signal});}
+        catch(error){
+          if(!cartesia.enabled||abort.signal.aborted)throw error;
+          actualProvider='cartesia';
+          upstream=await fetchMaviCartesiaVoice(claim.text,cartesia,{signal:abort.signal});
+        }finally{clearTimeout(firstTimer);abort.signal.removeEventListener('abort',stopFirst);}
+      }else upstream=await fetchMaviCartesiaVoice(claim.text,cartesia,{signal:abort.signal});
       if(res.destroyed)return;
-      if(process.env.VANO_MAVI_METRICS_ENABLED==='1')console.info('MAVI TTS headersMs='+String(Date.now()-voiceStarted)+' provider='+provider);
+      if(process.env.VANO_MAVI_METRICS_ENABLED==='1')console.info('MAVI TTS headersMs='+String(Date.now()-voiceStarted)+' provider='+actualProvider);
       res.writeHead(200,{...headers,'Content-Type':'audio/mpeg','Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'});
       let size=0;
       for await(const chunk of upstream.body){
@@ -735,7 +794,7 @@ async function route(req, res) {
     const respondJev=reply=>{
       const cartesia=maviCartesiaConfig();
       const eleven=maviElevenConfig();
-      const ticketType=cartesia.enabled?'mavi-cartesia-tts':eleven.enabled?'mavi-eleven-tts':null;
+      const ticketType=eleven.enabled?'mavi-eleven-tts':cartesia.enabled?'mavi-cartesia-tts':null;
       const txt=maviSpeechText(reply?.text);
       const voiceTicket=ticketType&&voiceOwner&&txt?signedToken(secret,{
         type:ticketType,user:voiceOwner,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
