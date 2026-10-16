@@ -3,6 +3,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCircle} from 'lucide-react';
 import {api} from '../lib/api.js';
+import {playMaviEleven} from '../lib/maviElevenPlayback.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
 /** The V2-only voice input has three independent paths:
@@ -19,7 +20,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
  const enabledRef=useRef(false),mountedRef=useRef(true),busyRef=useRef(false);
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
- const speechTimerRef=useRef(null);
+ const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
  const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
@@ -51,6 +52,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    enabledRef.current=false;busyRef.current=false;
    stopRecognition();stopRecording();
    clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
+   elevenAbortRef.current?.abort();elevenAbortRef.current=null;
    speechRef.current=null;
    if(mountedRef.current)setOfferReady(false);
    // Do not cancel global speechSynthesis: it also belongs to navigation maneuvers.
@@ -70,8 +72,8 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    if(recognitionError.current)setStatus('typed');
    else{setStatus('ready');scheduleNextListen();}
  }
- function speak(message,onComplete){
-   const {navigationActive,maneuverDistance,muted}=navRef.current;
+ function speak(message,onComplete,voiceTicket=null){
+   const {muted}=navRef.current;
    const synth=window.speechSynthesis,Utterance=window.SpeechSynthesisUtterance;
    busyRef.current=true;
    let finished=false,attempts=0;
@@ -80,16 +82,18 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      finished=true;
      clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
      speechRef.current=null;
+     elevenAbortRef.current=null;
      done();
      // Offer controls are revealed only once the voice finishes or fails safely.
      if(enabledRef.current&&mountedRef.current)onComplete?.();
    };
-   if(!synth||!Utterance||muted){finish();return;}
+   if(muted){finish();return;}
    const trySpeak=()=>{
+     if(!synth||!Utterance){finish();return;}
      if(finished||!enabledRef.current)return;
      const nav=navRef.current;
      // Wait for the navigation announcement, rather than silently skip MAVI.
-     if(synth.speaking||(nav.navigationActive&&Number.isFinite(nav.maneuverDistance)&&nav.maneuverDistance<250)){
+     if(synth.speaking){
        if(++attempts>12){finish();return;}
        speechTimerRef.current=setTimeout(trySpeak,750);
        return;
@@ -108,6 +112,27 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
        speechTimerRef.current=setTimeout(finish,15000);
      }catch{finish();}
    };
+   if(typeof voiceTicket==='string'&&voiceTicket.length>10){
+     const controller=new AbortController();elevenAbortRef.current=controller;
+     setStatus('speaking');
+     // Wait for turn-by-turn speech to complete before starting MAVI audio.
+     const startRemote=()=>{
+       if(finished||!enabledRef.current||controller.signal.aborted)return;
+       if(window.speechSynthesis?.speaking){
+         if(++attempts>12){trySpeak();return;}
+         speechTimerRef.current=setTimeout(startRemote,500);
+         return;
+       }
+       void playMaviEleven(voiceTicket,{signal:controller.signal}).then(finish,()=>{
+         if(controller.signal.aborted||finished||!enabledRef.current)return;
+         // An expired token, 429, unsupported codec or autoplay block must
+         // never deadlock a proposal. Existing browser TTS is the fallback.
+         elevenAbortRef.current=null;
+         trySpeak();
+       });
+     };
+     startRemote();return;
+   }
    trySpeak();
  }
  async function submit(phrase){
@@ -134,7 +159,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
      }
      setReply(message);speak(message,()=>{
        if(seq===requestRef.current&&proposalRef.current===response&&mountedRef.current)setOfferReady(true);
-     });
+     },response?.voiceTicket);
    }catch{
      if(!enabledRef.current||seq!==requestRef.current)return;
      const message=controller.signal.aborted?'A consulta demorou demais. Sua rota continua igual.':
@@ -277,6 +302,7 @@ export default function JevVoiceButton({onCommand,onAccept,routeContextKey,navig
    return()=>{disposed=true;};
  },[enabled]);
  useEffect(()=>{requestRef.current++;controllerRef.current?.abort?.();
+   elevenAbortRef.current?.abort();elevenAbortRef.current=null;
    setProposal(null);proposalRef.current=null;setOfferReady(false);
  },[routeContextKey]);
  useEffect(()=>()=>{mountedRef.current=false;cancelEverything();},[]);
