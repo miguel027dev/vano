@@ -244,7 +244,7 @@ def api_route():
                 local_hour=local_hour, night_active=bool(user_nav.get("night_active")),
                 current_selected_id=remote_payload.get("selected_id"),
                 prefetch=prefetch_requested, reroute=reroute_request,
-            )
+            ))
             remote_payload["ai_routing"] = ai_remote
             if ai_remote.get("applied") and ai_remote.get("proposed_id") is not None:
                 proposed = next(
@@ -616,7 +616,7 @@ def api_route():
         current_selected_id=(ai_base_selected or {}).get("id"),
         allowed_ids=[r.get("id") for r in ai_allowed_rows],
         prefetch=prefetch_requested, reroute=reroute_request,
-    )
+    ))
     if ai_routing.get("applied") and ai_routing.get("proposed_id") is not None:
         ai_selected = next((r for r in ai_allowed_rows if str(r.get("id")) == str(ai_routing.get("proposed_id"))), None)
         if ai_selected is not None:
