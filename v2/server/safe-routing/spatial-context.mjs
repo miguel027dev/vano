@@ -51,9 +51,11 @@ export function sampleRoute(route){
 export function inspectLayer(route,features,{radius=25,key}={}){
  if(!Array.isArray(features)||features.length>150000||!Number.isFinite(radius)||radius<0||radius>100)throw Error('Consulta excessiva');
  const {samples,lengthMeters}=sampleRoute(route),hits=new Map();let covered=0;
+ const deadline=Date.now()+1500;
  // 0.002° local cells bound candidates for every 50m sample.
  const cells=new Map();let references=0,comparisons=0;
  for(const f of features){const b=f.bbox||geometryBounds(f.geometry);
+  if(Date.now()>deadline)throw Error('Tempo de análise espacial excedido');
   const minX=Math.floor(b[0]*500),maxX=Math.floor(b[2]*500),minY=Math.floor(b[1]*500),maxY=Math.floor(b[3]*500);
   if((maxX-minX+1)*(maxY-minY+1)>10000)throw Error('Feição excessiva');
   for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){if(++references>1000000)throw Error('Índice local excessivo');const id=`${x}_${y}`;if(!cells.has(id))cells.set(id,[]);cells.get(id).push(f);}
@@ -62,6 +64,7 @@ export function inspectLayer(route,features,{radius=25,key}={}){
   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(const f of cells.get(`${x+dx}_${y+dy}`)||[]){
    if(visited.has(f.id))continue;visited.add(f.id);
    if(++comparisons>2000000)throw Error('Consulta excessiva');
+   if(comparisons%128===0&&Date.now()>deadline)throw Error('Tempo de análise espacial excedido');
    if(pointGeometryDistance(p,f.geometry)<=radius){near=true;hits.set(f.id,f);}
   }
   if(near)covered++;
