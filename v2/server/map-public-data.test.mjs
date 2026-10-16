@@ -92,3 +92,22 @@ test('banks are real mapped public POIs, while crossings retain distinct types',
  const features=normalizeOsmElements([{type:'node',id:888,lon:-46.68,lat:-23.58,tags:{amenity:'bank'}}]);
  assert.equal(features[0].type,'banco');
 });
+
+
+test('real OSM construction ways can create a work icon, but normal roads cannot',()=>{
+ assert.equal(classifyOsm({highway:'construction'})[0],'obra');
+ assert.equal(classifyOsm({highway:'residential',construction:'yes'})[0],'obra');
+ assert.equal(classifyOsm({highway:'residential',construction:'no'}),null);
+ assert.equal(classifyOsm({highway:'primary',name:'Obra da Avenida'}),null);
+ const roadWorks=normalizeOsmElements([
+  {type:'way',id:20,center:{lon:-46.67,lat:-23.58},tags:{highway:'construction'}},
+  {type:'way',id:20,center:{lon:-46.67,lat:-23.58},tags:{highway:'construction'}},
+  {type:'way',id:21,center:{lon:-46.68,lat:-23.58},tags:{highway:'residential',construction:'yes'}}
+ ],20);
+ assert.equal(roadWorks.length,2);
+ assert.ok(roadWorks.every(x=>x.type==='obra'&&x.source==='OpenStreetMap'&&!x.verified));
+ const q=overpassQuery([-46.69,-23.59,-46.66,-23.57]);
+ assert.ok(q.includes('way["highway"="construction"]'));
+ assert.ok(q.includes('way["highway"]["construction"="yes"]'));
+ assert.ok(!q.includes('"alagang"'));
+});
