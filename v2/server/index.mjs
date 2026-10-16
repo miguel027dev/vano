@@ -7,10 +7,12 @@ import {readMobileRequest,mobileGrants,mobileCallback,canonicalMobileStart} from
 import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
+import {once} from 'node:events';
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/jevShared.mjs';
+import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -104,6 +106,7 @@ if (migrated) {
 const secret = process.env.VANO_SECURITY_SECRET || hex(32);
 const limiter = createLimiter();
 const nativeGrants=mobileGrants();
+const usedMaviVoiceTickets=new Map();
 const headers = secureHeaders(production);
 const now = () => Date.now();
 const stamp = () => new Date().toISOString();
@@ -632,23 +635,75 @@ async function route(req, res) {
   }
   // Public V2 assistant experiment. Guests may try it, but CSRF and IP limits
   // prevent third-party use of the paid routing provider as an open proxy.
+  // Session-bound one-shot voice endpoint: the caller supplies no free-form
+  // text, voice ID, model, or upstream URL. Only assistant-generated text may
+  // be converted. Never disclose the ElevenLabs API key to the browser.
+  if(pathname==='/api/v2/assistant/speech'&&req.method==='POST'){
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'mavi-voice-v2',6,60000))return;
+    const config=maviElevenConfig();
+    if(!config.enabled)return err(res,503,'Voz da MAVI ainda não configurada.');
+    const body=await getBody(req);
+    const ticket=typeof body.ticket==='string'&&body.ticket.length<=2200?body.ticket:'';
+    const claim=ticket?openSignedToken(secret,ticket):null;
+    const identity=owner(req);
+    if(!claim||claim.type!=='mavi-eleven-tts'||!identity||claim.user!==identity||
+       !Number.isFinite(claim.expires)||claim.expires<=now()||
+       claim.expires>now()+MAVI_VOICE_TICKET_MS+1000||!maviSpeechText(claim.text))
+      return err(res,403,'Autorização de áudio inválida ou expirada.');
+    // Keep the replay list bounded, in memory only. Rates also apply per IP.
+    const claimHash=sha256(ticket);
+    for(const [key,expires] of usedMaviVoiceTickets)if(expires<now())usedMaviVoiceTickets.delete(key);
+    if(usedMaviVoiceTickets.has(claimHash))return err(res,409,'Resposta de áudio já solicitada.');
+    usedMaviVoiceTickets.set(claimHash,claim.expires);
+    const abort=new AbortController();
+    const deadline=setTimeout(()=>abort.abort(),14000);
+    res.once('close',()=>abort.abort());
+    try{
+      const upstream=await fetchMaviVoice(claim.text,config,{signal:abort.signal});
+      if(res.destroyed)return;
+      res.writeHead(200,{...headers,'Content-Type':'audio/mpeg','Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'});
+      let size=0;
+      for await(const chunk of upstream.body){
+        if(abort.signal.aborted||res.destroyed)break;
+        size+=chunk.byteLength;
+        if(size>MAVI_VOICE_MAX_BYTES){abort.abort();break;}
+        if(!res.write(Buffer.from(chunk)))await once(res,'drain');
+      }
+      if(!res.destroyed&&size<=MAVI_VOICE_MAX_BYTES&&!abort.signal.aborted)res.end();
+      else if(!res.destroyed)res.destroy();
+    }catch{
+      if(!res.headersSent&&!res.destroyed)err(res,503,'Voz temporariamente indisponível.');
+      else if(!res.destroyed)res.destroy();
+    }finally{clearTimeout(deadline);}
+    return;
+  }
   if (pathname === '/api/v2/assistant' && req.method === 'POST') {
     if (!protectedWrite(req,res)) return;
     if (!limits(req,res,'jev-v2',6,60000)) return;
     const body=await getBody(req);
+    const voiceOwner=owner(req);
+    const respondJev=reply=>{
+      const cfg=maviElevenConfig();
+      const txt=maviSpeechText(reply?.text);
+      const voiceTicket=cfg.enabled&&voiceOwner&&txt?signedToken(secret,{
+        type:'mavi-eleven-tts',user:voiceOwner,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
+      }):null;
+      return json(res,200,voiceTicket?{...reply,voiceTicket}:reply);
+    };
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
     const intent=classifyJev(body.text);
     if(intent==='radar_unavailable')
-      return json(res,200,{mode:'information',intent,text:'Não posso garantir uma rota com menos radares. Siga sempre os limites de velocidade. Posso procurar outro caminho por tempo ou tranquilidade.'});
+      return respondJev({mode:'information',intent,text:'Não posso garantir uma rota com menos radares. Siga sempre os limites de velocidade. Posso procurar outro caminho por tempo ou tranquilidade.'});
     if(intent==='unknown')
-      return json(res,200,{mode:'information',intent,text:'Ainda não entendi esse comando. Tente pedir outra rota, evitar pedágios ou procurar menos trânsito.'});
+      return respondJev({mode:'information',intent,text:'Ainda não entendi esse comando. Tente pedir outra rota, evitar pedágios ou procurar menos trânsito.'});
     if(intent==='slope_unavailable')
-      return json(res,200,{mode:'information',intent,text:'Ainda não consigo verificar ladeiras com segurança. Essa função será adicionada em outra etapa.'});
+      return respondJev({mode:'information',intent,text:'Ainda não consigo verificar ladeiras com segurança. Essa função será adicionada em outra etapa.'});
     if(!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto'].includes(body.vehicle))
-      return json(res,200,{mode:'information',intent,text:'Escolha um destino e uma rota de carro ou moto antes de pedir uma alternativa.'});
+      return respondJev({mode:'information',intent,text:'Escolha um destino e uma rota de carro ou moto antes de pedir uma alternativa.'});
     const currentKey=typeof body.currentRouteKey==='string'&&body.currentRouteKey.length<=64?body.currentRouteKey:null;
-    if(!currentKey) return json(res,200,{mode:'information',intent,text:'Calcule uma rota primeiro para que eu consiga buscar outra opção.'});
+    if(!currentKey) return respondJev({mode:'information',intent,text:'Calcule uma rota primeiro para que eu consiga buscar outra opção.'});
     const id=owner(req);
     const telemetryRaw=body.telemetry&&typeof body.telemetry==='object'&&!Array.isArray(body.telemetry)?body.telemetry:{};
     const telemetry={
@@ -667,20 +722,20 @@ async function route(req, res) {
     try { result=await directions(body.origin,body.destination,body.vehicle,telemetry,language,options); }
     catch(error) {
       console.warn('JEV route provider unavailable:',error?.message||String(error));
-      return json(res,200,{mode:'information',intent,text:'Não consegui consultar alternativas agora. Sua rota atual foi mantida.'});
+      return respondJev({mode:'information',intent,text:'Não consegui consultar alternativas agora. Sua rota atual foi mantida.'});
     }
     if(result.source==='demonstracao')
-      return json(res,200,{mode:'information',intent,text:'O motor real de rotas não está disponível neste ambiente. Não vou sugerir uma rota simulada.'});
+      return respondJev({mode:'information',intent,text:'O motor real de rotas não está disponível neste ambiente. Não vou sugerir uma rota simulada.'});
     const candidate=chooseJevProposal(result.routes,currentKey,intent);
     if(!candidate)
-      return json(res,200,{mode:'information',intent,text:'Não encontrei uma alternativa realmente diferente. Sua rota atual foi mantida.'});
+      return respondJev({mode:'information',intent,text:'Não encontrei uma alternativa realmente diferente. Sua rota atual foi mantida.'});
     for(const item of result.routes||[]) item.proof=signedRouteProof(item,body.destination,id);
     const minutes=Math.max(1,Math.round(candidate.duration));
     const previous=Number(body.currentDuration);
     const difference=Number.isFinite(previous)&&previous>0&&previous<10080?Math.round(candidate.duration-previous):null;
     const contrast=difference===null?'':difference>0?', '+difference+' minutos a mais que a atual':difference<0?', '+Math.abs(difference)+' minutos a menos que a atual':', com tempo parecido ao atual';
     const detail=intent==='avoid_tolls'?'com preferência para evitar pedágios':intent==='traffic'?'considerando as alternativas de trânsito disponíveis':'por um caminho diferente';
-    return json(res,200,{
+    return respondJev({
       mode:'proposal',intent,routeId:candidate.id,
       sourceKey:currentKey,destination:body.destination,
       routeData:result,

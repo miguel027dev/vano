@@ -47,3 +47,24 @@ test('card remains hidden until voice narration settles; accept/reject are expli
  assert.match(s,/onClick=\{accept\}/);
  assert.match(s,/proposalRef\.current=null;setOfferReady\(false\)/);
 });
+
+test('ElevenLabs integration is feature gated, route-signed and cannot remove existing mic',()=>{
+ const jsx=mic(),api=readFileSync(new URL('./api.js',import.meta.url),'utf8');
+ const server=readFileSync(new URL('../../server/index.mjs',import.meta.url),'utf8');
+ const player=readFileSync(new URL('./maviElevenPlayback.mjs',import.meta.url),'utf8');
+ assert.match(jsx,/playMaviEleven\(voiceTicket,\{signal:controller\.signal\}\)/);
+ assert.match(jsx,/response\?\.voiceTicket/);
+ assert.match(jsx,/if\(controller\.signal\.aborted\|\|finished\|\|!enabledRef\.current\)return;/);
+ assert.match(jsx,/elevenAbortRef\.current\?\.abort\(\)/);
+ assert.match(jsx,/listenRef\.current\('remote'\)/);
+ assert.match(api,/export async function fetchMaviAudio/);
+ assert.match(api,/X-VANO-CSRF/);
+ assert.match(server,/pathname==='\/api\/v2\/assistant\/speech'/);
+ assert.match(server,/if\(!protectedWrite\(req,res\)\)return/);
+ assert.match(server,/if\(!limits\(req,res,'mavi-voice-v2',6,60000\)\)return/);
+ assert.match(server,/claim\.user!==identity/);
+ assert.match(server,/usedMaviVoiceTickets\.has\(claimHash\)/);
+ assert.match(server,/type:'mavi-eleven-tts'/);
+ assert.match(player,/revokeObjectURL/);
+ assert.match(player,/audio\.addEventListener\('ended',complete/);
+});

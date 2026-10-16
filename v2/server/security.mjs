@@ -71,7 +71,7 @@ export function secureHeaders(production = false) {
       "default-src 'self'", "base-uri 'self'", "object-src 'none'", "frame-ancestors 'none'",
       "form-action 'self'", "script-src 'self'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https://*.mapbox.com", "font-src 'self' data: https://fonts.gstatic.com",
-      "worker-src 'self' blob:", "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.mapbox.com",
+      "worker-src 'self' blob:", "media-src 'self' blob:", "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.mapbox.com",
       "upgrade-insecure-requests",
     ].join('; ');
   }
