@@ -14,12 +14,15 @@ export function validateSourceMetadata(meta) {
   if (!meta || meta.sourceId!=='geosampa_sp_iluminacao' ||
       typeof meta.publisher!=='string' || !meta.publisher.trim() ||
       typeof meta.downloadUrl!=='string' || !meta.downloadUrl.startsWith('https://') ||
-      typeof meta.license!=='string' || !meta.license.trim() ||
+      typeof meta.license!=='string' || !meta.license.trim() || /^(TO_VERIFY|TBD|UNKNOWN)/i.test(meta.license) ||
       typeof meta.datasetVersion!=='string' || !meta.datasetVersion.trim() ||
       !validDate(meta.downloadedAt) || !validDate(meta.updatedAt) ||
       meta.crs!=='EPSG:4326') {
     throw new TypeError('Invalid source metadata; verify publisher, license, dates, HTTPS URL and EPSG:4326');
   }
+  const url=new URL(meta.downloadUrl);
+  if(url.username || url.password || url.hostname!=='download.geosampa.prefeitura.sp.gov.br')
+    throw new TypeError('Source download host not allowlisted');
   return {
     sourceId:meta.sourceId,publisher:meta.publisher.trim(),
     downloadUrl:meta.downloadUrl,license:meta.license.trim(),
