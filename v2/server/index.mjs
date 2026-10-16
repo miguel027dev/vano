@@ -639,6 +639,8 @@ async function route(req, res) {
     if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
       return err(res,400,'Comando de voz inválido.');
     const intent=classifyJev(body.text);
+    if(intent==='radar_unavailable')
+      return json(res,200,{mode:'information',intent,text:'Não posso garantir uma rota com menos radares. Siga sempre os limites de velocidade. Posso procurar outro caminho por tempo ou tranquilidade.'});
     if(intent==='unknown')
       return json(res,200,{mode:'information',intent,text:'Ainda não entendi esse comando. Tente pedir outra rota, evitar pedágios ou procurar menos trânsito.'});
     if(intent==='slope_unavailable')
