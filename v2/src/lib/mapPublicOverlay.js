@@ -219,11 +219,11 @@ export function attachPublicMapOverlay(map,backend){
    if(!response.ok)throw Error('Dados públicos: '+response.status);
    const data=await response.json();
    if(done||signal.signal.aborted)return;
-   // An empty/failed source response is not permission to erase existing pins.
-   if(!data?.error){
-    remoteItems=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
-    rememberPublicFeatures(sourceCache,remoteItems);
-   }
+   // An empty/failed upstream is not evidence that old mapped points vanished.
+   // Still accept verified community reports returned alongside an OSM outage.
+   const incoming=Array.isArray(data?.features)?data.features.filter(x=>x&&Array.isArray(x.coords)).slice(0,220):[];
+   remoteItems=data?.error?incoming.filter(x=>x.verified===true):incoming;
+   rememberPublicFeatures(sourceCache,remoteItems);
    mergeSources();
    // Never silently show an empty map when the external data provider failed.
    // Mapbox tiles continue supplying confirmed mapped services/signals even
