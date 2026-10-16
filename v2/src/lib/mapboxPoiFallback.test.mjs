@@ -49,7 +49,7 @@ test('UI keeps local POIs on Overpass failure and refreshes tiles after camera i
  assert.match(overlay,/mapTilesItems=cachedMapFeatures\(stableTileCache\)/);
  assert.match(overlay,/map\.on\('idle',updateVectorPoi\)/);
  assert.match(overlay,/map\.off\('idle',updateVectorPoi\)/);
- assert.match(overlay,/remoteItems=Array\.isArray/);
+ assert.match(overlay,/rememberPublicFeatures\(sourceCache,remoteItems\)/);
  assert.match(app,/!map&&<BrandSplash\/>/);
  assert.match(app,/v42-map-bootstrap/);
  assert.match(html,/class="v42-preboot"/);

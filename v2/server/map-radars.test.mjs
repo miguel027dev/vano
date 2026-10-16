@@ -71,7 +71,7 @@ test('radar endpoint is isolated from non-radar POIs and client retains them',()
  assert.match(server,/queryPublicRadars\(bbox\)/);
  assert.match(overlay,/if\(radarBbox\)void refreshRadars\(radarBbox\)/);
  assert.match(overlay,/radarController\?\.abort\(\)/);
- assert.match(overlay,/\[\.\.\.radarItems,\.\.\.remoteItems/);
+ assert.match(overlay,/nearbyPublicFeatures\(sourceCache/);
  assert.match(overlay,/data\.features\.filter\(x=>x\?\.type==='radar'/);
  assert.match(overlay,/mergeSources\(\);\s*render\(\)/);
 });
