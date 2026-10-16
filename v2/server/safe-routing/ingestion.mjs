@@ -4,6 +4,22 @@ import {SAFE_ROUTING_DATASET_POLICY} from './dataset-policy.mjs';
 
 const BOUNDS={minLon:-46.98,maxLon:-46.2,minLat:-24.11,maxLat:-23.23};
 const geometryTypes=new Set(['Point','LineString','Polygon','MultiPoint','MultiLineString','MultiPolygon']);
+// Public engineering attributes only. No residents, owners or demographics.
+const FIELDS={
+ 'geoportal:segmento_logradouro':['codlog','cd_identificador_logradouro','nm_logradouro','cd_tipo_logradouro','qt_leito_carrocavel'],
+ 'geoportal:calcada':['cd_logradouro','cd_identificador_segmento_logradouro','qt_area_calcada','qt_largura_minima_trecho','qt_largura_media_trecho','pc_declividade_media_trecho','tx_situacao','dt_inicio','dt_termino'],
+ 'geoportal:faixa_onibus':['nm_denominacao_faixa_corredor','tx_horario_funcionamento','tx_sentido_faixa_corredor','nm_tipo_faixa_corredor','dt_implantacao_faixa'],
+ 'geoportal:risco_hidrologico':['tx_grau_risco_hidrologico','tx_tipo_processo','dt_vistoria'],
+ 'geoportal:risco_ocorrencia_alagamento':['dt_ocorrencia','dc_tipo_ocorrencia','dt_carga']
+};
+function publicAttributes(properties,layer){
+ const result={};
+ for(const key of FIELDS[layer]||[]){const value=properties?.[key];
+  if(typeof value==='number'&&Number.isFinite(value))result[key]=value;
+  else if(typeof value==='string')result[key]=value.replace(/[\x00-\x1f]/g,' ').slice(0,300);
+ }
+ return result;
+}
 
 function validPair(pair){return Array.isArray(pair)&&pair.length>=2&&Number.isFinite(pair[0])&&Number.isFinite(pair[1])&&
  pair[0]>=BOUNDS.minLon&&pair[0]<=BOUNDS.maxLon&&pair[1]>=BOUNDS.minLat&&pair[1]<=BOUNDS.maxLat;}
@@ -32,7 +48,7 @@ export function sanitizeGeoSampaFeature(feature,{layer,snapshotId}={}){
  const id=featureId(feature),geometry=feature?.geometry;
  if(!id||!geometryTypes.has(geometry?.type)||!validCoordinates(geometry.coordinates))return null;
  return {type:'Feature',id,geometry:{type:geometry.type,coordinates:geometry.coordinates},properties:{
-  sourceLayer:layer,sourceFeatureId:id,snapshotId,sourceUpdatedAt:updatedAt(feature.properties)
+  sourceLayer:layer,sourceFeatureId:id,snapshotId,sourceUpdatedAt:updatedAt(feature.properties),...publicAttributes(feature.properties,layer)
  }};
 }
 export function sanitizeGeoSampaPage(page,{layer,snapshotId,maxRejectedFraction=.02}={}){

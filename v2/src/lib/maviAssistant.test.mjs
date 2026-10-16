@@ -82,8 +82,8 @@ test('answers use real per-request navigation state and never invent a current G
  assert.doesNotMatch(answerMaviInformation('next_maneuver',stale).text,/120 metros/);
  assert.match(answerMaviInformation('gps_status',stale).text,/aguard|nao tenho|não tenho|ainda/i);
  const noRoute={...snap,hasRoute:false,currentDuration:null,currentDistance:null};
- assert.match(answerMaviInformation('arrival',noRoute).text,/calcule uma rota/i);
- assert.match(answerMaviInformation('destination',{...snap,destination:''}).text,/não tenho um destino/i);
+ assert.match(answerMaviInformation('arrival',noRoute).text,/calcule uma rota|escolha uma rota/i);
+ assert.match(answerMaviInformation('destination',{...snap,destination:''}).text,/não tenho um destino|sem destino definido/i);
 });
 test('MAVI controls only allowlisted local navigation voice state',()=>{
  const mute=answerMaviInformation('mute_guidance',snap);

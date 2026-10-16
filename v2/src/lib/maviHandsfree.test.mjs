@@ -62,7 +62,7 @@ test('MAVI cloud voices are feature gated, route-signed and preserve existing mi
  assert.match(api,/X-VANO-CSRF/);
  assert.match(server,/pathname==='\/api\/v2\/assistant\/speech'/);
  assert.match(server,/if\(!protectedWrite\(req,res\)\)return/);
- assert.match(server,/claim\?\.purpose==='maneuver'/);
+ assert.match(server,/claim\?\.purpose==='maneuver'\?'mavi-voice-cues':'mavi-voice-v2'/);
  assert.match(server,/claim\.user!==identity/);
  assert.match(server,/usedMaviVoiceTickets\.has\(claimHash\)/);
  assert.match(server,/ticketType=eleven\.enabled\?'mavi-eleven-tts':cartesia\.enabled\?'mavi-cartesia-tts'/);
