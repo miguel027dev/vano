@@ -33,7 +33,7 @@ export async function inspectApprovedRouteLighting(routes,{client,limitMs=800}={
     SELECT ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($1),4326),31983) AS geom
    ), sample AS (
     SELECT ST_LineInterpolatePoint(line.geom,
-      LEAST(1.0,i::float/GREATEST(1,CEIL(ST_Length(line.geom)/40.0))))
+      LEAST(1.0,i::float/GREATEST(1,LEAST(200,CEIL(ST_Length(line.geom)/40.0)))))
       AS p
     FROM line
     CROSS JOIN LATERAL generate_series(0,
