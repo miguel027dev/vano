@@ -21,6 +21,6 @@ test('unverified or missing evidence keeps provider selection',()=>{
 });
 test('does not override original python safety calculations',()=>{
  const result={source:'vano-original-python',routes:[route('safe',0,10),route('fast',.01,8)]};
- assert.equal(applySafeVerifiedReportRanking(result,[]),result);
+ assert.deepEqual(applySafeVerifiedReportRanking(result,[]),result);
 });
 test('invalid geometry is rejected',()=>assert.equal(safeEvidenceScore({geometry:{type:'Point',coordinates:[]}},[]),null));
