@@ -5,7 +5,7 @@
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const suites = ['server', 'src/lib', 'seo'];
+const suites = ['server', 'server/safe-routing', 'src/lib', 'seo'];
 const testFiles = suites.flatMap(directory => readdirSync(directory)
   .filter(name => name.endsWith('.test.mjs'))
   .map(name => `${directory}/${name}`));

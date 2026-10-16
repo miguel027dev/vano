@@ -1,0 +1,47 @@
+name: GeoSampa WFS staging probe
+on:
+  pull_request:
+    branches: [preview/vano-react-v2-7]
+    paths:
+      - 'v2/server/safe-routing/**'
+      - 'v2/server/geosampa-wfs.test.mjs'
+      - 'v2/scripts/safe-routing/**'
+      - '.github/workflows/geosampa-wfs-staging.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: v2
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate WFS client mock contract
+        working-directory: v2
+        run: node --test server/geosampa-wfs.test.mjs server/geosampa-registry.test.mjs
+      - name: Discover other official layer names (no writes)
+        working-directory: v2
+        run: node scripts/safe-routing/inspect-catalog.mjs
+      - name: Inspect eight real GeoSampa source samples (no writes)
+        working-directory: v2
+        run: node scripts/safe-routing/inspect-sources.mjs
+      - name: Read real GeoSampa WFS sample (no writes)
+        working-directory: v2
+        env:
+          SAFE_ALLOW_IMPORT: '0'
+          VANO_SAFE_DB_URL: ''
+          DATABASE_URL: ''
+        run: node scripts/safe-routing/import-geosampa.mjs --sample-out
+      - name: Save unapproved sample for engineering QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: geosampa-lights-unapproved-sample
+          path: v2/data/safe-staging/geosampa-lighting-sample.json
+          retention-days: 7
+          if-no-files-found: error
