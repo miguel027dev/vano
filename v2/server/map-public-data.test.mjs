@@ -22,6 +22,23 @@ test('radar, signage, traffic calming, road work and critical public services us
  for(const [tags,type]of expected)assert.equal(classifyOsm(tags)[0],type);
  assert.equal(classifyOsm({shop:'sweets'}),null);
 });
+test('real OSM construction ways become one mapped amber works pin without guessing live closures',()=>{
+ const query=overpassQuery(parseBBox(bbox));
+ assert.ok(query.includes('way["highway"="construction"]'));
+ assert.ok(query.includes('out center 80;'));
+ const features=normalizeOsmElements([
+  {type:'way',id:911,center:{lon:-46.68,lat:-23.58},tags:{highway:'construction',name:'Rua das Flores'}},
+  {type:'way',id:911,center:{lon:-46.68,lat:-23.58},tags:{highway:'construction'}},
+  {type:'way',id:912,center:{lon:-46.6801,lat:-23.58},tags:{highway:'residential',name:'Rua comum'}}
+ ]);
+ assert.equal(features.length,1);
+ assert.equal(features[0].type,'obra');
+ assert.equal(features[0].name,'Obra na via');
+ assert.ok(features[0].description.includes('Rua das Flores'));
+ assert.ok(features[0].description.includes('não confirmada'));
+ assert.equal(features[0].verified,false);
+ assert.equal(features[0].source,'OpenStreetMap');
+});
 test('radars sort first and duplicated / spoofed or malformed features do not enter the UI',()=>{
  const raw=[elem(2,'traffic_signals'),elem(1,'speed_camera'),elem(1,'speed_camera'),
    {...elem(3,'speed_camera'),lat:999},{...elem(4,'stop'),tags:{highway:'stop',name:'<script>alert(1)</script>'}}];

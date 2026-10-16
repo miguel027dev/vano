@@ -17,6 +17,14 @@
 /* Exact four preview surfaces: white, ice blue, peach and neutral grey. */
 .v40-public-pin.is-crossing{background:#FFFFFF;border-color:#EDF0F3}
 .v40-public-pin.is-parking{background:#EAF2FB;border-color:#D9E7F6}
+/* Roadworks: same 32px/44px accessibility footprint as parking; distinct amber safety color.
+   No loops/pulses: navigation graphics must remain calm even on low-end phones. */
+.v40-public-pin.is-works{
+ background:linear-gradient(155deg,#FFF9EC 0%,#FFEDCB 100%);
+ border-color:#EFCA91;
+ box-shadow:0 3px 10px #84450B30,0 1px 2px #74431215,inset 0 1px 0 #FFFFFFE6;
+}
+.v40-public-touch:focus-visible .v40-public-pin.is-works{outline:2px solid #C66D18;outline-offset:2px}
 .v40-public-pin.is-rail{background:#FFF0E7;border-color:#F2DACB}
 .v40-public-pin.is-bank{background:#EDF0F3;border-color:#DBE1E7}
 .v40-public-pin.is-commerce{background:#E8F4EE;border-color:#CDE5D6}

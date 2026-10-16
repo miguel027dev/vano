@@ -63,8 +63,11 @@ export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
   if(kind[0]==='radar'&&!radarDisplayAllowed([lon,lat]))continue;
   const id='osm-'+el.type+'-'+el.id;if(seen.has(id))continue;seen.add(id);
   const tags=el.tags||{};
-  items.push({id,type:kind[0],coords:[lon,lat],priority:kind[1],name:safeTag(tags.name)||kind[2],
-   description:safeTag(tags.maxspeed?'Limite informado: '+tags.maxspeed:tags.operator||'',90),
+  items.push({id,type:kind[0],coords:[lon,lat],priority:kind[1],
+   name:kind[0]==='obra'?'Obra na via':safeTag(tags.name)||kind[2],
+   description:kind[0]==='obra'
+    ?safeTag((tags.name?tags.name+' · ':'')+'Obra cadastrada no mapa; situação atual não confirmada.',100)
+    :safeTag(tags.maxspeed?'Limite informado: '+tags.maxspeed:tags.operator||'',90),
    source:'OpenStreetMap',sourceId:el.type+'/'+el.id,verified:false});
  }
  items.sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
@@ -98,6 +101,9 @@ export function overpassQuery(bbox){
  'node["highway"~"^(traffic_signals|stop|give_way|crossing|construction)$"]('+area+');'+
  'node["traffic_sign"]('+area+');'+
  'node["railway"="level_crossing"]('+area+'););out body 1250;'+
+ // Works are frequently mapped as OSM ways rather than isolated nodes.
+ // Query only confirmed highway=construction geometry, bounded to the same viewport.
+ '(way["highway"="construction"]('+area+'););out center 80;'+
  '(nwr["shop"~"^(supermarket|convenience|mall|pet)$"]('+area+');'+
  'nwr["amenity"~"^(restaurant|fast_food|cafe|school|pharmacy|post_office|car_wash|bus_station|charging_point)$"]('+area+');'+
  'nwr["leisure"~"^(fitness_centre|park)$"]('+area+');'+

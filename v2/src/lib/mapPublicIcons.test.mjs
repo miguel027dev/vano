@@ -13,6 +13,22 @@ test('every supported map category has a static safe icon for light mode',()=>{
  }
  assert.ok(iconSvg('radar').includes('circle'));
 });
+test('works and verified works reports share a detailed amber barricade icon',()=>{
+ const roadwork=iconSvg('obra');
+ assert.equal(iconMeta('obra')[1],'#fa8021');
+ assert.equal(iconMeta('relato-obra')[0],'works');
+ assert.equal(iconSvg('relato-obra').includes('M7.6 7.9'),true);
+ assert.ok(roadwork.includes('rect x="3.1"'));
+ assert.ok(roadwork.includes('M7.6 7.9'));
+ assert.ok(roadwork.includes('fill="#FFF4DE"'));
+ assert.ok(!roadwork.includes('script'));
+ const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
+ assert.ok(overlay.includes("obra:'is-works','relato-obra':'is-works'"));
+ assert.ok(css.includes('.v40-public-pin.is-works'));
+ assert.ok(css.includes('#FFEDCB'));
+ assert.ok(css.includes('.v40-public-touch:focus-visible'));
+});
 test('safety critical radar appears first even amid overlapping less important features',()=>{
  const features=[
   {id:'hospital',type:'hospital',priority:50,coords:[0,0]},
