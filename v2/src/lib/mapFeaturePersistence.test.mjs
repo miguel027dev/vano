@@ -63,3 +63,22 @@ test('map layer retains tile discoveries and only displays outage when no source
  assert.match(overlay,/setNotice\(items\.length===0\?/);
  assert.match(overlay,/stableTileCache\.clear\(\)/);
 });
+
+test('OpenStreetMap discoveries remain visible after an empty upstream update', async()=>{
+ const {rememberPublicFeatures,nearbyPublicFeatures}=await import('./publicSourceStability.js');
+ const cache=new Map(),now=100000;
+ const saved=[{id:'work-1',type:'obra',coords:[-46.68,-23.58]},
+  {id:'hospital-1',type:'hospital',coords:[-46.66,-23.56]},
+  {id:'park-1',type:'parque',coords:[-46.62,-23.52]}];
+ rememberPublicFeatures(cache,saved,now);
+ rememberPublicFeatures(cache,[],now+1000);
+ const visible=nearbyPublicFeatures(cache,[-46.7,-23.6,-46.6,-23.5],now+2000);
+ assert.deepEqual(new Set(visible.map(f=>f.id)),new Set(saved.map(f=>f.id)));
+});
+test('rapid tile updates do not reposition a previously mapped icon', async()=>{
+ const {rememberPublicFeatures,nearbyPublicFeatures}=await import('./publicSourceStability.js');
+ const cache=new Map();
+ rememberPublicFeatures(cache,[{id:'w',type:'obra',coords:[-46.68,-23.58]}],1000);
+ rememberPublicFeatures(cache,[{id:'w',type:'obra',coords:[-46.68004,-23.58004]}],2000);
+ assert.deepEqual(nearbyPublicFeatures(cache,[-47,-24,-46,-23],3000)[0].coords,[-46.68,-23.58]);
+});
