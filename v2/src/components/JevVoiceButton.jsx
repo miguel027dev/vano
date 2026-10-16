@@ -5,7 +5,6 @@ import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCi
 import {api} from '../lib/api.js';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {classifyMaviIntent,maviProposalDecision} from '../lib/maviAssistant.mjs';
-import {parseMaviPlaceIntent} from '../lib/maviFlexible.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
 /** The V2-only voice input has three independent paths:
@@ -25,7 +24,6 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
  const firstMaviTurnRef=useRef(true);
- const dialogueRef=useRef({intent:null,category:null}); // Tab-only context; no raw history.
  const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept,onAction});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
  handlersRef.current={onCommand,onAccept,onAction};
@@ -155,17 +153,9 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
    try{
      const firstTurn=firstMaviTurnRef.current;
      firstMaviTurnRef.current=false;
-     const response=await handlersRef.current.onCommand(text,controller.signal,{
-      firstTurn,previousIntent:dialogueRef.current.intent,
-      previousCategory:dialogueRef.current.category
-     });
+     const response=await handlersRef.current.onCommand(text,controller.signal,{firstTurn});
      if(!enabledRef.current||seq!==requestRef.current)return;
      const message=typeof response?.text==='string'?response.text:'Não consegui responder.';
-     if(typeof response?.intent==='string'){
-      const category=parseMaviPlaceIntent(text)?.category;
-      dialogueRef.current={intent:response.intent,
-       category:response.intent==='find_poi'?(category||dialogueRef.current.category):null};
-     }
      if(response?.mode==='proposal'&&response.routeData?.routes?.length){
        setProposal(response);proposalRef.current=response;
      }
@@ -335,7 +325,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,routeContext
      cancelEverything();setEnabled(false);setStatus('off');setReply('');setProposal(null);setOfferReady(false);return;
    }
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
-   firstMaviTurnRef.current=true;dialogueRef.current={intent:null,category:null};
+   firstMaviTurnRef.current=true;
    setEnabled(true);setStatus('ready');
    setReply('Pode falar: “Quanto falta?”, “Próxima conversão”, “Outra rota” ou “O que você sabe fazer?”.');
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
