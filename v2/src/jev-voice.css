@@ -1,31 +1,8 @@
-/* Experimental /v2 voice UI only. Nothing here targets ordinary /mapa controls. */
+/* /v2-only MAVI. No panel, forms, typing, or route-confirmation buttons. */
 .jev-control-wrap{position:relative;width:49px;height:49px;flex:none;isolation:isolate}
 .jev-mic{width:49px;height:49px;display:flex;align-items:center;justify-content:center}
 .jev-mic-active{background:#eaf6ef!important;color:#16824e!important;border-color:#9adcb7!important}
-.jev-listening{box-shadow:0 0 0 4px #18814e29,0 5px 20px #1825411f!important;animation:jevPulse 1.8s ease-in-out infinite}
-@keyframes jevPulse{50%{box-shadow:0 0 0 9px #18814e15,0 5px 20px #1825411f}}
-.jev-panel{position:absolute;right:calc(100% + 12px);top:0;z-index:700;box-sizing:border-box;width:min(292px,calc(100vw - 85px));padding:14px;background:var(--panel,#fff);border:1px solid var(--border,#ddd);border-radius:19px;color:var(--ink,#121829);box-shadow:0 15px 42px #0002;display:flex;flex-direction:column;gap:9px;text-align:left;user-select:text}
-.jev-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.jev-head strong{font:700 14px Manrope,'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;white-space:nowrap}
-.jev-head button{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted,#637183)}
-.jev-status{font-size:12px;color:var(--green,#13804a);font-weight:700}
-.jev-heard,.jev-reply{font:500 12px/1.5 'DM Sans',sans-serif;margin:0;overflow-wrap:anywhere;color:var(--ink,#121829)}
-.jev-heard{color:var(--muted,#637183)}
-.jev-reply{border-radius:11px;background:var(--bg,#f6f7f9);padding:9px 10px;max-height:115px;overflow:auto}
-.jev-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.jev-actions button{border-radius:10px;background:var(--bg,#eee);padding:9px 6px;display:flex;justify-content:center;align-items:center;gap:4px;font-size:11px;font-weight:800}
-.jev-actions button:first-child{background:#188451;color:white}
-.jev-text{display:flex;gap:6px;align-items:center;border:1px solid var(--border,#ddd);border-radius:12px;padding:5px 6px 5px 9px;min-width:0}
-.jev-text input{background:transparent!important;border:0!important;box-shadow:none!important;min-width:0;width:100%;outline:none!important;padding:3px 0!important;color:var(--ink,#121829)!important;font-size:12px}
-.jev-text button{width:29px;height:29px;min-width:29px;display:grid;place-items:center;border-radius:9px;background:var(--orange,#ff5a0a);color:#fff}
-.jev-text button:disabled{opacity:.35}
-@media(max-width:720px){.jev-control-wrap,.jev-mic{width:44px;height:44px}.jev-panel{width:min(270px,calc(100vw - 78px));right:calc(100% + 9px)}}
+.jev-listening{box-shadow:0 0 0 4px #18814e29,0 5px 20px #1825411f!important;animation:maviListening 1.8s ease-in-out infinite}
+@keyframes maviListening{50%{box-shadow:0 0 0 9px #18814e15,0 5px 20px #1825411f}}
+@media(max-width:720px){.jev-control-wrap,.jev-mic{width:44px;height:44px}}
 @media(prefers-reduced-motion:reduce){.jev-listening{animation:none}}
-
-/* Voice recovery actions remain compact on mobile and don't overlap the map. */
-.jev-voice-options{display:flex;flex-wrap:wrap;gap:6px}
-.jev-voice-options button{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:30px;padding:6px 8px;border-radius:9px;border:1px solid var(--border,#ddd);background:var(--bg,#f6f7f9);color:var(--ink,#121829);font-size:11px;font-weight:700}
-.jev-voice-options button:disabled{opacity:.42}
-.jev-diagnostic{display:flex;gap:5px;align-items:flex-start;font-size:10px;line-height:1.35;overflow-wrap:anywhere;color:var(--muted,#637183)}
-.jev-diagnostic svg{flex-shrink:0;margin-top:2px}
-.jev-privacy{font-size:10px;line-height:1.4;color:var(--muted,#637183)}
