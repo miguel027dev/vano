@@ -174,3 +174,31 @@ test('radar bbox includes visible London streets beyond the generic map POI crop
  assert.ok(radar[2]-radar[0]<.3&&radar[3]-radar[1]<.3);
  assert.equal(mapRadarBBox({...m,getZoom:()=>10}),null);
 });
+
+
+test('roadwork map pins use a dedicated reflective barrier, shared with verified roadwork reports',()=>{
+ const official=iconSvg('obra'),verified=iconSvg('relato-obra');
+ assert.equal(official,verified);
+ assert.ok(official.includes('<rect x="2.5" y="8" width="19"'));
+ assert.ok(official.includes('stroke="#f18b1f"'));
+ assert.ok(official.includes('fill="#ffcb50"'));
+ assert.ok(!official.includes('<script'));
+ assert.equal(iconMeta('obra')[0],'works');
+});
+test('roadworks take one marker slot for nearby construction records',()=>{
+ const pins=[
+  {id:'works-node',type:'obra',priority:62,coords:[-46.62,-23.55]},
+  {id:'works-way',type:'obra',priority:62,coords:[-46.62001,-23.55001]},
+  {id:'parking',type:'estacionamento',priority:22,coords:[-46.621,-23.55]}
+ ];
+ const chosen=selectPublicPins(pins,([lon,lat])=>({x:(lon+46.63)*40000,y:(lat+23.56)*40000}),15,20);
+ assert.equal(chosen.filter(x=>x.type==='obra').length,1);
+ assert.equal(chosen.filter(x=>x.type==='estacionamento').length,1);
+});
+test('work visual has one style shared by OpenStreetMap points and verified reports',()=>{
+ const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
+ assert.match(overlay,/obra:'is-works','relato-obra':'is-works'/);
+ assert.match(css,/\.v40-public-pin\.is-works\{/);
+ assert.ok(css.includes('background:linear-gradient(145deg,#FFF9ED'));
+});
