@@ -21,6 +21,6 @@ export function spokenCue(guidance,{fresh=true,preview=false,muted=false,speed=0
  const first=String(guidance.instruction).trim().replace(/[.!;]+$/,'');
  const second=combined?String(next.instruction).trim().replace(/[.!;]+$/,''):'';
  const separator=language==='fr-FR'?', puis juste après, ':language==='en-US'?', then immediately, ':', e logo em seguida, ';
- const text=lead+first+(combined?separator+second.toLowerCase().replace(/^./,c=>c.toUpperCase()):'');
+ const text=lead+first+(combined?separator+second.replace(/^./,c=>c.toLowerCase()):'');
  return {key,text,language,stage,distance,stepIndex:guidance.stepIndex,followingIndex};
 }
