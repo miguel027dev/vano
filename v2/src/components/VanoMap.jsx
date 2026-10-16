@@ -359,7 +359,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
           const nextBearing=state.bearing||0;
           if(marker.getElement().classList.contains('vano-vehicle-marker')&&
              (!Number.isFinite(state.lastMarkerBearing)||Math.abs(shortestAngle(state.lastMarkerBearing,nextBearing))>.25)){
-            marker.setRotation(nextBearing);
+            marker.setRotation(state.bearing||0);
             state.lastMarkerBearing=nextBearing;
           }
         }
