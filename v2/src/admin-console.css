@@ -114,3 +114,31 @@
  .v44-users-search{flex:1 1 100%;max-width:none}
 }
 @media(prefers-reduced-motion:reduce){.v44-refreshing{animation:none}.v44-admin-header-actions :is(a,button){transition:none}}
+
+
+/* VANO Console 5.5 — retention observatory; no synthetic metrics. */
+.v3-admin-heading{padding:24px 28px;border-radius:25px;background:linear-gradient(112deg,#172923 0%,#2a3f35 65%,#34483b 100%);color:#f6f6f1;box-shadow:0 14px 35px #18261a20}
+.v3-admin-heading h1{color:#f9faf6}.v3-admin-heading p{color:#bfcac0}
+.v3-admin-overline{color:#f6b88d}.v3-admin-heading .v44-admin-back{background:#ffffff12;color:#f7f8f1;border-color:#ffffff33}
+.v3-admin-heading button{background:#f5ece5;color:#25332a;border-color:transparent}
+.v3-admin-heading button:hover:not(:disabled){background:#fff1e5}
+.v55-engagement-panel{margin:15px 0;padding:25px;border:1px solid #2e4336;border-radius:23px;background:radial-gradient(circle at 96% 0%,#445b49 0%,#243c31 43%,#1c2b24 100%);color:#f1f8f0;box-shadow:0 12px 28px #22352a19}
+.v55-engagement-head{display:flex;justify-content:space-between;align-items:start;gap:18px}
+.v55-engagement-head h2{margin:8px 0;font-size:clamp(20px,2.3vw,27px);letter-spacing:-.04em}
+.v55-engagement-head p{margin:0;color:#adbdad;font-size:12px;line-height:1.55}
+.v55-mini-label{font-size:10px;font-weight:850;letter-spacing:.14em;color:#f1b68a}
+.v55-engagement-orb{display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:#f59a621e;color:#ffbf92;flex:none}
+.v55-engagement-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:22px}
+.v55-engagement-grid>div{min-width:0;padding:18px;border:1px solid #ffffff1c;border-radius:16px;background:#ffffff09}
+.v55-engagement-grid small{display:block;font-size:11px;color:#bac8bc}
+.v55-engagement-grid strong{font-size:clamp(27px,3vw,39px);display:block;letter-spacing:-.06em;line-height:1.3;margin:5px 0;color:#fff;font-variant-numeric:tabular-nums}
+.v55-engagement-grid em{font-size:11px;font-style:normal;color:#adbfad}
+.v55-progress{height:7px;margin-top:10px;border-radius:8px;background:#ffffff23;overflow:hidden}
+.v55-progress span{display:block;height:100%;background:linear-gradient(90deg,#f7a46d,#ffc49c);border-radius:8px}
+.v55-engagement-foot{font-size:11px;color:#acbcae;line-height:1.65;margin:18px 0 0}
+.v3-users-table{min-width:950px}.v55-account-counter{display:block;font-weight:850;font-size:15px;color:#234035}
+.v55-streak{font-weight:850;color:#cc6835;white-space:nowrap}.v55-table-sub{display:block;color:#97a398;font-size:10px;margin-top:4px}
+.v3-kpi{transition:box-shadow .15s ease,transform .15s ease}.v3-kpi:hover{box-shadow:0 11px 28px #24392b12;transform:translateY(-2px)}
+@media(max-width:900px){.v55-engagement-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.v3-admin-heading{padding:21px 18px}.v55-engagement-panel{padding:20px 16px}.v55-engagement-grid{grid-template-columns:1fr}.v55-engagement-orb{display:none}}
+@media(prefers-reduced-motion:reduce){.v3-kpi{transition:none}.v3-kpi:hover{transform:none}}
