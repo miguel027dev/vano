@@ -3,12 +3,12 @@ import {createHash} from 'node:crypto';
 export const GEOSAMPA_WFS='https://wfs.geosampa.prefeitura.sp.gov.br/geoserver/geoportal/wfs';
 export const GEOSAMPA_LIGHTING_METADATA='https://metadados.geosampa.prefeitura.sp.gov.br/geonetwork/intranet/api/records/1a0c8fd5-9273-4d71-8e20-440f9ccc7b5e';
 const maxReply=4_000_000;
-function requestUrl(params){
+export function requestUrl(params){
  const u=new URL(GEOSAMPA_WFS);
  for(const [key,value] of Object.entries(params))u.searchParams.set(key,String(value));
  return u;
 }
-async function getBytes(url,{fetcher=fetch,timeoutMs=14000,maxBytes=maxReply}={}){
+export async function getBytes(url,{fetcher=fetch,timeoutMs=14000,maxBytes=maxReply}={}){
  if(url.origin!==new URL(GEOSAMPA_WFS).origin||url.pathname!=='/geoserver/geoportal/wfs')throw Error('GeoSampa WFS: origem inesperada');
  const reply=await fetcher(url,{method:'GET',redirect:'error',headers:{Accept:'application/json,application/xml,text/xml'},signal:AbortSignal.timeout(timeoutMs)});
  if(!reply.ok)throw Error('GeoSampa WFS HTTP '+reply.status);
