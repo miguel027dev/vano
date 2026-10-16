@@ -35,7 +35,7 @@ export function detectMaviResume(value){
 }
 const HELP=/\b(?:voce|c[eê])\b.*\b(?:consegue|pode|sabe)\b.*\b(?:fazer|ajudar)|\b(?:o que|quais|qual)\b.*\b(?:coisas|funcoes|comandos|tarefas)\b|\b(?:me diga|me fala|me explica)\b.*\b(?:faz|consegue|ajuda)|\b(?:como|em que)\b.*\b(?:pode|consegue)\b.*\b(?:ajudar)\b/;
 const REMAIN=/\b(?:quanto|quantos|qual)\b.*\b(?:falta|faltam|tempo|demora|minut)\w*|\b(?:falta muito|demora muito|quanto resta)\b/;
-const DISTANCE=/\b(?:quanto|quantos|qual)\b.*\b(?:quilometro|kilometro|km|distancia|metros)\b|\b(?:longe|distancia restante)\b/;
+const DISTANCE=/\b(?:quanto|quantos|qual)\b.*\b(?:quilometros?|kilometros?|km|distancia|metros?)\b|\b(?:longe|distancia restante)\b/;
 const ARRIVAL=/\b(?:quando|que horas|qual horario|previsao)\b.*\b(?:chego|chegamos|chegar|chegada|destino)\b/;
 const NEXT=/\b(?:proxim\w*|seguinte)\b.*\b(?:curva|conversao|instrucao|orientacao|manobra|virada|rua)\b|\b(?:onde|para onde|pra onde)\b.*\b(?:viro|virar|entrar)\b/;
 export function contextualMaviIntent(value){
