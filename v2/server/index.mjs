@@ -39,7 +39,9 @@ import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from '.
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
-import {parseTomTomBBox,tomtomSnapshot,TOMTOM_ENV_NAME} from './tomtom-incidents.mjs';
+import {parseTomTomBBox,tomtomSnapshot,TOMTOM_ENV_NAME,cachedTomTomRouteIncidents} from './tomtom-incidents.mjs';
+import {tomtomPoiSnapshot,searchTomTomPlaces} from './tomtom-pois.mjs';
+import {rankTomTomSafeAlternative,routeCorridorPoints} from './tomtom-route-ranking.mjs';
 import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
@@ -330,9 +332,28 @@ async function search(query,language='pt-BR',proximity=null) {
     if(production)throw new HttpError(503,'A busca de endereços está temporariamente indisponível.');
     return places.filter(x=>x.name.toLocaleLowerCase().includes(text.toLocaleLowerCase())).slice(0,6);
   }
-  const outcome=await queryPlaces(text,{token:access,language,proximity});
-  if(!outcome.providerOk)throw new HttpError(503,'O serviço de endereços não respondeu. Tente novamente.');
-  return outcome.results;
+  // Parallel TomTom Search complements existing Mapbox place coverage.
+  // No TomTom credentials, endpoints or logs are exposed to the browser.
+  const [primary,secondary]=await Promise.all([
+   queryPlaces(text,{token:access,language,proximity}).catch(()=>({results:[],providerOk:false})),
+   (!/^\\d{5}-?\\d{3}$/.test(text)&&process.env[TOMTOM_ENV_NAME])
+    ?searchTomTomPlaces(text,{key:process.env[TOMTOM_ENV_NAME],proximity})
+    :Promise.resolve([])
+  ]);
+  if(!primary.providerOk&&!secondary.length)throw new HttpError(503,'O serviço de endereços não respondeu. Tente novamente.');
+  const merged=[...(primary.results||[])];
+  for(const item of secondary){
+   // Merge identical named POIs within 75 m; independent neighboring shops remain.
+   const key=String(item.name||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim();
+   const duplicated=merged.some(x=>{
+    if(String(x.name||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim()!==key)return false;
+    const dx=(x.coords[0]-item.coords[0])*111320*Math.cos(item.coords[1]*Math.PI/180);
+    const dy=(x.coords[1]-item.coords[1])*110540;
+    return Math.hypot(dx,dy)<=75;
+   });
+   if(!duplicated)merged.push(item);
+  }
+  return merged.slice(0,16);
 }
 const resilientOriginalRouting=createRouteFailover({
   cooldownMs:45_000,
@@ -629,6 +650,14 @@ async function route(req, res) {
   // live overlay. The server owns the vetted feed URL, never the browser.
   // TomTom Orbis incidents: the secret is never exposed to the browser.
   // Only a memory snapshot is returned; upstream network work runs async.
+  // TomTom nearby places are cached, non-blocking and independently capped.
+  if(pathname==='/api/places/tomtom'&&req.method==='GET'){
+   if(!limits(req,res,'tomtom-places',24,60000))return;
+   const bbox=parseTomTomBBox(u.searchParams.get('bbox'));
+   if(!bbox)return err(res,400,'Área inválida para lugares TomTom.');
+   return json(res,200,tomtomPoiSnapshot(bbox,process.env[TOMTOM_ENV_NAME]||''),
+    {'Cache-Control':'private, max-age=12'});
+  }
   if(pathname==='/api/traffic/incidents/tomtom/status'&&req.method==='GET')
     return json(res,200,{enabled:Boolean(process.env[TOMTOM_ENV_NAME]?.trim()),provider:'TomTom Orbis v2',affectsRouting:false},
       {'Cache-Control':'private, max-age=20'});
@@ -1136,6 +1165,16 @@ async function route(req, res) {
       if(result?.safeCandidatePool)delete result.safeCandidatePool;
     }else{
       result=applySafeVerifiedReportRanking(result,db.reports,{reroute:routeOptions.reroute});
+    }
+    // Compare existing Mapbox fallback alternatives against active real
+    // TomTom incidents. Safe-route selection ONLY; ETA, geometry and the
+    // original Python safety engine stay authoritative and unchanged.
+    if(body.vehicle!=='a-pe'&&process.env[TOMTOM_ENV_NAME]?.trim()){
+     const routePoints=routeCorridorPoints(result);
+     if(routePoints.length){
+      const incidents=cachedTomTomRouteIncidents(routePoints,process.env[TOMTOM_ENV_NAME]);
+      result=rankTomTomSafeAlternative(result,incidents,{reroute:routeOptions.reroute});
+     }
     }
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
     return json(res,200,result);
