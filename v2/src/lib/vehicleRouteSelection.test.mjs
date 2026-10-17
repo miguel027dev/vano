@@ -33,7 +33,8 @@ test('vehicle picker changes real API route parameter and never leaves stale alt
  assert.match(page,/calculateRoute\(dest,origin,vehicle\)/);
  assert.match(page,/vehicle:routeVehicle,language,\s*telemetry:/,'reroute must keep selected vehicle');
  assert.match(page,/routeOptions:\{reroute:true,adaptive:false,variantBudget:2\}/);
- assert.match(page,/telemetry=\{telemetry\} vehicle=\{routeVehicle\}/,'the navigation map receives the same vehicle');
+ assert.match(page,/telemetry=\{simTelemetry\|\|telemetry\} vehicle=\{routeVehicle\}/,'map receives real telemetry except during private V2 playback');
+ assert.match(page,/const simTelemetry=simFrame\?/);
 });
 test('route caution is removed without suppressing navigation button or pending offline status accessibility',()=>{
  assert.doesNotMatch(page,/className="route-caution"/);
