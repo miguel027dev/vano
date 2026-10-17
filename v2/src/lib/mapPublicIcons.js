@@ -93,21 +93,23 @@ export function stableWorldCell(coords,_zoom){
  return Math.floor(x/cellSize)+':'+Math.floor(y/cellSize);
 }
 /** Separate budgets for total markers, road signs and semaphores. */
-export function publicPinDensity(viewport,zoom=14,max=52){
+export function publicPinDensity(viewport,zoom=14,max=52,{navigation=false}={}){
  const width=Number(viewport?.width),height=Number(viewport?.height);
  const valid=Number.isFinite(width)&&Number.isFinite(height)&&width>0&&height>0;
  const area=valid?width*height:650000;
- const zoomFactor=zoom<14?.70:zoom<16?.85:1;
+ // A distant overview may show more landmarks; street-level exploration
+ // requires fewer pins so the actual road and street names remain legible.
+ const zoomFactor=navigation?.78:zoom<14?1:zoom<16?.85:.60;
  const absoluteMax=Math.max(1,Math.floor(Number.isFinite(max)?max:52));
- const displayMax=valid?Math.max(12,Math.min(86,Math.round(area/10500*zoomFactor))):absoluteMax;
+ const displayMax=valid?Math.max(navigation?10:12,Math.min(86,Math.round(area/10500*zoomFactor))):absoluteMax;
  const total=Math.min(absoluteMax,displayMax);
  return {
   total,
-  roadMax:Math.max(2,Math.min(total,Math.ceil(total*.27))),
-  signalMax:Math.max(2,Math.min(16,Math.round(area/75000*zoomFactor))),
-  minSpacing:zoom<14?53:47,
+  roadMax:Math.max(2,Math.min(total,Math.ceil(total*(navigation?.55:.27)))),
+  signalMax:Math.max(2,Math.min(16,Math.round(area/75000*(navigation?1:zoomFactor)))),
+  minSpacing:navigation?58:zoom>=16?66:zoom<14?53:52,
   signalSpacing:zoom<16?112:94,
-  typeMax:Math.max(3,Math.ceil(total*.20))
+  typeMax:Math.max(3,Math.ceil(total*(navigation?.28:.20)))
  };
 }
 const PIN_URGENT=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar','obra','alerta-via']);
@@ -117,6 +119,9 @@ const PIN_SERVICES=new Set([
  'estacao-trem','estacao-ferroviaria','aeroporto'
 ]);
 const PIN_ROAD=new Set(['semaforo','lombada','pare','preferencia','placa','travessia','ferrovia','rotatoria']);
+// Only road guidance, active traffic alerts and essential stops survive navigation.
+const PIN_NAVIGATION_ESSENTIAL=new Set(['hospital','farmacia','estacionamento']);
+export function navigationPinAllowed(type){return PIN_URGENT.has(type)||PIN_ROAD.has(type)||PIN_NAVIGATION_ESSENTIAL.has(type);}
 const pinPriority=(a,b)=>Number(b.priority||0)-Number(a.priority||0)||String(a.id).localeCompare(String(b.id));
 /** Round-robin across types to keep variety when one class dominates source tiles. */
 function diversePinOrder(list){
@@ -130,10 +135,11 @@ function diversePinOrder(list){
  while(more){more=false;for(const group of groups)if(group.length){ordered.push(group.shift());more=true;}}
  return ordered;
 }
-export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,viewport=null){
+export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,viewport=null,options={}){
  if(!Array.isArray(features)||!Number.isFinite(zoom))return [];
- const rules=publicPinDensity(viewport,zoom,max);
- const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]);
+ const navigation=options?.navigation===true;
+ const rules=publicPinDensity(viewport,zoom,max,{navigation});
+ const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]&&(!navigation||navigationPinAllowed(f.type)));
  const urgent=diversePinOrder(candidates.filter(f=>PIN_URGENT.has(f.type)));
  const services=diversePinOrder(candidates.filter(f=>PIN_SERVICES.has(f.type)&&!PIN_URGENT.has(f.type)));
  const businesses=diversePinOrder(candidates.filter(f=>!PIN_SERVICES.has(f.type)&&!PIN_ROAD.has(f.type)&&!PIN_URGENT.has(f.type)));
@@ -164,17 +170,24 @@ export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,v
    if(f.type==='semaforo')signalCount++;
   }
  }
- // A crowded radar/roadworks layer must not hide EVERY service or road sign.
- // Each family gets a first-pass chance. The remaining spaces go to the
- // most important real points; geometric collisions are still enforced.
- addFrom(urgent,Math.min(rules.total,Math.max(3,Math.ceil(rules.total*.42))));
- addFrom(services,Math.min(rules.total,chosen.length+Math.max(2,Math.ceil(rules.total*.24))));
- addFrom(businesses,Math.min(rules.total,chosen.length+Math.max(2,Math.ceil(rules.total*.18))));
- addFrom(road,Math.min(rules.total,chosen.length+Math.min(rules.roadMax,Math.max(2,Math.ceil(rules.total*.12)))));
- addFrom(urgent,rules.total);
- addFrom(services,rules.total);
- addFrom(businesses,rules.total);
- addFrom(road,rules.total);
+ if(navigation){
+  // On-road focus: incidents/radars first, traffic signs next, essential
+  // stops last. Commercial POIs cannot reserve or consume any icon slots.
+  addFrom(urgent,rules.total);
+  addFrom(road,rules.total);
+  addFrom(services,rules.total);
+ }else{
+  // Exploring the map: retain a variety of genuinely mapped places, with a
+  // stronger density cap at close zoom and fewer collisions in city centres.
+  addFrom(urgent,Math.min(rules.total,Math.max(3,Math.ceil(rules.total*.42))));
+  addFrom(services,Math.min(rules.total,chosen.length+Math.max(2,Math.ceil(rules.total*.24))));
+  addFrom(businesses,Math.min(rules.total,chosen.length+Math.max(2,Math.ceil(rules.total*.18))));
+  addFrom(road,Math.min(rules.total,chosen.length+Math.min(rules.roadMax,Math.max(2,Math.ceil(rules.total*.12)))));
+  addFrom(urgent,rules.total);
+  addFrom(services,rules.total);
+  addFrom(businesses,rules.total);
+  addFrom(road,rules.total);
+ }
  return chosen.sort(pinPriority);
 }
 /** Bound the camera viewport to a small safe geographic query at current zoom. */
