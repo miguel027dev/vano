@@ -7,7 +7,7 @@
 {% block head %}
 {% if v2_preview|default(false) %}
 <meta name="robots" content="noindex,nofollow,noarchive">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=v2-ui-20261011-r7">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=v2-sim-20261017-r1">
 {% endif %}
 
 <script>
@@ -323,6 +323,9 @@
 
       {% if current_user and current_user['role'] == 'admin' %}
       <div class="admin-route-test-slot" id="adminRouteTestSlot">
+        {% if v2_preview|default(false) %}
+        <button class="admin-route-test-btn admin-v2-sim-btn" id="adminSimV2Btn" type="button" aria-label="Iniciar simulação cinematográfica V2" aria-pressed="false"><span class="admin-route-test-icon"><i data-lucide="scan-eye" width="17"></i></span><span class="admin-route-test-copy"><b>V2 Sim</b><small>Câmera drone · visão inteligente de manobras</small></span><span class="admin-route-test-badge">V2</span></button>
+        {% endif %}
         <button class="admin-route-test-btn" id="adminSimBtn" type="button" aria-label="Testar rota como administrador"><span class="admin-route-test-icon"><i data-lucide="flask-conical" width="17"></i></span><span class="admin-route-test-copy"><b>Testar rota</b><small>Admin · simula movimento, câmera, manobras e chegada</small></span><span class="admin-route-test-badge">TESTE</span></button>
       </div>
       {% endif %}
@@ -558,6 +561,6 @@
 </script>
 
 {% if v2_preview|default(false) %}
-<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=v2-ui-20261011-r7"></script>
+<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=v2-sim-20261017-r1"></script>
 {% endif %}
 {% endblock %}
