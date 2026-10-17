@@ -160,6 +160,10 @@ export function maviProposalDecision(value){
  if(/\b(?:pedagio|pedagios|transito|trafego|congestionamento|outra rota|outro caminho|outra opcao|mais rapida|mais rapido|mais curta|mais curto|mais tranquila|mais tranquilo|evitar|evita|passar por|passar pela|estrada de terra|farmacia|hospital|posto|estacionamento|rua|avenida|primeira|segunda)\b/.test(s))return null;
  // A question must not silently approve a route.
  if(/[?]/.test(value)||/^(?:quanto|qual|quais|como|porque|por que|explica|me explica|depende|sera que|e se|mas e)\b/.test(s))return null;
+ // "Quero" on its own confirms; "quero ir ao mercado" is a NEW request.
+ // Likewise, "pode" alone confirms, not "pode me dizer o preço?".
+ if(/^quero\b/.test(s)&&!/^(?:quero|quero sim|quero essa(?: rota)?|quero esta(?: rota)?|quero a (?:nova|alternativa|sugerida)(?: rota)?|quero usar (?:essa|esta|a nova)(?: rota)?|quero trocar(?: de rota)?|quero mudar(?: de rota)?|quero ir por (?:essa|esta)(?: rota)?)$/.test(s))return null;
+ if(/^pode\b/.test(s)&&!/^(?:pode|pode sim|pode ser|pode ser (?:essa|esta)(?: rota)?|pode usar (?:essa|esta|a nova)(?: rota)?|pode trocar(?: a rota)?|pode mudar(?: a rota)?|pode seguir(?: por (?:essa|esta)(?: rota)?)?)$/.test(s))return null;
  // Resolve explicit self-corrections using their final clear choice.
  if(/\b(?:pensando bem|na verdade|quer dizer|corrigindo)\b/.test(s)){
   const tail=s.split(/\b(?:pensando bem|na verdade|quer dizer|corrigindo)\b/).pop().trim();
