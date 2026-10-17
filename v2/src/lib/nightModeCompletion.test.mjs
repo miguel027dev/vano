@@ -20,7 +20,7 @@ test('final complete dark-mode sheet overrides every earlier light stylesheet',(
  const a=entry.indexOf("import './v49-map-appearance.css';");
  const b=entry.indexOf("import './v50-night-system.css';");
  assert.ok(a>=0&&b>a,'v50 must load after v49');
- assert.equal(entry.slice(b).includes("import './"),false);
+ assert.equal(entry.slice(b+"import './v50-night-system.css';".length).includes("import './"),false);
 });
 test('profile dark theme covers rendered buttons, account cards and headings',()=>{
  for(const component of ['v4-profile-intro','v4-route-feature','v4-action-row',
