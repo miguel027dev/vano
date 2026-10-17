@@ -10,6 +10,7 @@ import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
+import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/night3DBuildings.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
@@ -168,7 +169,9 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     if(token && !forceRaster && (!mapboxgl.supported || mapboxgl.supported())){
       try{
         mapboxgl.accessToken=token;
-        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer,latest.current.appearance),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
+        const nightStart=night3dEnabled(latest.current.appearance,latest.current.layer);
+        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer,latest.current.appearance),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:nightStart?48:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
+        if(nightStart)map._vanoNight3DAutoPitch=0;
         map._vanoStyle=styleFor(latest.current.layer,latest.current.appearance);
         const attachOpenRouterMark=()=>{
           const tray=map.getContainer().querySelector('.mapboxgl-ctrl-bottom-left');
@@ -183,17 +186,31 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         map.on('error',report);
         backend.current='mapbox';mapRef.current=map;
         motion.current=motionController(map,latest,status);
+        const ensureNight3d=()=>{
+          if(deleted||!isLoaded(map))return;
+          try{
+            syncNight3DBuildings(map,{appearance:latest.current.appearance,layer:latest.current.layer});
+          }catch(error){
+            // 3D is an optional enhancement: never degrade map rendering,
+            // switch to raster, or break a route because of unavailable buildings.
+            console.warn('VANO night 3D unavailable:',error?.message||String(error));
+          }
+        };
         const update=()=>{
   if(deleted)return;
   ensureTrafficLayers(map,{enabled:latest.current.trafficEnabled,onStatus:latest.current.onTrafficStatus});
   if(!isLoaded(map))return;
   clearTimeout(styleWatchdog);styleWatchdog=null;
+  ensureNight3d(); // Insert before route lines so navigation stays readable.
   try{paintMapbox(map,latest.current,lastSelection);}catch(error){
     console.warn('Mapbox layers failed; recovering in raster mode:',error?.message||String(error));
     setForceRaster(true);return;
   }
   setError('');centerOnFirstGpsFix();if(shouldFollowLocation({navigation:latest.current.navigation,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
         map.on('style.load',update);
+        // A style may report partial readiness on style.load; retry nonblocking
+        // after vector tiles finish. getLayer makes this idempotent.
+        map.on('idle',ensureNight3d);
         map.on('load',()=>{attachOpenRouterMark();update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
@@ -350,6 +367,19 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   },[previewRoute,previewFocus]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
+  // Changing the visual theme must never take control of a live GPS camera.
+  // Away from navigation, the dark street style gains a useful 3D viewing angle.
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||backend.current!=='mapbox')return;
+    const following=shouldFollowLocation({
+      navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords
+    });
+    try{
+      syncNight3DCamera(map,{appearance,layer,navigation,following,
+        reducedMotion:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false});
+    }catch(error){console.warn('VANO night camera unavailable:',error?.message||String(error));}
+  },[appearance,layer,navigation]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox')return;
