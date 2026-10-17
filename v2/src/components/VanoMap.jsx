@@ -362,6 +362,15 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     if(backend.current==='mapbox'){
       if(isLoaded(map))paintMapbox(map,latest.current,lastSelection);
     }else paintLeaflet(map,latest.current);
+    // Never move, fit, stop or suspend the driver's camera to display MAVI
+    // preview. At 0 km/h the GPS is still in active navigation.
+    if(navigation){
+      if(maviPreviewCameraKey.current!==null){
+        maviPreviewCameraKey.current=null;
+        if(backend.current==='mapbox')motion.current?.resume();
+      }
+      return;
+    }
     const points=previewRoute?.geometry?.coordinates?.filter(validPoint);
     if(!previewFocus||!Array.isArray(points)||points.length<2){
       if(maviPreviewCameraKey.current!==null){
@@ -388,7 +397,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     }else map.fitBounds(L.latLngBounds(points.map(ll)),{
       padding:[46,46],maxZoom:15,animate:!reduced,duration:.55
     });
-  },[previewRoute,previewFocus]);
+  },[previewRoute,previewFocus,navigation]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
   // Changing the visual theme must never take control of a live GPS camera.

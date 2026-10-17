@@ -17,10 +17,15 @@ test('offer names match four supported occurrences and only those',()=>{
  assert.equal(maviIncidentOffer('acidente'),null);
 });
 test('accept and decline are intentional, not questions or unrelated speech',()=>{
- for(const value of ['Sim','Pode procurar','Mavi pode recalcular','Quero outra rota','Quero uma rota mais rápida','Bora','pode sim'])
+ for(const value of ['Sim','Sim eu quero','Sim, quero outra rota','Pode procurar','Pode procurar outra rota','Mavi pode recalcular','Quero outra rota','Quero uma rota mais rápida','Bora','pode sim'])
   assert.equal(maviIncidentFollowupDecision(value),'accept',value);
  for(const value of ['Não','Não, obrigado','Agora não','Deixa quieto','Mantenha a rota'])
   assert.equal(maviIncidentFollowupDecision(value),'reject',value);
- for(const value of ['Como é essa rota?','Pode me dizer quanto falta?','Sim, mas só se não tiver pedágio','Quero um hospital','Talvez','Não sei','Quero ver o mapa'])
+ for(const value of ['Como é essa rota?','Pode me dizer quanto falta?','Sim, mas só se não tiver pedágio','Quero um hospital','Quero ver o mapa'])
   assert.equal(maviIncidentFollowupDecision(value),null,value);
+});
+
+test('hesitation repeats the offer without a route request',()=>{
+ for(const phrase of ['Não sei','Talvez','Pera aí','Repete','Pode repetir'])
+   assert.equal(maviIncidentFollowupDecision(phrase),'clarify',phrase);
 });

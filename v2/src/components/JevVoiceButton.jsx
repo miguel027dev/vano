@@ -27,6 +27,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
+ const voiceTurnRef=useRef(0),justAcceptedRouteRef=useRef(false);
  const firstMaviTurnRef=useRef(true);
  const proposalRef=useRef(null),incidentOfferRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept,onAction,onPreview,onDismissPreview});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
@@ -53,6 +54,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    }else releaseStream();
  }
  function cancelEverything(){
+   voiceTurnRef.current++;
    requestRef.current++;
    incidentOfferRef.current=null;
    controllerRef.current?.abort?.();controllerRef.current=null;
@@ -80,12 +82,13 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    else{setStatus('ready');scheduleNextListen();}
  }
  function speak(message,onComplete,voiceTicket=null){
+   const turn=++voiceTurnRef.current;
    const {muted}=navRef.current;
    const synth=window.speechSynthesis,Utterance=window.SpeechSynthesisUtterance;
    busyRef.current=true;
    let finished=false,attempts=0;
    const finish=()=>{
-     if(finished)return;
+     if(finished||voiceTurnRef.current!==turn)return;
      finished=true;
      clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
      speechRef.current=null;
@@ -97,8 +100,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    if(muted){finish();return;}
    const trySpeak=()=>{
      if(!synth||!Utterance){finish();return;}
-     if(finished||!enabledRef.current)return;
-     const nav=navRef.current;
+     if(finished||!enabledRef.current||voiceTurnRef.current!==turn)return;
      // Wait for the navigation announcement, rather than silently skip MAVI.
      if(navigationAudioActive()||synth.speaking){
        if(++attempts>12){finish();return;}
@@ -124,7 +126,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      setStatus('speaking');
      // Wait for turn-by-turn speech to complete before starting MAVI audio.
      const startRemote=()=>{
-       if(finished||!enabledRef.current||controller.signal.aborted)return;
+       if(finished||!enabledRef.current||controller.signal.aborted||voiceTurnRef.current!==turn)return;
        if(navigationAudioActive()||window.speechSynthesis?.speaking){
          if(++attempts>12){trySpeak();return;}
          speechTimerRef.current=setTimeout(startRemote,500);
@@ -140,7 +142,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      };
      if(voiceTicket?.then){
        Promise.resolve(voiceTicket).then(ticket=>{
-         if(finished||controller.signal.aborted||!enabledRef.current)return;
+         if(finished||controller.signal.aborted||!enabledRef.current||voiceTurnRef.current!==turn)return;
          if(typeof ticket!=='string'||ticket.length<10){trySpeak();return;}
          voiceTicket=ticket;startRemote();
        }).catch(()=>{if(!finished&&!controller.signal.aborted)trySpeak();});
@@ -158,15 +160,24 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    let routedText=text;
    const pendingIncident=incidentOfferRef.current;
    if(pendingIncident){
-     incidentOfferRef.current=null;
      if(pendingIncident.expiresAt>Date.now()){
        const answer=maviIncidentFollowupDecision(text);
        if(answer==='reject'){
+         incidentOfferRef.current=null;
          const message='Tudo bem, sua rota atual foi mantida.';
          setReply(message);speak(message,null,fixedVoiceTicket(message));return;
        }
        if(answer==='accept'){
+         incidentOfferRef.current=null;
          routedText=maviIncidentOffer(pendingIncident.type)?.command||text;
+       }
+       if(answer==='clarify'){
+         const question=maviIncidentOffer(pendingIncident.type)?.question;
+         if(question){
+           setReply(question);
+           speak(question,null,fixedVoiceTicket(question));
+           return;
+         }
        }
      }
    }
@@ -186,7 +197,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      const message=typeof response?.text==='string'?response.text:'Não consegui responder.';
      const nextIncident=maviIncidentOffer(response?.incidentRerouteOffer?.type);
      incidentOfferRef.current=nextIncident?{
-       type:response.incidentRerouteOffer.type,expiresAt:Date.now()+45000
+       type:response.incidentRerouteOffer.type,expiresAt:Date.now()+75000
      }:null;
      if(response?.mode==='proposal'&&response.routeData?.routes?.length){
        setProposal(response);proposalRef.current=response;
@@ -363,7 +374,14 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    return()=>{disposed=true;};
  },[enabled]);
  useEffect(()=>{requestRef.current++;controllerRef.current?.abort?.();
-   elevenAbortRef.current?.abort();elevenAbortRef.current=null;
+   // Do not abort the "route selected" confirmation on our own route update.
+   const accepted=justAcceptedRouteRef.current;
+   justAcceptedRouteRef.current=false;
+   if(!accepted){
+     voiceTurnRef.current++;
+     elevenAbortRef.current?.abort();elevenAbortRef.current=null;
+     clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
+   }
    setProposal(null);proposalRef.current=null;incidentOfferRef.current=null;setOfferReady(false);
    handlersRef.current.onDismissPreview?.();
  },[routeContextKey]);
@@ -373,6 +391,8 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    // Navigation instructions must never become the assistant's microphone input.
    if(recognitionRef.current){stopRecognition();setStatus('ready');scheduleNextListen(1400);}
    if(!wasSpeaking)return;
+   // Old async playback must not re-arm the mic after a navigation cue.
+   voiceTurnRef.current++;
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
    if(speechRef.current){try{window.speechSynthesis?.cancel?.()}catch{}}
    speechRef.current=null;clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
@@ -420,6 +440,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    }
    let applied=false;
    try{applied=handlersRef.current.onAccept(selection)!==false;}catch{/* expired route */}
+   if(applied)justAcceptedRouteRef.current=true;
    const message=applied?(selection.kind==='poi_stop'?'Parada adicionada. Depois, peça para continuar ao destino original.':'Nova rota selecionada.'):'Esta sugestão expirou. Peça outra alternativa.';
    setReply(message);speak(message,null,fixedVoiceTicket(message));
    return applied;
