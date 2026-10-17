@@ -70,6 +70,11 @@ test('Autorização, sessão segura, CSRF, perfil e histórico validado',async()
   assert.equal((await b.call('/api/bootstrap')).data.favorites.length,0);
   assert.equal((await a.call('/api/history','POST',{destination:{name:'MASP',coords},duration:-300,distance:999999})).status,422);
   assert.equal((await a.call('/api/reports','POST',{coords,type:'transito',description:'Trânsito lento'})).status,201);
+  const nearby=await b.call('/api/reports/nearby?bbox=-46.68,-23.58,-46.63,-23.54');
+  assert.equal(nearby.status,200);
+  assert.equal(nearby.data.reports.length,1);
+  assert.equal(nearby.data.reports[0].status,'nao_verificado');
+  assert.equal(nearby.data.reports[0].owner,undefined);
   assert.equal((await a.call('/api/bootstrap')).data.reports.length,1);
   assert.equal((await b.call('/api/bootstrap')).data.reports.length,0);
   assert.equal((await a.call('/api/bootstrap')).data.reports[0].owner,undefined);

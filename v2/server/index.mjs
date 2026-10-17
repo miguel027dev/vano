@@ -57,6 +57,7 @@ import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
+import {isReportType,reportType,publicReportsInBBox,metersApart} from '../src/lib/communityReports.js';
 import { openPostgresStore } from './storage-pg.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
@@ -664,6 +665,14 @@ async function route(req, res) {
     if(!bbox)return err(res,400,'Área PRF inválida.');
     return json(res,200,prfHistoricalSnapshot(bbox,process.env.VANO_PRF_RISK_DATA_FILE||''),
       {'Cache-Control':'private, max-age=300'});
+  }
+  // Live community observations are not map infrastructure or police data.
+  if(pathname==='/api/reports/nearby'&&req.method==='GET'){
+    if(!limits(req,res,'community-nearby',40,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'),.065,.055);
+    if(!bbox)return err(res,400,'Área da ocorrência inválida.');
+    return json(res,200,{reports:publicReportsInBBox(db.reports,bbox)},
+      {'Cache-Control':'private, no-store'});
   }
   if(pathname==='/api/map-features/sources'&&req.method==='GET')return json(res,200,{sources:PUBLIC_MAP_SOURCES});
   if(pathname==='/api/map-features'&&req.method==='GET'){
@@ -1347,9 +1356,17 @@ async function route(req, res) {
   if(pathname==='/api/reports'&&req.method==='POST'){
     if(!limits(req,res,'reports',6,3600000))return;
     const b=await getBody(req),id=owner(req);
-    if(!pointOK(b.coords)||!['transito','obra','acidente','risco','radar'].includes(b.type))return err(res,400,'Dados da ocorrência inválidos.');
+    // Preserve legacy categories during rollout for old clients.
+    const legacy=['obra','risco','radar'].includes(b.type);
+    if(!pointOK(b.coords)||(!isReportType(b.type)&&!legacy))return err(res,400,'Dados da ocorrência inválidos.');
     if(!listCap(db.reports,id,40))return err(res,429,'Limite de relatos desta conta atingido.');
-    const record={id:hex(8),type:b.type,description:cleanText(b.description,280),coords:b.coords,createdAt:stamp(),status:'nao_verificado',owner:id};
+    const duplicated=db.reports.some(r=>r.owner===id&&r.type===b.type&&
+      Date.now()-Date.parse(r.createdAt)<15*60000&&metersApart(r.coords,b.coords)<150);
+    if(duplicated)return err(res,409,'Você já informou esta ocorrência aqui há pouco.');
+    const createdAt=stamp(),ttlMinutes=reportType(b.type)?.ttlMinutes||30*24*60;
+    const record={id:hex(8),type:b.type,description:cleanText(b.description,280),coords:b.coords,
+      createdAt,expiresAt:new Date(Date.parse(createdAt)+ttlMinutes*60000).toISOString(),
+      status:'nao_verificado',owner:id};
     db.reports.push(record);await persist();return json(res,201,reportPublic(record));
   }
   if(pathname==='/api/routines'&&req.method==='POST'){

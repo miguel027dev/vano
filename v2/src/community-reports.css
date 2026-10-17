@@ -1,0 +1,21 @@
+/* Compact community markers: accessible, camera-independent DOM overlays. */
+.vano-community-pin{--community-pin-color:#d97751;position:relative;width:40px;height:46px;display:flex;align-items:flex-start;justify-content:center;filter:drop-shadow(0 3px 6px #1421324d);cursor:pointer}
+.vano-community-pin::after{content:"";position:absolute;top:29px;width:10px;height:10px;transform:rotate(45deg);background:var(--community-pin-color);border-radius:2px}
+.vano-community-symbol{width:38px;height:38px;position:relative;z-index:1;display:grid;place-items:center;border-radius:50%;background:var(--community-pin-color);color:#fff;border:2px solid #fff;box-shadow:inset 0 1px 1px #ffffff42}
+.vano-community-symbol svg{width:22px;height:22px}
+.vano-community-leaflet-wrap{background:none!important;border:0!important}
+.vano-community-popup{display:flex;flex-direction:column;gap:5px;padding:4px 0;font-family:'DM Sans',sans-serif;max-width:230px}
+.vano-community-popup strong{font-size:14px;color:#162438}.vano-community-popup small{font-size:11px;color:#627083}.vano-community-popup p{margin:4px 0;font-size:12px;line-height:1.35;color:#38455b}
+.report-kinds.vano-report-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:19px 0 22px}
+.report-kinds.vano-report-grid button{min-height:105px;border:1px solid var(--border);background:var(--panel);border-radius:19px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px 6px;color:var(--ink);transition:background .16s,border-color .16s,transform .16s}
+.report-kinds.vano-report-grid button:hover{transform:translateY(-1px);background:var(--bg)}
+.report-kinds.vano-report-grid button.active{background:var(--soft);border-color:var(--community-pin-color);box-shadow:inset 0 0 0 1px var(--community-pin-color);color:var(--ink)}
+.vano-report-grid .report-glyph{width:41px;height:41px;display:grid;place-items:center;border-radius:50%;background:var(--community-pin-color);color:#fff;box-shadow:0 3px 10px #1112}
+.vano-report-grid .report-glyph svg{width:23px;height:23px}
+.report-kinds.vano-report-grid button>span:last-child{font-weight:750;font-size:12px;line-height:1.2}
+.vano-report-help{font-size:12px;color:var(--muted);line-height:1.5}
+.vano-report-error{font-size:13px;color:#b04535;margin:8px 0}
+.report-row .report-row-icon{width:36px;height:36px;flex:none;display:grid;place-items:center;color:#fff;background:var(--community-pin-color);border-radius:50%}
+.report-row .report-row-icon svg{width:19px;height:19px}
+@media(max-width:380px){.report-kinds.vano-report-grid{gap:8px}.report-kinds.vano-report-grid button{padding:10px 2px;min-height:97px}.report-kinds.vano-report-grid button>span:last-child{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.report-kinds.vano-report-grid button{transition:none}.report-kinds.vano-report-grid button:hover{transform:none}}
