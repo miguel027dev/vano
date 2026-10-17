@@ -1,6 +1,6 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Square } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
 import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
@@ -34,6 +34,8 @@ import {isMaviTalkTurn,limitedMaviTalkHistory} from '../lib/maviTalk.mjs';
 import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
+import {createRouteSimulation} from '../lib/v2RouteSimulator.js';
+import '../v2-route-simulator.css';
 import {createManeuverTracker} from '../lib/maneuverTracker.js';
 import {evaluateRouteDeviation} from '../lib/routeDeviation.js';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
@@ -98,6 +100,7 @@ export default function MapPage({active=true}){
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
   const [maviPreview,setMaviPreview]=useState(null); // Preview only: never changes the active route without confirmation.
+  const [routeSimulation,setRouteSimulation]=useState(null); // V2-only visual state; never replaces sensor GPS.
   const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
@@ -497,6 +500,38 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  // An explicit, isolated rehearsal on /v2: original navMode, GPS, route
+  // requests, voice cues, incident publishing and trip persistence stay untouched.
+  const simulator=useMemo(()=>adminV2RoadSigns&&!navMode&&route
+    ?createRouteSimulation(route,routeVehicle):null,[adminV2RoadSigns,navMode,route,routeVehicle]);
+  const simulationSample=routeSimulation?.route===route&&simulator
+    ?simulator.sample(routeSimulation.elapsedMs):null;
+  const navView=navMode||Boolean(simulationSample);
+  const activeGuidance=simulationSample?.guidance||guidance;
+  useEffect(()=>{
+    if(!routeSimulation)return;
+    if(!active||!adminV2RoadSigns||navMode||routeSimulation.route!==route||!simulator){
+      setRouteSimulation(null);return;
+    }
+    let last=performance.now();
+    const timer=window.setInterval(()=>{
+      const now=performance.now(),delta=Math.min(300,Math.max(0,now-last));
+      last=now;
+      if(document.hidden||!active)return;
+      setRouteSimulation(previous=>previous?.route===route?{
+        ...previous,elapsedMs:Math.min(simulator.durationMs,previous.elapsedMs+delta)
+      }:previous);
+    },180);
+    return()=>window.clearInterval(timer);
+  },[routeSimulation?.route,route,simulator,navMode,adminV2RoadSigns,active]);
+  function toggleRouteSimulation(){
+    if(routeSimulation){setRouteSimulation(null);setSheetOpen(true);return;}
+    if(!adminV2RoadSigns||navMode||!simulator)return;
+    setSheetOpen(false);
+    setSearchOpen(false);
+    setRouteSimulation({route,elapsedMs:0});
+  }
+
   // Enrichment is loaded after routing, never in the critical directions path.
   // Route or modal switches cancel the previous lookup and clear stale places.
   useEffect(()=>{
@@ -720,7 +755,7 @@ export default function MapPage({active=true}){
   },[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
   // remaining minutes and kilometers shrink only as route progress is reported.
-  const navigationStats=navMode?navigationSummary(route,guidance,Date.now()):null;
+  const navigationStats=navView?navigationSummary(route,activeGuidance,Date.now()):null;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
   useEffect(()=>{
     if(!navMode||!route?.geometry||!isNativeShell())return;
@@ -921,16 +956,17 @@ export default function MapPage({active=true}){
     }):null;
   const readQuickReportGPS=()=>quickReportPosition(lastGpsFix.current);
   const reportMotionBlocked=quickReportMotionBlocked(navMode,telemetry.speed);
-  const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`+(postedLimit===null?'':`. Limite informado da via: ${postedLimit} quilômetros por hora`)} aria-live="off" title={postedLimit===null?'Velocidade do GPS. Limite da via indisponível':'Velocidade do GPS e limite informado pelo Mapbox'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small>{postedLimit!==null&&<span className="v43-speed-limit" aria-label={`Limite de velocidade informado: ${postedLimit} km/h`}><b>{postedLimit}</b></span>}</output>;
+  const shownSpeedKmh=simulationSample?.speedKmh??speedKmh;
+  const speedometer=<output className="v43-speedometer" aria-label={shownSpeedKmh===null?'Velocidade indisponível':`Velocidade indicada:  ${shownSpeedKmh} quilômetros por hora`+(postedLimit===null?'':`. Limite informado da via: ${postedLimit} quilômetros por hora`)} aria-live="off" title={postedLimit===null?'Velocidade do GPS. Limite da via indisponível':'Velocidade do GPS e limite informado pelo Mapbox'}><strong>{shownSpeedKmh===null?'—':shownSpeedKmh}</strong><small>km/h</small>{postedLimit!==null&&<span className="v43-speed-limit" aria-label={`Limite de velocidade informado: ${postedLimit} km/h`}><b>{postedLimit}</b></span>}</output>;
 
-  const nextTurnText=maneuverText(guidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
-  const visualLanes=Array.isArray(guidance?.lanes)?guidance.lanes.map((lane,index)=>({
+  const nextTurnText=maneuverText(activeGuidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
+  const visualLanes=Array.isArray(activeGuidance?.lanes)?activeGuidance.lanes.map((lane,index)=>({
     index,valid:lane?.valid===true,symbols:laneVariants(lane),
   })).filter(lane=>lane.symbols.length):[];
 
   return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap active={active} privateRoadSigns={adminV2RoadSigns} userCoords={displayCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
-    {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
+    <VanoMap active={active} privateRoadSigns={adminV2RoadSigns} userCoords={simulationSample?.point||displayCoords||origin} gpsCoords={simulationSample?.point||userCoords} communityGpsCoords={userCoords} manualOrigin={simulationSample?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={activeGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navView} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simulationSample?.telemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
+    {!navView ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
       <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
       {!searchOpen&&<div className="quick-scroll v31-shortcuts" role="group" aria-label="Atalhos de destinos">{shortcuts.map(s=><button type="button" className="quick-chip" key={s.name} onClick={()=>clickShortcut(s)}><s.icon size={16}/>{t(s.name)}</button>)}</div>}
@@ -956,16 +992,16 @@ export default function MapPage({active=true}){
       {jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"/>}
     </div> : <div className="nav-instruction v28-nav-instruction" aria-label="Instrução da próxima manobra">
       <div className="turn-icon v28-turn-icon">
-        <ManeuverGlyph variant={maneuverVariant(guidance)} size={37}/>
+        <ManeuverGlyph variant={maneuverVariant(activeGuidance)} size={37}/>
       </div>
-      <div className="v28-nav-copy" key={`${guidance?.stepIndex??'inicio'}:${guidance?.instruction||''}`}>
-        <strong className="v46-nav-distance" aria-live="off">{displayManeuverDistance(guidance?.distance,language)}</strong>
+      <div className="v28-nav-copy" key={`${activeGuidance?.stepIndex??'inicio'}:${activeGuidance?.instruction||''}`}>
+        <strong className="v46-nav-distance" aria-live="off">{displayManeuverDistance(activeGuidance?.distance,language)}</strong>
         <span className="v46-nav-instruction-text" aria-live="polite">{nextTurnText.instruction}</span>
         {nextTurnText.street&&<span className="v46-nav-street">{nextTurnText.street}</span>}
          {mappedCrossing?<span className="v70-nav-context" aria-live="off">
            {crossingLabel(mappedCrossing,language)} · {mappedCrossing.distance} m
            <small>{crossingSafetyNote(language)} · OpenStreetMap</small>
-         </span>:modeManeuverDetail(routeVehicle,guidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,guidance)}</span>}
+         </span>:modeManeuverDetail(routeVehicle,activeGuidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,activeGuidance)}</span>}
         {visualLanes.length>0&&<div className="v28-lane-guidance" role="group" aria-label="Orientação de faixas da rota">
           {visualLanes.map(lane=><span key={lane.index} className={`v46-lane ${lane.valid?'suggested':''}`}
             title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}
@@ -974,23 +1010,23 @@ export default function MapPage({active=true}){
           </span>)}
         </div>}
       </div>
-      <button className="circle-btn" onClick={toggleVoice} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
+      <button className="circle-btn" onClick={toggleVoice} disabled={Boolean(simulationSample)} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
       {jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"/>}
     </div>}
-    {!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking" role="status">
+    {!navView&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking" role="status">
       <div className="gps-banner-heading"><MapPin size={20}/><strong>{t('Escolha sua origem')}</strong></div>
       <p>Toque em qualquer rua no mapa para marcar seu ponto de partida.</p>
       <div className="gps-actions"><button onClick={()=>setPickOriginMode(false)}>{t('Cancelar')}</button><button className="gps-primary" onClick={()=>requestGPS(true)}>{t('Tentar GPS')}</button></div>
     </div>}
-    {!navMode&&!searchOpen&&!pickOriginMode&&!validPoint(origin)&&gpsStatus!=='checking'&&<div className="gps-banner" role="status">
+    {!navView&&!searchOpen&&!pickOriginMode&&!validPoint(origin)&&gpsStatus!=='checking'&&<div className="gps-banner" role="status">
       <div className="gps-banner-heading"><AlertTriangle size={19}/><strong>{t(gpsStatus==='checking'?'Buscando sua localização…':'Localização indisponível')}</strong></div>
       <p>{gpsStatus==='checking'?'Você também pode escolher de onde sair.':gpsMessage||'Não conseguimos acessar seu GPS neste navegador.'}</p>
       <div className="gps-actions"><button onClick={()=>requestGPS(true)}>{t('Tentar novamente')}</button><button className="gps-primary" onClick={()=>setPickOriginMode(true)}>{t('Escolher origem no mapa')}</button></div>
     </div>}
-    {!navMode&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
+    {!navView&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
     {searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t('Sugestões próximas')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':searchError?searchError:query.trim().length<2?'Digite um lugar, rua ou CEP.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
     {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{editorError||t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
-    {!navMode&&!sheetOpen&&!searchOpen&&!pickOriginMode&&<div className="v31-location-card" role="status" aria-label="Estado da sua localização">
+    {!navView&&!sheetOpen&&!searchOpen&&!pickOriginMode&&<div className="v31-location-card" role="status" aria-label="Estado da sua localização">
       <span className="v31-location-symbol" aria-hidden="true"><LocateFixed size={18} strokeWidth={1.9}/></span>
       <span className="v31-location-copy">
         <span className="v31-location-eyebrow"><span className={hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?'v31-gps-dot is-live':'v31-gps-dot'}/>
@@ -1010,13 +1046,21 @@ export default function MapPage({active=true}){
            <Moon className="v49-glyph-moon" size={21} strokeWidth={1.9}/>
          </span>
        </button>
-       {jevMode&&navMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}
+       {adminV2RoadSigns&&route&&!navMode&&<button type="button"
+         className={`circle-btn v2-route-sim-toggle ${simulationSample?'is-simulating':''}`}
+         aria-pressed={Boolean(simulationSample)}
+         aria-label={simulationSample?'Parar simulação do trajeto':'Simular trajeto'}
+         title={simulationSample?'Parar simulação':'Simular trajeto de teste'}
+         onClick={toggleRouteSimulation} disabled={!simulator}>
+         {simulationSample?<Square size={18} fill="currentColor" strokeWidth={1.5}/>:<Play size={19} fill="currentColor" strokeWidth={1.5}/>}
+       </button>}
+       {jevMode&&navMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={activeGuidance?.distance} muted={muted}/>}
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {!navMode&&<button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>}
       <button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
-      {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
+      {!navView&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
     </div>}
-    {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
+    {!navView&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
         <div className={`v47-route-vehicle-switch ${import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
@@ -1052,11 +1096,11 @@ export default function MapPage({active=true}){
        </section>
        <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice" role="alert"><p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p><button type="button" onClick={()=>calculateRoute(dest,origin,routeVehicle)} disabled={!validPoint(origin)}>Tentar novamente</button></div>}
     </div>}
-    {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
-    {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
+    {!navView&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
+    {navView&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
       {speedometer}
-      <div className="v36-nav-road-pill" title={navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}>
-        <strong>{navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}</strong>
+      <div className="v36-nav-road-pill" title={simulationSample?'Trajeto fictício para testes':navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}>
+        <strong>{simulationSample?'Percurso simulado':navigationStreetLabel(currentAddress,hasRecentGpsFix(lastGpsFix.current,Date.now(),60000))}</strong>
       </div>
     </div>}
     {jevMode&&maviPendingStop&&navMode&&<div className="mavi-stop-continue" role="group" aria-label="Parada temporária da MAVI">
@@ -1065,10 +1109,10 @@ export default function MapPage({active=true}){
         {maviResuming?'Calculando…':'Continuar ao destino original'}
       </button>
     </div>}
-    {navMode&&<div className="nav-bottom v37-nav-bottom" aria-label="Resumo da navegação">
+    {navView&&<div className="nav-bottom v37-nav-bottom" aria-label="Resumo da navegação">
       <span className="v37-nav-handle" aria-hidden="true"/>
       <div className="nav-summary v37-nav-summary">
-        <button type="button" className="circle-btn v37-nav-end" onClick={reset} aria-label="Encerrar navegação" title="Encerrar navegação"><X size={22} strokeWidth={2}/></button>
+        <button type="button" className="circle-btn v37-nav-end" onClick={simulationSample?toggleRouteSimulation:reset} aria-label={simulationSample?'Encerrar simulação':'Encerrar navegação'} title={simulationSample?'Encerrar simulação':'Encerrar navegação'}><X size={22} strokeWidth={2}/></button>
         <div className="v37-nav-center">
           <span className="sr-only">Previsão de chegada</span>
           <time className="v37-nav-arrival" dateTime={navigationStats?.arrivalAt?.toISOString()}>{estimatedArrival}</time>
@@ -1078,12 +1122,13 @@ export default function MapPage({active=true}){
             <span>{navigationStats?fmtKm(navigationStats.remainingKm,language):'-- km'}</span>
           </div>
         </div>
-        <button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>
+        {!simulationSample&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
       </div>
       {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Voz de navegação indisponível no aparelho.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
       {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
-      {!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
-      {demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}
+      {!simulationSample&&!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
+      {simulationSample&&<p className="v2-route-sim-banner" role="status">{simulationSample.done?'Simulação concluída':'SIMULAÇÃO ATIVA'} · velocidade fictícia de {simulationSample.speedKmh} km/h · GPS real preservado · sem gravação de percurso</p>}
+      {demoRoute&&!simulationSample&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}
     </div>}
     {quickReportOpen&&<QuickReportSheet onClose={()=>setQuickReportOpen(false)} onSubmit={report}
       readPosition={readQuickReportGPS} onRetryLocation={()=>requestGPS(false)} moving={reportMotionBlocked}/>}
