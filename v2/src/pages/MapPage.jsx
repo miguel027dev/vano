@@ -337,12 +337,14 @@ export default function MapPage({active=true}){
       .finally(()=>{if(addressController.current===controller)addressController.current=null;});
   },[userCoords?.[0],userCoords?.[1],navMode,language]);
   useEffect(()=>()=>addressController.current?.abort(),[]);
+  // Rounded search bias avoids restarting provider requests on each GPS reading.
+  const searchBias=searchGeoBias(userCoords,{gpsGranted:gpsStatus==='granted',manual:usingManual});
   useEffect(()=>{
     if(!searchOpen){setSearchBusy(false);return;}
     const term=query.trim();
     if(term.length<2){setSuggestions(allPlaces.slice(0,5));setSearchError('');setSearchBusy(false);return;}
     // Rounded GPS proximity favors nearby places without restricting worldwide search.
-    const nearby=searchGeoBias(userCoords,{gpsGranted:gpsStatus==='granted',manual:usingManual});
+    const nearby=searchBias;
     const cacheKey=language+'|'+term.toLocaleLowerCase()+'|'+nearby;
     const cached=searchCache.current.get(cacheKey);
     if(cached&&Date.now()-cached.at<45000){
@@ -364,7 +366,7 @@ export default function MapPage({active=true}){
         .finally(()=>{if(!controller.signal.aborted)setSearchBusy(false);});
     },250);
     return()=>{clearTimeout(timer);controller.abort();};
-  },[query,searchOpen,allPlaces,language,usingManual,gpsStatus,userCoords?.[0],userCoords?.[1]]);
+  },[query,searchOpen,allPlaces,language,searchBias]);
   async function calculateRoute(place,departure,vehicle=routeVehicle){
     // Any new route request supersedes a pending vehicle-change debounce.
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
@@ -454,13 +456,13 @@ export default function MapPage({active=true}){
     if(q.length<2){setEditorResults(allPlaces.slice(0,6));setEditorError('');setEditorBusy(false);return;}
     const controller=new AbortController();setEditorError('');setEditorBusy(true);
     const timer=setTimeout(()=>{
-      api(`/search?q=${encodeURIComponent(q)}&lang=${encodeURIComponent(language)}${searchGeoBias(userCoords,{gpsGranted:gpsStatus==='granted',manual:usingManual})}`, {signal:controller.signal})
+      api(`/search?q=${encodeURIComponent(q)}&lang=${encodeURIComponent(language)}${searchBias}`, {signal:controller.signal})
       .then(items=>{if(!controller.signal.aborted)setEditorResults(Array.isArray(items)?items:[]);})
       .catch(error=>{if(!controller.signal.aborted){setEditorResults([]);setEditorError(error?.message||'Busca indisponível no momento.');}})
       .finally(()=>{if(!controller.signal.aborted)setEditorBusy(false);});
     },250);
     return()=>{clearTimeout(timer);controller.abort()};
-  },[editor,editorQuery,allPlaces,language,usingManual,gpsStatus,userCoords?.[0],userCoords?.[1]]);
+  },[editor,editorQuery,allPlaces,language,searchBias]);
   function clickShortcut(s){
     if(s.name==='Rotina'){navigate('/rotinas');return;}
     if(s.name==='Casa'||s.name==='Trabalho'){const f=favorites.find(f=>f.category===s.name||f.name.toLowerCase()===s.name.toLowerCase());if(f)pick(f);else navigate(`/favoritos?new=${encodeURIComponent(s.name)}`);return;}
