@@ -1,6 +1,6 @@
-import React,{useEffect,useRef,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
 import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
@@ -34,6 +34,8 @@ import {isMaviTalkTurn,limitedMaviTalkHistory} from '../lib/maviTalk.mjs';
 import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
+import {simulationDistanceStep,simulationFrame,simulationSpeedKmh} from '../lib/adminRouteSimulator.mjs';
+import '../admin-route-simulator.css';
 import {createManeuverTracker} from '../lib/maneuverTracker.js';
 import {evaluateRouteDeviation} from '../lib/routeDeviation.js';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
@@ -97,6 +99,7 @@ export default function MapPage({active=true}){
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
+  const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0);
   const [maviPreview,setMaviPreview]=useState(null); // Preview only: never changes the active route without confirmation.
   const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
@@ -497,6 +500,42 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=id;pick(found);}
   },[location.search,favorites]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  // Local private /v2 playback. Sampled coordinates never enter real GPS callbacks,
+  // server routes, report submissions, saved journeys or actual telemetry.
+  const simFrame=useMemo(()=>simActive?simulationFrame(route,simMeters):null,[simActive,route,simMeters]);
+  const simPosition=simActive?simFrame?.point||null:null;
+  const simTelemetry=simFrame?{heading:simFrame.bearing,speed:simulationSpeedKmh(routeVehicle)/3.6,accuracy:8}:null;
+  const shownGuidance=simActive?simFrame?.guidance||null:guidance;
+  const simRouteTotal=useMemo(()=>buildRouteTimeline(route?.geometry).total,[route?.geometry]);
+  function startRouteSimulation(){
+    if(!adminV2RoadSigns||navMode||!active||measuredTrip.current||!simulationFrame(route,0))return;
+    setSimMeters(0);setSimPaused(false);setSimActive(true);
+    setQuickReportOpen(false);setSearchOpen(false);setSheetOpen(false);
+    setGuidance(null);setNavMode(true);spoken.current.clear();
+  }
+  function stopRouteSimulation(){
+    if(!simActive)return;
+    setSimActive(false);setSimPaused(false);setSimMeters(0);
+    setNavMode(false);setGuidance(null);setSheetOpen(true);
+  }
+  useEffect(()=>{
+    if(!simActive)return;
+    if(!adminV2RoadSigns||!navMode||!active||!route?.geometry){
+      setSimActive(false);setSimPaused(false);setNavMode(false);return;
+    }
+    if(simPaused||simFrame?.finished)return;
+    let previous=0;
+    const id=window.setInterval(()=>{
+      const now=performance.now();
+      if(!previous){previous=now;return;}
+      const seconds=Math.min(.5,(now-previous)/1000);previous=now;
+      if(!document.hidden&&seconds>0)
+        setSimMeters(value=>simulationDistanceStep(value,seconds,simRouteTotal,routeVehicle));
+    },100);
+    return()=>window.clearInterval(id);
+  },[simActive,simPaused,simFrame?.finished,adminV2RoadSigns,navMode,active,route?.geometry,simRouteTotal,routeVehicle]);
+  useEffect(()=>{if(simActive&&simFrame?.finished)setSimPaused(true);},[simActive,simFrame?.finished]);
+  useEffect(()=>{if(!adminV2RoadSigns&&simActive)stopRouteSimulation();},[adminV2RoadSigns,simActive]);
   // Enrichment is loaded after routing, never in the critical directions path.
   // Route or modal switches cancel the previous lookup and clear stale places.
   useEffect(()=>{
