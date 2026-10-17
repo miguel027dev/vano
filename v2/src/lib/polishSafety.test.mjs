@@ -30,6 +30,7 @@ test('initial route failure keeps the destination and offers a retry without rel
 
 test('unverified safe-route claims disclose missing proof and provider coverage',()=>{
   assert.match(map,/r\.id==='safe'&&!r\.verifiedSafety\?t\('Segurança não verificada'\)/);
+  assert.match(map,/r\.verifiedSafety\?'Mais segura':'Rota alternativa'/);
   assert.match(map,/choice==='safe'&&routeVehicle!=='a-pe'/);
   assert.match(map,/routeData\.safetyMessage\|\|/);
   assert.match(map,/Nenhuma rota garante segurança absoluta/);
