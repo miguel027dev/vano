@@ -11,6 +11,7 @@ import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} 
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/night3DBuildings.js';
+import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
@@ -102,7 +103,7 @@ function motionController(map,latest,status){
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';const cameraHalfLife=reduced?85:motorcycle?350:300,pointHalfLife=reduced?90:motorcycle?390:360;
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
@@ -190,6 +191,10 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
           if(deleted||!isLoaded(map))return;
           try{
             syncNight3DBuildings(map,{appearance:latest.current.appearance,layer:latest.current.layer});
+             syncNight3DScene(map,{appearance:latest.current.appearance,layer:latest.current.layer,navigation:latest.current.navigation,
+               memory:typeof navigator!=='undefined'?navigator.deviceMemory:null,
+               cores:typeof navigator!=='undefined'?navigator.hardwareConcurrency:null,
+               saveData:typeof navigator!=='undefined'&&Boolean(navigator.connection?.saveData)});
           }catch(error){
             // 3D is an optional enhancement: never degrade map rendering,
             // switch to raster, or break a route because of unavailable buildings.
@@ -211,6 +216,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         // A style may report partial readiness on style.load; retry nonblocking
         // after vector tiles finish. getLayer makes this idempotent.
         map.on('idle',ensureNight3d);
+         map.on('moveend',ensureNight3d);
         map.on('load',()=>{attachOpenRouterMark();update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
@@ -391,6 +397,8 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     // setStyle is valid during style loading. Waiting for map.loaded() can drop rapid layer taps.
     try{
       map._vanoStyle=style;
+      delete map._vanoNightFogApplied;
+      delete map._vanoNightTreeStamp;
       setError('');
       map.setStyle(style,{diff:false});
       // style.load rehydrates route sources/layers and markers for the new style.
