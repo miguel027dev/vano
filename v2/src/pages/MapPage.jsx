@@ -99,7 +99,7 @@ export default function MapPage({active=true}){
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
-  const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0);
+  const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0),[simConfirmOpen,setSimConfirmOpen]=useState(false);
   const [maviPreview,setMaviPreview]=useState(null); // Preview only: never changes the active route without confirmation.
   const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
@@ -508,14 +508,46 @@ export default function MapPage({active=true}){
   const simTelemetry=simFrame?{heading:simFrame.bearing,speed:simulationSpeedKmh(routeVehicle)/3.6,accuracy:8}:null;
   const shownGuidance=simActive?simFrame?.guidance||null:guidance;
   const simRouteTotal=useMemo(()=>buildRouteTimeline(route?.geometry).total,[route?.geometry]);
-  function startRouteSimulation(){
-    if(!adminV2RoadSigns||navMode||!active||measuredTrip.current||!simulationFrame(route,0))return;
+  function activateRouteSimulation(){
+    if(!adminV2RoadSigns||!active)return;
+    const sample=simulationFrame(route,0);
+    if(!sample){setToast('Escolha um trajeto com rota calculada para iniciar a simulação.');return;}
+    // Confirmation is mandatory for converting an active real trip into a
+    // developer preview; no synthetic fix may enter GPS or travel accounting.
+    if(navMode&&!simActive){
+      syncMeasuredDistance(true);
+      measuredTrip.current=null;
+      odometer.current={meters:0,anchor:null,lastSeenAt:null};
+      distanceSync.current=Date.now();
+      if(jevMode)maneuverAudioRef.current?.abort();
+      stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
+      routeEpoch.current++; // Ignore any pending reroute response from the real journey.
+      rerouteRequest.current=null;
+      setRecalculating(false);
+      void deleteOffline('active-trip');
+    }
+    setSimConfirmOpen(false);
     setSimMeters(0);setSimPaused(false);setSimActive(true);
     setQuickReportOpen(false);setSearchOpen(false);setSheetOpen(false);
     setGuidance(null);setNavMode(true);spoken.current.clear();
+    setToast('Simulação iniciada. O GPS real não será alterado.');
+  }
+  function startRouteSimulation(){
+    if(!adminV2RoadSigns||!active)return;
+    if(!route||!simulationFrame(route,0)){
+      setToast(loadingRoute?'Aguarde o cálculo do percurso para simular.':'Escolha um destino e calcule uma rota antes de simular.');
+      if(dest)setSheetOpen(true);
+      return;
+    }
+    if(navMode&&!simActive){
+      setSimConfirmOpen(true);
+      return;
+    }
+    activateRouteSimulation();
   }
   function stopRouteSimulation(){
     if(!simActive)return;
+    setSimConfirmOpen(false);
     setSimActive(false);setSimPaused(false);setSimMeters(0);
     setNavMode(false);setGuidance(null);setSheetOpen(true);
   }
@@ -1041,6 +1073,16 @@ export default function MapPage({active=true}){
         <small>{hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?currentAddress?.detail||'Endereço atualizado pelo GPS':validPoint(displayCoords)?gpsStatus==='denied'?'GPS desativado · última posição salva':'Atualizando GPS · posição salva':gpsStatus==='checking'?'Localizando seu dispositivo…':'Ative o GPS ou escolha a origem'}</small>
       </span>
     </div>}
+    {adminV2RoadSigns&&simConfirmOpen&&<div className="v76-sim-confirm-backdrop" role="presentation" onClick={()=>setSimConfirmOpen(false)}>
+      <section className="v76-sim-confirm" role="dialog" aria-modal="true" aria-label="Confirmar simulação do trajeto" onClick={event=>event.stopPropagation()}>
+        <strong>Simular esta rota?</strong>
+        <p>Você está em navegação real. Para começar o teste, a navegação atual será encerrada e o trajeto continuará apenas como simulação.</p>
+        <div className="v76-sim-confirm-actions">
+          <button type="button" onClick={()=>setSimConfirmOpen(false)}>Cancelar</button>
+          <button type="button" className="v76-sim-confirm-primary" onClick={activateRouteSimulation}>Iniciar simulação</button>
+        </div>
+      </section>
+    </div>}
     {simActive&&<div className="v76-sim-badge" role="group" aria-label="Controles da simulação">
       <span className="v76-sim-led" aria-hidden="true"/><strong>SIMULAÇÃO</strong>
       <span>{Math.round((simFrame?.fraction||0)*100)}% · {shownSpeedKmh} km/h · 6×</span>
@@ -1051,12 +1093,13 @@ export default function MapPage({active=true}){
         title={simFrame?.finished?'Reiniciar':simPaused?'Retomar':'Pausar'}>{simFrame?.finished?<RotateCcw size={17}/>:simPaused?<Play size={17}/>:<Pause size={17}/>}</button>
     </div>}
     {!searchOpen&&<div className="map-controls">
-       {adminV2RoadSigns&&(route||simActive)&&<button type="button"
+       {adminV2RoadSigns&&<button type="button"
          className={`circle-btn v76-sim-toggle ${simActive?'is-playing':''}`}
          title={simActive?'Parar simulação':'Simular trajeto na V2'}
          aria-label={simActive?'Parar simulação de trajeto':'Iniciar simulação de trajeto'}
          aria-pressed={simActive}
-         disabled={!simActive&&(!route?.geometry||navMode||!simulationFrame(route,0))}
+         aria-haspopup={navMode&&!simActive?'dialog':undefined}
+         aria-expanded={simConfirmOpen}
          onClick={simActive?stopRouteSimulation:startRouteSimulation}>
          {simActive?<Square size={19}/>:<Play size={20}/>}
        </button>}
