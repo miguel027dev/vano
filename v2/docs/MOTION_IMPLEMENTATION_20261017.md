@@ -46,6 +46,6 @@
 - Só então merge explícito para branch ativa e deploy acompanhado; rollback para commit anterior se falhar.
 
 ## Riscos controlados
-- CSS aplicado no final das camadas do V2, não na versão Flask antiga.
+- CSS aplicado depois dos estilos principais, **antes** do v50-night-system.css, que permanece obrigatoriamente a última folha para preservar os contrastes do modo noturno. Não afeta a versão Flask antiga.
 - Nenhuma alteração de lógica de negócio, autenticação, layout, Mapbox source/layer ou código Android nesta etapa.
 - Em caso de falha, reverter o commit/PR da camada de CSS; não restaurar backups antigos sobre melhorias posteriores.
