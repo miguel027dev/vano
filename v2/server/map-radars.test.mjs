@@ -102,6 +102,9 @@ test('global lookup remains bounded; a continent-wide request is still rejected'
 test('map refresh retries international radar snapshot warming promptly',()=>{
  const overlay=readFileSync(new URL('../src/lib/mapPublicOverlay.js',import.meta.url),'utf8');
  assert.ok(overlay.includes('radarRetryTimer=setTimeout'));
- assert.ok(overlay.includes('radarRetryCount<3'));
+ assert.ok(overlay.includes('radarRetryCount<(data.refreshing===true?5:3)'));
+ assert.ok(overlay.includes('data.refreshing===true?6000:5000'));
+ const server=readFileSync(new URL('./index.mjs',import.meta.url),'utf8');
+ assert.ok(server.includes("result.refreshing===true||result.error?'no-store'"));
  assert.ok(overlay.includes('if(visible)void refreshRadars(visible)'));
 });
