@@ -1040,7 +1040,25 @@ export default function MapPage({active=true}){
         <small>{hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?currentAddress?.detail||'Endereço atualizado pelo GPS':validPoint(displayCoords)?gpsStatus==='denied'?'GPS desativado · última posição salva':'Atualizando GPS · posição salva':gpsStatus==='checking'?'Localizando seu dispositivo…':'Ative o GPS ou escolha a origem'}</small>
       </span>
     </div>}
+    {simActive&&<div className="v76-sim-badge" role="group" aria-label="Controles da simulação">
+      <span className="v76-sim-led" aria-hidden="true"/><strong>SIMULAÇÃO</strong>
+      <span>{Math.round((simFrame?.fraction||0)*100)}% · {speedKmh} km/h · 6×</span>
+      <button type="button" onClick={()=>{
+        if(simFrame?.finished){setSimMeters(0);setSimPaused(false);}
+        else setSimPaused(value=>!value);
+      }} aria-label={simFrame?.finished?'Reiniciar simulação':simPaused?'Retomar simulação':'Pausar simulação'}
+        title={simFrame?.finished?'Reiniciar':simPaused?'Retomar':'Pausar'}>{simFrame?.finished?<RotateCcw size={17}/>:simPaused?<Play size={17}/>:<Pause size={17}/>}</button>
+    </div>}
     {!searchOpen&&<div className="map-controls">
+       {adminV2RoadSigns&&(route||simActive)&&<button type="button"
+         className={`circle-btn v76-sim-toggle ${simActive?'is-playing':''}`}
+         title={simActive?'Parar simulação':'Simular trajeto na V2'}
+         aria-label={simActive?'Parar simulação de trajeto':'Iniciar simulação de trajeto'}
+         aria-pressed={simActive}
+         disabled={!simActive&&(!route?.geometry||navMode||!simulationFrame(route,0))}
+         onClick={simActive?stopRouteSimulation:startRouteSimulation}>
+         {simActive?<Square size={19}/>:<Play size={20}/>}
+       </button>}
        <button type="button" className={`circle-btn v49-appearance-toggle ${selectedAppearance==='dark'?'is-dark':'is-light'}`}
          aria-label={selectedAppearance==='dark'?'Ativar mapa claro':'Ativar mapa escuro'}
          aria-pressed={selectedAppearance==='dark'} title={selectedAppearance==='dark'?'Modo claro':'Modo escuro'}
