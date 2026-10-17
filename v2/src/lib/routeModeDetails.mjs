@@ -21,6 +21,9 @@ export function previewManeuvers(route,vehicle='carro'){
  return entries;
 }
 export function modeManeuverDetail(vehicle,step={}){
+ // Guidance may be null between destination selection and maneuver resolution.
+ // Default arguments only protect undefined, not null API/GPS state.
+ if(!step||typeof step!=='object'||Array.isArray(step))return null;
  const type=norm(step?.type||step?.kind);
  const modifier=norm(step?.modifier);
  if(vehicle==='a-pe'){
