@@ -40,7 +40,8 @@ test('the cached marker never becomes an authorized route origin or live GPS',()
  const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(page,/const displayCoords=userCoords\|\|warmCoords/);
  assert.match(page,/const origin=manualCoords\|\|userCoords/);
- assert.match(page,/userCoords=\{displayCoords\|\|origin\} gpsCoords=\{userCoords\}/);
+ assert.match(page,/userCoords=\{simPosition\|\|displayCoords\|\|origin\} gpsCoords=\{simPosition\|\|userCoords\}/);
+ assert.match(page,/const origin=manualCoords\|\|userCoords/);
  assert.match(page,/hasRecentGpsFix\(lastGpsFix\.current,Date\.now\(\),35000\)/);
  assert.match(page,/saveWarmGps\(window\.localStorage,fix\)/);
  assert.doesNotMatch(page,/const origin=manualCoords\|\|displayCoords/);

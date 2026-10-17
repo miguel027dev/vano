@@ -12,7 +12,8 @@ test('navigation dock displays centered arrival clock over two remaining measure
  assert.match(view,/navigationStats\.remainingMinutes/);
  assert.match(view,/navigationStats\.remainingKm/);
  assert.match(view,/className="v37-nav-bullet"/);
- assert.match(view,/navigationSummary\(route,guidance,Date\.now\(\)\)/);
+ assert.match(view,/navigationSummary\(route,shownGuidance,Date\.now\(\)\)/);
+ assert.match(view,/const shownGuidance=simActive\?simFrame\?\.guidance\|\|null:guidance/);
 });
 test('the only end-navigation control is an accessible X on the left of the ETA',()=>{
  const start=view.indexOf('className="nav-bottom v37-nav-bottom"');

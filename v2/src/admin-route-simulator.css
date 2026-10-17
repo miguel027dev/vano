@@ -1,0 +1,51 @@
+/* Private VANO /v2 trajectory preview. One button in the existing right control rail.
+   Status never intercepts map gestures outside its own small surface. */
+.map-page .v76-sim-toggle{
+  color:#277c70;border-color:#277c7040;position:relative;
+  background:var(--panel,#fff);
+}
+.map-page .v76-sim-toggle.is-playing{
+  background:#e6f6f2;color:#126c60;border-color:#84ccc0;
+}
+.map-page .v76-sim-toggle:focus-visible,
+.map-page .v76-sim-badge button:focus-visible{outline:3px solid #409cba;outline-offset:3px}
+.map-page .v76-sim-badge{
+  position:absolute;z-index:492;
+  right:calc(env(safe-area-inset-right,0px) + 77px);
+  bottom:calc(var(--v36-nav-dock-height,180px) + env(safe-area-inset-bottom,0px) + 20px);
+  display:flex;align-items:center;gap:7px;
+  width:max-content;max-width:calc(100vw - 105px);
+  min-height:45px;padding:7px 7px 7px 12px;
+  border:1px solid #dce6e8;border-radius:15px;
+  background:#fffffff7;color:#233944;
+  box-shadow:0 8px 24px #132b3825;
+  font:600 11px/1.2 'DM Sans',system-ui,sans-serif;
+  white-space:nowrap;user-select:none;
+}
+.map-page .v76-sim-badge strong{font-size:10px;letter-spacing:.07em;color:#156e61}
+.map-page .v76-sim-badge>span:nth-last-of-type(1){color:#627580}
+.map-page .v76-sim-led{flex:0 0 7px;width:7px;height:7px;border-radius:50%;background:#23ad86}
+.map-page .v76-sim-badge button{
+  display:grid;place-items:center;width:32px;height:32px;flex:none;
+  background:#eff5f5;border:1px solid #dbe6e6;
+  color:#234b55;border-radius:10px;cursor:pointer;touch-action:manipulation;
+}
+.map-page[data-map-appearance="dark"] .v76-sim-toggle.is-playing{
+  background:#294840;color:#a8efdd;border-color:#416b62;
+}
+.map-page[data-map-appearance="dark"] .v76-sim-badge{
+  background:#18282ff5;color:#edf7f8;border-color:#3b555f;box-shadow:0 10px 25px #0008;
+}
+.map-page[data-map-appearance="dark"] .v76-sim-badge strong{color:#a8efdd}
+.map-page[data-map-appearance="dark"] .v76-sim-badge>span:nth-last-of-type(1){color:#b4cbd2}
+.map-page[data-map-appearance="dark"] .v76-sim-badge button{
+  background:#2b414a;border-color:#48616b;color:#ecf9fa;
+}
+@media(max-width:390px){
+ .map-page .v76-sim-badge{right:calc(env(safe-area-inset-right,0px) + 64px);
+   gap:5px;padding-left:8px;min-height:40px;font-size:10px}
+ .map-page .v76-sim-badge button{width:30px;height:30px}
+}
+@media(prefers-reduced-motion:reduce){
+ .map-page .v76-sim-toggle{transition:none!important}
+}
