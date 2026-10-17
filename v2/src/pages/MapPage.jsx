@@ -547,11 +547,13 @@ export default function MapPage({active=true}){
     window.addEventListener('keydown',onKeyDown);
     return()=>window.removeEventListener('keydown',onKeyDown);
   },[simConfirmOpen]);
+  useEffect(()=>{if(!simConfirmOpen&&!simActive)simRequestedMode.current='standard';},[simConfirmOpen,simActive]);
   function startRouteSimulation(){
     if(!adminV2RoadSigns||!active)return;
     if(!route||!simulationFrame(route,0)){
       setToast(loadingRoute?'Aguarde o cálculo do percurso para simular.':'Escolha um destino e calcule uma rota antes de simular.');
       if(dest)setSheetOpen(true);
+      simRequestedMode.current='standard';
       return;
     }
     if(navMode&&!simActive){
