@@ -635,7 +635,7 @@ async function route(req, res) {
     const bbox=parseBBox(u.searchParams.get('bbox'),.3,.3);
     if(!bbox)return err(res,400,'Área dos radares inválida ou grande demais.');
     const result=await queryPublicRadars(bbox);
-    return json(res,200,result,{'Cache-Control':'public, max-age=45'});
+    return json(res,200,result,{'Cache-Control':result.refreshing===true||result.error?'no-store':'public, max-age=45'});
   }
   if(pathname==='/api/map-features/sources'&&req.method==='GET')return json(res,200,{sources:PUBLIC_MAP_SOURCES});
   if(pathname==='/api/map-features'&&req.method==='GET'){
