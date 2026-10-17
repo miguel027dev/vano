@@ -42,3 +42,13 @@ test('walk crossing voice follows safe GPS and never interrupts an imminent turn
  assert.match(cue.text,/Aproxime-se/);
  assert.equal(cue.key,'walk-feature:'+feature.id);
 });
+test('missing maneuver guidance never crashes destination selection in any mode',()=>{
+ for(const vehicle of ['carro','moto','a-pe']){
+  assert.equal(modeManeuverDetail(vehicle,null),null);
+  assert.equal(modeManeuverDetail(vehicle,undefined),null);
+  assert.equal(modeManeuverDetail(vehicle,{}),null);
+  assert.equal(modeManeuverDetail(vehicle,'unknown'),null);
+ }
+ assert.deepEqual(previewManeuvers({steps:[null,{instruction:'Vire à esquerda',type:'turn'}]},'carro')
+  .map(step=>step.instruction),['Vire à esquerda']);
+});
