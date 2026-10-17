@@ -9,9 +9,9 @@ import {radarDisplayAllowed,radarFullyRestrictedBBox} from '../src/lib/radarPoli
 import {queryWorldRadarCatalog} from './world-radar-catalog.mjs';
 
 export const RADAR_OVERPASS_SERVERS=Object.freeze([
- 'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+ 'https://overpass-api.de/api/interpreter',
  'https://overpass.private.coffee/api/interpreter',
- 'https://overpass-api.de/api/interpreter'
+ 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'
 ]);
 const cache=new Map();
 const successTtl=30*60*1000;
@@ -20,7 +20,7 @@ const staleTtl=24*60*60*1000;
 let running=0,upstreamDownUntil=0;
 
 export function radarOverpassQuery(bbox){
- const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
+ const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox,.3,.3);
  if(!b)throw new RangeError('Radar bounding box inválida');
  const area=[b[1],b[0],b[3],b[2]].map(n=>n.toFixed(5)).join(',');
  return '[out:json][timeout:14];('+
@@ -85,13 +85,16 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
  // Worldwide OSM snapshots are indexed in memory and avoid external network
  // work on every pan. Keep the existing Brazil interior fast path untouched.
  if(useWorldSnapshot){
-  const catalog=await queryWorldRadarCatalog(b,{fetcher:worldFetcher,now});
+  // Production: start the large world/UK downloads in background so they never
+  // block a viewport request. Unit fixtures can opt into awaiting the load.
+  const catalog=await queryWorldRadarCatalog(b,{fetcher:worldFetcher,now,
+   waitForLoad:worldFetcher!==fetch});
   if(catalog.available)return withNational(catalog);
  }
- // Legacy public Overpass accepts small boxes only; never send oversized
- // viewports to an upstream and accidentally stall the map.
- if(b[2]-b[0]>.065||b[3]-b[1]>.055)return withNational({features:[],source:'OpenStreetMap',
-  stale:true,error:'Catálogo internacional temporariamente indisponível',coverage:'snapshot-unavailable'});
+ // Radar-only Overpass queries are cheap compared with POI searches.
+ // The normal camera viewport is up to 0.30 x 0.30 degrees; rejecting it
+ // here previously left EVERY foreign city with zero pins when CSV failed.
+ // parseBBox above already caps both dimensions and validates coordinates.
  // Stable ~100 m cells, to reuse results across adjacent camera pans.
  const key=b.map(n=>(Math.round(n*1000)/1000).toFixed(3)).join(',');
  const started=now(),old=cache.get(key);
@@ -101,7 +104,7 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
   return withNational(fallback(old,started,'Fonte Overpass temporariamente indisponível'));
  if(old?.result&&old.expires>started)return withNational({...old.result,cacheHit:true});
  if(old?.pending)return old.pending.then(withNational);
- if(running>=4)return withNational(fallback(old,started,'Fonte de radares ocupada'));
+ if(running>=2)return withNational(fallback(old,started,'Fonte de radares ocupada'));
  running++;
  const request=(async()=>{
   const query=new URLSearchParams({data:radarOverpassQuery(b)}).toString();
@@ -111,7 +114,7 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
     const response=await fetcher(url,{method:'POST',
      headers:{'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json',
       'User-Agent':'VANO Maps radar map (+https://vanomaps.online)'},
-     body:query,signal:AbortSignal.timeout(index===0?8000:7000)});
+     body:query,signal:AbortSignal.timeout(index===0?6500:5500)});
     if(!response.ok)throw Error('HTTP '+response.status);
     const data=await response.json();
     if(!Array.isArray(data?.elements))throw Error('Invalid Overpass elements');
