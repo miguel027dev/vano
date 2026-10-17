@@ -574,7 +574,7 @@ function startupRouteBearing(m,p){
 let adminSimulationCameraV2=false,v2DroneManeuverUntil=0,adminSimStarting=false;
 function isV2DroneCamera(){
   return IS_ADMIN && adminSimulation && adminSimulationCameraV2 &&
-    /^\\/v2\\/?$/i.test(location.pathname) && isMotorizedProfile();
+    (location.pathname.toLowerCase()==='/v2'||location.pathname.toLowerCase()==='/v2/') && isMotorizedProfile();
 }
 function cameraVehicleTuning(){
   const installedAndroid=document.documentElement.classList.contains('vano-android-shell');
@@ -2019,7 +2019,7 @@ function adminSimulationButton(running=false){
 function adminSimulationSpeed(){const seconds=Math.max(1,+selectedRoute?.duration||(+selectedRoute?.duration_min||0)*60||0),avg=routeTotalGeometry/seconds;if(profile==='walking')return Math.max(1.15,Math.min(1.9,Number.isFinite(avg)&&avg>0?avg:1.45));if(profile==='motorcycle')return Math.max(7.5,Math.min(24,Number.isFinite(avg)&&avg>0?avg:12));return Math.max(6.5,Math.min(27,Number.isFinite(avg)&&avg>0?avg:13.5))}
 async function startAdminSimulation({cinematic=false}={}){
   if(!IS_ADMIN||adminSimStarting)return;
-  const useV2=!!cinematic && /^\\/v2\\/?$/i.test(location.pathname);
+  const useV2=!!cinematic && (location.pathname.toLowerCase()==='/v2'||location.pathname.toLowerCase()==='/v2/');
   if(useV2&&!isMotorizedProfile()){showToast('V2 Sim disponível para carro e moto.');return}
   if(adminSimulation){
     const sameMode=adminSimulationCameraV2===useV2;
