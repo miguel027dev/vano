@@ -46,7 +46,7 @@ test('the compact island changes only private admin /v2 markup; map camera keeps
  assert.match(css,/data-map-appearance="dark"/);
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(map,/observer\?\.observe\(x\.node\)/);
- assert.ok(main.indexOf("import './v80-dynamic-guidance.css';")>main.indexOf("import './v50-night-system.css';"));
+ assert.ok(main.indexOf("import './v80-dynamic-guidance.css';")<main.indexOf("import './v50-night-system.css';"));
 });
 test('screen stays awake during private navigation simulation, releases when route ends or is hidden',()=>{
  const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
