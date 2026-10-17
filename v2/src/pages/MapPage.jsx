@@ -4,6 +4,8 @@ import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixe
 import VanoMap from '../components/VanoMap';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
 import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
+import {classifyMaviTrafficReport} from '../lib/maviTrafficReport.mjs';
+import {metersApart} from '../lib/communityReports.js';
 import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
@@ -79,6 +81,7 @@ export default function MapPage({active=true}){
   }
 
   const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const voiceTrafficReport=useRef({pending:false,lastAt:0,lastCoords:null});
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
@@ -522,6 +525,34 @@ export default function MapPage({active=true}){
   }
   function clearMaviPreview(){setMaviPreview(null);}
   async function askJev(text,signal,maviMeta={}){
+    // Community traffic reports are deliberate local voice actions: never route
+    // through conversational AI or invent a location from a street name.
+    // Hands-free submission does not require touching the map while moving.
+    if(navMode&&classifyMaviTrafficReport(text)==='transito'){
+      const guard=voiceTrafficReport.current;
+      if(guard.pending)return {mode:'information',text:'Já estou registrando essa ocorrência.'};
+      if(signal?.aborted)return {mode:'information',text:'Não consegui concluir o relato.'};
+      const fix=lastGpsFix.current;
+      const gps=quickReportPosition(fix);
+      if(!gps.coords||Date.now()-Number(fix?.sourceAt)>12000||fix.accuracy>70)
+        return {mode:'information',text:'Não tenho um GPS recente e preciso para registrar o trânsito agora.'};
+      if(guard.lastCoords&&Date.now()-guard.lastAt<90000&&metersApart(guard.lastCoords,gps.coords)<150)
+        return {mode:'information',text:'Esse trânsito já foi registrado por você aqui há pouco.'};
+      guard.pending=true;
+      try{
+        await report({type:'transito',coords:gps.coords,description:''});
+        guard.lastAt=Date.now();guard.lastCoords=[...gps.coords];
+        const message='Pronto. Registrei o trânsito aqui para a comunidade.';
+        return {mode:'information',text:message,
+          voiceTicketPromise:muted?null:api('/v2/assistant/local-voice-ticket',{
+            method:'POST',signal,body:{intent:'confirmation',text:message}
+          }).then(result=>result.voiceTicket).catch(()=>null)};
+      }catch(error){
+        if(/j[aá] informou|ocorr[eê]ncia aqui h[aá] pouco|duplicad/i.test(String(error?.message||'')))
+          return {mode:'information',text:'Esse trânsito já foi registrado por você aqui há pouco.'};
+        return {mode:'information',text:'Não consegui publicar essa ocorrência de trânsito. Tente novamente.'};
+      }finally{guard.pending=false;}
+    }
     // Informational commands work even before planning a route. The server
     // gates route-changing requests until a real route and vehicle exist.
     const replyVariant=maviResponseTurn.current++%3;

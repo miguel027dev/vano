@@ -831,7 +831,8 @@ async function route(req, res) {
     const confirmations=new Set([
       'Tudo bem, sua rota atual foi mantida.','Mantive sua rota atual.',
       'Nova rota selecionada.','Parada adicionada. Depois, peça para continuar ao destino original.',
-      'Esta sugestão expirou. Peça outra alternativa.'
+      'Esta sugestão expirou. Peça outra alternativa.',
+       'Pronto. Registrei o trânsito aqui para a comunidade.'
     ]);
     if(!id||!(allowed.has(body.intent)||body.intent==='confirmation'))return err(res,400,'Resposta local inválida.');
     const local=body.intent==='confirmation'?

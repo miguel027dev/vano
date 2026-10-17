@@ -10,7 +10,7 @@ export const REPORT_TYPES=Object.freeze([
 const BY_TYPE=new Map(REPORT_TYPES.map(type=>[type.id,type]));
 const PATHS={
   via_fechada:'<path d="M4 9h16v6H4zM6 15v5m12-5v5M7 9V6m10 3V6"/><path d="m6.5 14 3-5m2 5 3-5m2 5 2.5-4"/>',
-  transito:'<path d="M4 16V9.8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2V16l-2 2H6zM6 18v2m12-2v2M4 12h16M7 7.8V5h10v2.8"/><path d="M8 15h1m6 0h1"/>',
+  transito:'<path d="M7 6.6 8 4h8l1 2.6M6 7h12v5H6zM8 12v1m8-1v1M8 9h1m6 0h1"/><path d="m5 17 1-3h12l1 3M4 17h16v4H4zM7 21v1m10-1v1M7 19h1m9 0h1"/>',
   fiscalizacao:'<path d="M12 3 4.5 6v6c0 5 3.5 7.8 7.5 9 4-1.2 7.5-4 7.5-9V6z"/><path d="M9 12h6m-3-3v6"/>',
   acidente:'<path d="M12 3 2 20h20z"/><path d="M12 9v5m0 3h.01" stroke-width="2.5"/><path d="m5.5 15-2-1m15 1 2-1"/>',
   alagamento:'<path d="M12 3c-2.5 3.3-4.5 5.8-4.5 8.2a4.5 4.5 0 0 0 9 0C16.5 8.8 14.5 6.3 12 3z"/><path d="M2.5 19c1.5-1.2 3-1.2 4.5 0s3 1.2 4.5 0 3-1.2 4.5 0 3 1.2 5 0M3 22c1.5-1 3-1 4.5 0s3 1 4.5 0 3-1 4.5 0 3 1 4.5 0"/>',
