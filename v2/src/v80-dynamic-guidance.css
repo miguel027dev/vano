@@ -1,0 +1,70 @@
+/* Private V2: maneuver island grows for actionable turns and retreats on long straights.
+ * Never changes provider directions, MAVI audio, route geometry or camera calculations.
+ * VanoMap ResizeObserver automatically reclaims the newly exposed viewport. */
+.map-page.in-navigation .nav-instruction.v28-nav-instruction.v80-dynamic-island{
+  width:min(560px,calc(100% - 24px));
+  max-width:560px;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:18px;
+  transition:width .24s ease,padding .24s ease,border-radius .24s ease;
+  will-change:auto;
+}
+.map-page.in-navigation .nav-instruction.v28-nav-instruction.v80-dynamic-island .v28-nav-copy{
+  min-width:0;
+}
+.map-page.in-navigation .nav-instruction.v28-nav-instruction.v80-dynamic-island .v46-nav-instruction-text{
+  font-size:clamp(.82rem,2.9vw,.96rem);
+  line-height:1.3;
+  overflow-wrap:anywhere;
+}
+.map-page.in-navigation .nav-instruction.v28-nav-instruction.v80-dynamic-island.is-compact{
+  width:min(325px,calc(100% - 24px));
+  max-width:325px;
+  gap:9px;
+  padding:8px 10px;
+  border-radius:18px;
+}
+.map-page.in-navigation .v80-dynamic-island.is-compact .v28-turn-icon{
+  width:40px;height:40px;flex-basis:40px;
+  align-self:center;border-radius:12px;
+}
+.map-page.in-navigation .v80-dynamic-island.is-compact .v28-turn-icon .v46-maneuver-svg{
+  width:30px;height:30px;
+}
+.map-page.in-navigation .v80-dynamic-island.is-compact .v28-nav-copy{
+  animation:none;display:flex;flex-direction:column;justify-content:center;gap:3px;
+}
+.map-page.in-navigation .v80-dynamic-island.is-compact .v28-nav-copy strong.v46-nav-distance{
+  font-size:1.08rem;line-height:1.05;font-weight:850;
+}
+.map-page.in-navigation .nav-instruction.v80-dynamic-island.is-compact .v28-nav-copy .v46-nav-instruction-text{
+  font-size:.78rem;line-height:1.2;margin-top:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.map-page.in-navigation .nav-instruction.v80-dynamic-island.is-compact>.circle-btn{
+  width:40px;height:40px;min-width:40px;flex-basis:40px;
+}
+.map-page.in-navigation .v80-dynamic-island.is-compact .v28-nav-copy strong.v46-nav-distance,
+.map-page.in-navigation .v80-dynamic-island.is-compact .v46-nav-instruction-text{
+  color:var(--ink,#172532);
+}
+.map-page[data-map-appearance="dark"].in-navigation .v80-dynamic-island.is-compact .v28-nav-copy strong.v46-nav-distance,
+.map-page[data-map-appearance="dark"].in-navigation .v80-dynamic-island.is-compact .v46-nav-instruction-text{
+  color:var(--v50-text,#edf5f7);
+}
+@media(max-width:375px){
+ .map-page.in-navigation .nav-instruction.v28-nav-instruction.v80-dynamic-island{
+   gap:7px;padding:9px;
+ }
+ .map-page.in-navigation .nav-instruction.v28-nav-instruction.v80-dynamic-island.is-compact{
+   padding:7px 8px;
+ }
+ .map-page.in-navigation .v80-dynamic-island.is-compact .v28-turn-icon{
+   width:36px;height:36px;flex-basis:36px;
+ }
+ .map-page.in-navigation .v80-dynamic-island.is-compact .v28-nav-copy strong.v46-nav-distance{font-size:1rem}
+}
+@media(prefers-reduced-motion:reduce){
+ .map-page.in-navigation .nav-instruction.v28-nav-instruction.v80-dynamic-island{transition:none}
+}
