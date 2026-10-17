@@ -18,6 +18,9 @@ export function syncNight3DBuildings(map,{appearance='light',layer='streets'}={}
   return false;
  }
  if(existing)return true;
+ // Standard already renders Mapbox's own detailed 3D buildings and trees.
+ // Never stack VANO's old extrusions on top of provider-native 3D geometry.
+ if(map._vanoStyle==='mapbox://styles/mapbox/standard')return true;
  if(!map.getSource?.('composite'))return false;
  const style=map.getStyle?.();
  const layers=Array.isArray(style?.layers)?style.layers:[];
