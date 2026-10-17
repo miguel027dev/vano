@@ -72,7 +72,7 @@ function popupBody(item,onSelect){
  if(item.description){const desc=document.createElement('p');desc.textContent=item.description;info.append(desc);}
  if(info.childNodes.length)wrapper.append(info);
  const coords=item.coords;
- if(typeof onSelect==='function'&&Array.isArray(coords)&&coords.length===2&&
+ if(!['radar','relato-radar'].includes(item.type)&&typeof onSelect==='function'&&Array.isArray(coords)&&coords.length===2&&
    coords.every(Number.isFinite)&&Math.abs(coords[0])<=180&&Math.abs(coords[1])<=90){
   const action=document.createElement('button');action.type='button';
   action.className='v40-public-popup-action';
