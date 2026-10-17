@@ -35,18 +35,61 @@ function buildPin(item){
  element.append(chip);
  return element;
 }
-function popupBody(item){
+// Compact place information: text comes from public providers and is never interpolated into HTML.
+const PLACE_LABELS={
+ radar:'Radar',semaforo:'Semáforo',lombada:'Lombada',pare:'Sinalização',preferencia:'Preferência',
+ placa:'Placa de trânsito',travessia:'Travessia',ferrovia:'Cruzamento ferroviário',
+ rotatoria:'Rotatória',obra:'Obra na via',hospital:'Hospital',saude:'Saúde',
+ bombeiros:'Bombeiros','policia-base':'Polícia',combustivel:'Posto de combustível',
+ estacionamento:'Estacionamento',banco:'Banco',eletroposto:'Recarga elétrica',
+ 'relato-transito':'Alerta de trânsito','relato-obra':'Obra sinalizada',
+ 'alerta-via':'Alerta viário','relato-acidente':'Acidente','relato-risco':'Alerta de risco',
+ 'relato-radar':'Radar',mercado:'Mercado',supermercado:'Supermercado',shopping:'Shopping',
+ 'estacao-recarga':'Estação de recarga','carregador-eletrico':'Carregador elétrico',
+ restaurante:'Restaurante',fastfood:'Alimentação',cafeteria:'Cafeteria',hotel:'Hotel',
+ escola:'Escola',academia:'Academia',parque:'Parque',petshop:'Pet shop',
+ correios:'Correios',farmacia:'Farmácia',lavarapido:'Lava-rápido',
+ 'terminal-onibus':'Terminal de ônibus','estacao-trem':'Estação de trem',
+ 'estacao-ferroviaria':'Estação ferroviária',aeroporto:'Aeroporto'
+};
+function popupBody(item,onSelect){
  const wrapper=document.createElement('div');wrapper.className='v40-public-popup';
- const title=document.createElement('strong');title.textContent=item.name;
- const source=document.createElement('small');
+ const head=document.createElement('div');head.className='v40-public-popup-head';
+ const pictogram=document.createElement('span');pictogram.className='v40-public-popup-icon';
+ // iconSvg only accepts our closed glyph enum, not provider HTML.
+ pictogram.innerHTML=iconSvg(item.type);
+ const heading=document.createElement('div');heading.className='v40-public-popup-heading';
+ const category=document.createElement('span');category.className='v40-public-popup-category';
+ category.textContent=PLACE_LABELS[item.type]||'Local no mapa';
+ const title=document.createElement('strong');title.className='v40-public-popup-title';
+ title.textContent=item.name||'Local no mapa';
+ heading.append(category,title);head.append(pictogram,heading);wrapper.append(head);
+ const info=document.createElement('div');info.className='v40-public-popup-info';
+ const source=document.createElement('small');source.className='v40-public-popup-source';
  source.textContent='Fonte: '+item.source+(item.source==='TomTom Traffic'?' · alerta do provedor':item.regional?' · atualização oficial':item.verified?' · relato verificado':' · cadastro público');
- wrapper.append(title);
  // Required provider attribution stays in the persistent map credit; the POI popup is clean.
- if(item.source!=='TomTom Search'&&item.source!=='TomTom Traffic')wrapper.append(source);
- if(item.description){const desc=document.createElement('p');desc.textContent=item.description;wrapper.append(desc);}
+ if(item.source!=='TomTom Search'&&item.source!=='TomTom Traffic')info.append(source);
+ if(item.description){const desc=document.createElement('p');desc.textContent=item.description;info.append(desc);}
+ if(info.childNodes.length)wrapper.append(info);
+ const coords=item.coords;
+ if(typeof onSelect==='function'&&Array.isArray(coords)&&coords.length===2&&
+   coords.every(Number.isFinite)&&Math.abs(coords[0])<=180&&Math.abs(coords[1])<=90){
+  const action=document.createElement('button');action.type='button';
+  action.className='v40-public-popup-action';
+  action.setAttribute('aria-label','Ir para '+(item.name||'este destino'));
+  const label=document.createElement('span');label.textContent='Ir para este destino';
+  const arrow=document.createElement('span');arrow.className='v40-public-popup-action-arrow';
+  arrow.setAttribute('aria-hidden','true');arrow.textContent='→';
+  action.append(label,arrow);
+  action.addEventListener('click',event=>{
+   event.preventDefault();event.stopPropagation();
+   onSelect();
+  });
+  wrapper.append(action);
+ }
  return wrapper;
 }
-export function attachPublicMapOverlay(map,backend,getNavigation=()=>false){
+export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPickPlace=null){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
  let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,radarRetryTimer=null,radarRetryCount=0,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,chargeKey='',chargeReadAt=0,chargeDisabled=false,chargeController=null,chargeTimer=null,overtureKey='',overtureReadAt=0,overtureDisabled=false,overtureController=null,overtureTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
@@ -102,15 +145,21 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false){
   for(const item of allowed){
    if(markers.has(item.id))continue;
    const element=buildPin(item);
-   const popup=popupBody(item);
    let marker;
+   const popup=popupBody(item,typeof onPickPlace==='function'?()=>{
+    // Never replace an active driving route from a map point card.
+    if(getNavigation())return;
+    if(backend==='mapbox')marker?.getPopup?.()?.remove?.();
+    else marker?.closePopup?.();
+    onPickPlace({id:item.id,name:item.name||'Local no mapa',coords:[...item.coords],source:item.source,type:item.type});
+   }:null);
    if(backend==='mapbox'){
     marker=new mapboxgl.Marker({element,anchor:'bottom'}).setLngLat(item.coords).addTo(map);
-    marker.setPopup(new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:14,maxWidth:'240px'}).setDOMContent(popup));
+    marker.setPopup(new mapboxgl.Popup({closeButton:true,closeOnClick:true,offset:18,maxWidth:'310px',className:'v40-place-popover'}).setDOMContent(popup));
    }else{
     const icon=L.divIcon({className:'v40-leaflet-pin',html:element.outerHTML,iconSize:[44,44],iconAnchor:[22,40]});
     marker=L.marker([item.coords[1],item.coords[0]],{icon,riseOnHover:true}).addTo(map);
-    marker.bindPopup(popup,{maxWidth:240});
+    marker.bindPopup(popup,{minWidth:235,maxWidth:310,className:'v40-place-popover'});
    }
    markers.set(item.id,{marker});
   }
