@@ -38,6 +38,7 @@ import {findWalkingCrossings} from './walking-crossings.mjs';
 import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
+import {queryWorldRadarCatalog} from './world-radar-catalog.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {parseTomTomBBox,tomtomSnapshot,TOMTOM_ENV_NAME,cachedTomTomRouteIncidents} from './tomtom-incidents.mjs';
 import {tomtomPoiSnapshot,searchTomTomPlaces} from './tomtom-pois.mjs';
@@ -1368,6 +1369,18 @@ const host=process.env.API_HOST||'127.0.0.1';
  // Do not accept public bind addresses outside the trusted Render runtime.
  if(production && !['127.0.0.1','::1','localhost'].includes(host) && !(renderWeb && host==='0.0.0.0')) throw Error('O backend de produção deve ficar privado ou protegido pelo proxy HTTPS do Render.');
 if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
+// Warm the actual worldwide OSM camera catalog once on Render startup.
+// This is nonblocking: a slow or down provider never delays the API or routing.
+// The result is logged as public aggregate counts, never individual locations.
+if(renderWeb && process.env.VANO_WORLD_RADAR_PREWARM!=='0'){
+ void queryWorldRadarCatalog([-.14,51.50,-.11,51.53])
+  .then(result=>console.info('[VANO world radar prewarm]',JSON.stringify({
+   available:result.available===true,datasetCount:result.datasetCount,
+   feeds:result.sourceStatus.map(x=>({id:x.id,loaded:x.loaded,count:x.count}))
+  })))
+  .catch(error=>console.warn('[VANO world radar prewarm] unavailable:',
+   error?.message||String(error)));
+}
 // A single asynchronous startup read proves Render can consume the private B2
 // snapshot. This never blocks startup or changes the route provider.
 if(renderWeb&&process.env.VANO_SAFE_B2_TEST_SNAPSHOT){
