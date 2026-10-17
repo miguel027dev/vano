@@ -45,8 +45,8 @@ test('administrator simulation is never available on the public map or as real G
  const css=readFileSync(new URL('../admin-route-simulator.css',import.meta.url),'utf8');
  const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(page,/adminV2RoadSigns=location\.pathname==='\/v2'&&user\?\.isAdmin===true/);
- assert.match(page,/adminV2RoadSigns&&\(route\|\|simActive\)&&<button/);
- assert.match(page,/if\(!adminV2RoadSigns\|\|navMode\|\|!active/);
+ assert.match(page,/adminV2RoadSigns&&<button type="button"/);
+ assert.match(page,/if\(!adminV2RoadSigns\|\|!active\)return/);
  assert.match(page,/gpsCoords=\{simPosition\|\|userCoords\}/);
  assert.match(page,/simulationPreview=\{simActive\}/);
  assert.match(map,/latest\.current\.simulationPreview\?null:latest\.current\.gpsCoords/);
@@ -64,4 +64,31 @@ test('administrator simulation is never available on the public map or as real G
  assert.doesNotMatch(page,/lastGpsFix\.current=sim/);
  assert.doesNotMatch(page,/setUserCoords\(sim/);
  assert.doesNotMatch(page,/queueTripWrite\(\{[^\n]*sim/);
+});
+
+test('simulation control is always click-enabled on admin V2 and gives guidance without a route',()=>{
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../admin-route-simulator.css',import.meta.url),'utf8');
+ const btn=page.slice(page.indexOf('className={`circle-btn v76-sim-toggle'),page.indexOf('{simActive?<Square size={19}/>:<Play size={20}/>}'));
+ assert.ok(btn.length>100,'expected the route simulation button JSX');
+ assert.doesNotMatch(btn,/disabled=/,'the simulation button must not silently disable itself');
+ assert.match(btn,/onClick=\{simActive\?stopRouteSimulation:startRouteSimulation\}/);
+ assert.match(page,/setToast\(loadingRoute\?'Aguarde o cálculo/);
+ assert.match(page,/setToast\('Simulação iniciada\. O GPS real não será alterado\.'/);
+ assert.match(css,/\.map-page \.v76-sim-toggle\{[\s\S]*?opacity:1;cursor:pointer/);
+ assert.match(css,/\.map-page\[data-map-appearance="dark"\] \.v76-sim-toggle:not\(\.is-playing\)/);
+});
+test('active real navigation requires confirmation before changing to GPS-isolated simulation',()=>{
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../admin-route-simulator.css',import.meta.url),'utf8');
+ assert.match(page,/if\(navMode&&!simActive\)\{\s*setSimConfirmOpen\(true\)/);
+ assert.match(page,/simConfirmOpen&&<div className="v76-sim-confirm-backdrop"/);
+ assert.match(page,/role="dialog" aria-modal="true"/);
+ assert.match(page,/onClick=\{activateRouteSimulation\}>Iniciar simulação/);
+ assert.match(page,/syncMeasuredDistance\(true\);\s*measuredTrip\.current=null/);
+ assert.match(page,/stopNavigationVoice\(\{native:isNativeShell\(\),sendNative:notifyNative\}\)/);
+ assert.match(page,/void deleteOffline\('active-trip'\)/);
+ assert.match(page,/routeEpoch\.current\+\+; \/\/ Ignore any pending reroute/);
+ assert.match(css,/\.v76-sim-confirm-backdrop/);
+ assert.match(css,/data-map-appearance="dark"/);
 });
