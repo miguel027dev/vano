@@ -44,6 +44,8 @@ import '../route-mode-detail.css';
 import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
+import {dynamicManeuverIsland} from '../lib/dynamicManeuverIsland.mjs';
+import '../v80-dynamic-guidance.css';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,savePreference,report,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
@@ -143,8 +145,10 @@ export default function MapPage({active=true}){
   },[navMode,muted,language]);
   useEffect(()=>{const native=e=>onPosition(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
   useEffect(()=>{notifyNative({action:'navigation',active:navMode&&!simActive});return()=>notifyNative({action:'navigation',active:false});},[navMode,simActive]);
-  useEffect(()=>{notifyNative({action:'wake',active:navMode&&!simActive});return()=>notifyNative({action:'wake',active:false});},[navMode,simActive]);
-  useEffect(()=>navMode&&active&&!simActive?startNavigationWakeLock():undefined,[navMode,active,simActive]);
+  useEffect(()=>{notifyNative({action:'wake',active:navMode});return()=>notifyNative({action:'wake',active:false});},[navMode]);
+  // Keep the screen on during both actual navigation and administrator route playback.
+  // Browser/OS controls remain authoritative; releasing on exit/hidden tab is automatic.
+  useEffect(()=>navMode&&active?startNavigationWakeLock():undefined,[navMode,active]);
   useEffect(()=>{const result=e=>{if(e.detail?.id!==offlineGeneration.current)return;setOfflineMap(v=>({...v,status:e.detail.ok?'ready':'partial'}));};window.addEventListener('vano:offline-map',result);return()=>window.removeEventListener('vano:offline-map',result);},[]);
 
   // Floating map controls are positioned against the ACTUAL route panel height.
@@ -1005,6 +1009,10 @@ export default function MapPage({active=true}){
   const speedometer=<output className="v43-speedometer" aria-label={simActive?`Simulação: ${shownSpeedKmh} quilômetros por hora`:speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`+(postedLimit===null?'':`. Limite informado da via: ${postedLimit} quilômetros por hora`)} aria-live="off" title={simActive?'Velocidade simulada do percurso':postedLimit===null?'Velocidade do GPS. Limite da via indisponível':'Velocidade do GPS e limite informado pelo Mapbox'}><strong>{simActive?shownSpeedKmh:speedKmh===null?'—':speedKmh}</strong><small>km/h</small>{postedLimit!==null&&<span className="v43-speed-limit" aria-label={`Limite de velocidade informado: ${postedLimit} km/h`}><b>{postedLimit}</b></span>}</output>;
 
   const nextTurnText=maneuverText(shownGuidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
+  const islandPresentation=dynamicManeuverIsland(shownGuidance,{
+    vehicle:routeVehicle,language,crossingNearby:Boolean(mappedCrossing)
+  });
+  const compactIsland=adminV2RoadSigns&&islandPresentation.compact;
   const visualLanes=Array.isArray(shownGuidance?.lanes)?shownGuidance.lanes.map((lane,index)=>({
     index,valid:lane?.valid===true,symbols:laneVariants(lane),
   })).filter(lane=>lane.symbols.length):[];
@@ -1035,19 +1043,19 @@ export default function MapPage({active=true}){
       </div>
       </div></>}
       {jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"/>}
-    </div> : <div className="nav-instruction v28-nav-instruction" aria-label="Instrução da próxima manobra">
+    </div> : <div className={`nav-instruction v28-nav-instruction ${adminV2RoadSigns?'v80-dynamic-island':''} ${compactIsland?'is-compact':''}`} aria-label="Instrução da próxima manobra">
       <div className="turn-icon v28-turn-icon">
         <ManeuverGlyph variant={maneuverVariant(shownGuidance)} size={37}/>
       </div>
       <div className="v28-nav-copy" key={`${shownGuidance?.stepIndex??'inicio'}:${shownGuidance?.instruction||''}`}>
         <strong className="v46-nav-distance" aria-live="off">{displayManeuverDistance(shownGuidance?.distance,language)}</strong>
-        <span className="v46-nav-instruction-text" aria-live="polite">{nextTurnText.instruction}</span>
-        {nextTurnText.street&&<span className="v46-nav-street">{nextTurnText.street}</span>}
-         {mappedCrossing?<span className="v70-nav-context" aria-live="off">
+        <span className="v46-nav-instruction-text" aria-live="polite" title={nextTurnText.instruction}>{compactIsland?islandPresentation.instruction:nextTurnText.instruction}</span>
+        {nextTurnText.street&&!compactIsland&&<span className="v46-nav-street">{nextTurnText.street}</span>}
+         {!compactIsland&&mappedCrossing?<span className="v70-nav-context" aria-live="off">
            {crossingLabel(mappedCrossing,language)} · {mappedCrossing.distance} m
            <small>{crossingSafetyNote(language)} · OpenStreetMap</small>
-         </span>:modeManeuverDetail(routeVehicle,guidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,guidance)}</span>}
-        {visualLanes.length>0&&<div className="v28-lane-guidance" role="group" aria-label="Orientação de faixas da rota">
+         </span>:!compactIsland&&modeManeuverDetail(routeVehicle,guidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,guidance)}</span>}
+        {!compactIsland&&visualLanes.length>0&&<div className="v28-lane-guidance" role="group" aria-label="Orientação de faixas da rota">
           {visualLanes.map(lane=><span key={lane.index} className={`v46-lane ${lane.valid?'suggested':''}`}
             title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}
             role="img" aria-label={`Faixa ${lane.index+1}${lane.valid?', recomendada':''}: ${lane.symbols.join(' ou ')}`}>
