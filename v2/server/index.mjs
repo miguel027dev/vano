@@ -1384,6 +1384,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     let name;
     try { name=decodeURIComponent(new URL(req.url,'http://localhost').pathname); }
     catch { return err(res,400,'URL inválida.'); }
+    if(/^\/v2(?:\/|$)/i.test(name)&&!isAdminAccount(userSession(req)?.user))return err(res,403,'Mapa administrativo restrito.');
     if(method==='GET'&&PUBLIC_PATHS.includes(name))runtimeMetrics.pageViews[name]=(runtimeMetrics.pageViews[name]||0)+1;
     if(name==='/')name='/index.html';
     let target=path.resolve(dist,'.'+name);
@@ -1392,10 +1393,10 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     if(!target.startsWith(dist+path.sep)||!fs.existsSync(target)||!fs.statSync(target).isFile())target=path.join(dist,'index.html');
     if(!fs.existsSync(target)){res.writeHead(404,headers);return res.end('Frontend não compilado. Rode npm run build.');}
     const contentType=types[path.extname(target)]||'application/octet-stream';
-    const privatePage=/^\/(admin|perfil|conta|entrar|cadastro|recuperar-senha|redefinir-senha|personalizar|atividade|favoritos|rotinas|configuracoes|relatar)(\/|$)/.test(name);
-    // Opt in to microphone access only for the experimental V2 document.
-    // The stable /mapa page keeps microphone=() and still requires explicit permission.
-    const voiceDocument=name==='/v2' && target.endsWith('index.html');
+    const privatePage=/^\/(v2|admin|perfil|conta|entrar|cadastro|recuperar-senha|redefinir-senha|personalizar|atividade|favoritos|rotinas|configuracoes|relatar)(\/|$)/.test(name);
+    // The public V1 map and private administrator V2 map opt in to microphone
+    // access. Voice capture still requires an explicit browser permission and tap.
+    const voiceDocument=(name==='/v2'||name==='/mapa') && target.endsWith('index.html');
     res.writeHead(200,{...headers,...(voiceDocument?{'Permissions-Policy':'camera=(), microphone=(self), payment=(), geolocation=(self)'}:{}),'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
     if(method==='HEAD')return res.end();
     fs.createReadStream(target).pipe(res);
