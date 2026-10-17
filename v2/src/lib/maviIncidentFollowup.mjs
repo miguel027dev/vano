@@ -25,7 +25,7 @@ export function maviIncidentOffer(type){return OFFERS[type]||null;}
 export function maviIncidentFollowupDecision(value){
  if(typeof value!=='string'||value.length>160)return null;
  const s=maviNormalize(value);
- if(!s||/^(?:como|qual|quando|por que|porque|sera|quanto|e se)\b/.test(s))return null;
+ if(!s||/^(?:como|qual|quando|por que|porque|sera|quanto|e se|nao sei|nao entendi|nao tenho certeza)\b/.test(s))return null;
  if(/^(?:nao|negativo|agora nao|melhor nao|nao obrigado|nao obrigada|deixa|deixa quieto|mantem a rota|mantenha a rota|cancela|cancelar|esquece|depois|mais tarde)(?:\b|$)/.test(s))return 'reject';
  if(/\b(?:nao|talvez|depende|espera|mais tarde|depois)\b/.test(s))return null;
  if(/^(?:(?:sim|claro|quero sim|pode|pode sim|com certeza|isso|bora|manda|vai|beleza)|pode (?:procurar|buscar|recalcular|calcular)(?: (?:outra rota|um novo caminho|uma rota mais rapida))?|quero (?:outra rota|um caminho diferente|uma rota mais rapida|rota mais rapida)|(?:procura|busca|recalcula) outra rota)$/.test(s)){
