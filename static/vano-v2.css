@@ -206,3 +206,53 @@ body.vano-v2 #v2Shortcuts:focus-within{scroll-behavior:smooth}
     font-size:13px!important; letter-spacing:-.25px!important;
   }
 }
+
+/* V2 Sim stays exclusively inside the V2 route planner; the standard simulator
+   and the production navigation controls retain their existing presentation. */
+body.vano-v2 #adminRouteTestSlot{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:9px!important;
+}
+body.vano-v2 #adminSimV2Btn{
+  width:100%;
+  min-height:60px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  border-radius:19px;
+  border:1px solid rgba(244,129,66,.34);
+  background:linear-gradient(128deg,rgba(255,247,239,.98),rgba(255,255,255,.97));
+  box-shadow:0 6px 20px rgba(33,43,52,.07),inset 0 1px 0 rgba(255,255,255,.84);
+  color:#29333d;
+  transition:transform .2s ease,box-shadow .25s ease,border-color .25s ease,background .25s ease;
+}
+body.vano-v2 #adminSimV2Btn .admin-route-test-icon{
+  background:linear-gradient(140deg,#f68b4a,#ed6436);
+  color:#fff;
+}
+body.vano-v2 #adminSimV2Btn .admin-route-test-badge{
+  background:rgba(237,111,55,.12);
+  color:#b45127;
+}
+body.vano-v2 #adminSimV2Btn:hover{
+  border-color:rgba(231,105,49,.58);
+  box-shadow:0 9px 26px rgba(33,43,52,.11);
+  transform:translateY(-1px);
+}
+body.vano-v2 #adminSimV2Btn:focus-visible{
+  outline:3px solid rgba(239,118,62,.38);
+  outline-offset:3px;
+}
+body.vano-v2 #adminSimV2Btn.running{
+  background:linear-gradient(130deg,#fbe4d1,#fff7ed);
+  border-color:#e9773f;
+}
+@media(max-width:420px){
+  body.vano-v2 #adminSimV2Btn{gap:9px;min-height:58px;border-radius:17px}
+  body.vano-v2 #adminSimV2Btn .admin-route-test-copy small{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+  body.vano-v2 #adminSimV2Btn{transition:none}
+  body.vano-v2 #adminSimV2Btn:hover{transform:none}
+}
