@@ -353,7 +353,13 @@ export default function MapPage({active=true}){
     const controller=new AbortController();
     // Never let an older server response overwrite the latest query.
     setSuggestions([]);setSearchError('');setSearchBusy(true);
+    let deadline=null;
     const timer=setTimeout(()=>{
+      deadline=setTimeout(()=>{
+        if(controller.signal.aborted)return;
+        controller.abort();
+        setSuggestions([]);setSearchError('A busca demorou a responder. Tente novamente.');setSearchBusy(false);
+      },15000);
       api('/search?q='+encodeURIComponent(term)+'&lang='+encodeURIComponent(language)+nearby,{signal:controller.signal})
         .then(items=>{
           if(controller.signal.aborted)return;
@@ -363,9 +369,9 @@ export default function MapPage({active=true}){
           setSuggestions(results);
         })
         .catch(error=>{if(!controller.signal.aborted){setSuggestions([]);setSearchError(error?.message||'Busca indisponível no momento.');}})
-        .finally(()=>{if(!controller.signal.aborted)setSearchBusy(false);});
+        .finally(()=>{clearTimeout(deadline);if(!controller.signal.aborted)setSearchBusy(false);});
     },250);
-    return()=>{clearTimeout(timer);controller.abort();};
+    return()=>{clearTimeout(timer);clearTimeout(deadline);controller.abort();};
   },[query,searchOpen,allPlaces,language,searchBias]);
   async function calculateRoute(place,departure,vehicle=routeVehicle){
     // Any new route request supersedes a pending vehicle-change debounce.
@@ -455,13 +461,19 @@ export default function MapPage({active=true}){
     const q=editorQuery.trim();
     if(q.length<2){setEditorResults(allPlaces.slice(0,6));setEditorError('');setEditorBusy(false);return;}
     const controller=new AbortController();setEditorError('');setEditorBusy(true);
+    let deadline=null;
     const timer=setTimeout(()=>{
+      deadline=setTimeout(()=>{
+        if(controller.signal.aborted)return;
+        controller.abort();
+        setEditorResults([]);setEditorError('A busca demorou. Tente novamente.');setEditorBusy(false);
+      },15000);
       api(`/search?q=${encodeURIComponent(q)}&lang=${encodeURIComponent(language)}${searchBias}`, {signal:controller.signal})
       .then(items=>{if(!controller.signal.aborted)setEditorResults(Array.isArray(items)?items:[]);})
       .catch(error=>{if(!controller.signal.aborted){setEditorResults([]);setEditorError(error?.message||'Busca indisponível no momento.');}})
-      .finally(()=>{if(!controller.signal.aborted)setEditorBusy(false);});
+      .finally(()=>{clearTimeout(deadline);if(!controller.signal.aborted)setEditorBusy(false);});
     },250);
-    return()=>{clearTimeout(timer);controller.abort()};
+    return()=>{clearTimeout(timer);clearTimeout(deadline);controller.abort()};
   },[editor,editorQuery,allPlaces,language,searchBias]);
   function clickShortcut(s){
     if(s.name==='Rotina'){navigate('/rotinas');return;}
