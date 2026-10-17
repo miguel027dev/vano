@@ -2,6 +2,8 @@ import React,{useEffect,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
+import QuickReportSheet from '../components/QuickReportSheet.jsx';
+import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
 import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
@@ -39,7 +41,7 @@ import {isNativeShell,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
-  const {user,preferences,favorites,saveTrip,savePreference,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
+  const {user,preferences,favorites,saveTrip,savePreference,report,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/mapa'||location.pathname==='/v2';
   // Experiment is available ONLY in the role-gated administrator route.
   const adminV2RoadSigns=location.pathname==='/v2'&&user?.isAdmin===true;
@@ -47,6 +49,8 @@ export default function MapPage({active=true}){
   // optimistic value makes the button respond before the preference POST.
   const [systemDark,setSystemDark]=useState(()=>window.matchMedia?.('(prefers-color-scheme: dark)')?.matches===true);
   const [mapThemeOverride,setMapThemeOverride]=useState(null);
+  const [quickReportOpen,setQuickReportOpen]=useState(false);
+  useEffect(()=>{if(!active)setQuickReportOpen(false);},[active]);
   const [savingMapTheme,setSavingMapTheme]=useState(false);
   useEffect(()=>{
     const media=window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -879,6 +883,8 @@ export default function MapPage({active=true}){
       fresh:hasRecentGpsFix(lastGpsFix.current,Date.now(),15000),
       simulated:demoRoute
     }):null;
+  const readQuickReportGPS=()=>quickReportPosition(lastGpsFix.current);
+  const reportMotionBlocked=quickReportMotionBlocked(navMode,telemetry.speed);
   const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`+(postedLimit===null?'':`. Limite informado da via: ${postedLimit} quilômetros por hora`)} aria-live="off" title={postedLimit===null?'Velocidade do GPS. Limite da via indisponível':'Velocidade do GPS e limite informado pelo Mapbox'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small>{postedLimit!==null&&<span className="v43-speed-limit" aria-label={`Limite de velocidade informado: ${postedLimit} km/h`}><b>{postedLimit}</b></span>}</output>;
 
   const nextTurnText=maneuverText(guidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
@@ -972,6 +978,7 @@ export default function MapPage({active=true}){
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {!navMode&&<button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>}
       <button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
+      {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
     </div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
@@ -1035,13 +1042,14 @@ export default function MapPage({active=true}){
             <span>{navigationStats?fmtKm(navigationStats.remainingKm,language):'-- km'}</span>
           </div>
         </div>
-        <Link className="circle-btn v36-nav-report" to="/relatar" title="Registrar alerta" aria-label="Registrar alerta"><AlertTriangle size={19} strokeWidth={1.9}/></Link>
+        <button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>
       </div>
       {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Voz de navegação indisponível no aparelho.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
       {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
       {!hasLiveGPS&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
       {demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}
     </div>}
-
+    {quickReportOpen&&<QuickReportSheet onClose={()=>setQuickReportOpen(false)} onSubmit={report}
+      readPosition={readQuickReportGPS} onRetryLocation={()=>requestGPS(false)} moving={reportMotionBlocked}/>}
   </div>
 }
