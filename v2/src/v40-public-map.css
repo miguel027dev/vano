@@ -71,12 +71,13 @@
  transition:background-color .2s ease,color .2s ease,border-color .2s ease;
 }
 .map-page .v40-place-popover .mapboxgl-popup-tip,
-.map-page .v40-place-popover .leaflet-popup-tip,
-.map-page[data-map-appearance="dark"] .v40-place-popover .mapboxgl-popup-tip,
-.map-page[data-map-appearance="dark"] .v40-place-popover .leaflet-popup-tip{
- background:var(--v40-popup-bg);
+.map-page[data-map-appearance="dark"] .v40-place-popover .mapboxgl-popup-tip{
  border-top-color:var(--v40-popup-bg);
  border-bottom-color:var(--v40-popup-bg);
+}
+.map-page .v40-place-popover .leaflet-popup-tip,
+.map-page[data-map-appearance="dark"] .v40-place-popover .leaflet-popup-tip{
+ background:var(--v40-popup-bg);border-color:var(--v40-popup-line);
 }
 .map-page .v40-place-popover .leaflet-popup-content{margin:0;width:auto!important}
 .map-page .v40-place-popover .mapboxgl-popup-close-button,
