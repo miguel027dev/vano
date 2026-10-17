@@ -57,7 +57,7 @@ import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
-import {isReportType,reportType,reportExpiration,publicReportsInBBox,metersApart} from '../src/lib/communityReports.js';
+import {isReportType,reportType,publicReportsInBBox,metersApart,recordReportFeedback} from '../src/lib/communityReports.js';
 import {createReportStreamHub} from './reports-live.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
@@ -1387,18 +1387,16 @@ async function route(req, res) {
     const actor=owner(req);
     if(!actor)return err(res,401,'Identifique sua sessão para confirmar uma ocorrência.');
     const record=db.reports.find(r=>r.id===feedbackMatch[1]);
-    if(!record||!['nao_verificado','verificado'].includes(record.status)||!(reportExpiration(record)>now()))
-      return err(res,404,'Esta ocorrência não está mais disponível.');
-    if(record.owner===actor)return err(res,403,'Você não pode confirmar sua própria ocorrência.');
+    if(!record)return err(res,404,'Esta ocorrência não está mais disponível.');
     const body=await getBody(req);
-    if(body.choice!=='present'&&body.choice!=='gone')return err(res,400,'Confirmação inválida.');
     const key=sha256('report-feedback:'+secret+':'+actor);
-    if(record.feedback?.[key])
-      return json(res,200,{recorded:true,choice:record.feedback[key],alreadyRecorded:true});
-    if(Object.keys(record.feedback||{}).length>=256)
-      return err(res,429,'Limite de confirmações atingido para esta ocorrência.');
-    record.feedback??={};
-    record.feedback[key]=body.choice;
+    const result=recordReportFeedback(record,actor,key,body.choice,now());
+    if(result.status==='own')return err(res,403,'Você não pode confirmar sua própria ocorrência.');
+    if(result.status==='expired')return err(res,404,'Esta ocorrência não está mais disponível.');
+    if(result.status==='invalid')return err(res,400,'Confirmação inválida.');
+    if(result.status==='limit')return err(res,429,'Limite de confirmações atingido para esta ocorrência.');
+    if(result.status==='duplicate')
+      return json(res,200,{recorded:true,choice:result.choice,alreadyRecorded:true});
     await persist();
     // A single negative confirmation must never erase a community alert.
     // Voting is advisory until verified moderation is introduced.
