@@ -48,7 +48,7 @@ function popupBody(item){
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,radarRetryTimer=null,radarRetryCount=0,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,chargeKey='',chargeReadAt=0,chargeDisabled=false,chargeController=null,chargeTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
+ let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,radarRetryTimer=null,radarRetryCount=0,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,chargeKey='',chargeReadAt=0,chargeDisabled=false,chargeController=null,chargeTimer=null,overtureKey='',overtureReadAt=0,overtureDisabled=false,overtureController=null,overtureTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
  const sourceCache=new Map(); // OSM, verified reports and radar points; never erased on viewport changes.
  const markers=new Map();
@@ -323,6 +323,38 @@ export function attachPublicMapOverlay(map,backend){
    if(error?.name!=='AbortError'){chargeReadAt=Date.now()-140000;}
   }
  }
+ async function refreshOverture(bbox){
+  if(done||document.hidden||overtureDisabled)return;
+  const key=bbox.map(n=>n.toFixed(3)).join(',');
+  if(key===overtureKey&&Date.now()-overtureReadAt<200000)return;
+  overtureController?.abort();
+  const request=new AbortController();overtureController=request;
+  try{
+   const response=await fetch('/api/places/overture?bbox='+encodeURIComponent(bbox.join(',')),
+    {signal:request.signal,headers:{Accept:'application/json'}});
+   if(!response.ok)throw Error('Overture POIs: '+response.status);
+   const data=await response.json();
+   if(done||request.signal.aborted)return;
+   if(data.enabled===false){overtureDisabled=true;return;}
+   if(Array.isArray(data.features)&&data.features.length){
+    rememberPublicFeatures(sourceCache,data.features.filter(p=>p?.poi===true&&p?.source==='Overture Maps').slice(0,90));
+    mergeSources();render();
+   }
+   overtureKey=key;overtureReadAt=Date.now();
+   if(data.status==='loading'){
+    if(overtureTimer!==null)clearTimeout(overtureTimer);
+    overtureTimer=setTimeout(()=>{
+     overtureTimer=null;
+     if(done||document.hidden)return;
+     overtureReadAt=0;
+     const visible=mapFeatureBBox(map,backend);
+     if(visible)void refreshOverture(visible);
+    },4600);
+   }
+  }catch(error){
+   if(error?.name!=='AbortError'){overtureReadAt=Date.now()-190000;}
+  }
+ }
  async function refreshTomTom(bbox){
   if(tomtomDisabled||done||document.hidden)return;
   const key=bbox.map(n=>n.toFixed(3)).join(',');
@@ -371,6 +403,7 @@ export function attachPublicMapOverlay(map,backend){
   void refreshTomTom(bbox);
   void refreshTomTomPoi(bbox);
   void refreshCharge(bbox);
+  void refreshOverture(bbox);
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
   if(controller)controller.abort();
@@ -422,6 +455,8 @@ export function attachPublicMapOverlay(map,backend){
   if(tomtomTimer!==null)clearTimeout(tomtomTimer);
   if(tomtomPoiTimer!==null)clearTimeout(tomtomPoiTimer);
   if(chargeTimer!==null)clearTimeout(chargeTimer);
+  if(overtureTimer!==null)clearTimeout(overtureTimer);
+  overtureController?.abort();
   chargeController?.abort();
   tomtomController?.abort();
   tomtomPoiController?.abort();
