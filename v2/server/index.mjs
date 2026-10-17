@@ -40,6 +40,7 @@ import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from 
 import {queryPublicRadars} from './map-radars.mjs';
 import {queryWorldRadarCatalog} from './world-radar-catalog.mjs';
 import {openChargeSnapshot} from './open-charge-map.mjs';
+import {officialRoadSources,officialRoadSnapshot} from './official-road-providers.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {parseTomTomBBox,tomtomSnapshot,TOMTOM_ENV_NAME,cachedTomTomRouteIncidents} from './tomtom-incidents.mjs';
 import {tomtomPoiSnapshot,searchTomTomPlaces} from './tomtom-pois.mjs';
@@ -696,13 +697,26 @@ async function route(req, res) {
   // Geographic keyless public road updates. Cached return is synchronous;
   // remote transport runs independently of /api/route and map boot.
   if(pathname==='/api/road-events/regional/sources'&&req.method==='GET')
-    return json(res,200,{sources:KEYLESS_ROAD_SOURCES});
+    return json(res,200,{sources:[...officialRoadSources(),...KEYLESS_ROAD_SOURCES]});
   if(pathname==='/api/road-events/regional'&&req.method==='GET'){
     if(!limits(req,res,'regional-road-events',24,60000))return;
     const bbox=parseRegionalRoadBBox(u.searchParams.get('bbox'));
     if(!bbox)return err(res,400,'Área regional inválida ou muito ampla.');
+    // Official national/state feeds take precedence over overlapping legacy
+    // regional events. A failed provider keeps the existing regional fallback.
     const result=keylessRegionalSnapshot(bbox);
-    return json(res,200,result,{'Cache-Control':'private, max-age=5'});
+    const official=officialRoadSnapshot(bbox);
+    const features=[...official.features];
+    for(const candidate of result.features){
+      if(features.some(item=>item.type===candidate.type&&
+       Math.hypot((item.coords[0]-candidate.coords[0])*Math.cos(item.coords[1]*Math.PI/180),
+        item.coords[1]-candidate.coords[1])<.00065))continue;
+      features.push(candidate);
+      if(features.length>=100)break;
+    }
+    return json(res,200,{...result,features,
+      sources:[...official.sources,...result.sources],affectsRouting:false},
+      {'Cache-Control':'private, max-age=5'});
   }
   if(pathname==='/api/context/sources'&&req.method==='GET')
     return json(res,200,{sources:[...GLOBAL_CONTEXT_SOURCES,SEISMIC_SOURCE]});
