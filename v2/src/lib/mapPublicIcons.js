@@ -57,7 +57,8 @@ const GLYPHS={
  market:'<path d="M3.5 10h17L18.5 4h-13z"/><path d="M4 10v2a2 2 0 0 0 4 0v-2m0 0v2a2 2 0 0 0 4 0v-2m0 0v2a2 2 0 0 0 4 0v-2m0 0v2a2 2 0 0 0 4 0v-2"/><path d="M5 14v7h14v-7M9 21v-6h6v6"/>',
  basket:'<path d="M4 11h16l-2 10H6L4 11Z"/><path d="m8 11 4-7 4 7"/><path d="M9 14v4m6-4v4"/>',
  bag:'<path d="M4 8h16l-1.2 13H5.2L4 8ZM9 10V6a3 3 0 0 1 6 0v4"/>',
- charge:'<rect x="4" y="3" width="12" height="19" rx="2"/><path d="M8 7h4l-3 5h4l-4 6M16 9h2a2 2 0 0 1 2 2v7a2 2 0 0 0 2 2"/>',
+ // Simplified charger silhouette: no narrow cable or overlapping strokes at 19–21px.
+ charge:'<rect x="4.5" y="2.5" width="15" height="19" rx="3.25" stroke-width="1.65"/><path d="m13.8 5.5-5.1 7h3.4L11 18.6l4.8-8h-3.4z" fill="#188E65" stroke="none"/>',
  plug:'<path d="M8 3v5m8-5v5M6 8h12v5a6 6 0 0 1-6 6v3M12 12l-2 3h3l-1 2"/>',
  utensils:'<path d="M4 3v6a3 3 0 0 0 6 0V3M7 3v18M20 3v18M20 3c-4 2-6 6-6 11h6"/>',
  burger:'<path d="M4 11a8 8 0 0 1 16 0H4ZM4 19h16M3 14h18M5 16h14M8 7h.01M12 6h.01M16 7h.01"/>',
