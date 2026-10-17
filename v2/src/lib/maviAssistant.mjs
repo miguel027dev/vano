@@ -154,6 +154,7 @@ export function maviProposalDecision(value){
  if(typeof value!=='string'||!value.trim()||value.length>360)return null;
  const s=maviNormalize(value);
  if(!s)return null;
+ if(/^(?:troca|troque|muda|mude|recalcula|recalcular|procura|procurar|busca|buscar) (?:a |minha |essa )?rota\b/.test(s))return null;
  // These are NEW commands, not consent to the current proposal.
  if(/\b(?:pedagio|pedagios|transito|trafego|congestionamento|outra rota|outro caminho|outra opcao|mais rapida|mais rapido|mais curta|mais curto|mais tranquila|mais tranquilo|evitar|evita|passar por|passar pela|estrada de terra|farmacia|hospital|posto|estacionamento|rua|avenida|primeira|segunda)\b/.test(s))return null;
  // A question must not silently approve a route.
