@@ -19,6 +19,8 @@
 - Elimina a pulsação permanente de `box-shadow` da classe `.jev-listening`; conserva o anel de estado da MAVI baseado em `transform/opacity`.
 - `prefers-reduced-motion` e telas de atualização lenta não recebem floreios.
 - `src/lib/motionPolish.test.mjs` protege o carregamento, ancoragem, escopo e acessibilidade.
+- Diagnóstico manual opt-in: abrir `/mapa?vanoMotionDebug=1` e consultar os intervalos de frames no console. Em modo debug, `window.vanoMotionProfile(6000)` permite medir novamente. Não coleta localização nem faz upload; são métricas de intervalos de `requestAnimationFrame`, não FPS da GPU.
+- `src/lib/motionDiagnostics.test.mjs` verifica o cálculo das métricas e ausência de fontes pessoais de dados.
 - Ainda **não foram medidos FPS nem realizados testes em dispositivos reais**.
 
 ## P2 — Câmera/GPS, somente depois de instrumentar
