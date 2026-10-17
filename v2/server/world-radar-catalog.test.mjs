@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {
  parseWorldCameraCsv,parseUkCameraJson,resetWorldRadarCatalogForTests,
@@ -114,4 +115,11 @@ test('world catalog can refresh asynchronously without keeping the map request w
  });
  assert.equal(next.available,true);
  assert.ok(next.features.some(p=>p.coords[0]===london[0]));
+});
+
+test('Render startup nonblocking radar prewarm never blocks route engine boot',()=>{
+ const server=readFileSync(new URL('./index.mjs',import.meta.url),'utf8');
+ assert.ok(server.includes("if(renderWeb && process.env.VANO_WORLD_RADAR_PREWARM!=='0')"));
+ assert.ok(server.includes("void queryWorldRadarCatalog([-.14,51.50,-.11,51.53])"));
+ assert.ok(server.includes("console.info('[VANO world radar prewarm]'"));
 });
