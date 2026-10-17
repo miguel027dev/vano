@@ -72,7 +72,7 @@ export default function MapPage({active=true}){
     }finally{setSavingMapTheme(false);}
   }
 
-  const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
@@ -83,7 +83,7 @@ export default function MapPage({active=true}){
   }
   useEffect(()=>{const flush=()=>syncMeasuredDistance(true);window.addEventListener('pagehide',flush);return()=>{window.removeEventListener('pagehide',flush);flush();};},[]);
   useEffect(()=>{if(!active)syncMeasuredDistance(true);},[active]);
-  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[maviPendingStop,setMaviPendingStop]=useState(null),[maviResuming,setMaviResuming]=useState(false),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
+  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[maviPendingStop,setMaviPendingStop]=useState(null),[maviResuming,setMaviResuming]=useState(false),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[routeError,setRouteError]=useState(''),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
@@ -95,7 +95,7 @@ export default function MapPage({active=true}){
   const handledDestination=useRef(''),destRef=useRef(null);
   useEffect(()=>{maviTalkHistory.current=[];},[user?.id]);
   useEffect(()=>{if(!dest&&!navMode)setRouteVehicle(preferences?.vehicle==='moto'?'moto':'carro');},[preferences?.vehicle]);
-  useEffect(()=>()=>{if(routeVehicleTimer.current!==null)clearTimeout(routeVehicleTimer.current);},[]);
+  useEffect(()=>()=>{if(routeVehicleTimer.current!==null)clearTimeout(routeVehicleTimer.current);routeRequest.current?.abort();},[]);
   destRef.current=dest;
   useEffect(()=>{if(!tripBooted.current)setChoice(initialChoice);},[initialChoice]);
   useEffect(()=>{try{window.localStorage.setItem('vano-traffic-layer',trafficEnabled?'on':'off');}catch{/* Private-mode storage unavailable. */}},[trafficEnabled]);
@@ -369,13 +369,28 @@ export default function MapPage({active=true}){
     // Any new route request supersedes a pending vehicle-change debounce.
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
     if(!validPoint(departure)||!validPoint(place?.coords))return;
+    // Superseded calculations must stop consuming the provider connection.
+    routeRequest.current?.abort();
+    const controller=new AbortController();
+    routeRequest.current=controller;
+    let timedOut=false;
+    const timeout=setTimeout(()=>{timedOut=true;controller.abort();},45000);
     const epoch=++routeEpoch.current;
-    setLoadingRoute(true);setSheetOpen(true);setRouteData(null);
+    setLoadingRoute(true);setSheetOpen(true);setRouteData(null);setRouteError('');
     try{
-      const data=await api('/route',{method:'POST',body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}})});
-      if(epoch===routeEpoch.current){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
-    }catch(e){if(epoch===routeEpoch.current)setToast(e.message);}
-    finally{if(epoch===routeEpoch.current)setLoadingRoute(false);}
+      const data=await api('/route',{method:'POST',signal:controller.signal,body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}})});
+      if(epoch===routeEpoch.current&&!controller.signal.aborted){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
+    }catch(e){
+      if(epoch===routeEpoch.current){
+        const message=timedOut?'A rota demorou a responder. Tente novamente.':controller.signal.aborted?'Cálculo interrompido. Tente novamente.':e?.message||'Não foi possível calcular esta rota.';
+        setRouteError(message);
+        setToast(message);
+      }
+    }finally{
+      clearTimeout(timeout);
+      if(routeRequest.current===controller)routeRequest.current=null;
+      if(epoch===routeEpoch.current)setLoadingRoute(false);
+    }
   }
   routeCalculator.current=calculateRoute;
   function chooseRouteVehicle(vehicle){
@@ -384,6 +399,7 @@ export default function MapPage({active=true}){
     // Invalidate an earlier request immediately: stale car routes must never
     // appear under a selected motorcycle toggle (and vice versa).
     routeEpoch.current++;
+    routeRequest.current?.abort();
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
     if(!dest||!validPoint(origin)){setRouteData(null);return;}
     setRouteData(null);setLoadingRoute(true);setSheetOpen(true);
@@ -399,6 +415,7 @@ export default function MapPage({active=true}){
     if(!validPoint(origin)){
       awaitingGpsDestination.current=true;
       routeEpoch.current++;
+      routeRequest.current?.abort();
       setSheetOpen(false);setPickOriginMode(true);
       setToast('Selecione no mapa de onde você quer sair. Não precisa permitir o GPS.');
       return;
@@ -787,7 +804,7 @@ export default function MapPage({active=true}){
     if(!muted&&(!Number.isFinite(first?.distance)||first.distance>150))
       speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
@@ -972,7 +989,7 @@ export default function MapPage({active=true}){
            <small className="v70-route-source">Fonte das travessias: OpenStreetMap (dados colaborativos). {crossingSafetyNote(language)}</small>
          </div>}
        </section>
-       <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice">{t('Não foi possível calcular o trajeto agora.')}</div>}
+       <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice" role="alert"><p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p><button type="button" onClick={()=>calculateRoute(dest,origin,routeVehicle)} disabled={!validPoint(origin)}>Tentar novamente</button></div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
     {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
