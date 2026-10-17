@@ -22,8 +22,11 @@ test('no permission, manual origin or invalid location must not impersonate actu
 });
 test('main search and origin/destination editor use same coarse proximity helper',()=>{
  assert.match(page,/import \{searchGeoBias\} from '\.\.\/lib\/searchGeoBias\.js';/);
- assert.match(page,/const nearby=searchGeoBias\(userCoords,/);
- assert.match(page,/\$\{searchGeoBias\(userCoords,/);
+ assert.match(page,/const searchBias=searchGeoBias\(userCoords,/);
+ assert.match(page,/const nearby=searchBias;/);
+ assert.match(page,/\$\{searchBias\}/);
+ assert.match(page,/\[query,searchOpen,allPlaces,language,searchBias\]/);
+ assert.match(page,/\[editor,editorQuery,allPlaces,language,searchBias\]/);
  assert.match(page,/cached&&Date\.now\(\)-cached\.at<45000/);
  assert.ok(page.split('},250);').length-1>=2,'both address-search inputs use 250ms debounce');
  assert.doesNotMatch(page,/&lng=\$\{encodeURIComponent\(userCoords\[0\]\)\}/);
