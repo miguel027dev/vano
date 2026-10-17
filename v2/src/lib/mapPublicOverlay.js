@@ -8,6 +8,7 @@ import {radarDisplayAllowed} from './radarPolicy.js';
 import {readMapboxPoiFeatures} from './mapboxPoiFallback.js';
 import {rememberMapFeatures,cachedMapFeatures} from './mapFeaturePersistence.js';
 import {rememberPublicFeatures,nearbyPublicFeatures} from './publicSourceStability.js';
+import {dedupePublicFeatureSources} from './dedupePublicFeatureSources.js';
 
 function buildPin(item){
  const element=document.createElement('div');
@@ -39,13 +40,15 @@ function popupBody(item){
  const title=document.createElement('strong');title.textContent=item.name;
  const source=document.createElement('small');
  source.textContent='Fonte: '+item.source+(item.source==='TomTom Traffic'?' · alerta do provedor':item.regional?' · atualização oficial':item.verified?' · relato verificado':' · cadastro público');
- wrapper.append(title,source);
+ wrapper.append(title);
+ // Required provider attribution stays in the persistent map credit; the POI popup is clean.
+ if(item.source!=='TomTom Search'&&item.source!=='TomTom Traffic')wrapper.append(source);
  if(item.description){const desc=document.createElement('p');desc.textContent=item.description;wrapper.append(desc);}
  return wrapper;
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
+ let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
  const sourceCache=new Map(); // OSM, verified reports and radar points; never erased on viewport changes.
  const markers=new Map();
@@ -68,7 +71,7 @@ export function attachPublicMapOverlay(map,backend){
  tomtomCredit.className='v40-map-credit v40-tomtom-credit';
  tomtomCredit.href='https://www.tomtom.com/legal/';
  tomtomCredit.target='_blank';tomtomCredit.rel='noopener noreferrer';
- tomtomCredit.textContent='© TomTom';tomtomCredit.title='Dados de trânsito © TomTom';
+ tomtomCredit.textContent='© TomTom';tomtomCredit.title='Dados e locais © TomTom';
  tomtomCredit.hidden=true;map.getContainer().append(tomtomCredit);
  const notice=document.createElement('button');
  notice.type='button';
@@ -112,7 +115,7 @@ export function attachPublicMapOverlay(map,backend){
    markers.set(item.id,{marker});
   }
   credit.hidden=!items.some(item=>item.source==='OpenStreetMap'||item.id?.startsWith('radar-catalog-'));
-  tomtomCredit.hidden=!allowed.some(item=>item.source==='TomTom Traffic');
+  tomtomCredit.hidden=!allowed.some(item=>item.source==='TomTom Traffic'||item.source==='TomTom Search');
  }
  function mergeSources(){
   const b=map.getBounds?.();
@@ -148,7 +151,7 @@ export function attachPublicMapOverlay(map,backend){
      if(Math.abs(other.coords[0]-lon)<step&&Math.abs(other.coords[1]-lat)<step){duplicate=true;break;}
    if(!duplicate){combined.push(item);seen.add(item.id);addIndex(item);}
   }
-  items=combined.filter(item=>item.type!=='radar'||radarDisplayAllowed(item.coords));
+  items=dedupePublicFeatureSources(combined).filter(item=>item.type!=='radar'||radarDisplayAllowed(item.coords));
  }
  function updateVectorPoi(){
   if(done||backend!=='mapbox')return;
@@ -240,6 +243,38 @@ export function attachPublicMapOverlay(map,backend){
    if(error?.name!=='AbortError'){regionalKey='';regionalReadAt=0;}
   }
  }
+ async function refreshTomTomPoi(bbox){
+  if(done||document.hidden||tomtomDisabled)return;
+  const key=bbox.map(n=>n.toFixed(3)).join(',');
+  if(key===tomtomPoiKey&&Date.now()-tomtomPoiReadAt<120000)return;
+  tomtomPoiController?.abort();
+  const request=new AbortController();tomtomPoiController=request;
+  try{
+   const response=await fetch('/api/places/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
+    {signal:request.signal,headers:{Accept:'application/json'}});
+   if(!response.ok)throw Error('TomTom POI: '+response.status);
+   const result=await response.json();
+   if(done||request.signal.aborted)return;
+   if(result.enabled===false){tomtomPoiKey=key;tomtomPoiReadAt=Date.now();return;}
+   if(Array.isArray(result.features)&&result.features.length){
+    rememberPublicFeatures(sourceCache,result.features.filter(p=>p?.poi===true&&p.source==='TomTom Search').slice(0,70));
+    mergeSources();render();
+   }
+   tomtomPoiKey=key;tomtomPoiReadAt=Date.now();
+   if(result.status==='loading'){
+    if(tomtomPoiTimer!==null)clearTimeout(tomtomPoiTimer);
+    tomtomPoiTimer=setTimeout(()=>{
+     tomtomPoiTimer=null;
+     if(done||document.hidden)return;
+     tomtomPoiReadAt=0;
+     const latest=mapFeatureBBox(map,backend);
+     if(latest)void refreshTomTomPoi(latest);
+    },3700);
+   }
+  }catch(error){
+   if(error?.name!=='AbortError')tomtomPoiReadAt=Date.now()-90000;
+  }
+ }
  async function refreshTomTom(bbox){
   if(tomtomDisabled||done||document.hidden)return;
   const key=bbox.map(n=>n.toFixed(3)).join(',');
@@ -286,6 +321,7 @@ export function attachPublicMapOverlay(map,backend){
   if(radarBbox)void refreshRadars(radarBbox);
   void refreshRegional(bbox);
   void refreshTomTom(bbox);
+  void refreshTomTomPoi(bbox);
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
   if(controller)controller.abort();
@@ -334,7 +370,9 @@ export function attachPublicMapOverlay(map,backend){
   if(vectorTimer!==null)clearTimeout(vectorTimer);
   if(regionalTimer!==null)clearTimeout(regionalTimer);
   if(tomtomTimer!==null)clearTimeout(tomtomTimer);
+  if(tomtomPoiTimer!==null)clearTimeout(tomtomPoiTimer);
   tomtomController?.abort();
+  tomtomPoiController?.abort();
   controller?.abort();
   radarController?.abort();
   regionalController?.abort();

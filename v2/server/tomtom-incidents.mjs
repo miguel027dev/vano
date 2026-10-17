@@ -4,7 +4,7 @@
  */
 export const TOMTOM_ENV_NAME='VANO_TOMTOM_API_KEY';
 const ENDPOINT='https://api.tomtom.com/maps/orbis/traffic/incidents/details';
-const ATTRIBUTES='incidents(type,geometry(type,coordinates),properties(id,iconCategory,events(description),startTime,endTime,from,to,timeValidity,lastReportTime))';
+const ATTRIBUTES='incidents(type,geometry(type,coordinates),properties(id,iconCategory,events(description),startTime,endTime,from,to,timeValidity,lastReportTime,magnitudeOfDelay,delay))';
 const CACHE_TTL=3*60_000,STALE_WINDOW=8*60_000,RETRY_MS=45_000;
 const MAX_CACHE=36,MAX_BYTES=1_500_000,MAX_DAY=500,MAX_INFLIGHT=2;
 const DELTA=.04,HALF=.055;
@@ -14,7 +14,14 @@ const allowed=new Map([
  ['laneclosed',['alerta-via','Faixa interditada',78]],
  ['accident',['alerta-via','Acidente na via',81]],
  ['brokendownvehicle',['alerta-via','Veículo parado na via',70]],
- ['dangerousconditions',['alerta-via','Condições perigosas na via',75]]
+ ['dangerousconditions',['alerta-via','Condições perigosas na via',75]],
+ ['jam',['alerta-via','Congestionamento',67]],
+ ['fog',['alerta-via','Nevoeiro na via',69]],
+ ['rain',['alerta-via','Chuva intensa na via',68]],
+ ['ice',['alerta-via','Pista com gelo',72]],
+ ['wind',['alerta-via','Vento forte na via',68]],
+ ['flooding',['alerta-via','Alagamento informado',75]],
+ ['unknown',['alerta-via','Ocorrência de trânsito',58]]
 ]);
 const sanitize=(x,n=180)=>typeof x==='string'?x.replace(/[<>\u0000-\u001f\u007f]/g,'').trim().slice(0,n):'';
 const valid=p=>Array.isArray(p)&&p.length>=2&&Number.isFinite(p[0])&&Number.isFinite(p[1])&&Math.abs(p[0])<=180&&Math.abs(p[1])<=85;
@@ -59,7 +66,15 @@ export function normalizeTomTomIncidents(body,bbox,now=Date.now()){
    name:mapped[1],description:sanitize([summary,between].filter(Boolean).join(' · '),190),
    source:'TomTom Traffic',regional:true,verified:false,routingVerified:false,
    observedAt:typeof p.lastReportTime==='string'?p.lastReportTime:null,
-   endsAt:typeof p.endTime==='string'?p.endTime:null
+   endsAt:typeof p.endTime==='string'?p.endTime:null,
+   incidentCategory:category,
+   delaySeconds:Number.isFinite(p.delay)&&p.delay>0?Math.min(36000,Math.round(p.delay)):0,
+   // Original provider geometry is needed to compare the affected road with
+   // a candidate route. Never infer a street closure from a nearby POINT.
+   roadGeometry:feature.geometry?.type==='LineString'&&Array.isArray(feature.geometry.coordinates)&&
+     feature.geometry.coordinates.length>=2&&feature.geometry.coordinates.length<=1300&&
+     feature.geometry.coordinates.every(x=>valid(x))?
+       {type:'LineString',coordinates:feature.geometry.coordinates.map(x=>x.slice(0,2))}:null
   });
   if(events.length>=120)break;
  }
@@ -87,7 +102,7 @@ export function createTomTomGateway({fetcher=fetch,clock=Date.now}={}){
    url.searchParams.set('apiVersion','2');
    url.searchParams.set('bbox',bounds.join(','));
    url.searchParams.set('timeValidity','present');
-   url.searchParams.set('iconCategories','roadWorks,roadClosed,laneClosed,accident,brokenDownVehicle,dangerousConditions');
+   url.searchParams.set('iconCategories','roadWorks,roadClosed,laneClosed,accident,brokenDownVehicle,dangerousConditions,jam,fog,rain,ice,wind,flooding,unknown');
    const res=await fetcher(url.toString(),{headers:{
     'TomTom-Api-Key':secret,
     'Attributes':ATTRIBUTES,
@@ -129,3 +144,16 @@ export function createTomTomGateway({fetcher=fetch,clock=Date.now}={}){
 }
 const gateway=createTomTomGateway();
 export const tomtomSnapshot=(bbox,apiKey)=>gateway.snapshot(bbox,apiKey);
+
+export function cachedTomTomRouteIncidents(routePoints,apiKey=''){
+ if(!Array.isArray(routePoints)||routePoints.length<2)return [];
+ const coords=routePoints.filter(p=>valid(p)).slice(0,18000);
+ if(coords.length<2)return [];
+ const west=Math.min(...coords.map(p=>p[0])),east=Math.max(...coords.map(p=>p[0]));
+ const south=Math.min(...coords.map(p=>p[1])),north=Math.max(...coords.map(p=>p[1]));
+ if(east-west>.12||north-south>.12)return []; // No false continental coverage
+ const bbox=[Math.max(-180,west-.006),Math.max(-85,south-.006),Math.min(180,east+.006),Math.min(85,north+.006)];
+ // Returns ONLY already fetched data; starts an asynchronous refresh if cold.
+ const result=gateway.snapshot(bbox,apiKey);
+ return result.status==='fresh'?result.features.filter(f=>f.roadGeometry||f.incidentCategory):[];
+}

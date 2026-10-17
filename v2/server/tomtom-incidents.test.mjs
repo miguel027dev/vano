@@ -26,8 +26,8 @@ test('TomTom Orbis categories are mapped without inventing coordinates or closur
   item('line','roadWorks',{type:'LineString',coordinates:[[-46.672,-23.581],[-46.671,-23.580]]}),
   item('work1','roadWorks')
  ]},box,clock);
- assert.equal(result.length,5);
- assert.deepEqual(result.map(x=>x.type),['obra','alerta-via','alerta-via','alerta-via','obra']);
+ assert.equal(result.length,6);
+ assert.deepEqual(result.map(x=>x.type),['obra','alerta-via','alerta-via','alerta-via','alerta-via','obra']);
  assert.ok(result.every(x=>x.source==='TomTom Traffic'&&!x.routingVerified&&x.regional));
  assert.ok(result[0].description.includes('Maintenance'));
 });
