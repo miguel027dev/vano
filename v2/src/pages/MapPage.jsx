@@ -293,11 +293,11 @@ export default function MapPage({active=true}){
   useEffect(()=>{
     const id=setInterval(()=>{
       setGpsClock(x=>x+1);
-      if(lastGpsFix.current&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),navMode?35000:60000))
+      if(!simActive&&lastGpsFix.current&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),navMode?35000:60000))
         setGpsStatus(s=>s==='granted'||s==='approximate'?'reconnecting':s);
     },12000);
     return()=>clearInterval(id);
-  },[navMode]);
+  },[navMode,simActive]);
   useEffect(()=>{
     if(!active&&!navMode)return;
     // First login: ONE permission prompt / continuous watch; delayed recovery only if no valid fix.
@@ -318,16 +318,16 @@ export default function MapPage({active=true}){
     }
     const stop=startGpsSession(navigator.geolocation,{
       onPosition,onError:onPositionError,
-      onRecover:()=>{if(navMode&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
+      onRecover:()=>{if(navMode&&!simActive&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
         setGpsStatus('reconnecting');setGpsMessage('Reconectando ao GPS. Mantendo o último ponto conhecido.');
       }}
-    },{navigation:navMode,documentObject:document,windowObject:window});
+    },{navigation:navMode&&!simActive,documentObject:document,windowObject:window});
     return()=>{
       stop();
       // getCurrentPosition cannot be canceled by browsers; invalidate any older callbacks.
       gpsRequestSeq.current++;
     };
-  },[navMode,active]);
+  },[navMode,simActive,active]);
   // Reverse geocode a granted browser location, never the initial map default or a manual origin.
   // Requests are throttled by time and distance; out-of-order updates never repaint the card.
   useEffect(()=>{
@@ -553,7 +553,7 @@ export default function MapPage({active=true}){
     return()=>controller.abort();
   },[routeVehicle,route?.geometry,routeData?.source]);
   const previewDetails=previewManeuvers(route,routeVehicle);
-  const mappedCrossing=routeVehicle==='a-pe'&&navMode&&hasLiveGPS?
+  const mappedCrossing=routeVehicle==='a-pe'&&navMode&&!simActive&&hasLiveGPS?
     nextMappedCrossing(walkingFeatures,guidance?.routeMeters):null;
   // MAVI is available on the public V1 map and the administrator's V2 map.
   const jevKey=jevMode?jevRouteFingerprint(route):null;
@@ -970,7 +970,7 @@ export default function MapPage({active=true}){
   })).filter(lane=>lane.symbols.length):[];
 
   return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap active={active} privateRoadSigns={adminV2RoadSigns} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
+    <VanoMap active={active} simulationPreview={simActive} privateRoadSigns={adminV2RoadSigns} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
       <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
@@ -1072,7 +1072,7 @@ export default function MapPage({active=true}){
        {!simActive&&<>{jevMode&&navMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}</>}
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {!navMode&&<button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>}
-      <button title="Minha localização" className="circle-btn" onClick={()=>validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
+      <button title={simActive?'Centralizar na simulação':'Minha localização'} aria-label={simActive?'Centralizar no ponto simulado':'Minha localização'} className="circle-btn" onClick={()=>simActive?mapControl.current?.center?.():validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
       {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
     </div>}
     {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
