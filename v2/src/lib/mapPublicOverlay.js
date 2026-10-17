@@ -202,19 +202,19 @@ export function attachPublicMapOverlay(map,backend){
    if(key!==radarKey)radarRetryCount=0;
    radarKey=key;
    radarReadAt=Date.now();
-   if(data.error||data.features?.length===0&&data.available!==true&&data.coverage!=='national-snapshot'){
+   if(data.refreshing===true||data.error||data.features?.length===0&&data.available!==true&&data.coverage!=='national-snapshot'){
     // Global snapshots refresh in the background. Previously an unavailable
     // provider kept foreign maps blank for ~25 seconds or more.
     radarReadAt=0;
     if(radarRetryTimer!==null)clearTimeout(radarRetryTimer);
-    if(radarRetryCount<3){
+    if(radarRetryCount<(data.refreshing===true?5:3)){
      radarRetryCount++;
      radarRetryTimer=setTimeout(()=>{
       radarRetryTimer=null;
       if(done||document.hidden)return;
       const visible=mapRadarBBox(map);
       if(visible)void refreshRadars(visible);
-     },5000);
+     },data.refreshing===true?6000:5000);
     }
    }else radarRetryCount=0;
   }catch(error){
