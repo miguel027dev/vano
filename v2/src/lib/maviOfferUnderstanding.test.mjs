@@ -32,7 +32,9 @@ test('ambiguity, fresh constraints and follow-up questions never apply a propose
   'não quero passar pela Giovanni Gronchi','não gostei dessa, calcula outra',
   'troca a rota','procura outro caminho','sim, mas sem pedágio',
   'pode repetir?','pode me dizer mais detalhes?','talvez',
-  'quero um posto','quero uma farmácia','me leva para casa',
+  'quero um posto','quero uma farmácia','quero ir para casa',
+  'quero comprar comida','quero descansar','pode me ajudar','pode me dizer o preço',
+  'pode cancelar a navegação','me leva para casa',
   'quero ir por outra rua'
  ])assert.equal(maviProposalDecision(utterance),null,utterance);
  for(const utterance of ['quanto tempo economiza?','qual a diferença?','depende, tem pedágio?'])
