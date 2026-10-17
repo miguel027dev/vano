@@ -98,11 +98,12 @@ function motionController(map,latest,status){
       const center=map.project(point),radius=70;
       const bounds=[[center.x-radius,center.y-radius],[center.x+radius,center.y+radius]];
       const seen=new Set();
+      let unnamed=0;
       for(const feature of map.queryRenderedFeatures(bounds)||[]){
         const layer=feature?.layer||{},props=feature?.properties||{};
         if(!/building|3d|extrusion|structure/i.test(String(layer.id||'')+' '+String(layer.type||'')+' '+String(props.class||props.type||'')))continue;
         const id=feature.id??props.id??props.osm_id;
-        if(id!=null)seen.add(String(layer.id)+':'+String(id));
+        seen.add(id!=null?String(layer.id)+':'+String(id):String(layer.id)+':anonymous-'+unnamed++);
         if(seen.size>=36)break;
       }
       const observed=clamp(seen.size/18,0,1);
