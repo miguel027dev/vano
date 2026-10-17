@@ -63,7 +63,11 @@ export function rankTomTomSafeAlternative(result,incidents,{reroute=false}={}){
  if(!current||!best)return result;
  // Hysteresis avoids route flicker; never swap for a single distant incident.
  const gain=current.impact.risk-best.impact.risk;
- const shouldSwitch=best.route!==safe&&gain>=(reroute?3:1.8)&&
+ // A lone POINT is an approximate warning, not evidence of which road
+ // segment is affected. It can be displayed but cannot change route selection.
+ const hasRoadGeometry=incidents.some(e=>e.roadGeometry?.type==='LineString'&&
+  Array.isArray(e.roadGeometry.coordinates)&&e.roadGeometry.coordinates.length>=2);
+ const shouldSwitch=hasRoadGeometry&&best.route!==safe&&gain>=(reroute?3:1.8)&&
   (current.impact.closures>best.impact.closures||best.impact.risk<=current.impact.risk*.55);
  const chosen=shouldSwitch?best:current;
  return {...result,routes:result.routes.map(r=>r.id==='safe'?{
