@@ -18,7 +18,7 @@ test('location card clears legal credits and map stays responsive to narrow scre
  assert.match(css,/\.map-page:not\(\.in-navigation\):not\(\.has-sheet\) \.v31-location-card\{[\s\S]*?\+ 13px\)/);
  assert.match(css,/@media\(max-width:600px\)/);
  assert.match(css,/in-navigation \.mapboxgl-ctrl-bottom-left/);
- assert.match(css,/\.map-page\.in-navigation \.v40-map-credit\{bottom:calc\(var\(--v36-nav-dock-height,180px\) \+ 57px\);z-index:2\}/);
+ assert.match(css,/\.map-page\.in-navigation \.v40-map-credit,\.map-page\.in-navigation\.has-sheet \.v40-map-credit\{bottom:calc\(var\(--v36-nav-dock-height,180px\) \+ 8px\);z-index:2\}/);
  assert.match(css,/\.map-page\.in-navigation \.mapboxgl-ctrl-bottom-left\{[\s\S]*?\+ 8px\);\s*z-index:2/);
  assert.match(css,/\.map-page\.in-navigation \.mapboxgl-ctrl-bottom-right,[\s\S]*?\+ 34px\);\s*z-index:2/);
  assert.match(css,/has-sheet \.mapboxgl-ctrl-bottom-right/);
