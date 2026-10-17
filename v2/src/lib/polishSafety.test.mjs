@@ -6,6 +6,8 @@ const source=p=>readFileSync(new URL(p,import.meta.url),'utf8');
 const map=source('../pages/MapPage.jsx');
 const app=source('../App.jsx');
 const profile=source('../pages/ProfilePage.jsx');
+const context=source('../context.jsx');
+const recovery=source('../components/AppErrorBoundary.jsx');
 const css=source('../v31-map-address.css');
 
 test('obsolete route calculations are cancellable and time-bounded',()=>{
@@ -53,4 +55,12 @@ test('autocomplete is stable across tiny GPS motion and times out without blocki
   assert.match(map,/setSearchError\('A busca demorou a responder\. Tente novamente\.'\)/);
   assert.match(map,/setEditorError\('A busca demorou\. Tente novamente\.'\)/);
   assert.match(map,/clearTimeout\(deadline\)/);
+});
+
+test('stalled session bootstrap cannot keep the initial screen loading forever',()=>{
+  assert.match(context,/const deadline=setTimeout\(\(\)=>controller\.abort\(\),35000\)/);
+  assert.match(context,/api\('\/bootstrap',\{signal:controller\.signal\}\)/);
+  assert.match(context,/clearTimeout\(deadline\);setLoading\(false\)/);
+  assert.doesNotMatch(recovery,/O mapa encontrou um problema de renderização/);
+  assert.match(recovery,/Esta tela encontrou um problema de renderização/);
 });
