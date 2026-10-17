@@ -1,0 +1,352 @@
+/* VANO night-mode completion.
+ * Centralised surface colours for the EXISTING dark preference. Loaded last:
+ * no changes to camera, GPS, routing, map tiles, attribution or calculations.
+ */
+:root[data-theme='dark']{
+ --v4-paper:#10171b;--v4-cream:#152027;--v4-white:#1e2a30;
+ --v4-ink:#eaf2f5;--v4-muted:#a9b8c1;--v4-line:#384a53;
+ --v5-ink:#eaf2f5;--v5-muted:#aebdc6;--v5-surface:#10171b;
+ --v5-line:#384a53;
+ --bg:#10171b;--panel:#1e2a30;--ink:#eaf2f5;
+ --border:#384a53;--muted:#aebdc6;--soft:#3b302c;
+ --shadow:0 10px 28px #0005;
+ color-scheme:dark;
+}
+[data-theme='dark'] body,[data-theme='dark'] #root,
+[data-theme='dark'] .app-shell:not(.shell-auth){
+ background:var(--v4-paper);color:var(--v4-ink)
+}
+/* Profile and account. Previous v4 white hardcodes survived theme changes. */
+[data-theme='dark'] .content-page.v4-profile{
+ background:var(--v4-paper);color:var(--v4-ink)
+}
+[data-theme='dark'] .content-page.v4-profile .v4-profile-intro h1,
+[data-theme='dark'] .content-page.v4-profile .v4-profile-section-heading h2,
+[data-theme='dark'] .content-page.v4-profile .v4-stat-strip strong{
+ color:var(--v4-ink)
+}
+[data-theme='dark'] .content-page.v4-profile .v4-icon-button,
+[data-theme='dark'] .content-page.v4-profile .v4-edit-link,
+[data-theme='dark'] .content-page.v4-profile .v4-signup-note,
+[data-theme='dark'] .content-page.v4-profile .v4-empty-link,
+[data-theme='dark'] .content-page.v4-profile .v4-place-chip,
+[data-theme='dark'] .content-page.v4-profile .v4-action-list,
+[data-theme='dark'] .content-page.v4-profile .v4-recent-list{
+ background:var(--v4-white);color:var(--v4-ink);
+ border-color:var(--v4-line)
+}
+[data-theme='dark'] .content-page.v4-profile .v4-route-feature{
+ background:linear-gradient(120deg,#2e302e,#382e2a 72%,#272e2d);
+ border-color:#58504b
+}
+[data-theme='dark'] .content-page.v4-profile .v4-route-feature h2{
+ color:#f8efea
+}
+[data-theme='dark'] .content-page.v4-profile .v4-route-feature p,
+[data-theme='dark'] .content-page.v4-profile .v4-intro-name>p,
+[data-theme='dark'] .content-page.v4-profile .v4-signup-note p,
+[data-theme='dark'] .content-page.v4-profile .v4-empty-link small,
+[data-theme='dark'] .content-page.v4-profile .v4-action-copy small,
+[data-theme='dark'] .content-page.v4-profile .v4-recent-trip small,
+[data-theme='dark'] .content-page.v4-profile .v4-stat-strip small,
+[data-theme='dark'] .content-page.v4-profile .v4-stat-strip span,
+[data-theme='dark'] .content-page.v4-profile .v4-action-value,
+[data-theme='dark'] .content-page.v4-profile .v4-backend-caption,
+[data-theme='dark'] .content-page.v4-profile .v4-profile-bottom a,
+[data-theme='dark'] .content-page.v4-profile .v4-profile-header-right>span,
+[data-theme='dark'] .content-page.v4-profile .v4-overline{
+ color:var(--v4-muted)
+}
+[data-theme='dark'] .content-page.v4-profile .v4-identity-avatar,
+[data-theme='dark'] .content-page.v4-profile .v4-empty-link>span,
+[data-theme='dark'] .content-page.v4-profile .v4-note-mark,
+[data-theme='dark'] .content-page.v4-profile .v4-recent-icon{
+ background:#44332a;color:#ffb381;border-color:#60473a
+}
+[data-theme='dark'] .content-page.v4-profile .v4-action-icon{
+ background:#314047;color:#c0d1d8
+}
+[data-theme='dark'] .content-page.v4-profile .v4-action-row,
+[data-theme='dark'] .content-page.v4-profile .v4-recent-trip,
+[data-theme='dark'] .content-page.v4-profile .v4-stat-strip,
+[data-theme='dark'] .content-page.v4-profile .v4-stat-strip>div,
+[data-theme='dark'] .content-page.v4-profile .v4-profile-bottom{
+ border-color:var(--v4-line)
+}
+[data-theme='dark'] .content-page.v4-profile .v4-action-row:hover,
+[data-theme='dark'] .content-page.v4-profile .v4-place-chip:hover,
+[data-theme='dark'] .content-page.v4-profile .v4-empty-link:hover,
+[data-theme='dark'] .content-page.v4-profile .v4-icon-button:hover{
+ background:#2d3c43;color:var(--v4-ink)
+}
+[data-theme='dark'] .content-page.v4-profile .v4-route-feature-image img{
+ /* v4's multiply mode made the vehicle nearly disappear at night. */
+ mix-blend-mode:normal;filter:drop-shadow(0 14px 20px #0006)
+}
+[data-theme='dark'] .content-page.v4-profile .v4-profile-section-heading>a,
+[data-theme='dark'] .content-page.v4-profile .v4-feature-link,
+[data-theme='dark'] .content-page.v4-profile .v4-signout{
+ color:#ffab79
+}
+/* Side navigation had an !important white background; fix both variants. */
+[data-theme='dark'] .side-nav{
+ background:#19242a!important;border-color:#35464e!important;color:#eaf2f5
+}
+[data-theme='dark'] .side-nav .side-link{color:#bcccd4}
+[data-theme='dark'] .side-nav .side-link.active{
+ background:#392f2b;color:#ffb084;box-shadow:inset 3px 0 #ff8b4c
+}
+[data-theme='dark'] .side-nav .side-link:not(.active):hover{
+ background:#2b3941;color:#f1f7fa
+}
+[data-theme='dark'] .side-nav .v44-side-heading,
+[data-theme='dark'] .side-nav .side-foot{color:#a6b6bf}
+[data-theme='dark'] .bottom-nav.v5-bottom-nav{
+ background:#1b292f;color:#d1e0e5;
+ border-color:#35464e;box-shadow:0 -6px 22px #0004
+}
+[data-theme='dark'] .bottom-nav.v5-bottom-nav a{color:#bdcbd3}
+[data-theme='dark'] .bottom-nav.v5-bottom-nav a.active{
+ color:#ffab79;background:#342c28
+}
+/* Shared settings, account, favourites and forms, not only the map. */
+[data-theme='dark'] .content-page:not(.v4-profile) .settings-card,
+[data-theme='dark'] .content-page:not(.v4-profile) .list-card,
+[data-theme='dark'] .content-page:not(.v4-profile) .form-panel,
+[data-theme='dark'] .content-page:not(.v4-profile) .profile-join,
+[data-theme='dark'] .content-page:not(.v4-profile) .place-item,
+[data-theme='dark'] .content-page:not(.v4-profile) .activity-hero>div{
+ background:var(--panel);color:var(--ink);border-color:var(--border)
+}
+[data-theme='dark'] .content-page:not(.v4-profile) .option-row:hover,
+[data-theme='dark'] .content-page:not(.v4-profile) .lookup-list button:hover{
+ background:#2c3c44
+}
+[data-theme='dark'] .content-page .segment{background:#121e24}
+[data-theme='dark'] .content-page .segment button:not(.active){
+ color:#b0bec7
+}
+[data-theme='dark'] .content-page .settings-line,
+[data-theme='dark'] .content-page .option-row,
+[data-theme='dark'] .content-page .history-row,
+[data-theme='dark'] .content-page .report-row{
+ border-color:var(--border);color:var(--ink)
+}
+[data-theme='dark'] .content-page input,
+[data-theme='dark'] .content-page select,
+[data-theme='dark'] .content-page textarea{
+ color:var(--ink);background:#17242a;border-color:#44555d;
+ caret-color:#ffae83
+}
+[data-theme='dark'] .content-page input::placeholder,
+[data-theme='dark'] .content-page textarea::placeholder{color:#a5b7bf}
+/* MAP: one semantic set of night tokens, strong enough to override v31/32/37. */
+.map-page[data-map-appearance='dark']{
+ --v50-surface:#1e2c33;
+ --v50-elevated:#26363e;
+ --v50-hover:#354750;
+ --v50-line:#43545d;
+ --v50-text:#eaf2f5;
+ --v50-muted:#b4c4cc;
+ --v50-orange:#ffb080;
+ color-scheme:dark;
+}
+/* Search bar, clear icon and PROFILE shortcut must share one night treatment. */
+.map-page[data-map-appearance='dark'] .map-search.v31-search,
+.map-page[data-map-appearance='dark'] .v5-editor .map-search,
+.map-page[data-map-appearance='dark'] .search-results.v32-results{
+ background:var(--v50-surface);border-color:var(--v50-line);
+ color:var(--v50-text);
+ box-shadow:0 7px 25px #0006,0 1px 4px #0003
+}
+.map-page[data-map-appearance='dark'] .map-search.v31-search:focus-within,
+.map-page[data-map-appearance='dark'] .v5-editor .map-search:focus-within{
+ border-color:#ec9867;box-shadow:0 0 0 3px #e95b223d,0 7px 25px #0005
+}
+.map-page[data-map-appearance='dark'] .v31-search>svg:first-child,
+.map-page[data-map-appearance='dark'] .map-search>svg:first-child{
+ color:#c0cfd5
+}
+.map-page[data-map-appearance='dark'] .v31-search input,
+.map-page[data-map-appearance='dark'] .v5-editor .map-search input{
+ background:transparent;color:var(--v50-text);caret-color:#ffb080;
+ -webkit-text-fill-color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v31-search input::placeholder,
+.map-page[data-map-appearance='dark'] .v5-editor .map-search input::placeholder{
+ color:#b5c3ca;opacity:1;-webkit-text-fill-color:#b5c3ca
+}
+.map-page[data-map-appearance='dark'] .map-search.v31-search>button{
+ color:#deebef;background:var(--v50-elevated);border-radius:10px;
+ flex:0 0 34px
+}
+.map-page[data-map-appearance='dark'] .map-search.v31-search>button:hover{
+ background:var(--v50-hover)
+}
+.map-page[data-map-appearance='dark'] .v31-profile-button,
+.map-page[data-map-appearance='dark'] .v31-route-profile,
+.map-page[data-map-appearance='dark'] .v32-route-actions .circle-btn{
+ background:var(--v50-elevated);color:var(--v50-text);
+ border:1px solid var(--v50-line)
+}
+.map-page[data-map-appearance='dark'] .map-search.v31-search .v31-profile-button{
+ display:grid;place-items:center;flex:0 0 48px;
+ width:48px;height:48px;min-width:48px;
+ background:var(--v50-elevated);color:var(--v50-text);
+ border:1px solid var(--v50-line)
+}
+.map-page[data-map-appearance='dark'] .map-search.v31-search .v31-profile-button:hover,
+.map-page[data-map-appearance='dark'] .v31-route-profile:hover{
+ background:var(--v50-hover);color:var(--v50-orange)
+}
+/* Results were overriding dark text with v32-specific #202b24. */
+.map-page[data-map-appearance='dark'] .search-results.v32-results,
+.map-page[data-map-appearance='dark'] .v32-results .v32-suggestion{
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v32-results .search-results-head,
+.map-page[data-map-appearance='dark'] .v32-results .search-blank,
+.map-page[data-map-appearance='dark'] .v32-results .v32-suggestion small,
+.map-page[data-map-appearance='dark'] .v32-results .v32-suggestion>svg:last-child{
+ color:var(--v50-muted)
+}
+.map-page[data-map-appearance='dark'] .v32-results .v32-suggestion+.v32-suggestion{
+ border-color:var(--v50-line)
+}
+.map-page[data-map-appearance='dark'] .v32-results .v32-suggestion:hover,
+.map-page[data-map-appearance='dark'] .v32-results .v32-suggestion:focus-visible,
+.map-page[data-map-appearance='dark'] .v32-results .search-results-head button:hover{
+ background:var(--v50-hover)
+}
+.map-page[data-map-appearance='dark'] .v32-results .v32-result-icon{
+ background:#46352c;color:var(--v50-orange);border-color:#694a3b
+}
+.map-page[data-map-appearance='dark'] .v32-results .v32-suggestion strong{
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v32-search-spinner{
+ border-color:#58666c;border-top-color:#ffad78
+}
+/* Origin / destination editor including its popup menus, not just outer box. */
+.map-page[data-map-appearance='dark'] .v5-route-box,
+.map-page[data-map-appearance='dark'] .v5-point-popover,
+.map-page[data-map-appearance='dark'] .v5-editor,
+.map-page[data-map-appearance='dark'] .v5-editor-results,
+.map-page[data-map-appearance='dark'] .v5-editor .suggestion{
+ background:var(--v50-surface);color:var(--v50-text);
+ border-color:var(--v50-line)
+}
+.map-page[data-map-appearance='dark'] .v5-point-row:first-child{
+ border-color:var(--v50-line)
+}
+.map-page[data-map-appearance='dark'] .v5-point-label span,
+.map-page[data-map-appearance='dark'] .v5-point-popover button,
+.map-page[data-map-appearance='dark'] .v5-editor .suggestion strong{
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v5-point-label small,
+.map-page[data-map-appearance='dark'] .v5-editor .suggestion small,
+.map-page[data-map-appearance='dark'] .v5-editor-busy{
+ color:var(--v50-muted)
+}
+.map-page[data-map-appearance='dark'] .v5-point-popover button:hover,
+.map-page[data-map-appearance='dark'] .v5-editor .suggestion:hover{
+ background:var(--v50-hover);color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v5-point-more,
+.map-page[data-map-appearance='dark'] .v5-swap,
+.map-page[data-map-appearance='dark'] .v5-editor .modal-title>button{
+ background:var(--v50-elevated);color:var(--v50-text);
+ border-color:var(--v50-line)
+}
+.map-page[data-map-appearance='dark'] .v5-editor-map{
+ background:#3e302a;color:#ffb58a;border-color:#674637
+}
+.map-page[data-map-appearance='dark'] .v5-point-indicator{
+ border-color:var(--v50-surface)
+}
+.map-page[data-map-appearance='dark'] .v5-editor-overlay{
+ background:#03090ebf
+}
+/* Route picker, transport mode, and navigation HUD. */
+.map-page[data-map-appearance='dark'] .route-sheet,
+.map-page[data-map-appearance='dark'] .nav-bottom.v37-nav-bottom,
+.map-page[data-map-appearance='dark'] .nav-instruction.v28-nav-instruction{
+ background:var(--v50-surface);border-color:var(--v50-line);
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .route-sheet .route-option{
+ background:var(--v50-elevated);border-color:var(--v50-line);
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .route-sheet .route-option.selected{
+ background:#44362e;border-color:#ec9261
+}
+.map-page[data-map-appearance='dark'] .route-sheet .route-option-title,
+.map-page[data-map-appearance='dark'] .route-sheet .route-stats strong,
+.map-page[data-map-appearance='dark'] .route-sheet .sheet-title h2{
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .route-sheet .route-option small,
+.map-page[data-map-appearance='dark'] .route-sheet .route-caution,
+.map-page[data-map-appearance='dark'] .route-sheet .route-stats{
+ color:var(--v50-muted)
+}
+.map-page[data-map-appearance='dark'] .v47-route-vehicle-caption,
+.map-page[data-map-appearance='dark'] .v47-route-vehicle-switch button:not(.is-selected),
+.map-page[data-map-appearance='dark'] .v47-route-vehicle-switch .v47-transit-mode{
+ color:var(--v50-muted)
+}
+.map-page[data-map-appearance='dark'] .v47-route-vehicle-switch{
+ background:#17242a;border-color:var(--v50-line)
+}
+.map-page[data-map-appearance='dark'] .v47-route-vehicle-switch::before{
+ background:#3b332f;border-color:#6f5141
+}
+.map-page[data-map-appearance='dark'] .v47-route-vehicle-switch button.is-selected{
+ color:#ffbb91
+}
+.map-page[data-map-appearance='dark'] .v47-route-vehicle-switch .v47-transit-mode:hover{
+ background:var(--v50-hover);color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v28-nav-copy strong.v46-nav-distance,
+.map-page[data-map-appearance='dark'] .nav-instruction .v28-nav-copy .v46-nav-instruction-text,
+.map-page[data-map-appearance='dark'] .nav-instruction .v28-nav-copy .v46-nav-street,
+.map-page[data-map-appearance='dark'] .v37-nav-arrival,
+.map-page[data-map-appearance='dark'] .v37-nav-meta,
+.map-page[data-map-appearance='dark'] .v36-nav-road-pill strong{
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v36-nav-road-pill{
+ background:var(--v50-surface);border-color:var(--v50-line);
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v37-nav-end,
+.map-page[data-map-appearance='dark'] .v36-nav-report{
+ background:var(--v50-elevated);border-color:var(--v50-line);
+ color:var(--v50-text)
+}
+.map-page[data-map-appearance='dark'] .v37-nav-handle{background:#6b7b81}
+.map-page[data-map-appearance='dark'] .v28-turn-icon{
+ background:#49362c;color:#ffae7c
+}
+.map-page[data-map-appearance='dark'] .nav-instruction .v28-lane-guidance>.v46-lane{
+ background:#31414a;color:#b9c9d1
+}
+.map-page[data-map-appearance='dark'] .nav-instruction .v28-lane-guidance>.v46-lane.suggested{
+ background:#4a342b;border-color:#825a43;color:#ffb387
+}
+/* Tiny screens retain enough width for real address input and the profile. */
+@media(max-width:375px){
+ .map-page[data-map-appearance='dark'] .map-search.v31-search .v31-profile-button{
+  flex-basis:42px;width:42px;height:42px;min-width:42px
+ }
+ .map-page[data-map-appearance='dark'] .v31-search input{
+  min-width:0;font-size:16px
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ [data-theme='dark'] .content-page.v4-profile .v4-route-feature-image img{
+  transition:none
+ }
+}
