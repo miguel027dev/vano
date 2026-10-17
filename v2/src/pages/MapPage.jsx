@@ -45,7 +45,6 @@ import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
 import {dynamicManeuverIsland} from '../lib/dynamicManeuverIsland.mjs';
-import '../v80-dynamic-guidance.css';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,savePreference,report,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
