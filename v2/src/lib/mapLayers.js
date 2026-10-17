@@ -6,7 +6,7 @@
 export const MAPBOX_STYLES=Object.freeze({
   streets:'mapbox://styles/mapbox/streets-v12',
   satellite:'mapbox://styles/mapbox/satellite-streets-v12',
-  dark:'mapbox://styles/mapbox/dark-v11',
+  dark:'mapbox://styles/mapbox/standard',
 });
 const CREDITS_MAPBOX='© Mapbox © OpenStreetMap contributors';
 const CREDITS_ESRI='Tiles © Esri — Sources: Esri and the GIS User Community';
@@ -15,6 +15,12 @@ export const LEAFLET_TILES=Object.freeze({
   satellite:{url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',attribution:CREDITS_ESRI,tileSize:256,zoomOffset:0,maxNativeZoom:19},
 });
 export const normalizedMapLayer=layer=>layer==='satellite'?'satellite':'streets';
+// Mapbox Standard night renders its own authentic 3D trees, buildings and lighting.
+// The older dark-v11 raster style remains the Leaflet/WebGL recovery fallback.
+export const nativeNightMapboxStyle=(layer='streets',appearance='light')=>
+  normalizedMapLayer(layer)==='streets'&&appearance==='dark';
+export const nativeNightMapboxConfig=(layer='streets',appearance='light')=>
+  nativeNightMapboxStyle(layer,appearance)?{basemap:{lightPreset:'night',show3dObjects:true}}:undefined;
 // A local copy works before publication in Mapbox Studio.
 export const VANO_ATLAS_STYLE='/mapbox/vano-atlas-light.json';
 export const mapboxStyleFor=(layer,customStreetsStyle='',appearance='light')=>normalizedMapLayer(layer)==='satellite'
