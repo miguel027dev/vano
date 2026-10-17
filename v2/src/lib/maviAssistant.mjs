@@ -170,7 +170,7 @@ export function maviProposalDecision(value){
  if(/\bnao\b/.test(s))return null; // Unresolved negation is not authorization.
  if(/^(?:sim|quero|pode|claro|com certeza|combinado|aceito|aceita|confirmo|confirma|confirmar|confirmado|isso|essa mesmo|essa sim|ta bom|tudo bem|beleza|fechado|fechou|demorou|bora|bora la|manda|manda ver|vamos nessa|vai nessa|troca|troque|muda|usar|usa essa|escolho essa|gostei dessa|gostei desta|uhum|aham|aham sim|positivo|perfeito|pode ser|ok|okay)(?:\b|$)/.test(s)){
   // "Quero saber..." or "Pode explicar..." should be handled as questions.
-  if(/^(?:quero|pode) (?:saber|entender|perguntar|ver se|que voce|me explica|me dizer|explicar|a diferenca|detalhes)\b/.test(s))return null;
+  if(/^(?:quero|pode) (?:saber|entender|perguntar|ver se|que voce|me explica|me dizer|explicar|a diferenca|detalhes|repetir|esperar|continuar|dizer|falar)\b/.test(s))return null;
   return 'accept';
  }
  return null;
