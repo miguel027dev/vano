@@ -11,12 +11,14 @@ test('a single GPS street pill is visible only during active navigation',()=>{
  assert.match(map,/navigationStreetLabel\(currentAddress,hasRecentGpsFix/);
  assert.doesNotMatch(map,/v36-nav-road-pill[^\n]*guidance\?\.street/);
 });
-test('existing report link and unchanged triangle icon sit inside the arrival dock',()=>{
- assert.equal(map.split('to="/relatar" title="Registrar alerta"').length-1,1);
- assert.match(map,/className="circle-btn v36-nav-report" to="\/relatar"/);
+test('occurrence card trigger and unchanged triangle icon stay inside the arrival dock',()=>{
+ assert.equal(map.split('to="/relatar"').length-1,0);
+ assert.match(map,/className="circle-btn v36-nav-report vano-quick-report-trigger"/);
+ assert.match(map,/aria-haspopup="dialog" aria-expanded=\{quickReportOpen\}/);
+ assert.match(map,/quickReportOpen&&<QuickReportSheet/);
  assert.match(map,/<AlertTriangle size=\{19\} strokeWidth=\{1\.9\}\/>/);
  const pill=map.indexOf('className="v36-nav-road-pill"');
- const report=map.indexOf('className="circle-btn v36-nav-report"');
+ const report=map.indexOf('className="circle-btn v36-nav-report vano-quick-report-trigger"');
  assert.ok(pill>0&&report>pill);
  const dock=map.indexOf('className="nav-bottom ',pill);
  assert.ok(dock>pill&&report>dock);

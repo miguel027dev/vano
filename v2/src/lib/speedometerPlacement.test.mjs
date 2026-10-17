@@ -16,10 +16,11 @@ test('a single real-GPS speedometer moves left of the street pill in navigation'
  const row=page.indexOf('navMode&&<div className="v36-nav-road-row"');
  const dial=page.indexOf('{speedometer}',row);
  const street=page.indexOf('className="v36-nav-road-pill"',row);
- const report=page.indexOf('className="circle-btn v36-nav-report"',row);
+ const report=page.indexOf('className="circle-btn v36-nav-report vano-quick-report-trigger"',row);
  const dock=page.indexOf('className="nav-bottom v37-nav-bottom"',row);
  assert.ok(0<row&&row<dial&&dial<street&&street<dock&&dock<report);
- assert.match(page,/to="\/relatar" title="Registrar alerta"/);
+ assert.match(page,/onClick=\{\(\)=>setQuickReportOpen\(true\)\}/);
+ assert.doesNotMatch(page,/to="\/relatar" title="Registrar alerta"/);
 });
 test('speedometer and controls clear the viewport-centered street address and safe areas',()=>{
  assert.match(layout,/\.map-page\.in-navigation \.v36-nav-road-row\{/);

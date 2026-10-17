@@ -21,9 +21,11 @@ test('the only end-navigation control is an accessible X on the left of the ETA'
  assert.ok(start>0&&end>start);
  const close=segment.indexOf('className="circle-btn v37-nav-end"');
  const center=segment.indexOf('className="v37-nav-center"');
- const report=segment.indexOf('className="circle-btn v36-nav-report"');
+ const report=segment.indexOf('className="circle-btn v36-nav-report vano-quick-report-trigger"');
  assert.ok(close>0&&center>close&&report>center);
  assert.match(segment,/onClick=\{reset\} aria-label="Encerrar navegação"/);
+ assert.match(segment,/onClick=\{\(\)=>setQuickReportOpen\(true\)\}/);
+ assert.doesNotMatch(segment,/to="\/relatar"/);
  assert.equal(view.split('aria-label="Encerrar navegação"').length-1,1);
  assert.ok(!segment.includes('btn btn-primary'));
 });
