@@ -33,7 +33,7 @@ export function validReportCoords(point){
   return Array.isArray(point)&&point.length===2&&point.every(Number.isFinite)
     &&Math.abs(point[0])<=180&&Math.abs(point[1])<=85;
 }
-export function publicReportsInBBox(reports,bbox,now=Date.now()){
+export function publicReportsInBBox(reports,bbox,now=Date.now(),viewerOwner=null,viewerKey=null){
   if(!Array.isArray(reports)||!Array.isArray(bbox)||bbox.length!==4||!bbox.every(Number.isFinite))return [];
   const [west,south,east,north]=bbox;
   return reports.filter(record=>record && isReportType(record.type)
@@ -48,8 +48,26 @@ export function publicReportsInBBox(reports,bbox,now=Date.now()){
       coords:record.coords.map(n=>Number(n.toFixed(3))),
       createdAt:record.createdAt,expiresAt:new Date(reportExpiration(record)).toISOString(),
       status:record.status,
+      // Only a boolean for this requesting session. The author's ID stays private.
+      isOwn:Boolean(viewerOwner&&record.owner===viewerOwner),
+      viewerVote:viewerKey&&record.feedback&&Object.hasOwn(record.feedback,viewerKey)?record.feedback[viewerKey]:null,
       description:String(record.description||'').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,150)
     }));
+}
+/** Single mutable decision, called only server-side after CSRF + session checks.
+ * Never expose feedback keys, votes dictionary, or author identity to clients. */
+export function recordReportFeedback(record,actor,key,choice,now=Date.now()){
+  if(!record||typeof actor!=='string'||!actor||typeof key!=='string'||!key||
+     !['present','gone'].includes(choice))return {status:'invalid'};
+  if(!['nao_verificado','verificado'].includes(record.status)||!(reportExpiration(record)>now))
+    return {status:'expired'};
+  if(record.owner===actor)return {status:'own'};
+  if(record.feedback&&Object.hasOwn(record.feedback,key))
+    return {status:'duplicate',choice:record.feedback[key]};
+  if(Object.keys(record.feedback||{}).length>=256)return {status:'limit'};
+  record.feedback??={};
+  record.feedback[key]=choice;
+  return {status:'recorded',choice};
 }
 export function metersApart(a,b){
   if(!validReportCoords(a)||!validReportCoords(b))return Infinity;

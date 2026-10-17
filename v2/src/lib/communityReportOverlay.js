@@ -2,20 +2,93 @@
  * Mapbox and Leaflet keep their route/GPS/POI layers untouched.
  */
 import L from 'leaflet';
+import {post} from './api.js';
 import mapboxgl from 'mapbox-gl';
 import {closeReports,metersApart,reportIconSvg,reportQueryBBox,reportType,validReportCoords} from './communityReports.js';
 
-function popupNode(report){
-  const root=document.createElement('div');root.className='vano-community-popup';
-  const title=document.createElement('strong');title.textContent=reportType(report.type)?.name||'Ocorrência';
-  const note=document.createElement('small');note.textContent=report.status==='verificado'?'Relato verificado':'Relato não verificado';
-  root.append(title,note);
+const REPORT_QUESTIONS={
+  via_fechada:'A rua continua fechada?',
+  transito:'O trânsito continua intenso?',
+  fiscalizacao:'Essa blitz ainda está aqui?',
+  acidente:'O acidente ainda está aqui?',
+  alagamento:'Ainda há alagamento aqui?',
+  obstaculo:'O obstáculo continua na via?'
+};
+const popupSignature=report=>[report.status,report.isOwn?'self':'other',
+  report.viewerVote||'',report.description||''].join('|');
+
+function popupNode(report,onVote){
+  const root=document.createElement('section');
+  root.className='vano-community-popup';
+  const header=document.createElement('div');
+  header.className='vano-community-popup-header';
+  const icon=document.createElement('span');
+  icon.className='vano-community-popup-icon';
+  icon.style.setProperty('--community-pin-color',reportType(report.type)?.color||'#d97751');
+  icon.innerHTML=reportIconSvg(report.type); // Static catalog SVG, no user-provided markup.
+  const heading=document.createElement('div');
+  heading.className='vano-community-popup-heading';
+  const title=document.createElement('strong');
+  title.textContent=reportType(report.type)?.name||'Ocorrência';
+  const note=document.createElement('small');
+  note.textContent=report.status==='verificado'?'Relato verificado':'Relato colaborativo';
+  heading.append(title,note);
+  header.append(icon,heading);
+  root.append(header);
   if(report.description){
-    const p=document.createElement('p');p.textContent=report.description;root.append(p);
+    const description=document.createElement('p');
+    description.className='vano-community-popup-description';
+    description.textContent=report.description;
+    root.append(description);
   }
-  const date=document.createElement('small');
-  date.textContent='Informação colaborativa · localização aproximada';
-  root.append(date);
+  const info=document.createElement('small');
+  info.className='vano-community-popup-meta';
+  info.textContent='Localização aproximada · informação da comunidade';
+  root.append(info);
+  const footer=document.createElement('div');
+  footer.className='vano-community-popup-footer';
+  if(report.isOwn){
+    footer.textContent='Seu alerta foi publicado.';
+  }else if(report.viewerVote){
+    footer.textContent='Você já confirmou esta ocorrência. Obrigado!';
+  }else{
+    const question=document.createElement('p');
+    question.className='vano-community-popup-question';
+    question.textContent=REPORT_QUESTIONS[report.type]||'Essa ocorrência ainda está aqui?';
+    const actions=document.createElement('div');
+    actions.className='vano-community-popup-actions';
+    const message=document.createElement('small');
+    message.className='vano-community-popup-feedback';
+    message.setAttribute('role','status');
+    message.setAttribute('aria-live','polite');
+    const choices=[['present','Ainda está'],['gone','Não está mais']];
+    const buttons=choices.map(([choice,label])=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='vano-community-popup-choice'+(choice==='present'?' is-present':'');
+      button.textContent=label;
+      button.addEventListener('click',async event=>{
+        event.preventDefault();
+        event.stopPropagation();
+        for(const item of buttons)item.disabled=true;
+        message.textContent='Registrando…';
+        try{
+          const result=await post('/reports/'+encodeURIComponent(report.id)+'/feedback',{choice});
+          onVote(report.id,result.choice);
+          actions.remove();
+          question.remove();
+          footer.textContent='Obrigado! Sua confirmação foi registrada.';
+        }catch(error){
+          message.textContent=error?.message||'Não foi possível confirmar. Tente novamente.';
+          for(const item of buttons)item.disabled=false;
+        }
+      });
+      return button;
+    });
+    actions.append(...buttons);
+    footer.append(question,actions,message);
+  }
+  root.append(footer);
   return root;
 }
 function pinNode(report){
@@ -40,6 +113,11 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
   let disposed=false,lastRead=0,lastCoords=null,request=null,items=[],pendingRefresh=false;
   let stream=null,streamOrigin=null;
   const markers=new Map();
+  const onVote=(id,choice)=>{
+    items=items.map(item=>item.id===id?{...item,viewerVote:choice}:item);
+    const marker=markers.get(id);
+    if(marker)marker._vanoPayloadSignature=popupSignature(items.find(item=>item.id===id)||{});
+  };
   function clear(){
     for(const marker of markers.values())marker.remove();
     markers.clear();
@@ -54,20 +132,24 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
       if(!ids.has(id)){marker.remove();markers.delete(id);}
     }
     for(const report of visible){
-      if(markers.has(report.id))continue;
+      const signature=popupSignature(report);
+      const existing=markers.get(report.id);
+      if(existing&&existing._vanoPayloadSignature===signature)continue;
+      if(existing){existing.remove();markers.delete(report.id);}
       const point=report.coords,element=pinNode(report);
       let marker;
       if(backend==='mapbox'){
         marker=new mapboxgl.Marker({element,anchor:'bottom'})
           .setLngLat(point)
-          .setPopup(new mapboxgl.Popup({offset:22,maxWidth:'240px'}).setDOMContent(popupNode(report)))
+          .setPopup(new mapboxgl.Popup({offset:22,maxWidth:'290px',className:'vano-community-map-popup'}).setDOMContent(popupNode(report,onVote)))
           .addTo(map);
       }else{
         marker=L.marker([point[1],point[0]],{icon:L.divIcon({
           className:'vano-community-leaflet-wrap',html:element.outerHTML,
           iconSize:[52,62],iconAnchor:[26,62],popupAnchor:[0,-42]
-        })}).bindPopup(popupNode(report)).addTo(map);
+        })}).bindPopup(L.popup({className:'vano-community-map-popup',maxWidth:290}).setContent(popupNode(report,onVote))).addTo(map);
       }
+      marker._vanoPayloadSignature=signature;
       markers.set(report.id,marker);
     }
   }

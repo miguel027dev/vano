@@ -57,7 +57,7 @@ import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
-import {isReportType,reportType,publicReportsInBBox,metersApart} from '../src/lib/communityReports.js';
+import {isReportType,reportType,publicReportsInBBox,metersApart,recordReportFeedback} from '../src/lib/communityReports.js';
 import {createReportStreamHub} from './reports-live.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
@@ -189,8 +189,17 @@ function csrfForSession(value) { return csrfToken(secret, `session:${sha256(valu
 function adoptGuest(req, userId) {
   const previous = guestToken(req) ? `guest:${guestToken(req)}` : null;
   if (!previous) return;
-  for (const key of ['favorites', 'history', 'routines', 'preferences'])
+  for (const key of ['favorites', 'history', 'routines', 'preferences', 'reports'])
     for (const record of db[key]) if (record.owner === previous) record.owner = userId;
+  // A guest's prior confirmation remains attached to the same human after login.
+  const guestKey=sha256('report-feedback:'+secret+':'+previous);
+  const memberKey=sha256('report-feedback:'+secret+':'+userId);
+  for(const record of db.reports){
+    if(record.feedback?.[guestKey]){
+      record.feedback[memberKey]??=record.feedback[guestKey];
+      delete record.feedback[guestKey];
+    }
+  }
 }
 function createSession(userId) {
   db.sessions = db.sessions.filter(s => s.expires > now());
@@ -608,6 +617,7 @@ async function route(req, res) {
         const chosen=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
         db.preferences.push({...prefFor(user.id,chosen),owner:user.id,language:chosen,languageConfirmed:false});
       }
+      adoptGuest(req,user.id); // Preserve authorship of reports made before Google sign-in.
       if(record.native){const code=nativeGrants.issue(user.id,record.native);await persist();res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':mobileCallback(record.native.state,code),'Set-Cookie':drop});res.end();return;}
       const raw=createSession(user.id);await persist();
       const complete=prefFor(user.id).onboardingComplete;
@@ -683,7 +693,9 @@ async function route(req, res) {
     if(!limits(req,res,'community-nearby',40,60000))return;
     const bbox=parseBBox(u.searchParams.get('bbox'),.065,.055);
     if(!bbox)return err(res,400,'Área da ocorrência inválida.');
-    return json(res,200,{reports:publicReportsInBBox(db.reports,bbox)},
+    const viewerOwner=owner(req);
+    const viewerKey=viewerOwner?sha256('report-feedback:'+secret+':'+viewerOwner):null;
+    return json(res,200,{reports:publicReportsInBBox(db.reports,bbox,Date.now(),viewerOwner,viewerKey)},
       {'Cache-Control':'private, no-store'});
   }
   if(pathname==='/api/map-features/sources'&&req.method==='GET')return json(res,200,{sources:PUBLIC_MAP_SOURCES});
@@ -1369,6 +1381,27 @@ async function route(req, res) {
     if(!Number.isFinite(metres)||metres<0||metres>3000000||metres>elapsed*75+100)return err(res,400,'Distância percorrida inválida.');
     record.measurementVersion=1;record.travelledMeters=Math.max(record.travelledMeters||0,Math.round(metres));
     await persist();const {owner:_private,...publicRecord}=record;return json(res,200,publicRecord);
+  }
+  const feedbackMatch=/^\/api\/reports\/([a-f0-9]{16})\/feedback$/.exec(pathname);
+  if(feedbackMatch&&req.method==='POST'){
+    if(!protectedWrite(req,res)||!limits(req,res,'community-feedback',16,3600000))return;
+    const actor=owner(req);
+    if(!actor)return err(res,401,'Identifique sua sessão para confirmar uma ocorrência.');
+    const record=db.reports.find(r=>r.id===feedbackMatch[1]);
+    if(!record)return err(res,404,'Esta ocorrência não está mais disponível.');
+    const body=await getBody(req);
+    const key=sha256('report-feedback:'+secret+':'+actor);
+    const result=recordReportFeedback(record,actor,key,body.choice,now());
+    if(result.status==='own')return err(res,403,'Você não pode confirmar sua própria ocorrência.');
+    if(result.status==='expired')return err(res,404,'Esta ocorrência não está mais disponível.');
+    if(result.status==='invalid')return err(res,400,'Confirmação inválida.');
+    if(result.status==='limit')return err(res,429,'Limite de confirmações atingido para esta ocorrência.');
+    if(result.status==='duplicate')
+      return json(res,200,{recorded:true,choice:result.choice,alreadyRecorded:true});
+    await persist();
+    // A single negative confirmation must never erase a community alert.
+    // Voting is advisory until verified moderation is introduced.
+    return json(res,200,{recorded:true,choice:body.choice,alreadyRecorded:false});
   }
   if(pathname==='/api/reports'&&req.method==='POST'){
     if(!limits(req,res,'reports',6,3600000))return;
