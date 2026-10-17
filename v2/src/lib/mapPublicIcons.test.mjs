@@ -207,7 +207,7 @@ test('official keyless regional roadworks share one work icon; incidents are not
 test('Open Charge Map station has one clear, unclipped charging symbol',()=>{
  const svg=iconSvg('estacao-recarga');
  assert.equal(iconMeta('estacao-recarga')[0],'charge');
- assert.match(svg,/<rect x="4\\.5" y="2\\.5" width="15" height="19"/);
+ assert.match(svg,/<rect x="4\.5" y="2\.5" width="15" height="19"/);
  assert.equal((svg.match(/<path /g)||[]).length,1);
  assert.match(svg,/fill="#188E65" stroke="none"/);
  assert.ok(!svg.includes('M16 9h2'));
