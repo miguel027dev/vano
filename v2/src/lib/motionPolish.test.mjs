@@ -7,8 +7,9 @@ const css = readFileSync(new URL('../motion-polish.css', import.meta.url), 'utf8
 const mapPage = readFileSync(new URL('../pages/MapPage.jsx', import.meta.url), 'utf8');
 const voice = readFileSync(new URL('../jev-voice.css', import.meta.url), 'utf8');
 
-test('isolated motion layer loads last without replacing existing theme or navigation styles', () => {
-  assert.ok(entry.indexOf("import './motion-polish.css';") > entry.indexOf("import './v50-night-system.css';"));
+test('isolated motion layer respects the night mode as the final CSS override', () => {
+  assert.ok(entry.indexOf("import './motion-polish.css';") > entry.indexOf("import './v49-map-appearance.css';"));
+  assert.ok(entry.indexOf("import './v50-night-system.css';") > entry.indexOf("import './motion-polish.css';"));
   assert.match(entry, /import '\.\/styles\.css';/);
   assert.match(entry, /import '\.\/v28-navigation\.css';/);
   assert.match(entry, /import '\.\/v49-map-appearance\.css';/);
