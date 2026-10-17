@@ -39,6 +39,7 @@ import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from '.
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
 import {queryWorldRadarCatalog} from './world-radar-catalog.mjs';
+import {openChargeSnapshot} from './open-charge-map.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {parseTomTomBBox,tomtomSnapshot,TOMTOM_ENV_NAME,cachedTomTomRouteIncidents} from './tomtom-incidents.mjs';
 import {tomtomPoiSnapshot,searchTomTomPlaces} from './tomtom-pois.mjs';
@@ -636,6 +637,14 @@ async function route(req, res) {
     if(!bbox)return err(res,400,'Área dos radares inválida ou grande demais.');
     const result=await queryPublicRadars(bbox);
     return json(res,200,result,{'Cache-Control':result.refreshing===true||result.error?'no-store':'public, max-age=45'});
+  }
+  // Optional public EV charging places: cached and never on the navigation hot path.
+  if(pathname==='/api/places/openchargemap'&&req.method==='GET'){
+    if(!limits(req,res,'open-charge-map',22,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'),.12,.12);
+    if(!bbox)return err(res,400,'Área de recarga inválida ou muito ampla.');
+    const result=openChargeSnapshot(bbox,process.env.VANO_OPENCHARGEMAP_API_KEY||'');
+    return json(res,200,result,{'Cache-Control':'private, max-age=8'});
   }
   if(pathname==='/api/map-features/sources'&&req.method==='GET')return json(res,200,{sources:PUBLIC_MAP_SOURCES});
   if(pathname==='/api/map-features'&&req.method==='GET'){
