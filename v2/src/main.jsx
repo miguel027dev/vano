@@ -1,0 +1,16 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { VanoProvider } from './context';
+import App from './App';
+import './styles.css';
+import './entry-v3.css';
+import './v4-design.css';
+import './v5-refinement.css';
+import './v27-locales.css';
+import './v28-navigation.css';
+import './v29-polish.css';
+import './v30-atlas.css';
+import 'leaflet/dist/leaflet.css';
+import 'mapbox-gl/dist/mapbox-gl.css';
+createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);
