@@ -1,9 +1,18 @@
-/* Compact community markers: accessible, camera-independent DOM overlays. */
-.vano-community-pin{--community-pin-color:#d97751;position:relative;width:40px;height:46px;display:flex;align-items:flex-start;justify-content:center;filter:drop-shadow(0 3px 6px #1421324d);cursor:pointer}
-.vano-community-pin::after{content:"";position:absolute;top:29px;width:10px;height:10px;transform:rotate(45deg);background:var(--community-pin-color);border-radius:2px}
-.vano-community-symbol{width:38px;height:38px;position:relative;z-index:1;display:grid;place-items:center;border-radius:50%;background:var(--community-pin-color);color:#fff;border:2px solid #fff;box-shadow:inset 0 1px 1px #ffffff42}
-.vano-community-symbol svg{width:22px;height:22px}
+/* VANO community map pin v2: distinctive soft-squircle, crisp symbol and
+   integrated pointer. Works in Mapbox DOM and Leaflet DivIcon without remounts. */
+.vano-community-pin{--community-pin-color:#d97751;position:relative;display:block;width:52px;height:62px;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;filter:drop-shadow(0 3px 7px #13233942)}
+.vano-community-pin::before{content:"";position:absolute;top:0;left:0;width:52px;height:52px;border-radius:50%;background:color-mix(in srgb,var(--community-pin-color) 20%,transparent);opacity:.7;transform:scale(.98)}
+.vano-community-pin::after{content:"";position:absolute;z-index:1;top:40px;left:20px;width:12px;height:12px;background:var(--community-pin-color);border-right:2px solid white;border-bottom:2px solid white;border-radius:2px;transform:rotate(45deg)}
+.vano-community-symbol{position:absolute;z-index:2;left:5px;top:4px;width:42px;height:42px;display:grid;place-items:center;border:2px solid #fff;border-radius:15px;background:var(--community-pin-color);color:#fff;box-shadow:0 2px 5px #14263830,inset 0 1px 0 #ffffff40;transition:transform .18s ease,box-shadow .18s ease}
+.vano-community-symbol::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border:2px solid #fff;border-radius:50%;background:#fff1b5;box-shadow:0 1px 2px #0002}
+.vano-community-pin[data-verified="1"] .vano-community-symbol::after{background:#6ee7a5}
+.vano-community-symbol svg{width:26px;height:26px;stroke-width:2;display:block}
+.vano-community-map-label{position:absolute;z-index:4;left:50%;top:-27px;transform:translate(-50%,5px);white-space:nowrap;border:1px solid #dce5ea;border-radius:9px;background:#fff;color:#1c2c3b;padding:5px 8px;box-shadow:0 5px 14px #10203120;font:700 11px/1.2 'DM Sans',sans-serif;opacity:0;pointer-events:none;transition:opacity .16s ease,transform .16s ease}
+.vano-community-pin:hover .vano-community-symbol,.vano-community-pin:focus-visible .vano-community-symbol{transform:translateY(-2px);box-shadow:0 5px 12px #1523353b,inset 0 1px 0 #ffffff40}
+.vano-community-pin:hover .vano-community-map-label,.vano-community-pin:focus-visible .vano-community-map-label{opacity:1;transform:translate(-50%,0)}
+.vano-community-pin:focus-visible{outline:2px solid #194cc5;outline-offset:3px;border-radius:13px}
 .vano-community-leaflet-wrap{background:none!important;border:0!important}
+
 .vano-community-popup{display:flex;flex-direction:column;gap:5px;padding:4px 0;font-family:'DM Sans',sans-serif;max-width:230px}
 .vano-community-popup strong{font-size:14px;color:#162438}.vano-community-popup small{font-size:11px;color:#627083}.vano-community-popup p{margin:4px 0;font-size:12px;line-height:1.35;color:#38455b}
 .report-kinds.vano-report-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:19px 0 22px}

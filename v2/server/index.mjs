@@ -58,6 +58,7 @@ import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import {isReportType,reportType,publicReportsInBBox,metersApart} from '../src/lib/communityReports.js';
+import {createReportStreamHub} from './reports-live.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
@@ -136,6 +137,7 @@ const secret = process.env.VANO_SECURITY_SECRET || hex(32);
 const limiter = createLimiter();
 const nativeGrants=mobileGrants();
 const usedMaviVoiceTickets=new Map();
+const reportStreams=createReportStreamHub();
 const headers = secureHeaders(production);
 const now = () => Date.now();
 const stamp = () => new Date().toISOString();
@@ -665,6 +667,16 @@ async function route(req, res) {
     if(!bbox)return err(res,400,'Área PRF inválida.');
     return json(res,200,prfHistoricalSnapshot(bbox,process.env.VANO_PRF_RISK_DATA_FILE||''),
       {'Cache-Control':'private, max-age=300'});
+  }
+  // Push only a change notification. The browser refetches the sanitized reports
+  // and retains an independent polling fallback when proxies suppress SSE.
+  if(pathname==='/api/reports/stream'&&req.method==='GET'){
+    if(!limits(req,res,'community-stream',12,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'),.065,.055);
+    if(!bbox)return err(res,400,'Área da ocorrência inválida.');
+    if(!reportStreams.subscribe(req,res,bbox,headers))
+      return err(res,503,'Atualização contínua ocupada; use a consulta periódica.');
+    return;
   }
   // Live community observations are not map infrastructure or police data.
   if(pathname==='/api/reports/nearby'&&req.method==='GET'){
@@ -1367,7 +1379,7 @@ async function route(req, res) {
     const record={id:hex(8),type:b.type,description:cleanText(b.description,280),coords:b.coords,
       createdAt,expiresAt:new Date(Date.parse(createdAt)+ttlMinutes*60000).toISOString(),
       status:'nao_verificado',owner:id};
-    db.reports.push(record);await persist();return json(res,201,reportPublic(record));
+    db.reports.push(record);await persist();reportStreams.publish(record);return json(res,201,reportPublic(record));
   }
   if(pathname==='/api/routines'&&req.method==='POST'){
     if(!limits(req,res,'writes',90,60000))return;
