@@ -89,7 +89,24 @@ export async function queryPublicRadars(bbox,{fetcher=fetch,now=()=>Date.now(),s
   // block a viewport request. Unit fixtures can opt into awaiting the load.
   const catalog=await queryWorldRadarCatalog(b,{fetcher:worldFetcher,now,
    waitForLoad:worldFetcher!==fetch});
-  if(catalog.available)return withNational(catalog);
+  if(catalog.available){
+   if(catalog.features.length)return withNational(catalog);
+   // A working world catalog can still miss locally mapped cameras.
+   // Probe only small, empty viewports in the background without blocking map UX.
+   const gapKey=b.map(n=>(Math.round(n*1000)/1000).toFixed(3)).join(',');
+   const oldGap=cache.get(gapKey),moment=now();
+   if(oldGap?.result?.features?.length&&oldGap.updatedAt+staleTtl>moment)
+    return withNational({...oldGap.result,cacheHit:true,
+     stale:oldGap.expires<=moment||oldGap.result.stale===true});
+   const eligible=b[2]-b[0]<=.13&&b[3]-b[1]<=.13;
+   const startProbe=eligible&&!oldGap?.pending&&(!oldGap?.expires||oldGap.expires<=moment)
+    &&running<2&&(fetcher!==fetch||moment>=upstreamDownUntil);
+   if(startProbe){
+    void queryPublicRadars(b,{fetcher,now,servers,useSnapshot:false,useWorldSnapshot:false})
+     .catch(error=>console.warn('[VANO radar gap probe]',error?.message||String(error)));
+   }
+   return withNational({...catalog,refreshing:startProbe||Boolean(cache.get(gapKey)?.pending)});
+  }
  }
  // Radar-only Overpass queries are cheap compared with POI searches.
  // The normal camera viewport is up to 0.30 x 0.30 degrees; rejecting it
