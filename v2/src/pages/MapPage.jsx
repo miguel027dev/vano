@@ -532,6 +532,14 @@ export default function MapPage({active=true}){
     setGuidance(null);setNavMode(true);spoken.current.clear();
     setToast('Simulação iniciada. O GPS real não será alterado.');
   }
+  useEffect(()=>{
+    if(!simConfirmOpen)return;
+    const onKeyDown=event=>{
+      if(event.key==='Escape')setSimConfirmOpen(false);
+    };
+    window.addEventListener('keydown',onKeyDown);
+    return()=>window.removeEventListener('keydown',onKeyDown);
+  },[simConfirmOpen]);
   function startRouteSimulation(){
     if(!adminV2RoadSigns||!active)return;
     if(!route||!simulationFrame(route,0)){
@@ -1078,7 +1086,7 @@ export default function MapPage({active=true}){
         <strong>Simular esta rota?</strong>
         <p>Você está em navegação real. Para começar o teste, a navegação atual será encerrada e o trajeto continuará apenas como simulação.</p>
         <div className="v76-sim-confirm-actions">
-          <button type="button" onClick={()=>setSimConfirmOpen(false)}>Cancelar</button>
+          <button type="button" autoFocus onClick={()=>setSimConfirmOpen(false)}>Cancelar</button>
           <button type="button" className="v76-sim-confirm-primary" onClick={activateRouteSimulation}>Iniciar simulação</button>
         </div>
       </section>
