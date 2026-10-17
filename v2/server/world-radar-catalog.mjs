@@ -148,7 +148,11 @@ export function resetWorldRadarCatalogForTests(){
 export async function queryWorldRadarCatalog(bbox,opts={}){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox,.3,.3);
  if(!b)throw RangeError('Invalid camera catalog bbox');
- await Promise.all(sourceStates.map(state=>fetchSnapshot(state,opts)));
+ // Global feeds may take several seconds to download. Launch refresh in the
+ // background for real map requests and return cached records immediately.
+ // Only deterministic unit fixtures await the first load.
+ const loading=sourceStates.map(state=>fetchSnapshot(state,opts));
+ if(opts.waitForLoad!==false)await Promise.all(loading);
  const [w,s,e,n]=b,features=[],seen=new Set(),cx=(w+e)/2,cy=(s+n)/2;
  for(const state of sourceStates){
   for(let lon=Math.floor(w*GRID_SCALE);lon<=Math.floor(e*GRID_SCALE);lon++){
