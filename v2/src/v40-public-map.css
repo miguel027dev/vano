@@ -53,6 +53,8 @@
  color:#485750;background:#fffffff0;border:1px solid #dee8e4;
  border-radius:9px;padding:3px;box-shadow:0 1px 4px #24332918;
 }
+/* Licence attribution appears only while TomTom incident markers are visible. */
+.v40-tomtom-credit{left:calc(env(safe-area-inset-left,0px) + 54px);width:auto;min-width:65px;padding:3px 6px;font-weight:700}
 .v40-map-credit img{display:block;width:20px;height:20px;object-fit:contain}
 .v40-map-credit[hidden]{display:none!important}
 .v40-map-credit:hover,.v40-map-credit:focus-visible{text-decoration:underline}

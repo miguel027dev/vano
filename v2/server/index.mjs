@@ -39,6 +39,7 @@ import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from '.
 import {parseBBox,queryPublicMap,filterVerifiedReports,PUBLIC_MAP_SOURCES} from './map-public-data.mjs';
 import {queryPublicRadars} from './map-radars.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
+import {parseTomTomBBox,tomtomSnapshot,TOMTOM_ENV_NAME} from './tomtom-incidents.mjs';
 import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
@@ -626,6 +627,18 @@ async function route(req, res) {
   }
   // Open traffic sources are OPTIONAL. Historical datasets never enter the
   // live overlay. The server owns the vetted feed URL, never the browser.
+  // TomTom Orbis incidents: the secret is never exposed to the browser.
+  // Only a memory snapshot is returned; upstream network work runs async.
+  if(pathname==='/api/traffic/incidents/tomtom/status'&&req.method==='GET')
+    return json(res,200,{enabled:Boolean(process.env[TOMTOM_ENV_NAME]?.trim()),provider:'TomTom Orbis v2',affectsRouting:false},
+      {'Cache-Control':'private, max-age=20'});
+  if(pathname==='/api/traffic/incidents/tomtom'&&req.method==='GET'){
+    if(!limits(req,res,'tomtom-map-incidents',30,60000))return;
+    const bbox=parseTomTomBBox(u.searchParams.get('bbox'));
+    if(!bbox)return err(res,400,'Área inválida para incidentes TomTom.');
+    return json(res,200,tomtomSnapshot(bbox,process.env[TOMTOM_ENV_NAME]||''),
+      {'Cache-Control':'private, max-age=5'});
+  }
   if(pathname==='/api/traffic/sources'&&req.method==='GET')
     return json(res,200,{sources:TRAFFIC_PROVIDER_CATALOG.map(p=>p.id==='municipal-geojson'
       ?{...p,enabled:Boolean(process.env.VANO_TRAFFIC_OFFICIAL_GEOJSON_URL)}:p)});
