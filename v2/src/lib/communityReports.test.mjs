@@ -34,3 +34,23 @@ test('bbox is bounded and refuses polar / invalid coordinates',()=>{
  assert.equal(reportQueryBBox([0,82]),null);
  assert.equal(reportQueryBBox(point).split(',').length,4);
 });
+
+test('three distinct lightweight map glyphs are legible; blitz is unchanged',()=>{
+ const traffic=reportIconSvg('transito');
+ const obstacle=reportIconSvg('obstaculo');
+ const accident=reportIconSvg('acidente');
+ const blitz=reportIconSvg('fiscalizacao');
+ for(const svg of [traffic,obstacle,accident,blitz]){
+   assert.match(svg,/viewBox="0 0 24 24"/);
+   assert.match(svg,/width="22" height="22"/);
+   assert.ok(svg.length<480,'icons must remain light on mobile maps');
+ }
+ assert.match(traffic,/M7\.5 7 9 4/,'first car');
+ assert.match(traffic,/M5\.5 16h13v5/,'second car');
+ assert.match(obstacle,/m10 4h4l4 15H6z/,'simple cone');
+ assert.match(obstacle,/M4 21h16/,'cone base');
+ assert.match(accident,/m4 13 1\.5-4h8L15 13/,'car silhouette');
+ assert.match(accident,/m18\.5 3/,'collision flash');
+ assert.match(blitz,/M12 3 4\.5 6v6c0 5/,'blitz symbol must not change');
+ assert.equal(new Set([traffic,obstacle,accident,blitz]).size,4);
+});

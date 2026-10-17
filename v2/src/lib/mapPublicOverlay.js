@@ -97,6 +97,10 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
  const markers=new Map();
  // Read-only evidence for private /v2 signs. A nearby signal is NOT a signal phase or turn instruction.
  map._vanoTrafficSignals=()=>items.filter(x=>x.type==='semaforo'&&(x.source==='OpenStreetMap'||x.source==='Mapbox Streets')).slice(0,100);
+ // Provider links must be at the bottom of the viewport AND above the nav dock.
+ // Rendering inside the map canvas's stacking context would hide them behind
+ // the navigation UI even with a large CSS z-index.
+ const creditHost=map.getContainer().closest?.('.map-page')||map.getContainer();
  const credit=document.createElement('a');
  credit.className='v40-map-credit';
  credit.href='https://www.openstreetmap.org/copyright';
@@ -110,14 +114,14 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
  // Keep licensing information available without crowding the map interface.
  credit.title='Fontes e licenças: OpenStreetMap (ODbL 1.0) e ANTT (CC BY 4.0).';
  credit.setAttribute('aria-label','© OpenStreetMap contributors. Fontes: OpenStreetMap e ANTT; licenças ODbL 1.0 e CC BY 4.0.');
- credit.hidden=true;map.getContainer().append(credit);
+ credit.hidden=true;creditHost.append(credit);
  // Show provider attribution when actual TomTom traffic data is displayed.
  const tomtomCredit=document.createElement('a');
  tomtomCredit.className='v40-map-credit v40-tomtom-credit';
  tomtomCredit.href='https://www.tomtom.com/legal/';
  tomtomCredit.target='_blank';tomtomCredit.rel='noopener noreferrer';
  tomtomCredit.textContent='© TomTom';tomtomCredit.title='Dados e locais © TomTom';
- tomtomCredit.hidden=true;map.getContainer().append(tomtomCredit);
+ tomtomCredit.hidden=true;creditHost.append(tomtomCredit);
  const notice=document.createElement('button');
  notice.type='button';
  notice.className='v41-public-status';
