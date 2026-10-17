@@ -142,9 +142,9 @@ export default function MapPage({active=true}){
     };
   },[navMode,muted,language]);
   useEffect(()=>{const native=e=>onPosition(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
-  useEffect(()=>{notifyNative({action:'navigation',active:navMode});return()=>notifyNative({action:'navigation',active:false});},[navMode]);
-  useEffect(()=>{notifyNative({action:'wake',active:navMode});return()=>notifyNative({action:'wake',active:false});},[navMode]);
-  useEffect(()=>navMode&&active?startNavigationWakeLock():undefined,[navMode,active]);
+  useEffect(()=>{notifyNative({action:'navigation',active:navMode&&!simActive});return()=>notifyNative({action:'navigation',active:false});},[navMode,simActive]);
+  useEffect(()=>{notifyNative({action:'wake',active:navMode&&!simActive});return()=>notifyNative({action:'wake',active:false});},[navMode,simActive]);
+  useEffect(()=>navMode&&active&&!simActive?startNavigationWakeLock():undefined,[navMode,active,simActive]);
   useEffect(()=>{const result=e=>{if(e.detail?.id!==offlineGeneration.current)return;setOfflineMap(v=>({...v,status:e.detail.ok?'ready':'partial'}));};window.addEventListener('vano:offline-map',result);return()=>window.removeEventListener('vano:offline-map',result);},[]);
 
   // Floating map controls are positioned against the ACTUAL route panel height.
@@ -746,7 +746,7 @@ export default function MapPage({active=true}){
   // One accepted GPS fix drives both the instruction and its timing. The map's
   // animated marker cannot prematurely complete a maneuver.
   useEffect(()=>{
-    if(!navMode||!hasLiveGPS||!route?.geometry)return;
+    if(!navMode||simActive||!hasLiveGPS||!route?.geometry)return;
     if(guidanceTrackerRef.current.route!==route){
       guidanceTrackerRef.current={route,tracker:createManeuverTracker(route)};
       cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};
@@ -759,10 +759,10 @@ export default function MapPage({active=true}){
   },[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
   // remaining minutes and kilometers shrink only as route progress is reported.
-  const navigationStats=navMode?navigationSummary(route,guidance,Date.now()):null;
+  const navigationStats=navMode?navigationSummary(route,shownGuidance,Date.now()):null;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
   useEffect(()=>{
-    if(!navMode||!route?.geometry||!isNativeShell())return;
+    if(!navMode||simActive||!route?.geometry||!isNativeShell())return;
     let stopped=false,lastSection=-1;
     const prepareAhead=()=>{
       if(stopped||!active||navigator.onLine===false)return;
@@ -781,13 +781,14 @@ export default function MapPage({active=true}){
     return()=>{stopped=true;clearTimeout(start);clearInterval(pulse);};
   },[navMode,route?.id,route?.geometry,layer,active]);
   useEffect(()=>{
-    if(!navMode||!route||!dest)return;
+    if(!navMode||simActive||!route||!dest)return;
     const options=JSON.stringify([muted,layer,offlineMap.status,spokenRevision]);
     if(lastSaveRoute.current===route&&lastSaveOptions.current===options&&Date.now()-lastSave.current<4000)return;lastSave.current=Date.now();lastSaveRoute.current=route;lastSaveOptions.current=options;
     const snapshot={version:1,owner:user?.id||'guest',savedAt:Date.now(),destination:dest,...(maviPendingStop?{maviPendingStop}:{}),route,source:routeData?.source,safetyMessage:routeData?.safetyMessage,vehicle:routeVehicle,layer,muted,measuredTrip:measuredTrip.current?{...measuredTrip.current,meters:odometer.current.meters}:null,mapPrepared:offlineMap.status==='ready',position:userCoords?{coords:userCoords,telemetry}:null,spoken:[...spoken.current]};
     writeOffline('active-trip',snapshot).then(setStorageReady);
   },[navMode,route,dest,maviPendingStop,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision,routeVehicle]);
   function speakManeuver(text,key=null){
+    if(simActive)return false; // Simulation must never request spoken directions.
     if(jevMode){
       // V2 navigation never invokes browser TTS. Cartesia speaks actual
       // verified turn cues, authorized with the signed route proof.
@@ -842,7 +843,7 @@ export default function MapPage({active=true}){
     return result.ok;
   }
   useEffect(()=>{
-    if(!active||!navMode||muted||recalculating||Date.now()<voiceRetryAfterRef.current)return;
+    if(!active||!navMode||simActive||muted||recalculating||Date.now()<voiceRetryAfterRef.current)return;
     const fresh=hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(35,(telemetry.accuracy||0)*1.8);
     const cue=spokenCue(guidance,{fresh,preview:false,muted,speed:telemetry.speed,language});
     if(cue&&!spoken.current.has(cue.key)){
@@ -860,7 +861,7 @@ export default function MapPage({active=true}){
   // Low-priority walking detail: play only for a mapped crossing, with fresh
   // accepted GPS progress. A real imminent turn or active voice has priority.
   useEffect(()=>{
-    if(!active||routeVehicle!=='a-pe'||routeData?.source!=='mapbox-walking'||
+    if(!active||simActive||routeVehicle!=='a-pe'||routeData?.source!=='mapbox-walking'||
        recalculating||maneuverAudioRef.current||
        (jevMode&&language!=='pt-BR'))return;
     const cue=crossingVoiceCue(mappedCrossing,{
@@ -884,7 +885,7 @@ export default function MapPage({active=true}){
     }
   }
   async function begin(){
-    if(!route||!dest)return;
+    if(!route||!dest||simActive)return;
     spoken.current.clear();
     // A manual origin only plans a route: navigation needs a recent real GPS fix.
     if(!hasLiveGPS){requestGPS(true);return;}
@@ -900,12 +901,12 @@ export default function MapPage({active=true}){
     if(!muted&&(!Number.isFinite(first?.distance)||first.distance>150))
       speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){if(simActive){stopRouteSimulation();return;}routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
   async function recalculateNavigationRoute(){
-    if(rerouteRequest.current||!navMode||!dest||!route?.geometry)return;
+    if(simActive||rerouteRequest.current||!navMode||!dest||!route?.geometry)return;
     if(navigator.onLine===false){setToast('Conecte-se à internet para recalcular. A rota atual foi mantida.');return;}
     if(!hasLiveGPS||!hasRecentGpsFix(lastGpsFix.current,Date.now(),15000)||!Number.isFinite(telemetry.accuracy)||telemetry.accuracy>35){
       setToast('Aguarde um sinal GPS preciso para recalcular. A rota atual foi mantida.');return;
@@ -936,7 +937,7 @@ export default function MapPage({active=true}){
   }
   // Two coherent GPS fixes confirm a deviation; do not stall for 25 seconds.
   useEffect(()=>{
-    if(navigator.onLine===false||!active||!navMode||!hasLiveGPS||!route?.geometry||demoRoute||recalculating||!dest)return;
+    if(simActive||navigator.onLine===false||!active||!navMode||!hasLiveGPS||!route?.geometry||demoRoute||recalculating||!dest)return;
     const now=Date.now(),fix=lastGpsFix.current;
     const decision=evaluateRouteDeviation(rerouteState.current,{
       distance:nearestOnRoute(userCoords,route.geometry).distance,
@@ -952,14 +953,14 @@ export default function MapPage({active=true}){
   // Never render it on the initial map or next to the location card.
   // Only the selected driving route and a fresh, precise GPS fix can supply
   // a posted limit; unknown provider segments never display guessed numbers.
-  const postedLimit=navMode&&hasLiveGPS&&routeVehicle!=='a-pe'&&routeData?.source!=='demonstracao'
+  const postedLimit=navMode&&!simActive&&hasLiveGPS&&routeVehicle!=='a-pe'&&routeData?.source!=='demonstracao'
     ?speedLimitAtGpsPosition(route,userCoords,{
       accuracy:telemetry.accuracy,
       fresh:hasRecentGpsFix(lastGpsFix.current,Date.now(),15000),
       simulated:demoRoute
     }):null;
   const readQuickReportGPS=()=>quickReportPosition(lastGpsFix.current);
-  const reportMotionBlocked=quickReportMotionBlocked(navMode,telemetry.speed);
+  const reportMotionBlocked=simActive||quickReportMotionBlocked(navMode,telemetry.speed);
   const speedometer=<output className="v43-speedometer" aria-label={speedKmh===null?'Velocidade indisponível':`Velocidade atual: ${speedKmh} quilômetros por hora`+(postedLimit===null?'':`. Limite informado da via: ${postedLimit} quilômetros por hora`)} aria-live="off" title={postedLimit===null?'Velocidade do GPS. Limite da via indisponível':'Velocidade do GPS e limite informado pelo Mapbox'}><strong>{speedKmh===null?'—':speedKmh}</strong><small>km/h</small>{postedLimit!==null&&<span className="v43-speed-limit" aria-label={`Limite de velocidade informado: ${postedLimit} km/h`}><b>{postedLimit}</b></span>}</output>;
 
   const nextTurnText=maneuverText(guidance,route?.steps?.[0]?.instruction||t('Continue até o destino'));
