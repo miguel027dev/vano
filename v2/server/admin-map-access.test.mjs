@@ -30,7 +30,7 @@ test('V1 gets the assistant and microphone; V2 requires admin in the router',()=
  const admin=readFileSync(new URL('../src/pages/AdminPage.jsx',import.meta.url),'utf8');
  const serverCode=readFileSync(new URL('./index.mjs',import.meta.url),'utf8');
  assert.match(map,/location\.pathname==='\/mapa'\|\|location\.pathname==='\/v2'/);
- assert.match(map,/jevMode&&<JevVoiceButton/);
+ assert.match(map,/jevMode&&navMode&&<JevVoiceButton/);
  assert.match(admin,/<Link to="\/v2"[^>]*>.*Entrar no mapa de administrador/);
  assert.match(app,/user\?\.isAdmin===true\?\(mobile\?null:<MapPage\/>\)/);
  assert.match(serverCode,/isAdminAccount\(userSession\(req\)\?\.user\)/);
