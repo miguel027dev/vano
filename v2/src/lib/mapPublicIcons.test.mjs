@@ -61,7 +61,7 @@ test('map overlay keeps GPS geometry, Mapbox native credits and compact extra OS
  const component=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
- assert.match(component,/attachPublicMapOverlay\(map,backend.current,\(\)=>latest.current.navigation\)/);
+ assert.match(component,/attachPublicMapOverlay\(map,backend.current,\(\)=>latest.current.navigation,place=>latest.current.onPublicPlaceSelect/);
  assert.match(component,/detachPublicPins\?\.\(\)/);
  assert.match(overlay,/map.on\('moveend',schedule\)/);
  assert.match(overlay,/map.off\('moveend',schedule\)/);
@@ -246,4 +246,27 @@ test('navigation state updates public markers without remounting or refetching m
  assert.match(overlay,/navigation:Boolean\(getNavigation\(\)\)/);
  assert.match(overlay,/map\._vanoRefreshPublicPins=render/);
  assert.match(overlay,/delete map\._vanoRefreshPublicPins/);
+});
+
+test('public POI cards use a theme-aware named place and real route destination action',()=>{
+ const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ assert.match(overlay,/title\.textContent=item\.name/);
+ assert.match(overlay,/category\.textContent=PLACE_LABELS\[item\.type\]/);
+ assert.match(overlay,/label\.textContent='Ir para este destino'/);
+ assert.match(overlay,/action\.addEventListener\('click'/);
+ assert.match(overlay,/if\(getNavigation\(\)\)return/);
+ assert.match(overlay,/onPickPlace\(\{id:item\.id,name:item\.name/);
+ assert.match(overlay,/className:'v40-place-popover'/);
+ assert.match(map,/onPublicPlaceSelect=null/);
+ assert.match(page,/onPublicPlaceSelect=\{pick\}/);
+ assert.match(css,/\.map-page\.in-navigation \.v40-public-popup-action\{display:none!important\}/);
+ assert.match(css,/\.map-page\[data-map-appearance="dark"\] \.v40-place-popover/);
+ assert.match(css,/--v40-popup-bg:#111416/);
+ assert.match(css,/--v40-popup-bg:#ffffff/);
+ assert.match(css,/min-height:44px/);
+ assert.ok(!overlay.includes('title.innerHTML=item.name'),
+  'provider names must always use textContent, never HTML');
 });
