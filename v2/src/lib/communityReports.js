@@ -10,11 +10,11 @@ export const REPORT_TYPES=Object.freeze([
 const BY_TYPE=new Map(REPORT_TYPES.map(type=>[type.id,type]));
 const PATHS={
   via_fechada:'<path d="M4 9h16v6H4zM6 15v5m12-5v5M7 9V6m10 3V6"/><path d="m6.5 14 3-5m2 5 3-5m2 5 2.5-4"/>',
-  transito:'<path d="M7 6.6 8 4h8l1 2.6M6 7h12v5H6zM8 12v1m8-1v1M8 9h1m6 0h1"/><path d="m5 17 1-3h12l1 3M4 17h16v4H4zM7 21v1m10-1v1M7 19h1m9 0h1"/>',
+  transito:'<path d="M7.5 7 9 4h6l1.5 3M7 7h10v5H7zM8.5 10h1m5 0h1"/><path d="m6.5 16 1.5-3h8l1.5 3M5.5 16h13v5h-13zM7.5 19h1m7 0h1"/>',
   fiscalizacao:'<path d="M12 3 4.5 6v6c0 5 3.5 7.8 7.5 9 4-1.2 7.5-4 7.5-9V6z"/><path d="M9 12h6m-3-3v6"/>',
-  acidente:'<path d="M12 3 2 20h20z"/><path d="M12 9v5m0 3h.01" stroke-width="2.5"/><path d="m5.5 15-2-1m15 1 2-1"/>',
+  acidente:'<path d="m4 13 1.5-4h8L15 13M3.5 13h12v6h-12zM6 19v1.5m7-1.5v1.5"/><path d="m18.5 3 .8 3 2.7 1-2.7 1-.8 3-.9-3L15 7l2.6-1z"/>',
   alagamento:'<path d="M12 3c-2.5 3.3-4.5 5.8-4.5 8.2a4.5 4.5 0 0 0 9 0C16.5 8.8 14.5 6.3 12 3z"/><path d="M2.5 19c1.5-1.2 3-1.2 4.5 0s3 1.2 4.5 0 3-1.2 4.5 0 3 1.2 5 0M3 22c1.5-1 3-1 4.5 0s3 1 4.5 0 3-1 4.5 0 3 1 4.5 0"/>',
-  obstaculo:'<path d="m9 5 6 0 5 15H4zM7.2 11h9.6M5.8 16h12.4M8 5 10 2h4l2 3"/>'
+  obstaculo:'<path d="m10 4h4l4 15H6zM8.9 10h6.2M7.7 15h8.6M4 21h16"/>'
 };
 export const isReportType=type=>BY_TYPE.has(type);
 export const reportType=type=>BY_TYPE.get(type)||null;

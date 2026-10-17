@@ -136,20 +136,30 @@
  .map-page .v40-place-popover .mapboxgl-popup-content,
  .map-page .v40-place-popover .leaflet-popup-content-wrapper{transition:none}
 }
+/* Compact provider badges anchored at the actual viewport footer, even
+   during live navigation. Credits remain visible and interactive above the
+   route dock, never clipped inside the map's separate stacking context. */
 .v40-map-credit{
- position:absolute;left:calc(env(safe-area-inset-left,0px) + 22px);right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 59px);
- z-index:30;display:flex;align-items:center;justify-content:center;
- width:28px;height:28px;text-decoration:none;font:750 10px/1 system-ui,sans-serif;white-space:nowrap;
- color:#485750;background:#fffffff0;border:1px solid #dee8e4;
- border-radius:9px;padding:3px;box-shadow:0 1px 4px #24332918;
+ position:absolute;left:auto;right:calc(env(safe-area-inset-right,0px) + 5px);
+ bottom:calc(env(safe-area-inset-bottom,0px) + 3px);
+ z-index:535;display:flex;align-items:center;justify-content:center;
+ width:23px;height:23px;text-decoration:none;font:750 9px/1 system-ui,sans-serif;white-space:nowrap;
+ color:#485750;background:#fffffff2;border:1px solid #dee8e4;
+ border-radius:7px;padding:2px;box-shadow:0 1px 3px #24332916;
 }
-/* Licence attribution appears only while TomTom incident markers are visible. */
-.v40-tomtom-credit{left:calc(env(safe-area-inset-left,0px) + 54px);width:auto;min-width:65px;padding:3px 6px;font-weight:700}
-.v40-map-credit img{display:block;width:20px;height:20px;object-fit:contain}
+/* Licence attribution appears only while TomTom markers are visible. */
+.v40-tomtom-credit{
+ left:auto;right:calc(env(safe-area-inset-right,0px) + 31px);
+ width:54px;min-width:54px;padding:2px 3px;font-size:9px;font-weight:700;
+}
+.v40-map-credit img{display:block;width:18px;height:18px;object-fit:contain}
 .v40-map-credit[hidden]{display:none!important}
 .v40-map-credit:hover,.v40-map-credit:focus-visible{text-decoration:underline}
-.map-page.in-navigation .v40-map-credit,.map-page.in-navigation.has-sheet .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 8px);z-index:2}
-.map-page.has-sheet .v40-map-credit{bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 71px)}
+.map-page.in-navigation .v40-map-credit,
+.map-page.in-navigation.has-sheet .v40-map-credit,
+.map-page.has-sheet .v40-map-credit{
+ bottom:calc(env(safe-area-inset-bottom,0px) + 3px);z-index:535;
+}
 @media(max-width:370px){
  .v40-public-pin{width:29px;height:29px;border-radius:11px}
  .v40-public-pin.is-radar{width:33px;height:33px}
@@ -204,10 +214,8 @@
  font:600 12px/1.4 system-ui,sans-serif;
 }
 
-/* Keep ALL provider credits in the lower-left map corner, below the location
-   card. The small inset + ascending baselines form the requested diagonal:
-   14px/10px (official logo), 16px/36px (attribution), 22px/62px (OSM).
-   Do not scale, clip, cover, or remove mandatory Mapbox/OSM marks. */
+/* Keep native Mapbox/Leaflet attribution intact. The distinct OSM and
+   TomTom badges are pinned to the physical bottom-right above the UI. */
 .map-page .mapboxgl-ctrl-bottom-left{
  left:calc(env(safe-area-inset-left,0px) + 14px);
  right:auto;
