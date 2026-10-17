@@ -43,10 +43,16 @@ test('missing and invalid path samples refuse playback',()=>{
 test('administrator simulation is never available on the public map or as real GPS input',()=>{
  const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  const css=readFileSync(new URL('../admin-route-simulator.css',import.meta.url),'utf8');
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(page,/adminV2RoadSigns=location\.pathname==='\/v2'&&user\?\.isAdmin===true/);
  assert.match(page,/adminV2RoadSigns&&\(route\|\|simActive\)&&<button/);
  assert.match(page,/if\(!adminV2RoadSigns\|\|navMode\|\|!active/);
  assert.match(page,/gpsCoords=\{simPosition\|\|userCoords\}/);
+ assert.match(page,/simulationPreview=\{simActive\}/);
+ assert.match(map,/latest\.current\.simulationPreview\?null:latest\.current\.gpsCoords/);
+ assert.match(map,/latest\.current\.active&&!latest\.current\.simulationPreview/);
+ assert.match(page,/navigation:navMode&&!simActive,documentObject:document/);
+ assert.match(page,/simActive\?mapControl\.current\?\.center\?\.\(\)/);
  assert.match(page,/simActive\?simFrame\?\.guidance\|\|null:guidance/);
  assert.match(page,/navMode&&active&&!simActive\?startNavigationWakeLock/);
  assert.match(page,/if\(simActive\)return false; \/\/ Simulation must never request spoken directions/);
