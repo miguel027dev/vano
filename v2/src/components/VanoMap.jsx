@@ -11,6 +11,7 @@ import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} 
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
 import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/night3DBuildings.js';
+import {nativeNightMapboxConfig} from '../lib/mapLayers.js';
 import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
@@ -171,7 +172,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       try{
         mapboxgl.accessToken=token;
         const nightStart=night3dEnabled(latest.current.appearance,latest.current.layer);
-        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer,latest.current.appearance),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:nightStart?48:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
+        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer,latest.current.appearance),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:nightStart?48:0,...(nightStart?{config:nativeNightMapboxConfig(latest.current.layer,latest.current.appearance)}:{}),attributionControl:true,logoPosition:'bottom-left',antialias:false});
         if(nightStart)map._vanoNight3DAutoPitch=0;
         map._vanoStyle=styleFor(latest.current.layer,latest.current.appearance);
         const attachOpenRouterMark=()=>{
@@ -399,6 +400,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       map._vanoStyle=style;
       delete map._vanoNightFogApplied;
       delete map._vanoNightTreeStamp;
+      delete map._vanoNativeTreesConfigured;
       setError('');
       map.setStyle(style,{diff:false});
       // style.load rehydrates route sources/layers and markers for the new style.
