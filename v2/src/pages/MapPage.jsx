@@ -379,6 +379,7 @@ export default function MapPage({active=true}){
     setLoadingRoute(true);setSheetOpen(true);setRouteData(null);setRouteError('');
     try{
       const data=await api('/route',{method:'POST',signal:controller.signal,body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}})});
+      if(!Array.isArray(data?.routes)||data.routes.length===0)throw new Error('Nenhuma rota disponível para este trajeto. Tente outra origem ou destino.');
       if(epoch===routeEpoch.current&&!controller.signal.aborted){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
     }catch(e){
       if(epoch===routeEpoch.current){
@@ -979,6 +980,7 @@ export default function MapPage({active=true}){
        <section className="v70-route-details" aria-label="Detalhes e orientações do percurso">
          <h3>{routeVehicle==='a-pe'?'Caminhada, passo a passo':routeVehicle==='moto'?'Atenção a curvas e acessos':'Orientações da viagem'}</h3>
          <p className="v70-route-details-intro">{routeVehicle==='a-pe'?'Travessias e ruas mapeadas, sem substituir a sinalização real.':routeVehicle==='moto'?'Manobras reais do provedor, com atenção aos acessos.':'Próximas manobras e faixas somente quando informadas pelo provedor.'}</p>
+         {choice==='safe'&&routeVehicle!=='a-pe'&&<p className="v70-route-details-intro" role="note">{routeData.safetyMessage||'Os dados de segurança podem ser limitados nesta região. Nenhuma rota garante segurança absoluta.'}</p>}
          <ol className="v70-route-steps">{previewDetails.map((step,index)=>
            <li key={index}><span className="v70-route-index">{index+1}</span><span className="v70-route-step-copy"><strong>{step.instruction}</strong>{step.detail&&<small>{step.detail}</small>}</span></li>
          )}</ol>
