@@ -1,9 +1,11 @@
 /* Private VANO /v2 trajectory preview. One button in the existing right control rail.
    Status never intercepts map gestures outside its own small surface. */
 .map-page .v76-sim-toggle{
-  color:#277c70;border-color:#277c7040;position:relative;
-  background:var(--panel,#fff);
+  color:#155e53;border-color:#7ac6b8;position:relative;
+  background:#eefaf6;box-shadow:0 5px 18px #164e4430;
+  opacity:1;cursor:pointer;touch-action:manipulation;
 }
+.map-page .v76-sim-toggle:hover{background:#dcf7ee;border-color:#3eab92}
 .map-page .v76-sim-toggle.is-playing{
   background:#e6f6f2;color:#126c60;border-color:#84ccc0;
 }
@@ -30,6 +32,12 @@
   background:#eff5f5;border:1px solid #dbe6e6;
   color:#234b55;border-radius:10px;cursor:pointer;touch-action:manipulation;
 }
+.map-page[data-map-appearance="dark"] .v76-sim-toggle:not(.is-playing){
+ color:#c6f7e7;background:#183d36;border-color:#69ad9b;opacity:1;
+}
+.map-page[data-map-appearance="dark"] .v76-sim-toggle:not(.is-playing):hover{
+ background:#28594c;
+}
 .map-page[data-map-appearance="dark"] .v76-sim-toggle.is-playing{
   background:#294840;color:#a8efdd;border-color:#416b62;
 }
@@ -48,4 +56,39 @@
 }
 @media(prefers-reduced-motion:reduce){
  .map-page .v76-sim-toggle{transition:none!important}
+}
+
+/* One confirmation only when turning an active real journey into a visual test. */
+.map-page .v76-sim-confirm-backdrop{
+ position:absolute;z-index:2800;inset:0;display:flex;justify-content:center;
+ align-items:center;padding:18px;background:#111b27a8;backdrop-filter:blur(3px);
+}
+.map-page .v76-sim-confirm{
+ width:min(100%,390px);padding:22px;border-radius:22px;
+ color:#182c34;background:#fff;border:1px solid #deebeb;
+ box-shadow:0 20px 55px #071f3440;
+ font-family:'DM Sans',system-ui,sans-serif;
+}
+.map-page .v76-sim-confirm strong{display:block;font-size:18px;font-weight:850;line-height:1.25}
+.map-page .v76-sim-confirm p{font-size:13px;line-height:1.6;margin:12px 0 20px;color:#556b73}
+.map-page .v76-sim-confirm-actions{display:flex;align-items:center;gap:10px}
+.map-page .v76-sim-confirm-actions button{
+ flex:1;min-width:0;min-height:46px;border-radius:12px;
+ background:#edf4f3;color:#254149;font-size:12px;font-weight:800;
+}
+.map-page .v76-sim-confirm-actions .v76-sim-confirm-primary{
+ background:#176f5e;color:#fff;
+}
+.map-page .v76-sim-confirm-actions button:focus-visible{
+ outline:3px solid #eaa56e;outline-offset:2px;
+}
+.map-page[data-map-appearance="dark"] .v76-sim-confirm{
+ background:#182a30;border-color:#426069;color:#f4fbfa;
+}
+.map-page[data-map-appearance="dark"] .v76-sim-confirm p{color:#b5cdd1}
+.map-page[data-map-appearance="dark"] .v76-sim-confirm-actions button{
+ background:#2e454a;color:#edf8f6;
+}
+.map-page[data-map-appearance="dark"] .v76-sim-confirm-actions .v76-sim-confirm-primary{
+ background:#7fcbb7;color:#10352b;
 }
