@@ -54,6 +54,21 @@ export function publicReportsInBBox(reports,bbox,now=Date.now(),viewerOwner=null
       description:String(record.description||'').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,150)
     }));
 }
+/** Single mutable decision, called only server-side after CSRF + session checks.
+ * Never expose feedback keys, votes dictionary, or author identity to clients. */
+export function recordReportFeedback(record,actor,key,choice,now=Date.now()){
+  if(!record||typeof actor!=='string'||!actor||typeof key!=='string'||!key||
+     !['present','gone'].includes(choice))return {status:'invalid'};
+  if(!['nao_verificado','verificado'].includes(record.status)||!(reportExpiration(record)>now))
+    return {status:'expired'};
+  if(record.owner===actor)return {status:'own'};
+  if(record.feedback&&Object.hasOwn(record.feedback,key))
+    return {status:'duplicate',choice:record.feedback[key]};
+  if(Object.keys(record.feedback||{}).length>=256)return {status:'limit'};
+  record.feedback??={};
+  record.feedback[key]=choice;
+  return {status:'recorded',choice};
+}
 export function metersApart(a,b){
   if(!validReportCoords(a)||!validReportCoords(b))return Infinity;
   const rad=Math.PI/180,dlon=(a[0]-b[0])*rad,dlat=(a[1]-b[1])*rad;
