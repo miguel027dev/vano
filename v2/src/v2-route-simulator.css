@@ -1,0 +1,32 @@
+/* Private /v2 route rehearsal: uses the existing right-side control rail. */
+.map-page .map-controls .v2-route-sim-toggle{
+ color:#315e94;border:1px solid #d8e5f0;
+ background:#f6faff;box-shadow:0 5px 18px #17385820;
+ -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+ transition:background-color .18s ease,border-color .18s ease,transform .18s ease;
+}
+.map-page .map-controls .v2-route-sim-toggle.is-simulating{
+ color:#fff;background:#276295;border-color:#276295;
+}
+.map-page[data-map-appearance="dark"] .map-controls .v2-route-sim-toggle{
+ color:#aaccf0;background:#243748;border-color:#4b6479;
+}
+.map-page[data-map-appearance="dark"] .map-controls .v2-route-sim-toggle.is-simulating{
+ color:#0c2335;background:#9ec9ee;border-color:#b5d7f4;
+}
+.map-page .map-controls .v2-route-sim-toggle:focus-visible{
+ outline:3px solid #f2a45b;outline-offset:3px;
+}
+.map-page .v2-route-sim-banner{
+ display:block;max-width:100%;margin:4px 0 0;padding:9px 12px;
+ border:1px solid #d5e5f2;border-radius:12px;
+ background:#eef6ff;color:#2d5270;
+ font:650 11px/1.45 'DM Sans',system-ui,sans-serif;
+ letter-spacing:0;overflow-wrap:anywhere;
+}
+.map-page[data-map-appearance="dark"] .v2-route-sim-banner{
+ background:#243646;color:#c0daf1;border-color:#3b586f;
+}
+@media(prefers-reduced-motion:reduce){
+ .map-page .map-controls .v2-route-sim-toggle{transition:none}
+}
