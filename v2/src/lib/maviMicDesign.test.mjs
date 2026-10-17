@@ -39,7 +39,7 @@ test('silence does not disable listening; speech is gated until response playbac
  assert.match(jsx,/scheduleNextListen\(recovery\.delay\)/);
  assert.match(jsx,/if\(navigationAudioActive\(\)\|\|window\.speechSynthesis\?\.speaking\)\{scheduleNextListen\(1100\);return;\}/);
  assert.match(jsx,/if\(!enabledRef\.current\|\|busyRef\.current\|\|recognitionError\.current\|\|!Recognizer\)return/);
- assert.match(jsx,/if\(finished\|\|!enabledRef\.current\|\|controller\.signal\.aborted\)return/);
+ assert.match(jsx,/if\(finished\|\|!enabledRef\.current\|\|controller\.signal\.aborted\|\|voiceTurnRef\.current!==turn\)return/);
  assert.match(jsx,/done\(\);\s*\/\/ Offer controls are revealed/);
  assert.doesNotMatch(jsx,/setTimeout\(\(\)=>\s*\{\s*recognition\.start\(\)/);
 });
