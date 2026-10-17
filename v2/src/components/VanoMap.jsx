@@ -15,6 +15,8 @@ import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
+import {attachCommunityReportOverlay} from '../lib/communityReportOverlay.js';
+import '../community-reports.css';
 import {ensureTrafficLayers,setTrafficVisibility,TRAFFIC_SOURCE_ID} from '../lib/trafficLayers.js';
 import {attachMunicipalTrafficOverlay} from '../lib/trafficMunicipal.js';
 import {syncPrivateRoadSignMarkers,clearPrivateRoadSignMarkers} from '../lib/privateRoadSigns.js';
@@ -266,6 +268,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       if(backend.current==='mapbox')syncPrivateRoadSignMarkers(map,mapboxgl,latest.current);
     };
     const detachPublicPins=attachPublicMapOverlay(map,backend.current,()=>latest.current.navigation,place=>latest.current.onPublicPlaceSelect?.(place));
+    const detachCommunityPins=attachCommunityReportOverlay(map,backend.current,()=>latest.current.gpsCoords,()=>latest.current.active);
     municipalFeed.current=backend.current==='mapbox'?attachMunicipalTrafficOverlay(map,{enabled:latest.current.trafficEnabled}):null;
     if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation||shouldFollowLocation({navigation:false,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.recenter();
         else if(validPoint(latest.current.gpsCoords))map.flyTo({center:latest.current.gpsCoords,zoom:Math.max(map.getZoom(),14),duration:650});}else if(validPoint(latest.current.gpsCoords)){map._vanoFreeLook=false;map.panTo(ll(latest.current.motionCoords||latest.current.gpsCoords),{animate:true});}},zoomIn:()=>backend.current==='mapbox'?motion.current?.zoom(1):map.zoomIn(),zoomOut:()=>backend.current==='mapbox'?motion.current?.zoom(-1):map.zoomOut(),tilt:()=>motion.current?.tilt(),
@@ -292,11 +295,13 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       }};
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
+    return()=>{deleted=true;detachCommunityPins?.();detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token,forceRaster]);
   // Navigation switches should change POI categories immediately, without
   // remounting the map, touching GPS or triggering any provider request.
   useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[navigation]);
+  // Update proximity markers from live GPS without recreating the renderer or touching route layers.
+  useEffect(()=>{mapRef.current?._vanoSyncCommunityReports?.();},[gpsCoords?.[0],gpsCoords?.[1],active]);
   useEffect(()=>{
     const map=mapRef.current;
     if(map&&backend.current==='mapbox')syncPrivateRoadSignMarkers(map,mapboxgl,latest.current);
