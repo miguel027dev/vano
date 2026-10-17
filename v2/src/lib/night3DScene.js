@@ -39,7 +39,7 @@ export function decorativeTreeCollection(features,bounds,{limit=56}={}){
  if(!Array.isArray(features)||!bounds||limit<1)return result;
  const west=Number(bounds.west),east=Number(bounds.east),south=Number(bounds.south),north=Number(bounds.north);
  if(![west,east,south,north].every(Number.isFinite)||west>=east||south>=north||east-west>.18||north-south>.18)return result;
- const latStep=.00029,lonStep=latStep/Math.max(.3,Math.cos((north+south)/2*Math.PI/360));
+ const latStep=.00029,lonStep=latStep/Math.max(.3,Math.cos((north+south)*Math.PI/360));
  let work=0;
  for(const feature of features.slice(0,140)){
   if(!isGreen(feature?.properties))continue;
@@ -49,8 +49,8 @@ export function decorativeTreeCollection(features,bounds,{limit=56}={}){
    const outer=rings?.[0];if(!Array.isArray(outer)||outer.length<4)continue;
    const xs=outer.map(x=>x?.[0]).filter(Number.isFinite),ys=outer.map(x=>x?.[1]).filter(Number.isFinite);
    if(!xs.length||!ys.length)continue;
-   const i0=Math.ceil(Math.max(west,Math.min(...xs))/lonStep),i1=Math.floor(Math.min(east,Math.max(...xs))/lonStep);
-   const j0=Math.ceil(Math.max(south,Math.min(...ys))/latStep),j1=Math.floor(Math.min(north,Math.max(...ys))/latStep);
+   const i0=Math.ceil(Math.max(west,xs.reduce((v,x)=>Math.min(v,x),Infinity))/lonStep),i1=Math.floor(Math.min(east,xs.reduce((v,x)=>Math.max(v,x),-Infinity))/lonStep);
+   const j0=Math.ceil(Math.max(south,ys.reduce((v,y)=>Math.min(v,y),Infinity))/latStep),j1=Math.floor(Math.min(north,ys.reduce((v,y)=>Math.max(v,y),-Infinity))/latStep);
    for(let i=i0;i<=i1&&result.features.length<limit*2;i++){
     for(let j=j0;j<=j1&&result.features.length<limit*2;j++){
      if(++work>6500)return result;
@@ -142,9 +142,11 @@ export function syncNight3DScene(map,{appearance='light',layer='streets',navigat
  },before);
  const source=map.getSource(NIGHT_TREES_SOURCE);
  if(now-(map._vanoNightTreeStamp||0)<2200)return true;
- map._vanoNightTreeStamp=now;
  let features=[];
  try{features=map.querySourceFeatures?.('composite',{sourceLayer:'landuse'})||[];}catch{/* tiles not yet loaded */}
- if(features.length)source?.setData?.(decorativeTreeCollection(features,viewBounds(map),{limit:budget}));
+ if(features.length){
+  map._vanoNightTreeStamp=now;
+  source?.setData?.(decorativeTreeCollection(features,viewBounds(map),{limit:budget}));
+ }
  return true;
 }
