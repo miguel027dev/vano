@@ -43,3 +43,13 @@ test('system theme follows OS changes and logout errors do not disappear silentl
   assert.match(app,/media\?\.removeEventListener\?\.\('change',apply\)/);
   assert.match(profile,/catch\(error\)\{setToast\(error\?\.message/);
 });
+
+test('autocomplete is stable across tiny GPS motion and times out without blocking the screen',()=>{
+  assert.match(map,/const searchBias=searchGeoBias\(userCoords/);
+  assert.match(map,/\[query,searchOpen,allPlaces,language,searchBias\]/);
+  assert.match(map,/\[editor,editorQuery,allPlaces,language,searchBias\]/);
+  assert.doesNotMatch(map,/\[query,searchOpen,allPlaces,language,usingManual,gpsStatus,userCoords/);
+  assert.match(map,/setSearchError\('A busca demorou a responder\. Tente novamente\.'\)/);
+  assert.match(map,/setEditorError\('A busca demorou\. Tente novamente\.'\)/);
+  assert.match(map,/clearTimeout\(deadline\)/);
+});
