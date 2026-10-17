@@ -374,8 +374,11 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         onReady:()=>setError(''),
         onError:()=>setError('A imagem do mapa está indisponível. Verifique a conexão e recarregue.')
       });
+    }else{
+      map._vanoTiles?.getContainer?.()?.classList.toggle('v49-dark-raster-legacy',
+        appearance==='dark'&&layer!=='satellite'&&tiles.url===leafletBackupTilesFor(layer).url);
     }
-  },[layer]);
+  },[layer,appearance,token]);
   useEffect(()=>{
     if(!navigation){status.current=CAMERA_STATES.IDLE;lastFit.current='';}
     // Switching modes reenables tracking, including after Leaflet free-look.
