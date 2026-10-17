@@ -34,6 +34,7 @@ test('ambiguity, fresh constraints and follow-up questions never apply a propose
   'pode repetir?','pode me dizer mais detalhes?','talvez',
   'quero um posto','quero uma farmácia','quero ir para casa',
   'quero comprar comida','quero descansar','pode me ajudar','pode me dizer o preço',
+  'sim, mas quero uma parada','claro, quero ir ao mercado','sim, desde que passe no mercado',
   'pode cancelar a navegação','me leva para casa',
   'quero ir por outra rua'
  ])assert.equal(maviProposalDecision(utterance),null,utterance);
