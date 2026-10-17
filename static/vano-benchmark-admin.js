@@ -33,7 +33,52 @@ function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Ma
 function samePoint(a,b){if(!a||!b)return false;return Math.abs(a.lat-b.lat)<.00005&&Math.abs(a.lon-b.lon)<.00005}
 async function runBenchmark(){if(running)return;const modes=selectedModes();if(!modes.length){setMessage('Selecione pelo menos um modo.','error');return}reset(false);running=true;runController=new AbortController();sessionId=`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;$('runBenchmarkBtn').disabled=true;$('cancelBenchmarkBtn').hidden=false;$('benchProgress').hidden=false;setMessage('Validando servidor, origem e destino…');try{await healthCheck(runController.signal);origin=await resolvePlace($('originInput').value,'origin');destination=await resolvePlace($('destinationInput').value,'destination');if(samePoint(origin,destination))throw new Error('Origem e destino são praticamente o mesmo ponto.');const runs=Math.max(1,Math.min(10,+$('runsSelect').value||1)),total=runs*modes.length;$('benchProgressBar').max=total;$('benchProgressBar').value=0;let index=0;setMessage(`Executando ${total} cálculo(s). A ordem dos modos é alternada para reduzir viés de cache.`);for(let run=1;run<=runs;run++){for(const mode of shuffle(modes)){if(runController.signal.aborted)throw new DOMException('Cancelado','AbortError');index++;await runOne(mode,run,index,total);$('benchProgressBar').value=index;await sleep(120)}}const ok=results.filter(x=>x.ok).length;setMessage(`Benchmark concluído: ${ok}/${total} execução(ões) válidas.`,'ok');drawMap()}catch(e){if(e?.name==='AbortError'||runController?.signal?.aborted)setMessage('Benchmark cancelado. Os resultados concluídos foram preservados.','error');else setMessage(e.message||'Não foi possível executar o benchmark.','error')}finally{running=false;$('runBenchmarkBtn').disabled=false;$('cancelBenchmarkBtn').hidden=true;$('benchProgressText').textContent='Concluído';$('benchProgressCount').textContent=`${results.filter(x=>x.ok).length}/${results.length}`;enableExports()}}
 function cancel(){runController?.abort();setMessage('Cancelando benchmark…')}
-function renderAll(){renderTable();renderSummary();renderModeSummary();enableExports()}
+
+function renderSafeLab(){
+ const host=$('safeLabCandidates');if(!host)return;
+ const latest=[...results].reverse().find(x=>x.ok&&x.mode==='safest'&&Array.isArray(x.payload?.routes));
+ if(!latest){host.innerHTML='<div class="safe-lab-empty">Execute o modo Segura para comparar alternativas pelo risco.</div>';return}
+ const rows=[...latest.payload.routes].filter(x=>x&&typeof x==='object').sort((a,b)=>{
+   const sa=finite(a.safe_priority_score),sb=finite(b.safe_priority_score);
+   if(sa===null)return sb===null?0:1;if(sb===null)return -1;
+   return sb-sa || (+a.duration||0)-(+b.duration||0);
+ }).slice(0,2);
+ if(!rows.length){host.innerHTML='<div class="safe-lab-empty">Nenhum candidato retornado.</div>';return}
+ const num=(value,digits=0)=>{const n=finite(value);return n===null?'—':n.toFixed(digits)};
+ host.innerHTML=rows.map((r,i)=>{
+   const winner=String(r.id)===String(latest.payload.selected_id);
+   const components=r.safe_priority_components||{};
+   const priority=finite(r.safe_priority_score);
+   const time=finite(r.duration),km=finite(r.distance);
+   return `<article class="safe-route ${winner?'winner':''}">
+     <div class="safe-route-head"><h3>Alternativa ${i+1}</h3><span class="safe-route-pill">${winner?'ESCOLHIDA PELO MOTOR':'CANDIDATA'}</span></div>
+     <div class="safe-route-score">${priority===null?'—':priority.toFixed(2)} <small>/ 100 · prioridade segura</small></div>
+     <div class="safe-route-metrics">
+       <div><small>Segurança conservadora</small><b>${num(r.safety_conservative_score??r.safety_score,1)}</b></div>
+       <div><small>Confiança na evidência</small><b>${num(r.data_confidence,0)}%</b></div>
+       <div><small>Maior risco localizado</small><b>${num(r.hotspot_risk,1)}</b></div>
+       <div><small>Corredor exposto</small><b>${num(r.risk_exposure_pct,1)}%</b></div>
+       <div><small>Tempo estimado</small><b>${time===null?'—':(time/60).toFixed(1)+' min'}</b></div>
+       <div><small>Distância (informativa)</small><b>${km===null?'—':(km/1000).toFixed(2)+' km'}</b></div>
+     </div>
+     <div class="safe-route-footer">Tempo penaliza no máximo 0,25 ponto (${num(components.eta_tiebreak_penalty,3)} neste candidato). A distância não afeta a nota. ${priority===null?'Dados de segurança insuficientes para calcular prioridade.':'A pontuação é uma estimativa, não uma garantia de segurança.'}</div>
+   </article>`;
+ }).join('');
+}
+async function loadSafeCoverage(){
+ const host=$('safeLabCoverage');if(!host)return;
+ try{
+  const res=await fetch('/api/admin/safe/coverage',{credentials:'same-origin',headers:{Accept:'application/json'},cache:'no-store'});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  const data=await res.json();
+  const latest=data.last_report_at?new Date(data.last_report_at).toLocaleDateString('pt-BR'):'sem atualização registrada';
+  host.innerHTML=`<b>Grande São Paulo</b><span>${Number(data.active_reports)||0} relatos ativos · ${Number(data.active_zones)||0} zonas ativas</span><span>Último relato: ${esc(latest)}</span><small>Fonte atualmente consultada: tabelas internas de ocorrências e zonas. Esta contagem é uma janela aproximada e não comprova integração nem cobertura completa de nova base externa.</small>`;
+ }catch(_){
+  host.innerHTML='<span>Não foi possível verificar a cobertura dos dados agora.</span><small>A inspeção exige sessão de administrador; não confunda ausência de telemetria com ausência de risco.</small>';
+ }
+}
+
+function renderAll(){renderTable();renderSummary();renderModeSummary();renderSafeLab();enableExports()}
 function renderTable(){const body=$('benchmarkTableBody');if(!results.length){body.innerHTML='<tr class="bench261-empty-row"><td colspan="12">Nenhum benchmark executado.</td></tr>';return}body.innerHTML=results.map(r=>r.ok?`<tr><td><span class="mode-pill mode-${r.mode}"><i></i>${modeLabels[r.mode]}</span></td><td>#${r.run}</td><td>${fmtMs(r.latency_ms)}</td><td>${fmtMin(r.eta_min)}</td><td>${fmtKm(r.distance_km)}</td><td>${r.traffic_score.toFixed(0)}</td><td>${r.safety_score.toFixed(0)}</td><td>${r.vano_score.toFixed(0)}</td><td>${r.candidates}</td><td>${esc(r.provider)}</td><td class="${r.cache?'bench261-cache':''}">${r.cache?'HIT':'MISS'}${r.cache_source?` · ${esc(r.cache_source)}`:''}</td><td><span class="bench261-status ${r.geometry_valid?'':'warn'}">${r.geometry_valid?'OK':'SEM GEO'}</span></td></tr>`:`<tr><td><span class="mode-pill mode-${r.mode}"><i></i>${modeLabels[r.mode]}</span></td><td>#${r.run}</td><td>${fmtMs(r.latency_ms)}</td><td colspan="8">${esc(r.error||'Falha')}</td><td><span class="bench261-status fail">${r.status||'ERRO'}</span></td></tr>`).join('');$('resultMeta').textContent=`${results.length} execução${results.length===1?'':'ões'}`}
 function renderSummary(){const ok=results.filter(x=>x.ok);if(!ok.length){$('summaryLatency').textContent=$('summaryEta').textContent=$('summarySuccess').textContent=$('summaryCandidates').textContent='—';return}const lat=median(ok.map(x=>x.latency_ms)),best=ok.reduce((a,b)=>b.eta_min<a.eta_min?b:a,ok[0]);$('summaryLatency').textContent=fmtMs(lat);$('summaryEta').textContent=fmtMin(best.eta_min);$('summaryEtaMode').textContent=`${modeLabels[best.mode]} · ${fmtKm(best.distance_km)}`;$('summarySuccess').textContent=`${Math.round(ok.length/results.length*100)}%`;$('summarySuccessDetail').textContent=`${ok.length}/${results.length} respostas válidas`;$('summaryCandidates').textContent=(avg(ok.map(x=>x.candidates))??0).toFixed(1)}
 function renderModeSummary(){const host=$('modeSummary'),groups={};for(const r of results.filter(x=>x.ok))(groups[r.mode]||(groups[r.mode]=[])).push(r);host.innerHTML=Object.entries(groups).map(([mode,rows])=>{const eta=median(rows.map(x=>x.eta_min)),lat=median(rows.map(x=>x.latency_ms)),p95=percentile(rows.map(x=>x.latency_ms),.95),dist=avg(rows.map(x=>x.distance_km)),sigma=std(rows.map(x=>x.latency_ms));return `<div class="bench261-mode-chip"><span><b>${modeLabels[mode]}</b><i>${rows.length} run${rows.length>1?'s':''}</i></span><strong>${fmtMin(eta)}</strong><small>p50 ${fmtMs(lat)} · p95 ${fmtMs(p95)} · σ ${fmtMs(sigma)} · ${fmtKm(dist)}</small></div>`}).join('')}
@@ -50,5 +95,5 @@ function useLocation(){if(!navigator.geolocation){setMessage('Geolocalização i
 document.querySelectorAll('[data-preset]').forEach(btn=>btn.addEventListener('click',()=>{const p=presets[btn.dataset.preset];if(!p)return;origin={...p.origin};destination={...p.destination};$('originInput').value=p.origin.label;$('destinationInput').value=p.destination.label;updateResolved('origin',origin);updateResolved('destination',destination);setMessage('Cenário carregado.','ok')}));
 $('originInput')?.addEventListener('input',()=>{origin=null;$('originResolved').textContent='Alterada · resolver ao executar';$('originResolved').style.color=''});$('destinationInput')?.addEventListener('input',()=>{destination=null;$('destinationResolved').textContent='Alterado · resolver ao executar';$('destinationResolved').style.color=''});
 $('runBenchmarkBtn')?.addEventListener('click',runBenchmark);$('cancelBenchmarkBtn')?.addEventListener('click',cancel);$('resetBenchBtn')?.addEventListener('click',()=>reset(true));$('exportJsonBtn')?.addEventListener('click',exportJson);$('exportCsvBtn')?.addEventListener('click',exportCsv);$('useLocationBtn')?.addEventListener('click',useLocation);
-initMap();renderAll();window.lucide?.createIcons?.();
+initMap();renderAll();loadSafeCoverage();window.lucide?.createIcons?.();
 })();

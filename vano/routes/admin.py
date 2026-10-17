@@ -441,6 +441,56 @@ def admin_benchmark():
     )
 
 
+@app.route("/api/admin/safe/coverage")
+@admin_required
+def api_admin_safe_coverage():
+    """Aggregate live inputs available in a central-São-Paulo inspection window.
+
+    The aggregate is administrative-only. It never returns reporter identities,
+    individual incident coordinates or untrusted claims of citywide coverage.
+    """
+    db = get_db()
+    # Fixed inspection window for metropolitan São Paulo; not the whole state.
+    bounds = (-23.85, -46.90, -23.30, -46.25)
+    min_lat, min_lon, max_lat, max_lon = bounds
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=MAX_REPORT_AGE_DAYS)).replace(microsecond=0).isoformat()
+    now = utcnow_iso()
+    r = db.execute(
+        """SELECT COUNT(*) AS total, MAX(created_at) AS latest
+           FROM reports WHERE status='active' AND created_at>=?
+             AND (expires_at IS NULL OR expires_at>?)
+             AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?""",
+        (cutoff, now, min_lat, max_lat, min_lon, max_lon),
+    ).fetchone()
+    z = db.execute(
+        """SELECT COUNT(*) AS total, MAX(updated_at) AS latest
+           FROM risk_zones WHERE active=1
+             AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?""",
+        (min_lat, max_lat, min_lon, max_lon),
+    ).fetchone()
+    categories = db.execute(
+        """SELECT category, COUNT(*) AS total FROM reports
+           WHERE status='active' AND created_at>=?
+             AND (expires_at IS NULL OR expires_at>?)
+             AND latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?
+           GROUP BY category ORDER BY total DESC LIMIT 8""",
+        (cutoff, now, min_lat, max_lat, min_lon, max_lon),
+    ).fetchall()
+    response = jsonify({
+        "region": "Grande São Paulo — janela aproximada de inspeção",
+        "bounds": [min_lat, min_lon, max_lat, max_lon],
+        "active_reports": int(r["total"] or 0),
+        "active_zones": int(z["total"] or 0),
+        "last_report_at": r["latest"],
+        "last_zone_at": z["latest"],
+        "categories": [{"category": x["category"], "count": int(x["total"])} for x in categories],
+        "inputs": ["reports", "risk_zones"],
+        "note": "Inventário das tabelas consultadas pelo Safety Engine. Não comprova a ingestão de uma base externa nova nem sua completude.",
+    })
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
 @app.route("/admin/reset-accounts", methods=["POST"])
 @admin_required
 def admin_reset_accounts():

@@ -3,6 +3,27 @@
 {% block legacy_map_assets %}{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css">
+<style>
+.safe-lab{margin:16px 0;border:1px solid rgba(245,154,98,.18);border-radius:22px;background:linear-gradient(130deg,rgba(245,154,98,.075),rgba(255,255,255,.025));overflow:hidden}
+.safe-lab-top{padding:20px 22px;display:flex;gap:16px;align-items:flex-start;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.065)}
+.safe-lab-label{font-size:10px;font-weight:850;letter-spacing:.16em;color:#f5a36f}
+.safe-lab-top h2{margin:5px 0 7px;font-size:23px;letter-spacing:-.6px}
+.safe-lab-top p{margin:0;max-width:780px;color:#aeb7c4;font-size:12px;line-height:1.65}
+.safe-lab-formula{padding:11px 13px;border-radius:12px;background:#15181e;border:1px solid rgba(255,255,255,.085);font-size:11px;color:#ffcfaa;font-weight:750;white-space:nowrap}
+.safe-lab-coverage{margin:14px 18px 0;padding:14px 16px;border-radius:15px;background:rgba(0,0,0,.14);border:1px solid rgba(255,255,255,.07);display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px}
+.safe-lab-coverage b{color:#f0f2f5}.safe-lab-coverage span{color:#9da6b2}.safe-lab-coverage small{display:block;font-size:10px;color:#909bac;width:100%;line-height:1.55}
+.safe-lab-body{padding:18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.safe-route{border:1px solid rgba(255,255,255,.08);background:#15191f;border-radius:18px;padding:18px;min-width:0}
+.safe-route.winner{border-color:rgba(111,221,159,.48);background:linear-gradient(160deg,rgba(38,88,64,.28),#15191f 58%)}
+.safe-route-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.safe-route-head h3{margin:0;font-size:16px;color:#eef3f7}.safe-route-pill{border-radius:999px;padding:6px 8px;background:rgba(255,255,255,.07);color:#c5ced8;font-size:9px;font-weight:800}.safe-route.winner .safe-route-pill{background:rgba(105,212,146,.14);color:#97e8b5}
+.safe-route-score{font-size:41px;font-weight:850;letter-spacing:-2px;line-height:1.2;color:#f5f7f9;margin-top:13px}.safe-route-score small{font-size:13px;letter-spacing:0;font-weight:600;color:#9099a6}
+.safe-route-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:13px}
+.safe-route-metrics div{padding:10px;background:rgba(255,255,255,.035);border-radius:11px}.safe-route-metrics small{display:block;color:#9ba4af;font-size:10px}.safe-route-metrics b{display:block;font-size:15px;color:#edf1f5;margin-top:4px;font-variant-numeric:tabular-nums}
+.safe-route-footer{color:#b3becb;font-size:11px;line-height:1.6;margin-top:13px}
+.safe-lab-empty{grid-column:1/-1;padding:26px;text-align:center;color:#a7b0bc;font-size:13px}
+@media(max-width:850px){.safe-lab-top{flex-direction:column}.safe-lab-formula{white-space:normal}.safe-lab-body{grid-template-columns:1fr}}
+</style>
+
 
 {% endblock %}
 {% block content %}
@@ -96,6 +117,16 @@
           <header><div><span>VISUALIZAÇÃO</span><h2>Rotas selecionadas</h2></div><div class="bench261-legend"><span class="fastest"><i></i>Rápida</span><span class="smart"><i></i>VANO</span><span class="safest"><i></i>Segura</span><span class="quietest"><i></i>Tranquila</span></div></header>
           <div id="benchmarkMap" class="bench261-map"><div class="bench261-map-empty" id="mapEmpty"><i data-lucide="map" width="26"></i><b>Execute um benchmark</b><span>As rotas selecionadas aparecerão aqui.</span></div></div>
         </article>
+
+
+        <section class="safe-lab" aria-labelledby="safeLabTitle">
+          <header class="safe-lab-top">
+            <div><div class="safe-lab-label">VANO SAFE · MOTOR AUDITÁVEL</div><h2 id="safeLabTitle">Comparador de segurança</h2><p>Mostra as melhores alternativas da mesma requisição, incluindo indicadores, incerteza e o custo de tempo. Distância não participa da seleção segura.</p></div>
+            <div class="safe-lab-formula" title="C: segurança conservadora; H: risco máximo; E: exposição; Q: confiança">70% C + 15% (100−H) + 10% (100−E) + 5% Q</div>
+          </header>
+          <div class="safe-lab-coverage" id="safeLabCoverage" role="status" aria-live="polite"><span>Consultando cobertura da Grande São Paulo…</span></div>
+          <div class="safe-lab-body" id="safeLabCandidates" aria-live="polite"><div class="safe-lab-empty">Execute o modo Segura para comparar as melhores rotas por evidência de risco.</div></div>
+        </section>
 
         <article class="bench261-results-card">
           <header class="bench261-results-head"><div><span>RESULTADOS</span><h2>Comparativo</h2></div><div id="resultMeta" class="bench261-result-meta">0 execuções</div></header>
