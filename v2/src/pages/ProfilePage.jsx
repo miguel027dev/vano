@@ -18,7 +18,7 @@ function Action({icon:Icon, title,subtitle,to,value}){
 }
 
 export default function ProfilePage(){
-  const {user,history=[],favorites=[],preferences={},logout,t,language}=useVano();
+  const {user,history=[],favorites=[],preferences={},logout,setToast,t,language}=useVano();
   const navigate=useNavigate();
   const trips=history.length;
   const kilometers=history.reduce((total,record)=>total+measuredKilometers(record),0);
@@ -27,7 +27,7 @@ export default function ProfilePage(){
   const isMoto=preferences.vehicle==='moto';
   const routeLabel=t(preferences.preferredRoute==='fast'?'Mais rápida':'Mais segura');
   const recent=history.slice(0,2);
-  async function signOut(){try{await logout();navigate('/inicio');}catch{}}
+  async function signOut(){try{await logout();navigate('/inicio');}catch(error){setToast(error?.message||'Não foi possível sair da conta. Tente novamente.');}}
   return <main className="content-page v4-profile">
     <header className="v4-profile-top">
       <Brand small to="/mapa"/>
