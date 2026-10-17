@@ -160,10 +160,6 @@ export function maviProposalDecision(value){
  if(/\b(?:pedagio|pedagios|transito|trafego|congestionamento|outra rota|outro caminho|outra opcao|mais rapida|mais rapido|mais curta|mais curto|mais tranquila|mais tranquilo|evitar|evita|passar por|passar pela|estrada de terra|farmacia|hospital|posto|estacionamento|rua|avenida|primeira|segunda)\b/.test(s))return null;
  // A question must not silently approve a route.
  if(/[?]/.test(value)||/^(?:quanto|qual|quais|como|porque|por que|explica|me explica|depende|sera que|e se|mas e)\b/.test(s))return null;
- // "Quero" on its own confirms; "quero ir ao mercado" is a NEW request.
- // Likewise, "pode" alone confirms, not "pode me dizer o preço?".
- if(/^quero\b/.test(s)&&!/^(?:quero|quero sim|quero essa(?: rota)?|quero esta(?: rota)?|quero a (?:nova|alternativa|sugerida)(?: rota)?|quero usar (?:essa|esta|a nova)(?: rota)?|quero trocar(?: de rota)?|quero mudar(?: de rota)?|quero ir por (?:essa|esta)(?: rota)?)$/.test(s))return null;
- if(/^pode\b/.test(s)&&!/^(?:pode|pode sim|pode ser|pode ser (?:essa|esta)(?: rota)?|pode usar (?:essa|esta|a nova)(?: rota)?|pode trocar(?: a rota)?|pode mudar(?: a rota)?|pode seguir(?: por (?:essa|esta)(?: rota)?)?)$/.test(s))return null;
  // Resolve explicit self-corrections using their final clear choice.
  if(/\b(?:pensando bem|na verdade|quer dizer|corrigindo)\b/.test(s)){
   const tail=s.split(/\b(?:pensando bem|na verdade|quer dizer|corrigindo)\b/).pop().trim();
@@ -175,6 +171,13 @@ export function maviProposalDecision(value){
  if(/\b(?:melhor nao|nao quero|quero nao|nao troca|nao muda|deixa quieto|deixa como esta|agora nao|nem pensar|nao obrigado|prefiro a atual|mantenha a atual|manter a atual|continua na atual|depois|mais tarde)\b/.test(s))return 'reject';
  if(/^(?:nao|negativo|cancelar|cancela|mantem|mantenha|manter|fica|prefiro|deixa|esquece|recuso)(?:\b|$)/.test(s))return 'reject';
  if(/\bnao\b/.test(s))return null; // Unresolved negation is not authorization.
+ // "Quero" on its own confirms; "quero ir ao mercado" is a NEW request.
+ // Likewise, "pode" alone confirms, not "pode me dizer o preço?".
+ if(/^quero\b/.test(s)&&!/^(?:quero|quero sim|quero essa(?: rota)?|quero esta(?: rota)?|quero a (?:nova|alternativa|sugerida)(?: rota)?|quero usar (?:essa|esta|a nova)(?: rota)?|quero trocar(?: de rota)?|quero mudar(?: de rota)?|quero ir por (?:essa|esta)(?: rota)?)$/.test(s))return null;
+ if(/^pode\b/.test(s)&&!/^(?:pode|pode sim|pode ser|pode ser (?:essa|esta)(?: rota)?|pode usar (?:essa|esta|a nova)(?: rota)?|pode trocar(?: a rota)?|pode mudar(?: a rota)?|pode seguir(?: por (?:essa|esta)(?: rota)?)?)$/.test(s))return null;
+ // A conditional approval carries a new requirement. Clarify before switching.
+ if(/\b(?:mas|porem|desde que|contanto que|so se)\b/.test(s))return null;
+ if(/\b(?:quero ir|preciso ir|me leva|me leve|faz uma parada|parar em)\b/.test(s))return null;
  if(/^(?:sim|quero|pode|claro|com certeza|combinado|aceito|aceita|confirmo|confirma|confirmar|confirmado|isso|essa mesmo|essa sim|ta bom|tudo bem|beleza|fechado|fechou|demorou|bora|bora la|manda|manda ver|vamos nessa|vai nessa|troca|troque|muda|usar|usa essa|escolho essa|gostei dessa|gostei desta|uhum|aham|aham sim|positivo|perfeito|pode ser|ok|okay)(?:\b|$)/.test(s)){
   // "Quero saber..." or "Pode explicar..." should be handled as questions.
   if(/^(?:quero|pode) (?:saber|entender|perguntar|ver se|que voce|me explica|me dizer|explicar|a diferenca|detalhes|repetir|esperar|continuar|dizer|falar)\b/.test(s))return null;
