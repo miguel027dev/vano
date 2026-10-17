@@ -38,14 +38,14 @@ function popupBody(item){
  const wrapper=document.createElement('div');wrapper.className='v40-public-popup';
  const title=document.createElement('strong');title.textContent=item.name;
  const source=document.createElement('small');
- source.textContent='Fonte: '+item.source+(item.regional?' · atualização oficial':item.verified?' · relato verificado':' · cadastro público');
+ source.textContent='Fonte: '+item.source+(item.source==='TomTom Traffic'?' · alerta do provedor':item.regional?' · atualização oficial':item.verified?' · relato verificado':' · cadastro público');
  wrapper.append(title,source);
  if(item.description){const desc=document.createElement('p');desc.textContent=item.description;wrapper.append(desc);}
  return wrapper;
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
+ let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
  const sourceCache=new Map(); // OSM, verified reports and radar points; never erased on viewport changes.
  const markers=new Map();
@@ -63,6 +63,13 @@ export function attachPublicMapOverlay(map,backend){
  credit.title='Fontes e licenças: OpenStreetMap (ODbL 1.0) e ANTT (CC BY 4.0).';
  credit.setAttribute('aria-label','© OpenStreetMap contributors. Fontes: OpenStreetMap e ANTT; licenças ODbL 1.0 e CC BY 4.0.');
  credit.hidden=true;map.getContainer().append(credit);
+ // Show provider attribution when actual TomTom traffic data is displayed.
+ const tomtomCredit=document.createElement('a');
+ tomtomCredit.className='v40-map-credit v40-tomtom-credit';
+ tomtomCredit.href='https://www.tomtom.com/legal/';
+ tomtomCredit.target='_blank';tomtomCredit.rel='noopener noreferrer';
+ tomtomCredit.textContent='© TomTom';tomtomCredit.title='Dados de trânsito © TomTom';
+ tomtomCredit.hidden=true;map.getContainer().append(tomtomCredit);
  const notice=document.createElement('button');
  notice.type='button';
  notice.className='v41-public-status';
@@ -105,6 +112,7 @@ export function attachPublicMapOverlay(map,backend){
    markers.set(item.id,{marker});
   }
   credit.hidden=!items.some(item=>item.source==='OpenStreetMap'||item.id?.startsWith('radar-catalog-'));
+  tomtomCredit.hidden=!allowed.some(item=>item.source==='TomTom Traffic');
  }
  function mergeSources(){
   const b=map.getBounds?.();
@@ -232,6 +240,38 @@ export function attachPublicMapOverlay(map,backend){
    if(error?.name!=='AbortError'){regionalKey='';regionalReadAt=0;}
   }
  }
+ async function refreshTomTom(bbox){
+  if(tomtomDisabled||done||document.hidden)return;
+  const key=bbox.map(n=>n.toFixed(3)).join(',');
+  if(key===tomtomKey&&Date.now()-tomtomReadAt<115000)return;
+  tomtomController?.abort();
+  const request=new AbortController();tomtomController=request;
+  try{
+   const response=await fetch('/api/traffic/incidents/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
+    {signal:request.signal,headers:{Accept:'application/json'}});
+   if(!response.ok)throw Error('TomTom map: '+response.status);
+   const data=await response.json();
+   if(done||request.signal.aborted)return;
+   if(data.enabled===false){tomtomDisabled=true;return;}
+   if(Array.isArray(data.features)&&data.features.length){
+    rememberPublicFeatures(sourceCache,data.features.filter(x=>x?.source==='TomTom Traffic').slice(0,120));
+    mergeSources();render();
+   }
+   tomtomKey=key;tomtomReadAt=Date.now();
+   if(data.status==='loading'){
+    if(tomtomTimer!==null)clearTimeout(tomtomTimer);
+    tomtomTimer=setTimeout(()=>{
+     tomtomTimer=null;
+     if(done||document.hidden)return;
+     tomtomReadAt=0;
+     const visible=mapFeatureBBox(map,backend);
+     if(visible)void refreshTomTom(visible);
+    },3500);
+   }
+  }catch(error){
+   if(error?.name!=='AbortError'){tomtomReadAt=Date.now()-85_000;}
+  }
+ }
  async function refresh(){
   timer=null;if(done||document.hidden)return;
   const bbox=mapFeatureBBox(map,backend);
@@ -245,6 +285,7 @@ export function attachPublicMapOverlay(map,backend){
   // Never wait for the slow generic OpenStreetMap POI query to discover speed cameras.
   if(radarBbox)void refreshRadars(radarBbox);
   void refreshRegional(bbox);
+  void refreshTomTom(bbox);
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===latestKey&&Date.now()-lastRead<130000)return;
   if(controller)controller.abort();
@@ -292,6 +333,8 @@ export function attachPublicMapOverlay(map,backend){
   if(timer!==null)clearTimeout(timer);
   if(vectorTimer!==null)clearTimeout(vectorTimer);
   if(regionalTimer!==null)clearTimeout(regionalTimer);
+  if(tomtomTimer!==null)clearTimeout(tomtomTimer);
+  tomtomController?.abort();
   controller?.abort();
   radarController?.abort();
   regionalController?.abort();
@@ -304,6 +347,6 @@ export function attachPublicMapOverlay(map,backend){
     map.off('sourcedata',scheduleVectorUpdate);
   }
   document.removeEventListener('visibilitychange',visibility);
-  clear();stableTileCache.clear();sourceCache.clear();credit.remove();notice.remove();
+  clear();stableTileCache.clear();sourceCache.clear();credit.remove();tomtomCredit.remove();notice.remove();
  };
 }
