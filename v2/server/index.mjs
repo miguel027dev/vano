@@ -617,6 +617,7 @@ async function route(req, res) {
         const chosen=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
         db.preferences.push({...prefFor(user.id,chosen),owner:user.id,language:chosen,languageConfirmed:false});
       }
+      adoptGuest(req,user.id); // Preserve authorship of reports made before Google sign-in.
       if(record.native){const code=nativeGrants.issue(user.id,record.native);await persist();res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':mobileCallback(record.native.state,code),'Set-Cookie':drop});res.end();return;}
       const raw=createSession(user.id);await persist();
       const complete=prefFor(user.id).onboardingComplete;
