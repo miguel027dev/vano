@@ -58,7 +58,7 @@
 .v40-map-credit img{display:block;width:20px;height:20px;object-fit:contain}
 .v40-map-credit[hidden]{display:none!important}
 .v40-map-credit:hover,.v40-map-credit:focus-visible{text-decoration:underline}
-.map-page.in-navigation .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 57px);z-index:2}
+.map-page.in-navigation .v40-map-credit,.map-page.in-navigation.has-sheet .v40-map-credit{bottom:calc(var(--v36-nav-dock-height,180px) + 8px);z-index:2}
 .map-page.has-sheet .v40-map-credit{bottom:calc(var(--v33-panel-clearance,min(66dvh,570px)) + 71px)}
 @media(max-width:370px){
  .v40-public-pin{width:29px;height:29px;border-radius:11px}
