@@ -1,0 +1,150 @@
+/* VANO Atlas — night appearance. Purely visual: no map/route/GPS remount. */
+.map-page .v49-appearance-toggle{
+  position:relative;isolation:isolate;
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(218,227,225,.94);
+  color:#334c51;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  transition:background-color .24s ease,border-color .24s ease,color .24s ease,
+    transform .20s ease,box-shadow .24s ease;
+  box-shadow:0 4px 16px rgba(20,38,48,.12);
+}
+.map-page .v49-appearance-toggle:hover{box-shadow:0 6px 18px rgba(20,38,48,.20)}
+.map-page .v49-appearance-toggle:active{transform:scale(.94)}
+.map-page .v49-appearance-toggle:focus-visible{
+  outline:3px solid #ffab70;outline-offset:3px
+}
+.map-page .v49-appearance-toggle:disabled{opacity:1;cursor:default}
+.map-page .v49-theme-glyph{
+  position:relative;display:grid;place-items:center;width:25px;height:25px
+}
+.map-page .v49-theme-glyph svg{
+  position:absolute;inset:2px;
+  transition:transform .32s cubic-bezier(.2,.75,.25,1),
+    opacity .20s ease;
+  will-change:transform,opacity
+}
+.map-page .v49-appearance-toggle.is-light .v49-glyph-sun{
+  opacity:1;transform:rotate(0deg) scale(1)
+}
+.map-page .v49-appearance-toggle.is-light .v49-glyph-moon{
+  opacity:0;transform:rotate(-55deg) scale(.55)
+}
+.map-page .v49-appearance-toggle.is-dark .v49-glyph-sun{
+  opacity:0;transform:rotate(60deg) scale(.55)
+}
+.map-page .v49-appearance-toggle.is-dark .v49-glyph-moon{
+  opacity:1;transform:rotate(0deg) scale(1)
+}
+.map-page[data-map-appearance="dark"]{
+  --panel:#1e292e;--ink:#e9f1f4;--muted:#a8b8c0;--border:#39474b;
+  color:#edf4f5;background:#121a20;
+}
+.map-page[data-map-appearance="dark"] .circle-btn,
+.map-page[data-map-appearance="dark"] .v49-appearance-toggle{
+  color:#e6eef0;background:rgba(28,39,46,.97);
+  border-color:rgba(90,108,114,.67);
+  box-shadow:0 6px 18px #020b1245;
+}
+.map-page[data-map-appearance="dark"] .v49-appearance-toggle{
+  color:#ffd5a2;border-color:#57616a
+}
+/* Existing VANO map cards use hardcoded whites in multiple versions. */
+.map-page[data-map-appearance="dark"] .map-search,
+.map-page[data-map-appearance="dark"] .v31-search,
+.map-page[data-map-appearance="dark"] .quick-chip,
+.map-page[data-map-appearance="dark"] .v31-shortcuts .quick-chip,
+.map-page[data-map-appearance="dark"] .search-results,
+.map-page[data-map-appearance="dark"] .v32-results,
+.map-page[data-map-appearance="dark"] .v31-location-card,
+.map-page[data-map-appearance="dark"] .v5-route-box,
+.map-page[data-map-appearance="dark"] .route-sheet,
+.map-page[data-map-appearance="dark"] .collapsed-route,
+.map-page[data-map-appearance="dark"] .nav-instruction,
+.map-page[data-map-appearance="dark"] .nav-bottom,
+.map-page[data-map-appearance="dark"] .gps-banner,
+.map-page[data-map-appearance="dark"] .gps-manual-chip,
+.map-page[data-map-appearance="dark"] .v5-editor,
+.map-page[data-map-appearance="dark"] .v5-editor-results{
+  background:rgba(27,38,44,.97);
+  color:#ecf3f5;border-color:#405057;
+  box-shadow:0 12px 32px rgba(2,9,16,.30);
+}
+.map-page[data-map-appearance="dark"] .map-search input,
+.map-page[data-map-appearance="dark"] .v31-search input,
+.map-page[data-map-appearance="dark"] .suggestion,
+.map-page[data-map-appearance="dark"] .v32-suggestion,
+.map-page[data-map-appearance="dark"] .v31-location-copy strong,
+.map-page[data-map-appearance="dark"] .v5-point-label,
+.map-page[data-map-appearance="dark"] .route-option,
+.map-page[data-map-appearance="dark"] .route-stats strong,
+.map-page[data-map-appearance="dark"] .nav-instruction strong,
+.map-page[data-map-appearance="dark"] .v46-nav-distance,
+.map-page[data-map-appearance="dark"] .turn-icon,
+.map-page[data-map-appearance="dark"] .sheet-title h2,
+.map-page[data-map-appearance="dark"] .v5-editor h3{
+  color:#eaf2f5;
+}
+.map-page[data-map-appearance="dark"] .map-search input::placeholder,
+.map-page[data-map-appearance="dark"] .v31-search input::placeholder,
+.map-page[data-map-appearance="dark"] .v31-location-copy small,
+.map-page[data-map-appearance="dark"] .v31-location-eyebrow,
+.map-page[data-map-appearance="dark"] .route-stats,
+.map-page[data-map-appearance="dark"] .route-option small,
+.map-page[data-map-appearance="dark"] .suggestion small,
+.map-page[data-map-appearance="dark"] .nav-instruction span,
+.map-page[data-map-appearance="dark"] .nav-bottom small,
+.map-page[data-map-appearance="dark"] .search-blank,
+.map-page[data-map-appearance="dark"] .route-caution,
+.map-page[data-map-appearance="dark"] p{
+  color:#aebcc4;
+}
+.map-page[data-map-appearance="dark"] .v31-profile-button,
+.map-page[data-map-appearance="dark"] .v31-location-symbol,
+.map-page[data-map-appearance="dark"] .sheet-close,
+.map-page[data-map-appearance="dark"] .v5-point-more,
+.map-page[data-map-appearance="dark"] .v5-swap,
+.map-page[data-map-appearance="dark"] .v32-result-icon{
+  background:#314047;color:#e9eff3;border-color:#485a60;
+}
+.map-page[data-map-appearance="dark"] .route-option{
+  background:#253238;border-color:#3b4b53;
+}
+.map-page[data-map-appearance="dark"] .route-option.selected{
+  background:#35302c;border-color:#ed8a52;
+}
+.map-page[data-map-appearance="dark"] .suggestion:hover,
+.map-page[data-map-appearance="dark"] .quick-chip:hover{
+  background:#35434a;
+}
+.map-page[data-map-appearance="dark"] .v31-location-symbol{
+  color:#ffb174;background:#42332f;border-color:#624b3e;
+}
+.map-page[data-map-appearance="dark"] .mapboxgl-popup-content,
+.map-page[data-map-appearance="dark"] .leaflet-popup-content-wrapper,
+.map-page[data-map-appearance="dark"] .leaflet-popup-tip{
+  background:#253239;color:#eef3f6;border:1px solid #45545a
+}
+.map-page[data-map-appearance="dark"] .mapboxgl-popup-close-button{
+  color:#f3f6f8
+}
+.map-page[data-map-appearance="dark"] .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.map-page[data-map-appearance="dark"] .mapboxgl-popup-anchor-top .mapboxgl-popup-tip{
+  border-top-color:#253239;border-bottom-color:#253239
+}
+.map-page[data-map-appearance="dark"] .v40-map-credit{
+  background:rgba(28,39,46,.96);border-color:#45545a;color:#c2d2d9
+}
+/* Only imagery tiles are filtered when the dark Mapbox style is unavailable. */
+.map-page[data-map-appearance="dark"] .v49-dark-raster-legacy{
+  filter:brightness(.73) invert(.87) hue-rotate(180deg) saturate(.62)
+}
+@media(max-height:690px){
+ .map-page .map-controls{gap:7px}
+ .map-page .map-controls .circle-btn{width:43px;height:43px;min-width:43px}
+}
+@media(prefers-reduced-motion:reduce){
+ .map-page .v49-appearance-toggle,
+ .map-page .v49-theme-glyph svg{transition:none!important;animation:none!important}
+}

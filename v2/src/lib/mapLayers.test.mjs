@@ -34,3 +34,18 @@ test('optional local Atlas only alters streets style',()=>{
  assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json'),'/mapbox/vano-atlas-light.json');
  assert.ok(mapboxStyleFor('satellite','/mapbox/vano-atlas-light.json').endsWith('satellite-streets-v12'));
 });
+
+test('night mode uses real dark Mapbox styles without changing the satellite provider',()=>{
+ assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json','dark'),
+  'mapbox://styles/mapbox/dark-v11');
+ assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json','light'),
+  '/mapbox/vano-atlas-light.json');
+ assert.equal(mapboxStyleFor('satellite','/mapbox/vano-atlas-light.json','dark'),
+  mapboxStyleFor('satellite','/mapbox/vano-atlas-light.json','light'));
+ const darkRaster=leafletTilesFor('streets','pk.example','dark');
+ assert.ok(darkRaster.url.includes('/mapbox/dark-v11/tiles/512/'));
+ assert.ok(darkRaster.attribution.includes('Mapbox'));
+ assert.ok(darkRaster.attribution.includes('OpenStreetMap'));
+ assert.equal(leafletTilesFor('satellite','pk.example','dark').url,
+  leafletTilesFor('satellite','pk.example','light').url);
+});

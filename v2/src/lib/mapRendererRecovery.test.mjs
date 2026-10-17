@@ -30,7 +30,7 @@ test('Mapbox/WebGL/style recovery keeps Leaflet fallback and error-tile placehol
 test('GPS, routes, camera and satellite stay shared by /mapa and /v2',()=>{
  const app=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  for(const token of ['import VanoMap','paintLeaflet(map,latest.current)',
- 'paintMapbox(map,latest.current,lastSelection)','leafletTilesFor(layer,token)',
+ 'paintMapbox(map,latest.current,lastSelection)','leafletTilesFor(layer,token,appearance)',
  'motionController(map,latest,status)'])
   assert.ok((token==='import VanoMap'?app:component).includes(token));
 });

@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
@@ -39,8 +39,39 @@ import {isNativeShell,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
-  const {user,preferences,favorites,saveTrip,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
+  const {user,preferences,favorites,saveTrip,savePreference,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/v2';
+  // The same preference powers /configuracoes and the map. The local
+  // optimistic value makes the button respond before the preference POST.
+  const [systemDark,setSystemDark]=useState(()=>window.matchMedia?.('(prefers-color-scheme: dark)')?.matches===true);
+  const [mapThemeOverride,setMapThemeOverride]=useState(null);
+  const [savingMapTheme,setSavingMapTheme]=useState(false);
+  useEffect(()=>{
+    const media=window.matchMedia?.('(prefers-color-scheme: dark)');
+    if(!media)return;
+    const update=()=>setSystemDark(media.matches===true);
+    media.addEventListener?.('change',update);
+    return()=>media.removeEventListener?.('change',update);
+  },[]);
+  useEffect(()=>setMapThemeOverride(null),[preferences?.theme]);
+  const selectedAppearance=mapThemeOverride||(
+    preferences?.theme==='dark'||preferences?.theme==='system'&&systemDark?'dark':'light'
+  );
+  async function toggleMapAppearance(){
+    if(savingMapTheme)return;
+    const next=selectedAppearance==='dark'?'light':'dark';
+    setMapThemeOverride(next);
+    document.documentElement.dataset.theme=next;
+    setSavingMapTheme(true);
+    try{await savePreference({theme:next});}
+    catch{
+      setMapThemeOverride(null);
+      document.documentElement.dataset.theme=
+        preferences?.theme==='dark'||preferences?.theme==='system'&&systemDark?'dark':'light';
+      setToast('Não foi possível salvar o tema. Tente novamente.');
+    }finally{setSavingMapTheme(false);}
+  }
+
   const rerouteRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
@@ -821,8 +852,8 @@ export default function MapPage({active=true}){
     index,valid:lane?.valid===true,symbols:laneVariants(lane),
   })).filter(lane=>lane.symbols.length):[];
 
-  return <div ref={mapPageRef} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap active={active} userCoords={displayCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
+  return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
+    <VanoMap active={active} userCoords={displayCoords||origin} gpsCoords={userCoords} manualOrigin={usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={guidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
       <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
@@ -894,6 +925,15 @@ export default function MapPage({active=true}){
       </span>
     </div>}
     {!searchOpen&&<div className="map-controls">
+       <button type="button" className={`circle-btn v49-appearance-toggle ${selectedAppearance==='dark'?'is-dark':'is-light'}`}
+         aria-label={selectedAppearance==='dark'?'Ativar mapa claro':'Ativar mapa escuro'}
+         aria-pressed={selectedAppearance==='dark'} title={selectedAppearance==='dark'?'Modo claro':'Modo escuro'}
+         onClick={toggleMapAppearance} disabled={savingMapTheme}>
+         <span className="v49-theme-glyph" aria-hidden="true">
+           <Sun className="v49-glyph-sun" size={21} strokeWidth={1.9}/>
+           <Moon className="v49-glyph-moon" size={21} strokeWidth={1.9}/>
+         </span>
+       </button>
        {jevMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {navMode&&<button type="button" title="Alternar câmera 2D/3D" className="circle-btn" onClick={()=>mapControl.current?.tilt?.()} aria-label="Alternar inclinação da câmera">3D</button>}

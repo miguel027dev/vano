@@ -22,4 +22,5 @@ import './v48-moto-focus.css';
 import './native-shell.css';
 import 'leaflet/dist/leaflet.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import './v49-map-appearance.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);
