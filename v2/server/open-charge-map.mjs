@@ -12,7 +12,7 @@ const valid=(x,y)=>Number.isFinite(x)&&Number.isFinite(y)&&Math.abs(x)<=180&&Mat
 const bounds=b=>parseBBox(Array.isArray(b)?b.join(','):b,.12,.12);
 const inBox=(x,y,b)=>x>=b[0]&&x<=b[2]&&y>=b[1]&&y<=b[3];
 const snap=b=>b.map(x=>(Math.round(x*1000)/1000).toFixed(3)).join(',');
-const finite=n=>Number.isFinite(Number(n))?Number(n):null;
+const finite=n=>n===null||n===undefined||n===''?null:Number.isFinite(Number(n))?Number(n):null;
 
 export function normalizeOpenChargeMap(raw,bbox){
  if(!Array.isArray(raw))return [];
