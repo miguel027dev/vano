@@ -4,7 +4,8 @@ import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixe
 import VanoMap from '../components/VanoMap';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
 import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
-import {classifyMaviTrafficReport} from '../lib/maviTrafficReport.mjs';
+import {classifyMaviRoadReport} from '../lib/maviTrafficReport.mjs';
+import {maviIncidentOffer} from '../lib/maviIncidentFollowup.mjs';
 import {metersApart} from '../lib/communityReports.js';
 import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
@@ -525,32 +526,36 @@ export default function MapPage({active=true}){
   }
   function clearMaviPreview(){setMaviPreview(null);}
   async function askJev(text,signal,maviMeta={}){
-    // Community traffic reports are deliberate local voice actions: never route
-    // through conversational AI or invent a location from a street name.
-    // Hands-free submission does not require touching the map while moving.
-    if(navMode&&classifyMaviTrafficReport(text)==='transito'){
+    // Spoken local road incidents: report only with fresh real GPS, then ask
+    // whether to SEARCH for an alternative. The current route is never changed
+    // here: MAVI's existing verified proposal still needs a second approval.
+    const incidentType=navMode?classifyMaviRoadReport(text):null;
+    const incidentOffer=maviIncidentOffer(incidentType);
+    if(incidentOffer){
+      const reportAnswer=()=>({mode:'information',text:incidentOffer.question,
+        incidentRerouteOffer:{type:incidentType},
+        voiceTicketPromise:muted?null:api('/v2/assistant/local-voice-ticket',{
+          method:'POST',signal,body:{intent:'confirmation',text:incidentOffer.question}
+        }).then(result=>result.voiceTicket).catch(()=>null)});
       const guard=voiceTrafficReport.current;
       if(guard.pending)return {mode:'information',text:'Já estou registrando essa ocorrência.'};
       if(signal?.aborted)return {mode:'information',text:'Não consegui concluir o relato.'};
       const fix=lastGpsFix.current;
       const gps=quickReportPosition(fix);
       if(!gps.coords||Date.now()-Number(fix?.sourceAt)>12000||fix.accuracy>70)
-        return {mode:'information',text:'Não tenho um GPS recente e preciso para registrar o trânsito agora.'};
-      if(guard.lastCoords&&Date.now()-guard.lastAt<90000&&metersApart(guard.lastCoords,gps.coords)<150)
-        return {mode:'information',text:'Esse trânsito já foi registrado por você aqui há pouco.'};
+        return {mode:'information',text:'Não tenho um GPS recente e preciso para registrar a ocorrência agora.'};
+      if(guard.lastType===incidentType&&guard.lastCoords&&Date.now()-guard.lastAt<90000&&
+         metersApart(guard.lastCoords,gps.coords)<150)
+        return reportAnswer();
       guard.pending=true;
       try{
-        await report({type:'transito',coords:gps.coords,description:''});
-        guard.lastAt=Date.now();guard.lastCoords=[...gps.coords];
-        const message='Pronto. Registrei o trânsito aqui para a comunidade.';
-        return {mode:'information',text:message,
-          voiceTicketPromise:muted?null:api('/v2/assistant/local-voice-ticket',{
-            method:'POST',signal,body:{intent:'confirmation',text:message}
-          }).then(result=>result.voiceTicket).catch(()=>null)};
+        await report({type:incidentType,coords:gps.coords,description:''});
+        guard.lastAt=Date.now();guard.lastType=incidentType;guard.lastCoords=[...gps.coords];
+        return reportAnswer();
       }catch(error){
         if(/j[aá] informou|ocorr[eê]ncia aqui h[aá] pouco|duplicad/i.test(String(error?.message||'')))
-          return {mode:'information',text:'Esse trânsito já foi registrado por você aqui há pouco.'};
-        return {mode:'information',text:'Não consegui publicar essa ocorrência de trânsito. Tente novamente.'};
+          return reportAnswer();
+        return {mode:'information',text:'Não consegui publicar essa ocorrência. Tente novamente.'};
       }finally{guard.pending=false;}
     }
     // Informational commands work even before planning a route. The server
