@@ -5,6 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
+import {planV2DroneCamera} from '../lib/v2DroneCamera.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
@@ -83,6 +84,32 @@ const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 function motionController(map,latest,status){
   let frame=0,previous=0,pose={center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()},reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
   let suspended=false,freeLook=false,active=false,completeAt=0,motoPlan=null;
+  // A modest 1.4s sampling cadence keeps building-density reads outside the
+  // rendering hot path. The value is used only during V2 simulated playback.
+  let urbanDensity=0,lastUrbanSample=0;
+  function sampleUrbanDensity(d,now){
+    if(!d.droneSimulation){urbanDensity=0;lastUrbanSample=0;return 0;}
+    if(now-lastUrbanSample<1400)return urbanDensity;
+    lastUrbanSample=now;
+    const point=d.motionCoords||d.gpsCoords;
+    if(!validPoint(point)||!isLoaded(map)||typeof map.queryRenderedFeatures!=='function')
+      return urbanDensity;
+    try{
+      const center=map.project(point),radius=70;
+      const bounds=[[center.x-radius,center.y-radius],[center.x+radius,center.y+radius]];
+      const seen=new Set();
+      for(const feature of map.queryRenderedFeatures(bounds)||[]){
+        const layer=feature?.layer||{},props=feature?.properties||{};
+        if(!/building|3d|extrusion|structure/i.test(String(layer.id||'')+' '+String(layer.type||'')+' '+String(props.class||props.type||'')))continue;
+        const id=feature.id??props.id??props.osm_id;
+        if(id!=null)seen.add(String(layer.id)+':'+String(id));
+        if(seen.size>=36)break;
+      }
+      const observed=clamp(seen.size/18,0,1);
+      urbanDensity=urbanDensity*.67+observed*.33;
+    }catch{/* Some Mapbox styles cannot be queried while loading. */}
+    return urbanDensity;
+  }
   const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const preferenceChanged=()=>{reduced=Boolean(preference?.matches);start();};
   preference?.addEventListener?.('change',preferenceChanged);
@@ -103,16 +130,37 @@ function motionController(map,latest,status){
       maneuverPlan=planManeuverCamera({navigation:d.navigation,maneuver:d.guidance,route,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced});
     }
-    return cameraTarget({position:d.motionCoords||d.gpsCoords,
+    const base=cameraTarget({position:d.motionCoords||d.gpsCoords,
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
       vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+    if(!d.droneSimulation||!base)return base;
+    const drone=planV2DroneCamera({
+      enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route,
+      speed:d.telemetry?.speed,urbanDensity:sampleUrbanDensity(d,now),
+      compactViewport:viewport.compact,reducedMotion:reduced,
+      accuracy:d.telemetry?.accuracy
+    });
+    if(!drone.enabled)return base;
+    const puck=d.motionCoords||d.gpsCoords;
+    const center=validPoint(puck)?[
+      puck[0]+(base.center[0]-puck[0])*drone.centerBlend,
+      puck[1]+(base.center[1]-puck[1])*drone.centerBlend
+    ]:base.center;
+    const maxZoom=typeof map.getMaxZoom==='function'?map.getMaxZoom():20;
+    const maxPitch=typeof map.getMaxPitch==='function'?map.getMaxPitch():75;
+    return {...base,center,zoom:Math.min(maxZoom,drone.zoom),
+      pitch:Math.min(maxPitch,drone.pitch),droneCamera:drone};
+
   }
-  function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';const cameraHalfLife=reduced?85:motorcycle?350:300,pointHalfLife=reduced?90:motorcycle?390:360;
+  function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';
+    const drone=t.droneCamera;
+    const cameraHalfLife=reduced?85:drone?.halfLife??(motorcycle?350:300);
+    const pointHalfLife=reduced?90:drone?390:motorcycle?390:360;
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
     const nextZoom=reduced?t.zoom:damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=reduced?t.pitch:damp(pose.pitch,t.pitch,dt,cameraHalfLife);
-    const nextBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(motorcycle?420:320)));
+    const nextBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(drone?.bearingHalfLife??(motorcycle?420:320))));
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
     pose={center:nextCenter,zoom:nextZoom,pitch:nextPitch,bearing:nextBearing};
     try{map.jumpTo({...pose,padding:latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20}});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
@@ -130,7 +178,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -154,7 +202,7 @@ export default function VanoMap({active=true,simulationPreview=false,userCoords,
   }
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,simulationPreview,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,simulationPreview,droneSimulation,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null;const initial=coord(latest.current.userCoords);
