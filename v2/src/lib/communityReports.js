@@ -33,7 +33,7 @@ export function validReportCoords(point){
   return Array.isArray(point)&&point.length===2&&point.every(Number.isFinite)
     &&Math.abs(point[0])<=180&&Math.abs(point[1])<=85;
 }
-export function publicReportsInBBox(reports,bbox,now=Date.now()){
+export function publicReportsInBBox(reports,bbox,now=Date.now(),viewerOwner=null,viewerKey=null){
   if(!Array.isArray(reports)||!Array.isArray(bbox)||bbox.length!==4||!bbox.every(Number.isFinite))return [];
   const [west,south,east,north]=bbox;
   return reports.filter(record=>record && isReportType(record.type)
@@ -48,6 +48,9 @@ export function publicReportsInBBox(reports,bbox,now=Date.now()){
       coords:record.coords.map(n=>Number(n.toFixed(3))),
       createdAt:record.createdAt,expiresAt:new Date(reportExpiration(record)).toISOString(),
       status:record.status,
+      // Only a boolean for this requesting session. The author's ID stays private.
+      isOwn:Boolean(viewerOwner&&record.owner===viewerOwner),
+      viewerVote:viewerKey&&record.feedback&&Object.hasOwn(record.feedback,viewerKey)?record.feedback[viewerKey]:null,
       description:String(record.description||'').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,150)
     }));
 }
