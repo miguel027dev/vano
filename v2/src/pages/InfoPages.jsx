@@ -3,6 +3,7 @@ import {Link,useLocation} from 'react-router-dom';
 import {ArrowRight,BookOpen,Check,ChevronDown,ChevronUp,Compass,ExternalLink,FileText,LifeBuoy,MapPin,ShieldCheck} from 'lucide-react';
 import {PUBLIC_PAGES,pageForPath} from '../../seo/catalog.mjs';
 import '../public-pages.css';
+import {LegalDocumentPage} from './LegalPages.jsx';
 const categories=[...new Set(PUBLIC_PAGES.map(p=>p.category))];
 function usePublicMetadata(page){
   useEffect(()=>{
@@ -43,6 +44,7 @@ function AnchorIcon({kind}){return kind==='Legal'?<ShieldCheck size={18}/>:kind=
 export function PublicLandingPage({slug}){
   const location=useLocation();const page=pageForPath(slug||location.pathname);const [faqOpen,setFaqOpen]=useState(0);usePublicMetadata(page);
   if(!page)return <main className="content-page"><h1>Conteúdo não encontrado</h1><Link to="/ajuda">Central de ajuda</Link></main>;
+  if(page.category==='Legal'||page.path==='/seguranca-na-navegacao')return <LegalDocumentPage page={page}/>;
   const others=PUBLIC_PAGES.filter(x=>x.path!==page.path&&x.category===page.category).slice(0,3);
   return <main className="v3-public" id="conteudo" role="main">
     <div className="v3-public-wrap"><nav className="v3-public-crumb" aria-label="Você está aqui"><Link to="/inicio">VANO</Link><span>/</span><span>{page.category}</span></nav>
