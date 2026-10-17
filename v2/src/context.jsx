@@ -46,7 +46,7 @@ export function VanoProvider({children}) {
       await mutateHistoryQueue(latest=>latest.filter(r=>r.at!==record.at||r.item?.journeyId!==record.item?.journeyId||r.item?.type!==record.item?.type));
     }
   };window.addEventListener('online',sync);sync();return()=>{stopped=true;window.removeEventListener('online',sync);};},[data.user?.id]);
-  const report=async item=>{const saved=await post('/reports',item);window.dispatchEvent(new CustomEvent('vano:report-created',{detail:saved}));await refresh();setToast('Ocorrência registrada como não verificada');return saved;};
+  const report=async item=>{const saved=await post('/reports',item);window.dispatchEvent(new CustomEvent('vano:report-created',{detail:{...saved,isOwn:true,viewerVote:null}}));await refresh();setToast('Ocorrência registrada como não verificada');return saved;};
   const login=async(path,values)=>{const response=await post(`/auth/${path}`,values);if(response.verificationRequired){setToast(response.message);return {verificationRequired:true};}const state=await refresh();notifyNative({action:'session'});setToast(translate('Você entrou no VANO',state?.preferences?.language));return {onboardingComplete:!!state?.preferences?.onboardingComplete};};
   const logout=async()=>{await post('/auth/logout',{});await clearPrivateOffline();setData(defaults);notifyNative({action:'session'});await refresh();setToast(translate('Você saiu da conta',data.preferences?.language));};
   const t=useCallback((key,vars)=>translate(key,data.preferences?.language||browserLocale(),vars),[data.preferences?.language]);
