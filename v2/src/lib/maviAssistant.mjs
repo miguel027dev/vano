@@ -165,6 +165,8 @@ export function maviProposalDecision(value){
   const tail=s.split(/\b(?:pensando bem|na verdade|quer dizer|corrigindo)\b/).pop().trim();
   if(tail&&tail!==s)return maviProposalDecision(tail);
  }
+ // Uncertainty is not a refusal, and must not discard an outstanding offer.
+ if(/^(?:nao entendi|nao compreendi|nao sei|nao ouvi|nao tenho certeza)\b/.test(s))return null;
  // Avoid the common STT pattern "sim, não, melhor não" being accepted.
  if(/\b(?:melhor nao|nao quero|quero nao|nao troca|nao muda|deixa quieto|deixa como esta|agora nao|nem pensar|nao obrigado|prefiro a atual|mantenha a atual|manter a atual|continua na atual|depois|mais tarde)\b/.test(s))return 'reject';
  if(/^(?:nao|negativo|cancelar|cancela|mantem|mantenha|manter|fica|prefiro|deixa|esquece|recuso)(?:\b|$)/.test(s))return 'reject';
