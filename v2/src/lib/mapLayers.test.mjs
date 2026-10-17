@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,normalizedMapLayer} from './mapLayers.js';
+import {mapboxStyleFor,nativeNightMapboxConfig,nativeNightMapboxStyle,leafletTilesFor,leafletBackupTilesFor,normalizedMapLayer} from './mapLayers.js';
 
 test('Mapa/Satélite use the existing Mapbox style IDs',()=>{
  assert.ok(mapboxStyleFor('streets').endsWith('streets-v12'));
@@ -37,7 +37,7 @@ test('optional local Atlas only alters streets style',()=>{
 
 test('night mode uses real dark Mapbox styles without changing the satellite provider',()=>{
  assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json','dark'),
-  'mapbox://styles/mapbox/dark-v11');
+  'mapbox://styles/mapbox/standard');
  assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json','light'),
   '/mapbox/vano-atlas-light.json');
  assert.equal(mapboxStyleFor('satellite','/mapbox/vano-atlas-light.json','dark'),
@@ -48,4 +48,16 @@ test('night mode uses real dark Mapbox styles without changing the satellite pro
  assert.ok(darkRaster.attribution.includes('OpenStreetMap'));
  assert.equal(leafletTilesFor('satellite','pk.example','dark').url,
   leafletTilesFor('satellite','pk.example','light').url);
+});
+
+
+test('dark native Mapbox Standard night enables real provider 3D objects including trees',()=>{
+ assert.equal(nativeNightMapboxStyle('streets','dark'),true);
+ assert.equal(nativeNightMapboxStyle('streets','light'),false);
+ assert.equal(nativeNightMapboxStyle('satellite','dark'),false);
+ assert.deepEqual(nativeNightMapboxConfig('streets','dark'),{basemap:{lightPreset:'night',show3dObjects:true}});
+ assert.equal(nativeNightMapboxConfig('satellite','dark'),undefined);
+ assert.equal(nativeNightMapboxConfig('streets','light'),undefined);
+ // Classic raster fallback is intentionally retained on unsupported WebGL devices.
+ assert.match(leafletTilesFor('streets','pk.example','dark').url,/dark-v11/);
 });
