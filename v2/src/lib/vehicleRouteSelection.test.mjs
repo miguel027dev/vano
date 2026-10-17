@@ -25,7 +25,9 @@ test('route sheet exposes Carro, Moto and A pé accessible buttons',()=>{
 test('vehicle picker changes real API route parameter and never leaves stale alternatives',()=>{
  assert.match(page,/async function calculateRoute\(place,departure,vehicle=routeVehicle\)/);
  assert.match(page,/vehicle,language,telemetry:/);
- assert.match(page,/if\(epoch===routeEpoch\.current\)\{setRouteData\(data\);setChoice\(vehicle==='a-pe'\?'fast':initialChoice\);\}/);
+ assert.match(page,/if\(epoch===routeEpoch\.current&&!controller\.signal\.aborted\)\{setRouteData\(data\);setChoice\(vehicle==='a-pe'\?'fast':initialChoice\);\}/);
+ assert.match(page,/routeRequest\.current\?\.abort\(\)/);
+ assert.match(page,/signal:controller\.signal/);
  assert.match(page,/routeEpoch\.current\+\+;/);
  assert.match(page,/setRouteData\(null\);setLoadingRoute\(true\);setSheetOpen\(true\)/);
  assert.match(page,/calculateRoute\(dest,origin,vehicle\)/);
