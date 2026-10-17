@@ -9,12 +9,12 @@ export function VanoProvider({children}) {
   const queueOperations=useRef(Promise.resolve());
   function mutateHistoryQueue(change){queueOperations.current=queueOperations.current.catch(()=>{}).then(async()=>{const queue=await readOffline('history-queue')||[];await writeOffline('history-queue',change(queue));});return queueOperations.current;}
   const [data,setData]=useState(defaults),[loading,setLoading]=useState(true),[error,setError]=useState(''),[toast,setToast]=useState('');
-  const refresh=useCallback(async()=>{ try { const next=await api('/bootstrap');
+  const refresh=useCallback(async()=>{ const controller=new AbortController();const deadline=setTimeout(()=>controller.abort(),35000);try { const next=await api('/bootstrap',{signal:controller.signal});
     const manualGuestLanguage=(()=>{try{return normalizeLocale(localStorage.getItem('vano-guest-language'))}catch{return null}})();
     const detected=localeForCountry(next.localeSuggestion?.country)||browserLocale();
     const selected=next.languageExplicit ? next.preferences?.language : next.user ? detected : (manualGuestLanguage||detected);
     next.preferences={...next.preferences,language:SUPPORTED.has(selected)?selected:'en-US'};
-    setData(next); setError(''); return next; } catch(e) { setError('Não foi possível conectar. Tente novamente quando houver sinal.'); } finally { setLoading(false); } },[]);
+    setData(next); setError(''); return next; } catch(e) { setError('Não foi possível conectar. Tente novamente quando houver sinal.'); } finally { clearTimeout(deadline);setLoading(false); } },[]);
   useEffect(()=>{ refresh();const online=()=>refresh();window.addEventListener('online',online);return()=>window.removeEventListener('online',online); },[refresh]);
   useEffect(()=>{ if(!toast)return; const t=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(t); },[toast]);
   const savePreference=async p => { const next=await patch('/preferences',p); if(p.language!==undefined&&!data.user){try{localStorage.setItem('vano-guest-language',p.language)}catch{}}setData(d=>({...d,preferences:next,languageExplicit:p.language!==undefined||d.languageExplicit})); setToast(translate('Preferências salvas',p.language||data.preferences?.language)); return next; };
