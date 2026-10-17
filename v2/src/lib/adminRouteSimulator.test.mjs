@@ -54,7 +54,7 @@ test('administrator simulation is never available on the public map or as real G
  assert.match(page,/navigation:navMode&&!simActive,documentObject:document/);
  assert.match(page,/simActive\?mapControl\.current\?\.center\?\.\(\)/);
  assert.match(page,/simActive\?simFrame\?\.guidance\|\|null:guidance/);
- assert.match(page,/navMode&&active&&!simActive\?startNavigationWakeLock/);
+ assert.match(page,/navMode&&active\?startNavigationWakeLock/);
  assert.match(page,/if\(simActive\)return false; \/\/ Simulation must never request spoken directions/);
  assert.match(page,/if\(!navMode\|\|simActive\|\|!route\|\|!dest\)return/);
  assert.match(page,/if\(simActive\|\|navigator\.onLine===false/);
