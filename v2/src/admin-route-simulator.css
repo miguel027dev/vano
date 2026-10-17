@@ -92,3 +92,41 @@
 .map-page[data-map-appearance="dark"] .v76-sim-confirm-actions .v76-sim-confirm-primary{
  background:#7fcbb7;color:#10352b;
 }
+
+/* V2 Sim — compact second entry ABOVE the existing admin simulator.
+   Only rendered in /v2 for verified admins; no styling leak to public maps. */
+.map-page .v81-drone-sim-toggle{
+  display:grid;place-items:center;position:relative;isolation:isolate;
+  padding:0;cursor:pointer;touch-action:manipulation;opacity:1;
+  color:#fff!important;border:1px solid #d76835!important;border-radius:16px!important;
+  background:linear-gradient(145deg,#f8954e,#e96f37)!important;
+  box-shadow:0 6px 22px #8e441f50,0 1px 2px #401c181c!important;
+  transition:transform .18s ease,box-shadow .22s ease,filter .22s ease;
+}
+.map-page .v81-drone-sim-toggle>span{
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  font-family:'DM Sans',system-ui,sans-serif;line-height:1.06;letter-spacing:.03em;
+}
+.map-page .v81-drone-sim-toggle b{font-size:15px;font-weight:900}
+.map-page .v81-drone-sim-toggle small{font-size:9px;font-weight:900;letter-spacing:.16em}
+.map-page .v81-drone-sim-toggle:hover{filter:brightness(1.06);box-shadow:0 8px 26px #b75b2e5c!important}
+.map-page .v81-drone-sim-toggle.is-playing{
+  border-color:#e8aa74!important;
+  background:linear-gradient(145deg,#ba552c,#823d30)!important;
+  box-shadow:0 0 0 3px #eea56936,0 7px 21px #73442b42!important;
+}
+.map-page .v81-drone-sim-toggle:focus-visible{outline:3px solid #4d9eb3;outline-offset:3px}
+.map-page[data-map-appearance="dark"] .v81-drone-sim-toggle{
+  border-color:#e99a69!important;color:#fff!important;
+  background:linear-gradient(145deg,#ba572e,#884029)!important;
+}
+.map-page[data-map-appearance="dark"] .v81-drone-sim-toggle.is-playing{
+  background:linear-gradient(145deg,#d87d44,#9e522e)!important;
+}
+@media(max-height:650px){
+  .map-page .map-controls:has(.v81-drone-sim-toggle){gap:7px}
+  .map-page.in-navigation .map-controls:has(.v81-drone-sim-toggle){bottom:180px}
+}
+@media(prefers-reduced-motion:reduce){
+ .map-page .v81-drone-sim-toggle{transition:none}
+}

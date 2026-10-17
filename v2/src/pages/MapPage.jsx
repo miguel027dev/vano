@@ -35,6 +35,7 @@ import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {simulationDistanceStep,simulationFrame,simulationSpeedKmh} from '../lib/adminRouteSimulator.mjs';
+import {V2_DRONE_PLAYBACK_RATE} from '../lib/v2DroneCamera.mjs';
 import '../admin-route-simulator.css';
 import {createManeuverTracker} from '../lib/maneuverTracker.js';
 import {evaluateRouteDeviation} from '../lib/routeDeviation.js';
@@ -101,6 +102,8 @@ export default function MapPage({active=true}){
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
   const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0),[simConfirmOpen,setSimConfirmOpen]=useState(false);
+  const [simCameraMode,setSimCameraMode]=useState('standard');
+  const simRequestedMode=useRef('standard');
   const [maviPreview,setMaviPreview]=useState(null); // Preview only: never changes the active route without confirmation.
   const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
@@ -530,10 +533,11 @@ export default function MapPage({active=true}){
       void deleteOffline('active-trip');
     }
     setSimConfirmOpen(false);
-    setSimMeters(0);setSimPaused(false);setSimActive(true);
+    setSimMeters(0);setSimPaused(false);setSimCameraMode(simRequestedMode.current);setSimActive(true);
     setQuickReportOpen(false);setSearchOpen(false);setSheetOpen(false);
     setGuidance(null);setNavMode(true);spoken.current.clear();
     setToast('Simulação iniciada. O GPS real não será alterado.');
+    if(simRequestedMode.current==='drone')setToast('V2 Sim: câmera drone adaptativa ativada. GPS real preservado.');
   }
   useEffect(()=>{
     if(!simConfirmOpen)return;
@@ -543,11 +547,13 @@ export default function MapPage({active=true}){
     window.addEventListener('keydown',onKeyDown);
     return()=>window.removeEventListener('keydown',onKeyDown);
   },[simConfirmOpen]);
+  useEffect(()=>{if(!simConfirmOpen&&!simActive)simRequestedMode.current='standard';},[simConfirmOpen,simActive]);
   function startRouteSimulation(){
     if(!adminV2RoadSigns||!active)return;
     if(!route||!simulationFrame(route,0)){
       setToast(loadingRoute?'Aguarde o cálculo do percurso para simular.':'Escolha um destino e calcule uma rota antes de simular.');
       if(dest)setSheetOpen(true);
+      simRequestedMode.current='standard';
       return;
     }
     if(navMode&&!simActive){
@@ -556,10 +562,22 @@ export default function MapPage({active=true}){
     }
     activateRouteSimulation();
   }
+  function startV2DroneSimulation(){
+    if(!adminV2RoadSigns||!active)return;
+    if(!['carro','moto'].includes(routeVehicle)){setToast('V2 Sim disponível para carro e moto.');return;}
+    if(simActive){
+      if(simCameraMode==='drone'){stopRouteSimulation();return;}
+      setSimCameraMode('drone');
+      setToast('Câmera drone V2 ativada no trajeto simulado.');
+      return;
+    }
+    simRequestedMode.current='drone';
+    startRouteSimulation();
+  }
   function stopRouteSimulation(){
     if(!simActive)return;
     setSimConfirmOpen(false);
-    setSimActive(false);setSimPaused(false);setSimMeters(0);
+    setSimActive(false);setSimPaused(false);setSimMeters(0);setSimCameraMode('standard');simRequestedMode.current='standard';
     setNavMode(false);setGuidance(null);setSheetOpen(true);
   }
   useEffect(()=>{
@@ -574,10 +592,10 @@ export default function MapPage({active=true}){
       if(!previous){previous=now;return;}
       const seconds=Math.min(.5,(now-previous)/1000);previous=now;
       if(!document.hidden&&seconds>0)
-        setSimMeters(value=>simulationDistanceStep(value,seconds,simRouteTotal,routeVehicle));
+        setSimMeters(value=>simulationDistanceStep(value,seconds,simRouteTotal,routeVehicle,simCameraMode==='drone'?V2_DRONE_PLAYBACK_RATE:undefined));
     },100);
     return()=>window.clearInterval(id);
-  },[simActive,simPaused,simFrame?.finished,adminV2RoadSigns,navMode,active,route?.geometry,simRouteTotal,routeVehicle]);
+  },[simActive,simPaused,simFrame?.finished,adminV2RoadSigns,navMode,active,route?.geometry,simRouteTotal,routeVehicle,simCameraMode]);
   useEffect(()=>{if(simActive&&simFrame?.finished)setSimPaused(true);},[simActive,simFrame?.finished]);
   useEffect(()=>{if(!adminV2RoadSigns&&simActive)stopRouteSimulation();},[adminV2RoadSigns,simActive]);
   // Enrichment is loaded after routing, never in the critical directions path.
@@ -1017,7 +1035,7 @@ export default function MapPage({active=true}){
   })).filter(lane=>lane.symbols.length):[];
 
   return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap active={active} simulationPreview={simActive} privateRoadSigns={adminV2RoadSigns} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
+    <VanoMap active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} privateRoadSigns={adminV2RoadSigns} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
       <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
@@ -1099,8 +1117,8 @@ export default function MapPage({active=true}){
       </section>
     </div>}
     {simActive&&<div className="v76-sim-badge" role="group" aria-label="Controles da simulação">
-      <span className="v76-sim-led" aria-hidden="true"/><strong>SIMULAÇÃO</strong>
-      <span>{Math.round((simFrame?.fraction||0)*100)}% · {shownSpeedKmh} km/h · 6×</span>
+      <span className="v76-sim-led" aria-hidden="true"/><strong>{simCameraMode==='drone'?'V2 SIM':'SIMULAÇÃO'}</strong>
+      <span>{Math.round((simFrame?.fraction||0)*100)}% · {shownSpeedKmh} km/h · {simCameraMode==='drone'?'2,5×':'6×'}</span>
       <button type="button" onClick={()=>{
         if(simFrame?.finished){setSimMeters(0);setSimPaused(false);}
         else setSimPaused(value=>!value);
@@ -1108,6 +1126,15 @@ export default function MapPage({active=true}){
         title={simFrame?.finished?'Reiniciar':simPaused?'Retomar':'Pausar'}>{simFrame?.finished?<RotateCcw size={17}/>:simPaused?<Play size={17}/>:<Pause size={17}/>}</button>
     </div>}
     {!searchOpen&&<div className="map-controls">
+       {adminV2RoadSigns&&<button type="button"
+         className={`circle-btn v81-drone-sim-toggle ${simActive&&simCameraMode==='drone'?'is-playing':''}`}
+         title={simActive&&simCameraMode==='drone'?'Parar V2 Sim':'Iniciar V2 Sim · câmera drone'}
+         aria-label={simActive&&simCameraMode==='drone'?'Parar V2 Sim':'Iniciar V2 Sim com câmera drone'}
+         aria-pressed={simActive&&simCameraMode==='drone'}
+         aria-haspopup={navMode&&!simActive?'dialog':undefined}
+         onClick={startV2DroneSimulation}>
+         <span aria-hidden="true"><b>V2</b><small>SIM</small></span>
+       </button>}
        {adminV2RoadSigns&&<button type="button"
          className={`circle-btn v76-sim-toggle ${simActive?'is-playing':''}`}
          title={simActive?'Parar simulação':'Simular trajeto na V2'}
