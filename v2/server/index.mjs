@@ -832,7 +832,11 @@ async function route(req, res) {
       'Tudo bem, sua rota atual foi mantida.','Mantive sua rota atual.',
       'Nova rota selecionada.','Parada adicionada. Depois, peça para continuar ao destino original.',
       'Esta sugestão expirou. Peça outra alternativa.',
-       'Pronto. Registrei o trânsito aqui para a comunidade.'
+       'Pronto. Registrei o trânsito aqui para a comunidade.',
+       'Registrei o trânsito aqui. Quer que eu procure uma rota mais rápida?',
+       'Registrei o alagamento aqui. Quer que eu procure outra rota?',
+       'Registrei o obstáculo aqui. Quer que eu procure outro caminho?',
+       'Registrei a rua fechada aqui. Quer que eu procure outra rota?'
     ]);
     if(!id||!(allowed.has(body.intent)||body.intent==='confirmation'))return err(res,400,'Resposta local inválida.');
     const local=body.intent==='confirmation'?

@@ -7,6 +7,7 @@ import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
 import {maviRecognitionRecovery} from '../lib/maviRecognitionRecovery.mjs';
 import {classifyMaviIntent,maviProposalDecision,maviProposalFollowup} from '../lib/maviAssistant.mjs';
+import {maviIncidentOffer,maviIncidentFollowupDecision} from '../lib/maviIncidentFollowup.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
 /** The V2-only voice input has three independent paths:
@@ -27,7 +28,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
  const firstMaviTurnRef=useRef(true);
- const proposalRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept,onAction,onPreview,onDismissPreview});
+ const proposalRef=useRef(null),incidentOfferRef=useRef(null),speechRef=useRef(null),handlersRef=useRef({onCommand,onAccept,onAction,onPreview,onDismissPreview});
  const navRef=useRef({navigationActive,maneuverDistance,muted});
  handlersRef.current={onCommand,onAccept,onAction,onPreview,onDismissPreview};
  navRef.current={navigationActive,maneuverDistance,muted};
@@ -53,6 +54,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  }
  function cancelEverything(){
    requestRef.current++;
+   incidentOfferRef.current=null;
    controllerRef.current?.abort?.();controllerRef.current=null;
    enabledRef.current=false;busyRef.current=false;
    stopRecognition();stopRecording();
@@ -153,6 +155,21 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    stopRecognition();setHeard(text);setTyped('');
    const decision=proposalRef.current?maviProposalDecision(text):null;
    if(decision){chooseProposal(decision);return;}
+   let routedText=text;
+   const pendingIncident=incidentOfferRef.current;
+   if(pendingIncident){
+     incidentOfferRef.current=null;
+     if(pendingIncident.expiresAt>Date.now()){
+       const answer=maviIncidentFollowupDecision(text);
+       if(answer==='reject'){
+         const message='Tudo bem, sua rota atual foi mantida.';
+         setReply(message);speak(message,null,fixedVoiceTicket(message));return;
+       }
+       if(answer==='accept'){
+         routedText=maviIncidentOffer(pendingIncident.type)?.command||text;
+       }
+     }
+   }
    // Repeat the last spoken response without duplicating a provider request
    // or clearing a still-pending route offer.
    if(classifyMaviIntent(text)==='repeat'&&reply){speak(reply);return;}
@@ -164,9 +181,13 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    try{
      const firstTurn=firstMaviTurnRef.current;
      firstMaviTurnRef.current=false;
-     const response=await handlersRef.current.onCommand(text,controller.signal,{firstTurn});
+     const response=await handlersRef.current.onCommand(routedText,controller.signal,{firstTurn});
      if(!enabledRef.current||seq!==requestRef.current)return;
      const message=typeof response?.text==='string'?response.text:'Não consegui responder.';
+     const nextIncident=maviIncidentOffer(response?.incidentRerouteOffer?.type);
+     incidentOfferRef.current=nextIncident?{
+       type:response.incidentRerouteOffer.type,expiresAt:Date.now()+45000
+     }:null;
      if(response?.mode==='proposal'&&response.routeData?.routes?.length){
        setProposal(response);proposalRef.current=response;
        try{handlersRef.current.onPreview?.(response);}catch{/* preview is optional; never block speech */}
@@ -343,7 +364,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  },[enabled]);
  useEffect(()=>{requestRef.current++;controllerRef.current?.abort?.();
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
-   setProposal(null);proposalRef.current=null;setOfferReady(false);
+   setProposal(null);proposalRef.current=null;incidentOfferRef.current=null;setOfferReady(false);
    handlersRef.current.onDismissPreview?.();
  },[routeContextKey]);
  useEffect(()=>onNavigationAudioStart(()=>{
