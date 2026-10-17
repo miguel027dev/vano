@@ -40,7 +40,7 @@ test('real mapped building heights are extruded below labels and route layers',(
  assert.equal(layer['source-layer'],'building');
  assert.equal(before,'place-label');
  assert.equal(layer.minzoom,14);
- assert.equal(layer.paint['fill-extrusion-opacity'],.8);
+ assert.equal(layer.paint['fill-extrusion-opacity'],.87);
  assert.match(JSON.stringify(layer.paint['fill-extrusion-height']),/height/);
  assert.match(JSON.stringify(layer.paint['fill-extrusion-base']),/min_height/);
  assert.equal(syncNight3DBuildings(map,{appearance:'dark'}),true);
@@ -59,7 +59,7 @@ test('no vector building source, satellite or existing 3D stays safe',()=>{
 test('camera gives dark free-look depth then restores it with reduced-motion support',()=>{
  const map=mapMock();
  syncNight3DCamera(map,{appearance:'dark',layer:'streets'});
- assert.deepEqual(map.moves[0],{pitch:48,duration:420});
+ assert.deepEqual(map.moves[0],{pitch:53,duration:420});
  syncNight3DCamera(map,{appearance:'dark'});
  assert.equal(map.moves.length,1);
  syncNight3DCamera(map,{appearance:'light',reducedMotion:true});
