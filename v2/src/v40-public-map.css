@@ -71,7 +71,8 @@
  transition:background-color .2s ease,color .2s ease,border-color .2s ease;
 }
 .map-page .v40-place-popover .mapboxgl-popup-tip,
-.map-page[data-map-appearance="dark"] .v40-place-popover .mapboxgl-popup-tip{
+.map-page[data-map-appearance="dark"] .v40-place-popover.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+.map-page[data-map-appearance="dark"] .v40-place-popover.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip{
  border-top-color:var(--v40-popup-bg);
  border-bottom-color:var(--v40-popup-bg);
 }
