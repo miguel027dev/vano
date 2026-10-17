@@ -570,6 +570,12 @@ function startupRouteBearing(m,p){
   if(gps!=null&&speed>2.2&&acc<45&&bearingDelta(route,gps)<42)route=blendBearing(route,gps,.12);
   return route
 }
+// The experimental drone camera is enabled only by the separate V2 admin test.
+let adminSimulationCameraV2=false,v2DroneManeuverUntil=0,adminSimStarting=false;
+function isV2DroneCamera(){
+  return IS_ADMIN && adminSimulation && adminSimulationCameraV2 &&
+    (location.pathname.toLowerCase()==='/v2'||location.pathname.toLowerCase()==='/v2/') && isMotorizedProfile();
+}
 function cameraVehicleTuning(){
   const installedAndroid=document.documentElement.classList.contains('vano-android-shell');
   if(profile==='motorcycle')return{kind:'motorcycle',lookMin:88,lookMax:372,lookBase:132,lookPerSpeed:7.2,turnLook:.72,sharpLook:.56,decisionDistance:270,largeAngle:34,centerLead:.76,turnLead:.66,largeLead:.60,roundLead:.56,zoomBase:installedAndroid?17.56:17.34,zoomMin:installedAndroid?16.75:16.30,zoomMax:installedAndroid?17.48:17.42,zoomPerSpeed:installedAndroid?.014:.0155,zoomSpeedOpen:installedAndroid?.34:.54,pitchCruise:installedAndroid?49:53,pitchTurn:installedAndroid?45:48,pitchLarge:installedAndroid?42:44,pitchRound:installedAndroid?39:40,bearingCruiseRate:172,bearingDecisionRate:245,bearingLargeRate:282,bearingRoundRate:315,bearingAlphaSlow:.42,bearingAlphaCruise:.58,bearingAlphaFast:.68,bearingAlphaDecision:.80,bearingAlphaLarge:.86,bearingAlphaRound:.90};
@@ -626,7 +632,26 @@ function stabilizeCameraTargetBearing(raw,ts,speed=0,junction=null){
   cameraTargetBearing=(cameraTargetBearing+delta*alpha+360)%360;return cameraTargetBearing
 }
 function buildCameraTarget(ctx,ts){
-  const p=ctx.p,m=cameraDynamicProgress(ctx,ts),speed=Math.max(0,+p.speed||0),motion=cameraKinematics(speed,ts),tune=cameraVehicleTuning(),step=currentStep(m.distanceAlong),turn=upcomingTurn(m,speed),junction=cameraJunctionContext(m,step,turn),signal=roadControlAhead('traffic_signal',m.distanceAlong,70),nearlyStopped=speed<.45,stoppedAtSignal=!!signal&&speed<.9,arrivalApproach=m.remaining<420&&m.progress>.80,urban=cameraUrbanContext(p,ts);
+  const p=ctx.p,m=cameraDynamicProgress(ctx,ts),speed=Math.max(0,+p.speed||0),motion=cameraKinematics(speed,ts),tune=cameraVehicleTuning(),step=currentStep(m.distanceAlong),turn=upcomingTurn(m,speed),junction=cameraJunctionContext(m,step,turn),v2Drone=isV2DroneCamera(),signal=roadControlAhead('traffic_signal',m.distanceAlong,70),nearlyStopped=speed<.45,stoppedAtSignal=!!signal&&speed<.9,arrivalApproach=m.remaining<420&&m.progress>.80,urban=cameraUrbanContext(p,ts);
+  // The next route step often names the maneuver at the END of this step.
+  // Anticipate it early; retain the wide framing briefly after the junction.
+  if(v2Drone){
+    const rem=Number.isFinite(+step?.remainingInStep)?Math.max(0,+step.remainingInStep):Infinity;
+    const upcoming=selectedRoute?.steps?.[Math.max(0,(+step?.stepIndex||0)+1)];
+    const type=String(upcoming?.type||step?.type||'').toLowerCase();
+    const modifier=String(upcoming?.modifier||'').toLowerCase();
+    const round=/roundabout|rotary/.test(type);
+    const complex=/roundabout|rotary|fork|merge|end of road|turn|ramp|exit/.test(type) ||
+      /sharp|uturn/.test(modifier);
+    const distance=Math.max(130,Math.min(235,80+speed*12));
+    const approaching=rem<=distance&&(complex||turn.angle>38);
+    if(approaching)v2DroneManeuverUntil=ts+1250;
+    if(approaching||ts<v2DroneManeuverUntil){
+      junction.decision=true;
+      junction.roundabout=junction.roundabout||(round&&(approaching||rem<=40));
+      junction.large=junction.large||round||/fork|merge|ramp|exit/.test(type)||turn.angle>40;
+    }
+  }
   const calibrating=ts<cameraCalibrationUntil;if(navCameraState!==NAV_CAMERA_STATES.REROUTING&&navCameraState!==NAV_CAMERA_STATES.FREE_LOOK){if(arrivalApproach)setNavCameraState(NAV_CAMERA_STATES.ARRIVAL);else if(junction.decision)setNavCameraState(NAV_CAMERA_STATES.MANEUVER_FOCUS);else if(!calibrating)setNavCameraState(NAV_CAMERA_STATES.FOLLOWING)}
   const offRoute=Number.isFinite(+p?._rawOffRoute)?+p._rawOffRoute:0,bearingSpan=calibrating?72:Math.max(profile==='motorcycle'?38:42,Math.min(profile==='motorcycle'?112:125,(profile==='motorcycle'?46:52)+speed*(profile==='motorcycle'?2.8:3.2))),routeBearing=routeBearingAtDistance(Math.max(0,m.distanceAlong-(calibrating?2:(profile==='motorcycle'?4:6))),bearingSpan),gpsHeading=Number.isFinite(+p.heading)?+p.heading:null;
   let rawTarget=Number.isFinite(routeBearing)?routeBearing:(Number.isFinite(lastRoutePuckBearing)?lastRoutePuckBearing:map.getBearing());
@@ -657,6 +682,23 @@ function buildCameraTarget(ctx,ts){
     zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-turnOpen-accelOpen+brakeClose+arrivalClose;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
     pitch=calibrating?NAV_CAMERA_HOME.pitch:(junction.roundabout?tune.pitchRound:junction.large?tune.pitchLarge:(junction.decision||turn.angle>48?tune.pitchTurn:tune.pitchCruise));if(motion.phase==='accelerating'&&!junction.decision)pitch=Math.min(56,pitch+(profile==='motorcycle'?2:1));if(motion.phase==='braking')pitch=Math.max(42,pitch-(profile==='motorcycle'?2:1));if(arrivalApproach)pitch=Math.min(pitch,46);
     if(urban.close&&!calibrating&&!junction.large){const crowd=Math.max(0,Math.min(1,urban.density)),speedGuard=1-Math.min(.32,speed/55),urbanFocus=crowd*speedGuard;zoom+=urbanFocus*(profile==='motorcycle'?.24:.28);pitch-=urbanFocus*(profile==='motorcycle'?4.2:5.6)}
+    // Drone framing: close to the car on open roads, widen early for choices.
+    // Dense 3D building corridors get a gentler pitch and extra street context
+    // so the vehicle and upcoming road remain visible (not buried by facades).
+    if(v2Drone&&!calibrating){
+      const crowd=urban.close?Math.max(.25,Math.min(1,urban.density)):0;
+      const smallScreen=vw<430;
+      const cruiseZoom=(smallScreen?18.76:19.02)-Math.min(.28,speed*.014)-crowd*.43;
+      zoom=junction.roundabout?17.25:junction.large?17.48:junction.decision?17.75:cruiseZoom;
+      pitch=junction.roundabout?44:junction.large?47:junction.decision?52:
+        (smallScreen?65:69)-crowd*13;
+      if(arrivalApproach){zoom=Math.min(zoom,18.10);pitch=Math.min(pitch,52)}
+      if(motion.phase==='braking'&&!junction.decision)zoom=Math.min(19.1,zoom+.07);
+      const maxZoom=Number.isFinite(map?.getMaxZoom?.())?map.getMaxZoom():20;
+      const maxPitch=Number.isFinite(map?.getMaxPitch?.())?map.getMaxPitch():75;
+      zoom=Math.max(16.65,Math.min(19.1,maxZoom,zoom));
+      pitch=Math.max(40,Math.min(73,maxPitch,pitch));
+    }
     const frozen=!calibrating&&(nearlyStopped||stoppedAtSignal);bearing=frozen&&Number.isFinite(lastCameraBearing)?lastCameraBearing:rawTarget;
     const bottomBase=calibrating?NAV_CAMERA_HOME.bottomRatio:(profile==='motorcycle'?(junction.large?(document.documentElement.classList.contains('vano-android-shell')?.25:.285):(document.documentElement.classList.contains('vano-android-shell')?.275:.305)):(junction.large?(document.documentElement.classList.contains('vano-android-shell')?.26:.30):(document.documentElement.classList.contains('vano-android-shell')?.285:.33))),topBase=calibrating?NAV_CAMERA_HOME.topRatio:(junction.large?.075:.055);
     padding=landscape?{top:Math.round(Math.max(22,vh*.055)),bottom:Math.round(Math.max(42,vh*.12)+SAFE_AREA_BOTTOM),left:Math.round(Math.max(210,Math.min(330,vw*.30))),right:Math.round(Math.max(42,vw*.055))}:{top:Math.round(Math.min(82,Math.max(24,vh*topBase))),bottom:Math.round(Math.min(340,Math.max(profile==='motorcycle'?158:170,vh*bottomBase))+SAFE_AREA_BOTTOM),left:Math.round(Math.min(48,Math.max(10,vw*.026))),right:Math.round(Math.min(32,Math.max(8,vw*.016)))};
@@ -668,7 +710,7 @@ function buildCameraTarget(ctx,ts){
     if(Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,gpsPoor?(profile==='motorcycle'?.10:.08):(profile==='motorcycle'?.18:.13));
   }
   if((nearlyStopped||motion.phase==='crawl')&&!junction.decision&&Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,.035);
-  if(isMotorizedProfile())zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(profile==='motorcycle'?17.48:17.58,zoom));
+  if(isMotorizedProfile()&&!v2Drone)zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(profile==='motorcycle'?17.48:17.58,zoom));
   if(Number.isFinite(navLastCameraZoom)&&Math.abs(zoom-navLastCameraZoom)<.018)zoom=navLastCameraZoom;
   return{center,zoom,pitch,bearing,padding,rawTarget,stopped:nearlyStopped||stoppedAtSignal,junction,instant:!!ctx.instant,arrivalApproach,speed,nearlyStopped,previewing:!!previewing,motion,gpsWeak,gpsPoor,urbanClose:!!urban.close,urbanDensity:+urban.density||0}
 }
@@ -685,6 +727,15 @@ function cameraMotionProfile(target,ts,dt){
   const calibrating=ts<cameraCalibrationUntil,moto=profile==='motorcycle';
   if(calibrating){const t=Math.max(0,Math.min(1,(ts-cameraCalibrationStartedAt)/(moto?880:1040))),e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;return{label:'calibrating',posTau:Math.max(moto?72:88,(moto?205:255)-(moto?122:150)*e),viewTau:Math.max(moto?82:100,(moto?235:300)-(moto?138:170)*e),bearingTau:Math.max(moto?88:118,(moto?245:350)-(moto?145:185)*e),centerEps:.07,zoomEps:.0035,bearingEps:moto?.13:.16}}
   const speed=Math.max(0,+target?.speed||0),intent=activeCameraIntent(ts),largeTurn=!!target?.junction?.large,turning=!!target?.junction?.decision,roundabout=!!target?.junction?.roundabout,arriving=!!target?.arrivalApproach,stopped=!!target?.stopped,instant=!!target?.instant&&ts-(cameraTargetContext?.updatedAt||ts)<420,preview=!!target?.previewing||intent==='preview',phase=target?.motion?.phase||'steady',rerouting=navCameraState===NAV_CAMERA_STATES.REROUTING;
+  if(isV2DroneCamera()&&!preview){
+    // Time-based damping produces a continuous tracking shot instead of
+    // canceling/restarting easeTo animations at every simulated GPS tick.
+    const maneuver=roundabout||largeTurn||turning;
+    if(intent==='launch'||intent==='recenter')return{label:'v2-drone-launch',posTau:115,viewTau:285,bearingTau:240,centerEps:.065,zoomEps:.0028,bearingEps:.14};
+    if(maneuver)return{label:'v2-drone-overview',posTau:135,viewTau:425,bearingTau:310,centerEps:.07,zoomEps:.0028,bearingEps:.16};
+    if(target?.urbanClose)return{label:'v2-drone-urban',posTau:145,viewTau:500,bearingTau:325,centerEps:.08,zoomEps:.003,bearingEps:.17};
+    return{label:'v2-drone-follow',posTau:132,viewTau:440,bearingTau:290,centerEps:.075,zoomEps:.003,bearingEps:.17};
+  }
   if(preview)return moto?{label:'preview-moto',posTau:118,viewTau:142,bearingTau:150,centerEps:.08,zoomEps:.0038,bearingEps:.17}:{label:'preview',posTau:150,viewTau:172,bearingTau:185,centerEps:.09,zoomEps:.004,bearingEps:.22};
   if(rerouting||intent==='reroute')return moto?{label:'rerouting-moto',posTau:68,viewTau:92,bearingTau:118,centerEps:.055,zoomEps:.0028,bearingEps:.12}:{label:'rerouting',posTau:82,viewTau:108,bearingTau:145,centerEps:.06,zoomEps:.003,bearingEps:.14};
   if(target?.gpsPoor)return moto?{label:'gps-poor-moto',posTau:190,viewTau:235,bearingTau:920,centerEps:.11,zoomEps:.005,bearingEps:.28}:{label:'gps-poor',posTau:235,viewTau:285,bearingTau:1050,centerEps:.13,zoomEps:.0055,bearingEps:.32};
@@ -1946,11 +1997,71 @@ function bindRouteMoreDetails(){
   window.__vanoRouteMore={open:()=>setOpen(true),close:()=>setOpen(false,{scroll:false}),toggle:()=>setOpen(details.dataset.open!=='true')};
   setOpen(false,{scroll:false});
 }
-function adminSimulationButton(running=false){const btn=$('adminSimBtn');if(!btn)return;btn.classList.toggle('running',running);btn.setAttribute('aria-pressed',String(!!running));btn.innerHTML=running?'<span class="admin-route-test-icon"><i data-lucide="square" width="16"></i></span><span class="admin-route-test-copy"><b>Parar teste</b><small>Simulação admin em andamento · movimento acelerado</small></span><span class="admin-route-test-badge">ATIVO</span>':'<span class="admin-route-test-icon"><i data-lucide="flask-conical" width="17"></i></span><span class="admin-route-test-copy"><b>Testar rota</b><small>Admin · simula movimento, câmera, manobras e chegada</small></span><span class="admin-route-test-badge">TESTE</span>';if(window.lucide)lucide.createIcons()}
+function adminSimulationButton(running=false){
+  const standard=$('adminSimBtn'),drone=$('adminSimV2Btn');
+  const standardOn=!!running&&!adminSimulationCameraV2,droneOn=!!running&&adminSimulationCameraV2;
+  if(standard){
+    standard.classList.toggle('running',standardOn);
+    standard.setAttribute('aria-pressed',String(standardOn));
+    standard.innerHTML=standardOn?
+      '<span class="admin-route-test-icon"><i data-lucide="square" width="16"></i></span><span class="admin-route-test-copy"><b>Parar teste</b><small>Simulação admin em andamento · movimento acelerado</small></span><span class="admin-route-test-badge">ATIVO</span>':
+      '<span class="admin-route-test-icon"><i data-lucide="flask-conical" width="17"></i></span><span class="admin-route-test-copy"><b>Testar rota</b><small>Admin · simula movimento, câmera, manobras e chegada</small></span><span class="admin-route-test-badge">TESTE</span>';
+  }
+  if(drone){
+    drone.classList.toggle('running',droneOn);
+    drone.setAttribute('aria-pressed',String(droneOn));
+    drone.innerHTML=droneOn?
+      '<span class="admin-route-test-icon"><i data-lucide="square" width="17"></i></span><span class="admin-route-test-copy"><b>Parar V2 Sim</b><small>Câmera drone cinematográfica ativa</small></span><span class="admin-route-test-badge">ATIVO</span>':
+      '<span class="admin-route-test-icon"><i data-lucide="scan-eye" width="17"></i></span><span class="admin-route-test-copy"><b>V2 Sim</b><small>Câmera drone · visão inteligente de manobras</small></span><span class="admin-route-test-badge">V2</span>';
+  }
+  if(window.lucide)lucide.createIcons();
+}
 function adminSimulationSpeed(){const seconds=Math.max(1,+selectedRoute?.duration||(+selectedRoute?.duration_min||0)*60||0),avg=routeTotalGeometry/seconds;if(profile==='walking')return Math.max(1.15,Math.min(1.9,Number.isFinite(avg)&&avg>0?avg:1.45));if(profile==='motorcycle')return Math.max(7.5,Math.min(24,Number.isFinite(avg)&&avg>0?avg:12));return Math.max(6.5,Math.min(27,Number.isFinite(avg)&&avg>0?avg:13.5))}
-async function startAdminSimulation(){if(!IS_ADMIN)return;if(adminSimulation){stopAdminSimulation();showToast('Teste de rota encerrado.');return}if(!selectedRoute){showToast('Calcule uma rota antes de testar.');return}try{const r=await fetch('/api/admin/simulation/authorize',{method:'POST',headers:{'X-CSRF-Token':CSRF}}),d=await r.json();if(!r.ok||!d.authorized)throw new Error('Sem autorização para testar esta rota.');if(watchId!==null){try{navigator.geolocation.clearWatch(watchId)}catch{}watchId=null}stopNavigationGpsHeartbeat();stopStartupGps();stopPassiveMapTracking();if(previewing)stopRoutePreview(false);buildMetrics();adminSimulation=true;adminSimDistance=0;adminSimLastTs=0;adminSimRealSpeed=adminSimulationSpeed();adminSimTimeScale=profile==='walking'?8:6;arrivalPresented=false;arrivalTelemetrySent=false;gpsDistance=0;lastGps=null;const first=routePointAtDistance(0)||selectedRoute.geometry.coordinates[0],heading=routeBearingAtDistance(0,35);const p={lat:first[1],lon:first[0],accuracy:4,heading,speed:adminSimRealSpeed,_distanceAlong:0};smoothedPos={...p};await activateNavigationAt(p,{simulated:true});adminSimulationButton(true);showToast(`Teste iniciado · ${adminSimTimeScale}x mais rápido que o tempo real.`);adminSimFrame=requestAnimationFrame(stepAdminSimulation)}catch(e){adminSimulation=false;adminSimulationButton(false);showToast(e.message||'Não foi possível iniciar o teste da rota.')}}
+async function startAdminSimulation({cinematic=false}={}){
+  if(!IS_ADMIN||adminSimStarting)return;
+  const useV2=!!cinematic && (location.pathname.toLowerCase()==='/v2'||location.pathname.toLowerCase()==='/v2/');
+  if(useV2&&!isMotorizedProfile()){showToast('V2 Sim disponível para carro e moto.');return}
+  if(adminSimulation){
+    const sameMode=adminSimulationCameraV2===useV2;
+    stopAdminSimulation();
+    if(sameMode){showToast('Teste de rota encerrado.');return}
+  }
+  if(!selectedRoute){showToast('Calcule uma rota antes de testar.');return}
+  adminSimStarting=true;
+  try{
+    const r=await fetch('/api/admin/simulation/authorize',{method:'POST',headers:{'X-CSRF-Token':CSRF}});
+    const d=await r.json();
+    if(!r.ok||!d.authorized)throw new Error('Sem autorização para testar esta rota.');
+    if(watchId!==null){try{navigator.geolocation.clearWatch(watchId)}catch{}watchId=null}
+    stopNavigationGpsHeartbeat();stopStartupGps();stopPassiveMapTracking();
+    if(previewing)stopRoutePreview(false);
+    buildMetrics();
+    adminSimulation=true;
+    adminSimulationCameraV2=useV2;
+    v2DroneManeuverUntil=0;
+    document.body.classList.toggle('nav-v2-drone-sim',useV2);
+    adminSimDistance=0;adminSimLastTs=0;
+    adminSimRealSpeed=adminSimulationSpeed();
+    adminSimTimeScale=useV2?2.5:(profile==='walking'?8:6);
+    arrivalPresented=false;arrivalTelemetrySent=false;gpsDistance=0;lastGps=null;
+    const first=routePointAtDistance(0)||selectedRoute.geometry.coordinates[0];
+    const heading=routeBearingAtDistance(0,35);
+    const p={lat:first[1],lon:first[0],accuracy:4,heading,speed:adminSimRealSpeed,_distanceAlong:0};
+    smoothedPos={...p};
+    await activateNavigationAt(p,{simulated:true});
+    adminSimulationButton(true);
+    showToast(useV2?'V2 Sim iniciado · câmera drone adaptativa.':
+      `Teste iniciado · ${adminSimTimeScale}x mais rápido que o tempo real.`);
+    adminSimFrame=requestAnimationFrame(stepAdminSimulation);
+  }catch(e){
+    adminSimulation=false;adminSimulationCameraV2=false;v2DroneManeuverUntil=0;
+    document.body.classList.remove('nav-v2-drone-sim');
+    adminSimulationButton(false);
+    showToast(e.message||'Não foi possível iniciar o teste da rota.');
+  }finally{adminSimStarting=false}
+}
 function stepAdminSimulation(ts){if(!adminSimulation||!selectedRoute)return;if(!adminSimLastTs)adminSimLastTs=ts;const dt=Math.min(.12,Math.max(0,(ts-adminSimLastTs)/1000));adminSimLastTs=ts;adminSimDistance=Math.min(routeTotalGeometry,adminSimDistance+adminSimRealSpeed*dt*adminSimTimeScale);if(ts-adminSimLastUiAt>=70){adminSimLastUiAt=ts;const xy=routePointAtDistance(adminSimDistance),heading=routeBearingAtDistance(adminSimDistance,Math.max(20,adminSimRealSpeed*2.8));if(xy)updateNavigation({coords:{latitude:xy[1],longitude:xy[0],accuracy:4,heading,speed:adminSimRealSpeed}},true)}if(adminSimDistance>=routeTotalGeometry-2){const xy=routePointAtDistance(routeTotalGeometry-1);if(xy)updateNavigation({coords:{latitude:xy[1],longitude:xy[0],accuracy:4,heading:routeBearingAtDistance(Math.max(0,routeTotalGeometry-35),35),speed:0}},true);showToast('Teste concluído no destino.');stopAdminSimulation({keepNavigation:true});return}adminSimFrame=requestAnimationFrame(stepAdminSimulation)}
-function stopAdminSimulation({keepNavigation=false}={}){adminSimulation=false;if(adminSimFrame)cancelAnimationFrame(adminSimFrame);adminSimFrame=null;adminSimLastTs=0;adminSimDistance=0;$('simBadge')?.classList.remove('show');adminSimulationButton(false);if(!keepNavigation&&activeNav?.classList.contains('show')){try{updateFloatingSpeedometer(0)}catch{}}}
+function stopAdminSimulation({keepNavigation=false}={}){adminSimulation=false;adminSimulationCameraV2=false;v2DroneManeuverUntil=0;document.body.classList.remove('nav-v2-drone-sim');if(adminSimFrame)cancelAnimationFrame(adminSimFrame);adminSimFrame=null;adminSimLastTs=0;adminSimDistance=0;$('simBadge')?.classList.remove('show');adminSimulationButton(false);if(!keepNavigation&&activeNav?.classList.contains('show')){try{updateFloatingSpeedometer(0)}catch{}}}
 function maybeCompleteRoutineStop(p,m){
   const stop=destination?.via_stop;
   if(!stop||!p||!m||!selectedRoute?.geometry?.coordinates?.length)return;
@@ -2128,7 +2239,7 @@ const plannerHeadingLabel=document.querySelector('.planner-heading-copy b');if(p
 const sharedSearchQuery=new URLSearchParams(location.search).get('q');if(sharedSearchQuery&&destinationInput){destinationInput.value=sharedSearchQuery.slice(0,240);setTimeout(()=>searchPlaces(destinationInput.value,'destination'),520)}
 ['navDrawerAlert'].forEach(id=>{try{$(id)?.remove()}catch{}});document.querySelectorAll('.nav-report-fab,[data-action="report"],[data-nav-action="report"]').forEach(el=>{try{el.remove()}catch{}});
 bindClick('navDrawerToggle',toggleNavControlDrawer);bindClick('navDrawerOptions',navDrawerAction(()=>openAccountDrawer(true)));bindClick('navDrawerSupport',navDrawerAction(()=>openSafetyDrawer(true)));bindClick('navDrawerRecenter',navDrawerAction(()=>calibrateNavigation()));
-ensureAdminSimulationControl();bindRouteMoreDetails();bindClick('continueResumeTrip',continueSavedTrip);bindClick('discardResumeTrip',discardSavedTrip);bindClick('arrivalFinishBtn',()=>finishTrip(false));bindClick('arrivalParkingBtn',openArrivalParking);bindClick('confirmDestinationBtn',confirmDestination);bindClick('editDestinationBtn',editDestination);bindClick('previewRouteBtn',previewRoute);bindClick('adminSimBtn',startAdminSimulation);bindClick('previewCancelBtn',()=>stopRoutePreview(true));bindClick('navAltAccept',acceptNavigationAlternative);bindClick('navAltDismiss',dismissNavigationAlternative);bindClick('navSearchBtn',returnToDestinationSearch);bindClick('navExitBtn',()=>finishTrip(false));syncNavCameraButton();syncFollowButton();syncImmersiveButton();syncSoundButton();populateVoiceSelectors();bindClick('quickAlertBtn',()=>openQuickAlert(null));bindClick('quickAlertCloseBtn',()=>openQuickAlert(false));bindClick('quickAlertBackdrop',()=>openQuickAlert(false));document.querySelectorAll('[data-quick-alert]').forEach(btn=>btn.addEventListener('click',()=>submitQuickAlert(btn.dataset.quickAlert,btn)));bindClick('safetyToolsBtn',()=>openSafetyDrawer(null),true);bindClick('safetyCloseBtn',()=>openSafetyDrawer(false));bindClick('safetyLiveBtn',toggleLiveShare);bindClick('supportPointsBtn',loadSupportPoints);bindClick('emergencyShareBtn',()=>shareSafetyMessage('sos'));bindClick('checkinBtn',()=>shareSafetyMessage('checkin'));bindClick('liveShareBtn',toggleLiveShare);bindClick('acceptTrafficRoute',applyTrafficSuggestion);bindClick('dismissTrafficRoute',()=>{trafficDismissUntil=Date.now()+120000;hideTrafficSuggestion();showToast('Mantendo a rota atual.')});bindClick('navRecenter',()=>calibrateNavigation());bindClick('soundBtn',()=>{if(navVoiceHoldOpened){navVoiceHoldOpened=false;return}soundEnabled=!soundEnabled;try{if(!soundEnabled){window.speechSynthesis?.cancel();stopVanoVoice()}}catch{}toggleVoicePopover(false);syncSoundButton();showToast(soundEnabled?'Orientações por voz ativadas.':'Orientações por voz desativadas.')});bindClick('shareRouteBtn',shareRoute);bindClick('showAlertsBtn',()=>{if(!selectedRoute)return;const n=selectedRoute.nearby_alerts?.length||0;showToast(n?`${n} alerta(s) comunitário(s) próximo(s) desta rota.`:'Nenhum alerta recente próximo desta rota.')});
+ensureAdminSimulationControl();bindRouteMoreDetails();bindClick('continueResumeTrip',continueSavedTrip);bindClick('discardResumeTrip',discardSavedTrip);bindClick('arrivalFinishBtn',()=>finishTrip(false));bindClick('arrivalParkingBtn',openArrivalParking);bindClick('confirmDestinationBtn',confirmDestination);bindClick('editDestinationBtn',editDestination);bindClick('previewRouteBtn',previewRoute);bindClick('adminSimBtn',()=>startAdminSimulation());bindClick('adminSimV2Btn',()=>startAdminSimulation({cinematic:true}),true);bindClick('previewCancelBtn',()=>stopRoutePreview(true));bindClick('navAltAccept',acceptNavigationAlternative);bindClick('navAltDismiss',dismissNavigationAlternative);bindClick('navSearchBtn',returnToDestinationSearch);bindClick('navExitBtn',()=>finishTrip(false));syncNavCameraButton();syncFollowButton();syncImmersiveButton();syncSoundButton();populateVoiceSelectors();bindClick('quickAlertBtn',()=>openQuickAlert(null));bindClick('quickAlertCloseBtn',()=>openQuickAlert(false));bindClick('quickAlertBackdrop',()=>openQuickAlert(false));document.querySelectorAll('[data-quick-alert]').forEach(btn=>btn.addEventListener('click',()=>submitQuickAlert(btn.dataset.quickAlert,btn)));bindClick('safetyToolsBtn',()=>openSafetyDrawer(null),true);bindClick('safetyCloseBtn',()=>openSafetyDrawer(false));bindClick('safetyLiveBtn',toggleLiveShare);bindClick('supportPointsBtn',loadSupportPoints);bindClick('emergencyShareBtn',()=>shareSafetyMessage('sos'));bindClick('checkinBtn',()=>shareSafetyMessage('checkin'));bindClick('liveShareBtn',toggleLiveShare);bindClick('acceptTrafficRoute',applyTrafficSuggestion);bindClick('dismissTrafficRoute',()=>{trafficDismissUntil=Date.now()+120000;hideTrafficSuggestion();showToast('Mantendo a rota atual.')});bindClick('navRecenter',()=>calibrateNavigation());bindClick('soundBtn',()=>{if(navVoiceHoldOpened){navVoiceHoldOpened=false;return}soundEnabled=!soundEnabled;try{if(!soundEnabled){window.speechSynthesis?.cancel();stopVanoVoice()}}catch{}toggleVoicePopover(false);syncSoundButton();showToast(soundEnabled?'Orientações por voz ativadas.':'Orientações por voz desativadas.')});bindClick('shareRouteBtn',shareRoute);bindClick('showAlertsBtn',()=>{if(!selectedRoute)return;const n=selectedRoute.nearby_alerts?.length||0;showToast(n?`${n} alerta(s) comunitário(s) próximo(s) desta rota.`:'Nenhum alerta recente próximo desta rota.')});
 
 function plannerCollapsedHeight(){if(!planSheet)return 190;const raw=parseFloat(getComputedStyle(planSheet).getPropertyValue('--planner-collapsed-h'));return Number.isFinite(raw)?raw:190}
 function syncFloatingLocate(){
