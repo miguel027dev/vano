@@ -75,3 +75,33 @@ test('radar endpoint is isolated from non-radar POIs and client retains them',()
  assert.match(overlay,/data\.features\.filter\(x=>x\?\.type==='radar'/);
  assert.match(overlay,/mergeSources\(\);\s*render\(\)/);
 });
+
+test('large London-scale international viewport reaches genuine Overpass instead of being suppressed',async()=>{
+ // The real /api/map-radars viewer asks for as much as 0.30 degrees.
+ const london=[-0.25,51.42,0.04,51.69];
+ let count=0,body='';
+ const fetcher=async(_url,options)=>{
+  count++;body=String(options.body||'');
+  return {ok:true,json:async()=>({elements:[
+   {type:'node',id:93100,lon:-.125,lat:51.512,tags:{highway:'speed_camera'}}
+  ]})};
+ };
+ const result=await queryPublicRadars(london,{
+  fetcher,useWorldSnapshot:false,useSnapshot:false,servers:[RADAR_OVERPASS_SERVERS[0]],
+  now:()=>1900000
+ });
+ assert.equal(count,1);
+ assert.equal(result.features.length,1);
+ assert.deepEqual(result.features[0].coords,[-.125,51.512]);
+ assert.equal(result.coverage,'mapped-only');
+ assert.ok(body.includes('51.42000'));
+});
+test('global lookup remains bounded; a continent-wide request is still rejected',async()=>{
+ await assert.rejects(()=>queryPublicRadars([-10,40,10,60],{useSnapshot:false}),RangeError);
+});
+test('map refresh retries international radar snapshot warming promptly',()=>{
+ const overlay=readFileSync(new URL('../src/lib/mapPublicOverlay.js',import.meta.url),'utf8');
+ assert.ok(overlay.includes('radarRetryTimer=setTimeout'));
+ assert.ok(overlay.includes('radarRetryCount<3'));
+ assert.ok(overlay.includes('if(visible)void refreshRadars(visible)'));
+});
