@@ -119,3 +119,14 @@ test('map control is accessible, separately switchable, and map retains orange r
  assert.match(css,/#E8B04C/);
  assert.match(css,/#DF625C/);
 });
+
+test('active navigation keeps the toolbar uncluttered without disabling traffic overlays',()=>{
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ assert.match(page,/\{!navMode&&<button type="button" className=\{\x60circle-btn v45-traffic-toggle/);
+ assert.doesNotMatch(page,/title="Alternar câmera 2D\/3D"/);
+ assert.doesNotMatch(page,/aria-label="Alternar inclinação da câmera"/);
+ assert.match(page,/\{jevMode&&navMode&&<JevVoiceButton/);
+ assert.match(page,/trafficEnabled=\{trafficEnabled\}/);
+ assert.match(map,/setTrafficVisibility\(map,trafficEnabled\)/);
+});
