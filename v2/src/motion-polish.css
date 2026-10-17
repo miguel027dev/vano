@@ -1,0 +1,92 @@
+/**
+ * VANO Motion Polish / 2026-10
+ * UI-only compositor-friendly transitions. Mapbox owns the map camera,
+ * GPS puck, route geometry and positioning: never animate their DOM ancestors.
+ * Do not put an animation on persistent nav HUDs that update every GPS tick.
+ */
+:root {
+  --vano-motion-tap: 130ms;
+  --vano-motion-small: 180ms;
+  --vano-motion-enter: 250ms;
+  --vano-motion-ease: cubic-bezier(.22,.8,.24,1);
+}
+
+/* A single motion vocabulary; never alter dimensions, z-index or anchor positions. */
+.map-page .route-sheet {
+  animation: vano-motion-sheet-in var(--vano-motion-enter) var(--vano-motion-ease) both;
+}
+.map-page .search-results.v32-results {
+  animation: vano-motion-search-in 210ms var(--vano-motion-ease) both;
+}
+.map-page .collapsed-route {
+  animation: vano-motion-collapsed-in 220ms var(--vano-motion-ease) both;
+}
+.map-page .vano-quick-report-shell {
+  animation: vano-motion-overlay-in 180ms ease-out both;
+}
+
+/* Keep existing click feedback but unify duration and easing. */
+.map-page .route-option {
+  transition: border-color var(--vano-motion-small) ease,
+              background-color var(--vano-motion-small) ease,
+              transform var(--vano-motion-tap) var(--vano-motion-ease);
+}
+.map-page .quick-chip,
+.map-page .map-controls .circle-btn,
+.map-page .v32-route-actions .circle-btn,
+.map-page .v37-nav-end,
+.map-page .v36-nav-report {
+  transition: transform var(--vano-motion-tap) var(--vano-motion-ease);
+}
+.map-page .v32-results .v32-suggestion {
+  transition: background-color var(--vano-motion-small) ease;
+}
+
+/* Do not animate expensive box-shadow continuously on the MAVI mic.
+ * The existing .mavi-mic-pulse ring animates only transform + opacity.
+ * Keep its semantic states (ready/listening/processing/speaking) unchanged. */
+.jev-control-wrap .jev-mic.jev-listening {
+  animation: none;
+}
+
+@keyframes vano-motion-sheet-in {
+  from {opacity:.88; transform:translate(-50%,16px);}
+  to   {opacity:1; transform:translate(-50%,0);}
+}
+@keyframes vano-motion-search-in {
+  from {opacity:0; transform:translate(-50%,7px);}
+  to   {opacity:1; transform:translate(-50%,0);}
+}
+@keyframes vano-motion-collapsed-in {
+  from {opacity:.5; transform:translate(-50%,8px);}
+  to   {opacity:1; transform:translate(-50%,0);}
+}
+@keyframes vano-motion-overlay-in {
+  from {opacity:0;}
+  to   {opacity:1;}
+}
+
+/* CSS is progressive enhancement. Unsupported/slow-refresh devices still
+ * receive every navigation and accessibility update without motion. */
+@media (prefers-reduced-motion: reduce), (update: slow) {
+  .map-page .route-sheet,
+  .map-page .search-results.v32-results,
+  .map-page .collapsed-route,
+  .map-page .vano-quick-report-shell {
+    animation: none !important;
+  }
+  .map-page .route-option,
+  .map-page .quick-chip,
+  .map-page .map-controls .circle-btn,
+  .map-page .v32-route-actions .circle-btn,
+  .map-page .v37-nav-end,
+  .map-page .v36-nav-report,
+  .map-page .v32-results .v32-suggestion {
+    transition: none !important;
+  }
+}
+
+/* Touch hover must not get stuck after tapping a control in WebView. */
+@media (hover:none) {
+  .jev-control-wrap .jev-mic:hover:not(:active) {transform:none;}
+}

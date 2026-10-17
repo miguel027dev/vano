@@ -23,5 +23,17 @@ import './native-shell.css';
 import 'leaflet/dist/leaflet.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import './v49-map-appearance.css';
+import './motion-polish.css';
 import './v50-night-system.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);
+
+/* Opt-in performance probe: console metrics only, never reads GPS or sends data. */
+if (new URLSearchParams(window.location.search).get('vanoMotionDebug') === '1') {
+  void import('./lib/motionDiagnostics.mjs').then(({recordMotionFrames})=>{
+    const profile=(durationMs=6000)=>recordMotionFrames({
+      durationMs,hidden:()=>document.visibilityState!=='visible'
+    }).then(metrics=>{console.info('[VANO motion] Frame intervals (not GPU FPS)',metrics);return metrics;});
+    window.vanoMotionProfile=profile;
+    return profile();
+  }).catch(error=>console.warn('[VANO motion] Probe unavailable',error));
+}
