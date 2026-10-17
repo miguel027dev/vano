@@ -84,6 +84,23 @@ test('Autorização, sessão segura, CSRF, perfil e histórico validado',async()
  }finally{await s.stop();}
 },{timeout:30000});
 
+test('SSE streams report change to nearby clients in real time',async()=>{
+ const s=await start(),author=client(s.origin);
+ const controller=new AbortController();
+ try{
+  await author.call('/api/bootstrap');
+  const feed=await fetch(s.origin+'/api/reports/stream?bbox=-46.68,-23.58,-46.63,-23.54',{signal:controller.signal});
+  assert.equal(feed.status,200);
+  const reader=feed.body.getReader();
+  assert.match(new TextDecoder().decode((await reader.read()).value),/connected/);
+  const waitEvent=reader.read();
+  const sent=await author.call('/api/reports','POST',{coords,type:'alagamento'});
+  assert.equal(sent.status,201);
+  const got=await Promise.race([waitEvent,sleep(5000).then(()=>{throw Error('SSE timed out')})]);
+  assert.match(new TextDecoder().decode(got.value),/reports-changed/);
+ }finally{controller.abort();await s.stop();}
+},{timeout:15000});
+
 test('Limite de cadastros é por IP, independentemente do e-mail',async()=>{
  const s=await start(),a=client(s.origin);
  try{
