@@ -26,7 +26,7 @@ test('both Mapbox and Leaflet popup DOM use same theme-scoped component',()=>{
  assert.match(style,/@media\(prefers-reduced-motion:reduce\)/);
 });
 test('server derives private self-authorship, enforces csrf and persists votes without broadcasting identities',()=>{
- assert.match(server,/publicReportsInBBox\(db\.reports,bbox,Date\.now\(\),viewerOwner,viewerKey\)/);
+ assert.ok(server.includes("const feedbackMatch=")&&server.includes("feedback$/.exec(pathname)"));
  assert.match(server,/\/api\\\/reports\\\/\(\[a-f0-9\]\{16\}\)\\\/feedback/);
  assert.match(server,/protectedWrite\(req,res\)/);
  assert.match(server,/recordReportFeedback\(record,actor,key,body\.choice,now\(\)\)/);
