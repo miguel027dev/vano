@@ -48,7 +48,7 @@ function popupBody(item){
 }
 export function attachPublicMapOverlay(map,backend){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
- let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
+ let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,radarRetryTimer=null,radarRetryCount=0,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
  const sourceCache=new Map(); // OSM, verified reports and radar points; never erased on viewport changes.
  const markers=new Map();
@@ -199,9 +199,24 @@ export function attachPublicMapOverlay(map,backend){
     mergeSources();
     render();
    }
+   if(key!==radarKey)radarRetryCount=0;
    radarKey=key;
    radarReadAt=Date.now();
-   if(data.error)radarReadAt-=155000; // retry soon, without tight-looping
+   if(data.error||data.features?.length===0&&data.available!==true&&data.coverage!=='national-snapshot'){
+    // Global snapshots refresh in the background. Previously an unavailable
+    // provider kept foreign maps blank for ~25 seconds or more.
+    radarReadAt=0;
+    if(radarRetryTimer!==null)clearTimeout(radarRetryTimer);
+    if(radarRetryCount<3){
+     radarRetryCount++;
+     radarRetryTimer=setTimeout(()=>{
+      radarRetryTimer=null;
+      if(done||document.hidden)return;
+      const visible=mapRadarBBox(map);
+      if(visible)void refreshRadars(visible);
+     },5000);
+    }
+   }else radarRetryCount=0;
   }catch(error){
    if(error.name!=='AbortError'){
     radarKey='';radarReadAt=0;
@@ -368,6 +383,7 @@ export function attachPublicMapOverlay(map,backend){
   done=true;
   if(timer!==null)clearTimeout(timer);
   if(vectorTimer!==null)clearTimeout(vectorTimer);
+  if(radarRetryTimer!==null)clearTimeout(radarRetryTimer);
   if(regionalTimer!==null)clearTimeout(regionalTimer);
   if(tomtomTimer!==null)clearTimeout(tomtomTimer);
   if(tomtomPoiTimer!==null)clearTimeout(tomtomPoiTimer);

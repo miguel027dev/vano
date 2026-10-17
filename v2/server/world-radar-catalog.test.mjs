@@ -68,3 +68,50 @@ test('dedicated radar endpoint prioritizes snapshot results and never hits faili
  assert.ok(result.features.some(x=>x.type==='radar'&&x.coords[0]===london[0]));
  assert.equal(result.available,true);
 });
+
+test('real-world published global CSV metadata comments are skipped before its header',()=>{
+ const csv=[
+  '# dataset: speedcams.world speed cameras',
+  '# attribution: OpenStreetMap contributors',
+  '# source as of: unknown',
+  'osm_id,country_code,latitude,longitude,maxspeed',
+  '1001,GB,51.509,-0.119,30 mph',
+  '1002,IT,45.46,9.19,50',
+  '# final comment',
+ ].join('\n');
+ const features=parseWorldCameraCsv(csv);
+ assert.equal(features.length,2);
+ assert.deepEqual([features[0].lon,features[0].lat],london);
+ assert.deepEqual([features[1].lon,features[1].lat],milan);
+});
+test('UK provider accepts nested public-camera collections and flexible lat/lon',()=>{
+ const result=parseUkCameraJson({cameras:{features:[
+  {id:31,properties:{id:31,latitude:51.509,longitude:-.119}},
+  {id:32,geometry:{type:'Point',coordinates:[-0.124,51.516]}}
+ ]}});
+ assert.equal(result.length,2);
+ assert.ok(result.every(x=>x.country==='GB'));
+});
+test('world catalog can refresh asynchronously without keeping the map request waiting',async()=>{
+ resetWorldRadarCatalogForTests();
+ const {world,uk}=fixtures();
+ let resolveDownload;
+ const gate=new Promise(resolve=>{resolveDownload=resolve});
+ const output=await queryWorldRadarCatalog(around(london),{
+  fetcher:async url=>{
+   await gate;
+   return {ok:true,headers:{get:()=>null},
+    text:async()=>url===WORLD_CAMERA_EXPORT?world:JSON.stringify(uk)};
+  },now:()=>3000000,waitForLoad:false
+ });
+ assert.equal(output.available,false);
+ assert.equal(output.features.length,0);
+ resolveDownload();
+ await new Promise(setImmediate);
+ const next=await queryWorldRadarCatalog(around(london),{
+  fetcher:async()=>{throw Error('Unexpected re-download');},
+  now:()=>3000000,waitForLoad:false
+ });
+ assert.equal(next.available,true);
+ assert.ok(next.features.some(p=>p.coords[0]===london[0]));
+});

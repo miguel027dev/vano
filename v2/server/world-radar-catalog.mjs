@@ -51,8 +51,12 @@ function readCsvLine(line){
 }
 export function parseWorldCameraCsv(csv){
  if(typeof csv!=='string'||csv.length>MAX_EXPORT_BYTES)throw Error('Invalid world camera CSV');
+ // The published worldwide CSV starts with "# dataset: ..." metadata.
+ // The previous parser expected a header on line 1, so all ~72k real rows
+ // were discarded and the global map appeared to have no cameras.
  const lines=csv.replace(/^\uFEFF/,'').split(/\r?\n/);
- const header=readCsvLine(lines[0]||'');
+ const headerLine=lines.findIndex(line=>line.trim()&&!line.trimStart().startsWith('#'));
+ const header=readCsvLine(lines[headerLine]||'');
  const lonI=headerIndex(header,['lon','lng','long','longitude','x']);
  const latI=headerIndex(header,['lat','latitude','y']);
  const idI=headerIndex(header,['osmid','osmnodeid','nodeid','sourceid','id','osmidnumber']);
@@ -60,8 +64,8 @@ export function parseWorldCameraCsv(csv){
  const countryI=headerIndex(header,['country','countrycode','isocountry','iso2','isocode','countryiso2']);
  if(lonI<0||latI<0)throw Error('World camera CSV missing coordinates: '+header.slice(0,12).join(','));
  const out=[];
- for(let i=1;i<lines.length&&out.length<MAX_RECORDS;i++){
-  if(!lines[i])continue;
+ for(let i=headerLine+1;i<lines.length&&out.length<MAX_RECORDS;i++){
+  if(!lines[i]||lines[i].trimStart().startsWith('#'))continue;
   const f=readCsvLine(lines[i]);
   const record=mkRecord(f[lonI],f[latI],idI>=0?f[idI]:'',speedI>=0?f[speedI]:null,countryI>=0?f[countryI]:'');
   if(record)out.push(record);
@@ -74,14 +78,21 @@ export function parseUkCameraJson(data){
   Array.isArray(data?.features)?data.features:
   Array.isArray(data?.cameras)?data.cameras:
   Array.isArray(data?.data)?data.data:
-  Array.isArray(data?.points)?data.points:[];
+  Array.isArray(data?.points)?data.points:
+  Array.isArray(data?.items)?data.items:
+  Array.isArray(data?.results)?data.results:
+  Array.isArray(data?.cameras?.features)?data.cameras.features:
+  Array.isArray(data?.cameras?.data)?data.cameras.data:[];
  const out=[];
  for(const item of arr.slice(0,MAX_RECORDS)){
-  const props=item?.properties||item||{};
+  const props=item?.properties||item?.attributes||item||{};
   const coords=item?.geometry?.coordinates||item?.coordinates||item?.coords;
-  const lon=Array.isArray(coords)?coords[0]:props.lon??props.lng??props.longitude;
-  const lat=Array.isArray(coords)?coords[1]:props.lat??props.latitude;
-  const record=mkRecord(lon,lat,props.osm_id??props.osmid??props.id??item?.id,
+  const lon=Array.isArray(coords)?coords[0]:
+    props.lon??props.lng??props.longitude??props.location?.lon??props.location?.lng??
+    item?.geometry?.x;
+  const lat=Array.isArray(coords)?coords[1]:
+    props.lat??props.latitude??props.location?.lat??item?.geometry?.y;
+  const record=mkRecord(lon,lat,props.osm_id??props.osmid??props.osmId??props.id??item?.id,
    props.speed_limit??props.maxspeed??props.speed,'GB');
   if(record)out.push(record);
  }
@@ -137,7 +148,11 @@ export function resetWorldRadarCatalogForTests(){
 export async function queryWorldRadarCatalog(bbox,opts={}){
  const b=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox,.3,.3);
  if(!b)throw RangeError('Invalid camera catalog bbox');
- await Promise.all(sourceStates.map(state=>fetchSnapshot(state,opts)));
+ // Global feeds may take several seconds to download. Launch refresh in the
+ // background for real map requests and return cached records immediately.
+ // Only deterministic unit fixtures await the first load.
+ const loading=sourceStates.map(state=>fetchSnapshot(state,opts));
+ if(opts.waitForLoad!==false)await Promise.all(loading);
  const [w,s,e,n]=b,features=[],seen=new Set(),cx=(w+e)/2,cy=(s+n)/2;
  for(const state of sourceStates){
   for(let lon=Math.floor(w*GRID_SCALE);lon<=Math.floor(e*GRID_SCALE);lon++){
