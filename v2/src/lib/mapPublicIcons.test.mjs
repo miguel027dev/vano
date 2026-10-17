@@ -61,7 +61,7 @@ test('map overlay keeps GPS geometry, Mapbox native credits and compact extra OS
  const component=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../v40-public-map.css',import.meta.url),'utf8');
- assert.match(component,/attachPublicMapOverlay\(map,backend.current\)/);
+ assert.match(component,/attachPublicMapOverlay\(map,backend.current,\(\)=>latest.current.navigation\)/);
  assert.match(component,/detachPublicPins\?\.\(\)/);
  assert.match(overlay,/map.on\('moveend',schedule\)/);
  assert.match(overlay,/map.off\('moveend',schedule\)/);
@@ -211,4 +211,39 @@ test('Open Charge Map station has one clear, unclipped charging symbol',()=>{
  assert.equal((svg.match(/<path /g)||[]).length,1);
  assert.match(svg,/fill="#188E65" stroke="none"/);
  assert.ok(!svg.includes('M16 9h2'));
+});
+
+test('active road navigation hides all commerce but retains guidance and essential services',()=>{
+ const types=['radar','semaforo','estacionamento','obra','relato-transito',
+  'hospital','farmacia','travessia','rotatoria','alerta-via',
+  'fastfood','restaurante','cafeteria','shopping','mercado','supermercado',
+  'eletroposto','estacao-recarga','hotel','academia','petshop','combustivel','escola'];
+ const points=types.map((type,i)=>({id:type,type,priority:100-i,coords:[i*.008,0]}));
+ const project=([lng])=>({x:40+lng*2500,y:120});
+ const view={width:1600,height:500};
+ const selected=selectPublicPins(points,project,15,100,view,{navigation:true});
+ const visible=new Set(selected.map(p=>p.type));
+ for(const type of ['radar','semaforo','estacionamento','obra','relato-transito','hospital','farmacia','travessia','rotatoria','alerta-via'])
+  assert.ok(visible.has(type),'navigation must keep '+type);
+ for(const type of ['fastfood','restaurante','cafeteria','shopping','mercado','supermercado','eletroposto','estacao-recarga','hotel','academia','petshop','combustivel','escola'])
+  assert.ok(!visible.has(type),'navigation must hide '+type);
+ assert.ok(selectPublicPins(points,project,15,100,view).some(p=>p.type==='fastfood'),
+  'food and commerce must remain discoverable outside navigation');
+});
+
+test('street-level exploration has fewer POI markers than a wider overview',()=>{
+ const view={width:390,height:780};
+ const overview=publicPinDensity(view,13,300);
+ const close=publicPinDensity(view,17,300);
+ assert.ok(overview.total>close.total,'zoomed-in streets should be less cluttered');
+ assert.ok(close.minSpacing>overview.minSpacing,'closer zoom should spread pins farther apart');
+});
+
+test('navigation state updates public markers without remounting or refetching map',()=>{
+ const component=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
+ assert.match(component,/mapRef\.current\?\._vanoRefreshPublicPins\?\.\(\)/);
+ assert.match(overlay,/navigation:Boolean\(getNavigation\(\)\)/);
+ assert.match(overlay,/map\._vanoRefreshPublicPins=render/);
+ assert.match(overlay,/delete map\._vanoRefreshPublicPins/);
 });
