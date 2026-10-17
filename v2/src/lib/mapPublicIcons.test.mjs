@@ -219,8 +219,8 @@ test('active road navigation hides all commerce but retains guidance and essenti
   'fastfood','restaurante','cafeteria','shopping','mercado','supermercado',
   'eletroposto','estacao-recarga','hotel','academia','petshop','combustivel','escola'];
  const points=types.map((type,i)=>({id:type,type,priority:100-i,coords:[i*.008,0]}));
- const project=([lng])=>({x:40+lng*2500,y:120});
- const view={width:1600,height:500};
+ const project=([lng])=>({x:40+lng*9500,y:120});
+ const view={width:1900,height:500};
  const selected=selectPublicPins(points,project,15,100,view,{navigation:true});
  const visible=new Set(selected.map(p=>p.type));
  for(const type of ['radar','semaforo','estacionamento','obra','relato-transito','hospital','farmacia','travessia','rotatoria','alerta-via'])
