@@ -1153,7 +1153,7 @@ export default function MapPage({active=true}){
         </div>
       </div>
       {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
-       <section className="v70-route-details" aria-label="Detalhes e orientações do percurso">
+       {!adminV2RoadSigns&&<section className="v70-route-details" aria-label="Detalhes e orientações do percurso">
          <h3>{routeVehicle==='a-pe'?'Caminhada, passo a passo':routeVehicle==='moto'?'Atenção a curvas e acessos':'Orientações da viagem'}</h3>
          <p className="v70-route-details-intro">{routeVehicle==='a-pe'?'Travessias e ruas mapeadas, sem substituir a sinalização real.':routeVehicle==='moto'?'Manobras reais do provedor, com atenção aos acessos.':'Próximas manobras e faixas somente quando informadas pelo provedor.'}</p>
          {choice==='safe'&&routeVehicle!=='a-pe'&&<p className="v70-route-details-intro" role="note">{routeData.safetyMessage||'Os dados de segurança podem ser limitados nesta região. Nenhuma rota garante segurança absoluta.'}</p>}
@@ -1166,7 +1166,7 @@ export default function MapPage({active=true}){
            ):<p>Faixas específicas aparecem apenas quando há registros públicos compatíveis com o percurso.</p>}
            <small className="v70-route-source">Fonte das travessias: OpenStreetMap (dados colaborativos). {crossingSafetyNote(language)}</small>
          </div>}
-       </section>
+       </section>}
        <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice" role="alert"><p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p><button type="button" onClick={()=>calculateRoute(dest,origin,routeVehicle)} disabled={!validPoint(origin)}>Tentar novamente</button></div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
