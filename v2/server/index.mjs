@@ -41,6 +41,8 @@ import {queryPublicRadars} from './map-radars.mjs';
 import {queryWorldRadarCatalog} from './world-radar-catalog.mjs';
 import {openChargeSnapshot} from './open-charge-map.mjs';
 import {officialRoadSources,officialRoadSnapshot} from './official-road-providers.mjs';
+import {overtureSnapshot} from './overture-places.mjs';
+import {prfHistoricalSnapshot} from './prf-historical.mjs';
 import {parseTrafficBBox,configuredPublicTraffic,TRAFFIC_PROVIDER_CATALOG} from './traffic-public.mjs';
 import {parseTomTomBBox,tomtomSnapshot,TOMTOM_ENV_NAME,cachedTomTomRouteIncidents} from './tomtom-incidents.mjs';
 import {tomtomPoiSnapshot,searchTomTomPlaces} from './tomtom-pois.mjs';
@@ -646,6 +648,22 @@ async function route(req, res) {
     if(!bbox)return err(res,400,'Área de recarga inválida ou muito ampla.');
     const result=openChargeSnapshot(bbox,process.env.VANO_OPENCHARGEMAP_API_KEY||'');
     return json(res,200,result,{'Cache-Control':'private, max-age=8'});
+  }
+  // Overture is regional offline GeoJSON extracted from official cloud Parquet.
+  if(pathname==='/api/places/overture'&&req.method==='GET'){
+    if(!limits(req,res,'overture-places',24,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'),.12,.12);
+    if(!bbox)return err(res,400,'Área Overture inválida.');
+    const result=overtureSnapshot(bbox,process.env.VANO_OVERTURE_PLACES_GEOJSON_URL||'');
+    return json(res,200,result,{'Cache-Control':'private, max-age=8'});
+  }
+  // PRF data are historical aggregated counts, NEVER current accident alerts.
+  if(pathname==='/api/historical/prf'&&req.method==='GET'){
+    if(!limits(req,res,'historical-prf',15,60000))return;
+    const bbox=parseBBox(u.searchParams.get('bbox'),.3,.3);
+    if(!bbox)return err(res,400,'Área PRF inválida.');
+    return json(res,200,prfHistoricalSnapshot(bbox,process.env.VANO_PRF_RISK_DATA_FILE||''),
+      {'Cache-Control':'private, max-age=300'});
   }
   if(pathname==='/api/map-features/sources'&&req.method==='GET')return json(res,200,{sources:PUBLIC_MAP_SOURCES});
   if(pathname==='/api/map-features'&&req.method==='GET'){
