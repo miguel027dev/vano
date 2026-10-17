@@ -123,3 +123,45 @@ test('Render startup nonblocking radar prewarm never blocks route engine boot',(
  assert.ok(server.includes("void queryWorldRadarCatalog([-.14,51.50,-.11,51.53])"));
  assert.ok(server.includes("console.info('[VANO world radar prewarm]'"));
 });
+test('an empty international snapshot fills mapped gaps asynchronously without blocking navigation',async()=>{
+ resetWorldRadarCatalogForTests();
+ const {world,uk}=fixtures();
+ const nyc=[-74.03,40.70,-73.96,40.76];
+ let resolveRadar,upstreamCalls=0;
+ const waiting=new Promise(resolve=>{resolveRadar=resolve});
+ const opts={
+  now:()=>4500000,useWorldSnapshot:true,servers:['https://overpass-api.de/api/interpreter'],
+  worldFetcher:async url=>({ok:true,headers:{get:()=>null},
+   text:async()=>url===WORLD_CAMERA_EXPORT?world:JSON.stringify(uk)}),
+  fetcher:async()=>{upstreamCalls++;await waiting;return {ok:true,json:async()=>({elements:[
+   {type:'node',id:990011,lon:-74.001,lat:40.728,tags:{highway:'speed_camera'}}
+  ]})};}
+ };
+ const first=await queryPublicRadars(nyc,opts);
+ assert.equal(first.available,true);
+ assert.equal(first.features.length,0);
+ assert.equal(first.refreshing,true,'optional provider continues in background');
+ assert.equal(upstreamCalls,1);
+ const pending=await queryPublicRadars(nyc,opts);
+ assert.equal(pending.refreshing,true);
+ assert.equal(upstreamCalls,1,'one provider request per empty viewport');
+ resolveRadar();
+ await new Promise(setImmediate);
+ const recovered=await queryPublicRadars(nyc,opts);
+ assert.ok(recovered.features.some(x=>x.coords[0]===-74.001));
+ assert.equal(upstreamCalls,1);
+});
+
+test('radar gap fallback is rate-bounded by viewport size',async()=>{
+ resetWorldRadarCatalogForTests();
+ const {world,uk}=fixtures();let upstreamCalls=0;
+ const result=await queryPublicRadars([-74.2,40.6,-73.93,40.85],{
+  now:()=>4600000,useWorldSnapshot:true,
+  worldFetcher:async url=>({ok:true,headers:{get:()=>null},
+   text:async()=>url===WORLD_CAMERA_EXPORT?world:JSON.stringify(uk)}),
+  fetcher:async()=>{upstreamCalls++;throw Error('Do not query wide area')}
+ });
+ assert.equal(result.available,true);
+ assert.equal(result.refreshing,false);
+ assert.equal(upstreamCalls,0);
+});
