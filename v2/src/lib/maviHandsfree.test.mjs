@@ -23,7 +23,7 @@ test('only MAVI V2 shows compact route proposal under guidance or preview',()=>{
  const s=map(),m=mic();
  assert.match(s,/jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"\/>/);
  assert.equal((s.match(/id="mavi-offer-host"/g)||[]).length,2,'one host per exclusive navigation state');
- assert.match(s,/jevMode&&<JevVoiceButton/);
+ assert.match(s,/jevMode&&navMode&&<JevVoiceButton/);
  assert.match(m,/createPortal\(/);
  assert.match(m,/offerTarget&&createPortal\(/);
  assert.match(m,/className="mavi-offer-card"/);
@@ -68,4 +68,14 @@ test('MAVI cloud voices are feature gated, route-signed and preserve existing mi
  assert.match(server,/ticketType=eleven\.enabled\?'mavi-eleven-tts':cartesia\.enabled\?'mavi-cartesia-tts'/);
  assert.match(player,/revokeObjectURL/);
  assert.match(player,/audio\.addEventListener\('ended',complete/);
+});
+
+test('MAVI control is absent until active route navigation and unmounts on trip end',()=>{
+ const s=map();
+ assert.match(s,/\{jevMode&&navMode&&<JevVoiceButton\b/);
+ assert.doesNotMatch(s,/\{jevMode&&<JevVoiceButton\b/);
+ assert.match(s,/async function begin\(\)\{/);
+ assert.match(s,/setGuidance\(null\);setNavMode\(true\);setSheetOpen\(false\)/);
+ assert.match(s,/function reset\(\)\{/);
+ assert.match(s,/setNavMode\(false\)/);
 });
