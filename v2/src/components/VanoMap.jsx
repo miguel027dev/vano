@@ -36,12 +36,12 @@ const markerElement=(kind,vehicle='carro')=>{
  }
  return el;
 };
-const styleFor=layer=>mapboxStyleFor(layer,(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE);
+const styleFor=(layer,appearance='light')=>mapboxStyleFor(layer,(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE,appearance);
 // Recover a raster basemap without recreating route/GPS/POI overlays.
 // Never request the volunteer-run OSM tile host in the fallback renderer.
 const EMPTY_TILE='data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-function installLeafletBasemap(map,layer,token,{onReady=()=>{},onError=()=>{}}={}){
-  const preferred=leafletTilesFor(layer,token);
+function installLeafletBasemap(map,layer,token,{onReady=()=>{},onError=()=>{},appearance='light'}={}){
+  const preferred=leafletTilesFor(layer,token,appearance);
   const emergency=leafletBackupTilesFor(layer);
   if(map._vanoTiles)map.removeLayer(map._vanoTiles);
   const attach=(definition,isEmergency)=>{
@@ -64,6 +64,10 @@ function installLeafletBasemap(map,layer,token,{onReady=()=>{},onError=()=>{}}={
       }else onError();
     });
     tiles.addTo(map);
+    // Offline/no-token Esri fallback is light imagery; invert only its tiles,
+    // never the route, radar, traffic, GPS or popup panes.
+    tiles.getContainer()?.classList.toggle('v49-dark-raster-legacy',
+      appearance==='dark'&&layer!=='satellite'&&definition.url===emergency.url);
   };
   attach(preferred,preferred.url===emergency.url);
 }
@@ -120,7 +124,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false}){
+export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -144,7 +148,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   }
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,previewRoute,previewFocus,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onNavigationProgress,guidance,previewRoute,previewFocus,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null;const initial=coord(latest.current.userCoords);
@@ -164,8 +168,8 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
     if(token && !forceRaster && (!mapboxgl.supported || mapboxgl.supported())){
       try{
         mapboxgl.accessToken=token;
-        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
-        map._vanoStyle=styleFor(latest.current.layer);
+        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer,latest.current.appearance),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
+        map._vanoStyle=styleFor(latest.current.layer,latest.current.appearance);
         const attachOpenRouterMark=()=>{
           const tray=map.getContainer().querySelector('.mapboxgl-ctrl-bottom-left');
           if(!tray||tray.querySelector('.vano-openrouter-mark'))return;
@@ -217,6 +221,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
         return()=>{};
       }
       installLeafletBasemap(map,latest.current.layer,token,{
+        appearance:latest.current.appearance,
         onReady:()=>requestAnimationFrame(()=>{if(!deleted){setError('');notifyNative({action:'firstFrame',backend:'leaflet'});}}),
         onError:()=>{if(!deleted)setError('A imagem do mapa está indisponível. Verifique a conexão e recarregue.');}
       });
@@ -348,7 +353,7 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox')return;
-    const style=styleFor(layer);
+    const style=styleFor(layer,appearance);
     if(map._vanoStyle===style)return;
     // setStyle is valid during style loading. Waiting for map.loaded() can drop rapid layer taps.
     try{
@@ -357,14 +362,15 @@ export default function VanoMap({active=true,userCoords,gpsCoords=null,manualOri
       map.setStyle(style,{diff:false});
       // style.load rehydrates route sources/layers and markers for the new style.
     }catch(e){map._vanoStyle='';setError('Não foi possível trocar a camada. Tente novamente.');console.warn('Mapbox style:',e.message);}
-  },[layer,token]);
+  },[layer,appearance,token]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='leaflet')return;
-    const tiles=leafletTilesFor(layer,token);
+    const tiles=leafletTilesFor(layer,token,appearance);
     if(map._vanoTilesKey!==tiles.url){
       // Layer changes keep the route, GPS and POI overlays untouched.
       installLeafletBasemap(map,layer,token,{
+        appearance,
         onReady:()=>setError(''),
         onError:()=>setError('A imagem do mapa está indisponível. Verifique a conexão e recarregue.')
       });
