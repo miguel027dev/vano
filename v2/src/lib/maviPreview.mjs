@@ -18,7 +18,7 @@ export function selectMaviPreview(proposal,currentRoute,destination){
  if(end.some((n,i)=>Math.abs(n-target[i])>0.005))return null;
  return {route,sourceKey,routeId:route.id};
 }
-/** Restrict cinematic map movements to previews before departure or while stopped. */
-export function canFocusMaviPreview({navigation=false,hasLiveGPS=false,speedKmh=null}={}){
- return !navigation||(hasLiveGPS&&Number.isFinite(speedKmh)&&speedKmh<=2);
+/** An active navigation route NEVER authorizes a preview camera movement. */
+export function canFocusMaviPreview({navigation=false}={}){
+ return !navigation;
 }

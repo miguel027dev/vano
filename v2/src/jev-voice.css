@@ -82,6 +82,31 @@
   .map-page .mavi-offer-actions button{transition:none}
 }
 
+/* Navigation is not a modal: keep the real road/route visible underneath
+   the voice offer. Compact buttons remain reachable without a large panel. */
+.map-page.in-navigation .mavi-offer-host{
+  width:min(362px,calc(100vw - 28px));
+}
+.map-page.in-navigation .mavi-offer-card{
+  padding:9px 11px;gap:6px;border-radius:14px;
+  max-height:min(27dvh,170px);
+  box-shadow:0 5px 18px #131e251a,0 1px 4px #131e250c;
+}
+.map-page.in-navigation .mavi-offer-symbol{width:27px;height:27px;flex:0 0 27px;border-radius:9px}
+.map-page.in-navigation .mavi-offer-header{gap:7px}
+.map-page.in-navigation .mavi-offer-header small,.map-page.in-navigation .mavi-offer-voice-hint{display:none}
+.map-page.in-navigation .mavi-offer-description{
+  font-size:12px;line-height:1.35;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  line-clamp:2;overflow:hidden;
+}
+.map-page.in-navigation .mavi-offer-actions{gap:7px}
+.map-page.in-navigation .mavi-offer-actions button{min-height:39px;padding:7px 9px;font-size:12px}
+@media(max-height:520px) and (orientation:landscape){
+ .map-page.in-navigation .mavi-offer-card{max-height:34dvh}
+ .map-page.in-navigation .mavi-offer-description{display:none}
+}
+
 /* Temporary MAVI stop — V2 only, readable above the existing nav summary. */
 .map-page .mavi-stop-continue{
  position:absolute;z-index:525;bottom:calc(env(safe-area-inset-bottom,0px) + 142px);

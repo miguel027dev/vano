@@ -23,9 +23,10 @@ test('POI previews validate original destination and candidate endpoint',()=>{
  assert.ok(selectMaviPreview(stop,current,destination));
  assert.equal(selectMaviPreview({...stop,originalDestination:[-45,-23]},current,destination),null);
 });
-test('MAVI route camera only zooms during stopped GPS navigation',()=>{
+test('MAVI route preview never moves camera during navigation, including at 0 km/h',()=>{
  assert.equal(canFocusMaviPreview({navigation:false}),true);
- assert.equal(canFocusMaviPreview({navigation:true,hasLiveGPS:false,speedKmh:0}),false);
- assert.equal(canFocusMaviPreview({navigation:true,hasLiveGPS:true,speedKmh:6}),false);
- assert.equal(canFocusMaviPreview({navigation:true,hasLiveGPS:true,speedKmh:1}),true);
+ for(const speedKmh of [null,0,.1,1,2,6,80]){
+  assert.equal(canFocusMaviPreview({navigation:true,hasLiveGPS:true,speedKmh}),false);
+  assert.equal(canFocusMaviPreview({navigation:true,hasLiveGPS:false,speedKmh}),false);
+ }
 });
