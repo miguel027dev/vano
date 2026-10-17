@@ -1300,7 +1300,9 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     const dist=path.join(root,'dist');
-    let name;\n    try { name=decodeURIComponent(new URL(req.url,'http://localhost').pathname); }\n    catch { return err(res,400,'URL inválida.'); }
+    let name;
+    try { name=decodeURIComponent(new URL(req.url,'http://localhost').pathname); }
+    catch { return err(res,400,'URL inválida.'); }
     if(method==='GET'&&PUBLIC_PATHS.includes(name))runtimeMetrics.pageViews[name]=(runtimeMetrics.pageViews[name]||0)+1;
     if(name==='/')name='/index.html';
     let target=path.resolve(dist,'.'+name);
