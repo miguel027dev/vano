@@ -9,7 +9,7 @@ const gps=readFileSync(new URL('../v31-map-address.css',import.meta.url),'utf8')
 test('OSM and TomTom badges are physically bottom-right, including navigation',()=>{
  assert.match(css,/\.v40-map-credit\{[\s\S]*?right:calc\(env\(safe-area-inset-right,0px\) \+ 5px\);\s*bottom:calc\(env\(safe-area-inset-bottom,0px\) \+ 3px\)/);
  assert.match(css,/\.v40-tomtom-credit\{[\s\S]*?right:calc\(env\(safe-area-inset-right,0px\) \+ 31px\)/);
- assert.match(css,/\.map-page\.in-navigation \.v40-map-credit,[\s\S]*?bottom:calc\(env\(safe-area-inset-bottom,0px\) \+ 3px\);z-index:535/);
+ assert.match(css,/\.map-page\.in-navigation \.v40-map-credit,[\s\S]*?bottom:calc\(env\(safe-area-inset-bottom,0px\) \+ 3px\);z-index:2/);
  assert.doesNotMatch(css,/\.map-page\.in-navigation \.v40-map-credit[^}]*--v36-nav-dock-height/);
  assert.doesNotMatch(css,/\.map-page\.has-sheet \.v40-map-credit[^}]*--v33-panel-clearance/);
  assert.match(css,/\.v40-map-credit\[hidden\]\{display:none!important\}/);
@@ -35,4 +35,6 @@ test('native Mapbox/Leaflet attribution remains enabled, responsive, and unhidde
  assert.match(css,/@media\(max-width:600px\)/);
  assert.match(gps,/width:min\(357px/);
  assert.doesNotMatch(css,/\.mapboxgl-ctrl-bottom-right\{[^}]*display:none/);
+ assert.match(css,/\.map-page \.mapboxgl-ctrl-bottom-right,\s*\.map-page \.leaflet-bottom\.leaflet-right\{z-index:0!important\}/);
+ assert.match(css,/\.v40-map-credit\{[\s\S]*?z-index:2;/);
 });

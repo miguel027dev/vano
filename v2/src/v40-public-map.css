@@ -142,7 +142,7 @@
 .v40-map-credit{
  position:absolute;left:auto;right:calc(env(safe-area-inset-right,0px) + 5px);
  bottom:calc(env(safe-area-inset-bottom,0px) + 3px);
- z-index:535;display:flex;align-items:center;justify-content:center;
+ z-index:2;display:flex;align-items:center;justify-content:center;
  width:23px;height:23px;text-decoration:none;font:750 9px/1 system-ui,sans-serif;white-space:nowrap;
  color:#485750;background:#fffffff2;border:1px solid #dee8e4;
  border-radius:7px;padding:2px;box-shadow:0 1px 3px #24332916;
@@ -158,7 +158,7 @@
 .map-page.in-navigation .v40-map-credit,
 .map-page.in-navigation.has-sheet .v40-map-credit,
 .map-page.has-sheet .v40-map-credit{
- bottom:calc(env(safe-area-inset-bottom,0px) + 3px);z-index:535;
+ bottom:calc(env(safe-area-inset-bottom,0px) + 3px);z-index:2;
 }
 @media(max-width:370px){
  .v40-public-pin{width:29px;height:29px;border-radius:11px}
@@ -268,3 +268,7 @@
   min-height:64px;
  }
 }
+
+/* Credits only: minimum visible stack over the map canvas, below VANO controls. */
+.map-page .mapboxgl-ctrl-bottom-right,
+.map-page .leaflet-bottom.leaflet-right{z-index:0!important}
