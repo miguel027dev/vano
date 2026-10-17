@@ -54,5 +54,5 @@ test('fourth transport option does not change the road routing defaults',()=>{
  assert.match(css,/\.v47-route-vehicle-switch\.has-transit/);
  assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
  assert.match(css,/\.has-transit\.is-walking::before/);
- assert.match(page,/\{navMode&&<button type="button" title="Alternar câmera 2D\/3D"/);
+ assert.doesNotMatch(page,/title="Alternar câmera 2D\/3D"/);
 });
