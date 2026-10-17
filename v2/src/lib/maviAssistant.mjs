@@ -145,10 +145,52 @@ export function answerMaviInformation(intent,input){
   default:return null;
  }
 }
+/**
+ * Classify a response to a single outstanding route offer. Never classify a
+ * destination, road restriction, question or new routing preference as consent.
+ * Only call this when a verified proposal is actually pending.
+ */
 export function maviProposalDecision(value){
+ if(typeof value!=='string'||!value.trim()||value.length>360)return null;
  const s=maviNormalize(value);
- if(/^(?:sim|pode|pode trocar|pode mudar|aceito|confirmo|confirma|confirmar|usar|usa essa|quero essa|vai nessa|vamos nessa|escolho essa|troca|troque|muda|essa mesmo|isso|ok pode|fechado)(?:\b|$)/.test(s))return 'accept';
- if(/^(?:nao|nao quero|nao troca|nao muda|cancelar|cancela|deixa|manter|mantem|mantenha|fica|prefiro a atual|continuar na atual|deixa como esta|esquece)(?:\b|$)/.test(s))return 'reject';
+ if(!s)return null;
+ if(/^(?:troca|troque|muda|mude|recalcula|recalcular|procura|procurar|busca|buscar) (?:a |minha |essa )?rota\b/.test(s))return null;
+ if(/\b(?:calcula|recalcula|procura|busca|mostra|encontra) (?:uma? |o )?(?:outra|outro|nova|novo)\b/.test(s))return null;
+ // These are NEW commands, not consent to the current proposal.
+ if(/\b(?:pedagio|pedagios|transito|trafego|congestionamento|outra rota|outro caminho|outra opcao|mais rapida|mais rapido|mais curta|mais curto|mais tranquila|mais tranquilo|evitar|evita|passar por|passar pela|estrada de terra|farmacia|hospital|posto|estacionamento|rua|avenida|primeira|segunda)\b/.test(s))return null;
+ // A question must not silently approve a route.
+ if(/[?]/.test(value)||/^(?:quanto|qual|quais|como|porque|por que|explica|me explica|depende|sera que|e se|mas e)\b/.test(s))return null;
+ // Resolve explicit self-corrections using their final clear choice.
+ if(/\b(?:pensando bem|na verdade|quer dizer|corrigindo)\b/.test(s)){
+  const tail=s.split(/\b(?:pensando bem|na verdade|quer dizer|corrigindo)\b/).pop().trim();
+  if(tail&&tail!==s)return maviProposalDecision(tail);
+ }
+ // Uncertainty is not a refusal, and must not discard an outstanding offer.
+ if(/^(?:nao entendi|nao compreendi|nao sei|nao ouvi|nao tenho certeza)\b/.test(s))return null;
+ // Avoid the common STT pattern "sim, não, melhor não" being accepted.
+ if(/\b(?:melhor nao|nao quero|quero nao|nao troca|nao muda|deixa quieto|deixa como esta|agora nao|nem pensar|nao obrigado|prefiro a atual|mantenha a atual|manter a atual|continua na atual|depois|mais tarde)\b/.test(s))return 'reject';
+ if(/^(?:nao|negativo|cancelar|cancela|mantem|mantenha|manter|fica|prefiro|deixa|esquece|recuso)(?:\b|$)/.test(s))return 'reject';
+ if(/\bnao\b/.test(s))return null; // Unresolved negation is not authorization.
+ // "Quero" on its own confirms; "quero ir ao mercado" is a NEW request.
+ // Likewise, "pode" alone confirms, not "pode me dizer o preço?".
+ if(/^quero\b/.test(s)&&!/^(?:quero|quero sim|quero essa(?: rota)?|quero esta(?: rota)?|quero a (?:nova|alternativa|sugerida)(?: rota)?|quero usar (?:essa|esta|a nova)(?: rota)?|quero trocar(?: de rota)?|quero mudar(?: de rota)?|quero ir por (?:essa|esta)(?: rota)?)$/.test(s))return null;
+ if(/^pode\b/.test(s)&&!/^(?:pode|pode sim|pode ser|pode ser (?:essa|esta)(?: rota)?|pode usar (?:essa|esta|a nova)(?: rota)?|pode trocar(?: a rota)?|pode mudar(?: a rota)?|pode seguir(?: por (?:essa|esta)(?: rota)?)?)$/.test(s))return null;
+ // A conditional approval carries a new requirement. Clarify before switching.
+ if(/\b(?:mas|porem|desde que|contanto que|so se)\b/.test(s))return null;
+ if(/\b(?:quero ir|preciso ir|me leva|me leve|faz uma parada|parar em)\b/.test(s))return null;
+ if(/^(?:sim|quero|pode|claro|com certeza|combinado|aceito|aceita|confirmo|confirma|confirmar|confirmado|isso|essa mesmo|essa sim|ta bom|tudo bem|beleza|fechado|fechou|demorou|bora|bora la|manda|manda ver|vamos nessa|vai nessa|troca|troque|muda|usar|usa essa|escolho essa|gostei dessa|gostei desta|uhum|aham|aham sim|positivo|perfeito|pode ser|ok|okay)(?:\b|$)/.test(s)){
+  // "Quero saber..." or "Pode explicar..." should be handled as questions.
+  if(/^(?:quero|pode) (?:saber|entender|perguntar|ver se|que voce|me explica|me dizer|explicar|a diferenca|detalhes|repetir|esperar|continuar|dizer|falar)\b/.test(s))return null;
+  return 'accept';
+ }
+ return null;
+}
+/** A follow-up question/hesitation keeps the existing proposal and route. */
+export function maviProposalFollowup(value){
+ if(maviProposalDecision(value))return null;
+ const s=maviNormalize(value);
+ if(/^(?:qual|quais|quanto|como|por que|porque|me explica|explica|tem|e o|e a|mas quanto|depende)\b|\b(?:diferenca|economiza|demora|pedagio|preco|custo|tempo a mais|quanto tempo)\b/.test(s))return 'question';
+ if(/^(?:talvez|nao entendi|nao compreendi|pode repetir|repete|pera|espera|calma|to pensando|estou pensando|nao sei)\b/.test(s))return 'clarify';
  return null;
 }
 export const MAVI_ROUTE_INTENTS=new Set(['alternative','traffic','avoid_tolls','avoid_ferries','avoid_unpaved','quiet_route','fast_route','short_route','avoid_street','via_street']);

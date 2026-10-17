@@ -6,7 +6,7 @@ import {api} from '../lib/api.js';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
 import {maviRecognitionRecovery} from '../lib/maviRecognitionRecovery.mjs';
-import {classifyMaviIntent,maviProposalDecision} from '../lib/maviAssistant.mjs';
+import {classifyMaviIntent,maviProposalDecision,maviProposalFollowup} from '../lib/maviAssistant.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
 
 /** The V2-only voice input has three independent paths:

@@ -40,7 +40,7 @@ import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,savePreference,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
-  const jevMode=location.pathname==='/v2';
+  const jevMode=location.pathname==='/mapa'||location.pathname==='/v2';
   // The same preference powers /configuracoes and the map. The local
   // optimistic value makes the button respond before the preference POST.
   const [systemDark,setSystemDark]=useState(()=>window.matchMedia?.('(prefers-color-scheme: dark)')?.matches===true);
@@ -87,7 +87,7 @@ export default function MapPage({active=true}){
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
-  const [maviPreview,setMaviPreview]=useState(null); // V2 only, never changes the active route.
+  const [maviPreview,setMaviPreview]=useState(null); // Preview only: never changes the active route without confirmation.
   const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
@@ -106,7 +106,7 @@ export default function MapPage({active=true}){
       const error=String(event?.detail?.error||'');
       // Existing Android WebView emits failed TTS here instead of voice-status.
       if(!/voz offline indisponível|instale uma voz local/i.test(error))return;
-      if(jevMode){setVoiceProblem(true);return;} // V2 must not switch maneuvers to browser TTS.
+      if(jevMode){setVoiceProblem(true);return;} // MAVI prioritizes its configured navigation voice; no browser fallback.
       const attempt=lastVoiceAttempt.current;
       if(!navMode||muted||!attempt){setVoiceProblem(true);return;}
       // If the APK has no offline voice, try device/browser Web Speech once.
@@ -473,7 +473,7 @@ export default function MapPage({active=true}){
   const previewDetails=previewManeuvers(route,routeVehicle);
   const mappedCrossing=routeVehicle==='a-pe'&&navMode&&hasLiveGPS?
     nextMappedCrossing(walkingFeatures,guidance?.routeMeters):null;
-  // Experimental-only integration: none of these actions are exposed on /mapa.
+  // MAVI is available on the public V1 map and the administrator's V2 map.
   const jevKey=jevMode?jevRouteFingerprint(route):null;
   const visibleMaviPreview=jevMode&&maviPreview?.sourceKey===jevKey?maviPreview:null;
   const focusMaviPreview=!!visibleMaviPreview&&canFocusMaviPreview({

@@ -15,7 +15,7 @@ async function portNumber(){
  await new Promise(r=>server.close(r));
  return port;
 }
-test('V2 microphone policies are isolated, STT disabled and audio protected',async()=>{
+test('V1 and private V2 microphone policies are enabled, STT disabled and audio protected',async()=>{
  const port=await portNumber(),tmp=await mkdtemp(path.join(tmpdir(),'vano-jev-mic-'));
  const child=spawn(process.execPath,['server/index.mjs'],{cwd:root,env:{
    ...process.env,NODE_ENV:'development',RENDER:'false',VANO_STT_ENABLED:'0',
@@ -46,9 +46,11 @@ test('V2 microphone policies are isolated, STT disabled and audio protected',asy
    assert.equal(response.status,503);
    assert.match((await response.json()).error,/não configurada/);
    const source=await readFile(path.join(root,'server/index.mjs'),'utf8');
-   assert.match(source,/voiceDocument=name==='\/v2'/);
+   assert.match(source,/voiceDocument=\(name==='\/v2'\|\|name==='\/mapa'\)/);
    assert.match(source,/microphone=\(self\)/);
-   assert.match(source,/microphone=\(\)/);
+   // SPA navigation keeps the original document policy: self mic requires browser consent.
+   const security=await readFile(path.join(root,'server/security.mjs'),'utf8');
+   assert.match(security,/microphone=\(self\)/);
  }finally{
    child.kill();
    await Promise.race([new Promise(r=>child.once('exit',r)),pause(1200)]);

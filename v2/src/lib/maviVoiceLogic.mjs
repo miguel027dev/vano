@@ -1,3 +1,4 @@
+import {maviProposalDecision} from './maviAssistant.mjs';
 /** MAVI voice parsing. The browser can produce either one complete utterance
  * or separate recognition results for "Mavi" and the actual request.
  * This code never stores or transmits non-wake-word utterances.
@@ -25,15 +26,7 @@ export function consumeMaviTranscript(transcript,{wakeUntil=0,now=Date.now()}={}
  return {kind:'ignore',wakeUntil:0};
 }
 export function maviConfirmation(command){
- const s=normalizeMaviSpeech(command);
- // Requests for additional alternatives must not accidentally confirm current option.
- if(/\b(outra|outro|nova|novo|recalcula|recalcular|procura|buscar|calcula)\b/.test(s))return null;
- if(/^(?:nao|cancelar|cancela|mantem|manter|deixa|prefiro a atual|fica com a atual|nao troca)\b/.test(s) ||
-    /\b(nao gostei|nao quero|mantem essa|mantem a atual|deixa como esta)\b/.test(s))return 'reject';
- if(/^(?:sim|aceito|confirma|confirmar|confirmado|pode|ok|fechado)\b/.test(s) ||
-    /\b(gostei dessa|gostei desta|pode ser essa|pode ser esta|pode trocar|usa essa|usar essa|siga por essa|vamos nessa)\b/.test(s))
-   return 'accept';
- return null;
+ return maviProposalDecision(command);
 }
 export function maviRearmDelay({silentCount=0,hardCount=0,wakePending=false}={}){
  if(hardCount>=3)return null;
