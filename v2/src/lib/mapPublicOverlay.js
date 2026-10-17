@@ -95,6 +95,8 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
  const stableTileCache=new Map();
  const sourceCache=new Map(); // OSM, verified reports and radar points; never erased on viewport changes.
  const markers=new Map();
+ // Read-only evidence for private /v2 signs. A nearby signal is NOT a signal phase or turn instruction.
+ map._vanoTrafficSignals=()=>items.filter(x=>x.type==='semaforo'&&(x.source==='OpenStreetMap'||x.source==='Mapbox Streets')).slice(0,100);
  const credit=document.createElement('a');
  credit.className='v40-map-credit';
  credit.href='https://www.openstreetmap.org/copyright';
@@ -201,6 +203,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
    if(!duplicate){combined.push(item);seen.add(item.id);addIndex(item);}
   }
   items=dedupePublicFeatureSources(combined).filter(item=>item.type!=='radar'||radarDisplayAllowed(item.coords));
+  map._vanoSyncPrivateRoadSigns?.();
  }
  function updateVectorPoi(){
   if(done||backend!=='mapbox')return;
@@ -525,6 +528,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   }
   document.removeEventListener('visibilitychange',visibility);
   if(map._vanoRefreshPublicPins===render)delete map._vanoRefreshPublicPins;
+  delete map._vanoTrafficSignals;
   clear();stableTileCache.clear();sourceCache.clear();credit.remove();tomtomCredit.remove();notice.remove();
  };
 }
