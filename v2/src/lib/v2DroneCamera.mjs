@@ -1,5 +1,6 @@
 /** Adaptive V2 Sim camera. Presentation only: never mutates GPS, routing or trips. */
 import {maneuverCategory} from './navigationCameraPlanner.js';
+import {nearestOnRoute,validPoint,metersBetween,bearingBetween,shortestAngle} from './navigationMotion.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number.isFinite(v)?v:min));
 const smooth=x=>{const t=clamp(x,0,1);return t*t*(3-2*t);};
 const angle180=a=>((a+540)%360)-180;
@@ -182,30 +183,113 @@ export function v2UserCenteredRampView(userPuck,heading,lookAheadMeters=0){
   ];
 }
 
+/** Inspect actual route geometry only for camera context, never for GPS or
+ * navigation decisions.  A bend or missing geometry fails conservatively.
+ * Sample at the existing 850–1100 ms scene cadence; never in the frame loop. */
+export function inspectV2RoadAhead(position,geometry,{maxMeters=650}={}){
+  const coords=geometry?.coordinates;
+  const unknown={available:false,straightMeters:0};
+  if(!validPoint(position)||!Array.isArray(coords)||coords.length<2||coords.length>12000)return unknown;
+  const near=nearestOnRoute(position,geometry);
+  if(!Number.isFinite(near.distance)||near.distance>65)return unknown;
+  let current=near.point,initialBearing=null,straightMeters=0;
+  const maxDistance=clamp(maxMeters,200,800);
+  // Scan at most 200 segments; ultra-detailed roads degrade gracefully instead
+  // of consuming many milliseconds or pretending the whole route is straight.
+  for(let i=near.index+1;i<coords.length&&i<=near.index+200;i++){
+    const next=coords[i];
+    if(!validPoint(next))break;
+    const segment=metersBetween(current,next);
+    if(!Number.isFinite(segment))break;
+    if(segment<2){current=next;continue;}
+    const bearing=bearingBetween(current,next);
+    if(initialBearing===null)initialBearing=bearing;
+    else if(Math.abs(shortestAngle(initialBearing,bearing))>17)break;
+    straightMeters+=Math.min(segment,maxDistance-straightMeters);
+    current=next;
+    if(straightMeters>=maxDistance)break;
+  }
+  return {available:initialBearing!==null,straightMeters:Math.round(straightMeters)};
+}
+
 /** Perspective camera always follows BEHIND the simulated puck.
  * The ground target is only a few metres AHEAD of the puck, so Mapbox's
  * tilted virtual camera sits behind it; never aim at snapped route points.
  * Tall nearby structures lower the viewing angle to prevent wall clipping. */
 export function planV2RearChase({
   enabled=false,vehicle='carro',urbanDensity=0,obstruction=0,
-  rampStrength=0,compactViewport=false,reducedMotion=false,speed=0
+  rampStrength=0,compactViewport=false,reducedMotion=false,speed=0,
+  maneuver=null,route=null,straightAheadMeters=0,bendDegrees=0,accuracy=null
 }={}){
   if(!enabled||!['carro','moto'].includes(vehicle))return {enabled:false};
   const urban=clamp(urbanDensity,0,1),walls=clamp(obstruction,0,1),
     entrance=clamp(rampStrength,0,1),velocity=clamp(speed,0,45);
-  // Consistent third-person distance; zoom ramps in but never reaches the
-  // road-level building camera that was obscuring the vehicle.
-  const zoom=clamp((compactViewport?17.61:17.79)+urban*.23+
-    entrance*.27-Math.min(.15,velocity*.005)-walls*.07,17.35,18.18);
-  const pitch=reducedMotion?0:clamp((compactViewport?46:55)-
-    urban*9-walls*10-entrance*2,30,58);
+  const step=Number.isInteger(maneuver?.stepIndex)?route?.steps?.[maneuver.stepIndex]:null;
+  const category=maneuverCategory({
+    ...step,kind:maneuver?.kind||step?.type,modifier:maneuver?.modifier||step?.modifier
+  });
+  const distance=Number.isFinite(maneuver?.distance)&&maneuver.distance>=0?
+    maneuver.distance:Infinity;
+  const gpsUncertain=Number.isFinite(accuracy)&&accuracy>75;
+  const curve=Number.isFinite(bendDegrees)?Math.abs(angle180(bendDegrees)):0;
+  // Wide straight roads: increase route visibility only with verified geometry
+  // and no approaching decision. Speed alone is not sufficient evidence.
+  const clearToCruise=(category==='continue'||distance>430)&&
+    velocity>=3.5&&!gpsUncertain&&curve<16;
+  const straightStrength=clearToCruise?smooth(
+    (clamp(straightAheadMeters,0,650)-255)/360
+  ):0;
+  const focus=category==='ramp'&&entrance>0?'entrance':
+    category==='roundabout'&&distance<=230?'roundabout':
+    category==='junction'&&distance<=230?'junction':
+    category==='uturn'&&distance<=180?'uturn':
+    category==='turn'&&distance<=180?'turn':
+    category==='arrival'&&distance<=90?'arrival':
+    curve>22?'bend':straightStrength>.02?'straight':'cruise';
+  const decisionStrength=focus==='entrance'?entrance:
+    focus==='roundabout'?smooth((230-distance)/180):
+    focus==='junction'?smooth((230-distance)/160):
+    focus==='turn'||focus==='uturn'?smooth((180-distance)/125):
+    focus==='arrival'?smooth((90-distance)/80):
+    focus==='bend'?smooth((curve-20)/55):0;
+  // Third-person camera stays BEHIND the puck. Never use a road line as anchor.
+  let zoom=(compactViewport?17.61:17.79)+urban*.23-
+    Math.min(.15,velocity*.005)-walls*.07;
+  let pitch=(compactViewport?46:55)-urban*9-walls*10;
+  if(focus==='straight'){
+    zoom-=straightStrength*(.55+Math.min(.20,velocity*.006));
+    pitch-=straightStrength*3;
+  }else if(focus==='entrance'){
+    zoom+=entrance*.27;
+    pitch-=entrance*2;
+  }else if(focus==='roundabout'){
+    zoom-=decisionStrength*.17; // reveal exits instead of cropping the circle
+    pitch-=decisionStrength*7;
+  }else if(focus==='junction'){
+    zoom+=decisionStrength*.14;
+    pitch-=decisionStrength*5;
+  }else if(focus==='turn'||focus==='uturn'){
+    zoom+=decisionStrength*.27;
+    pitch-=decisionStrength*5;
+  }else if(focus==='arrival'){
+    zoom+=decisionStrength*.16;
+    pitch-=decisionStrength*7;
+  }else if(focus==='bend'){
+    zoom+=decisionStrength*.09;
+    pitch-=decisionStrength*4;
+  }
+  zoom=clamp(zoom,16.72,18.18);
+  pitch=reducedMotion?0:clamp(pitch,30,58);
+  const lookAheadMeters=reducedMotion?0:clamp((compactViewport?8:12)+
+    Math.min(5,velocity*.24)-urban*2-entrance*3-walls*2+
+    straightStrength*2.5,5,18);
+  const halfLife=reducedMotion?85:focus==='straight'?370:
+    decisionStrength>.3?255:240;
   return {
-    enabled:true,zoom:reducedMotion?Math.min(zoom,17.45):zoom,pitch,
-    // The marker remains close to camera's lower third. Do not use the road line.
-    lookAheadMeters:reducedMotion?0:clamp((compactViewport?8:12)+
-      Math.min(5,velocity*.24)-urban*2-entrance*3-walls*2,5,18),
-    halfLife:reducedMotion?85:240,
-    pointHalfLife:reducedMotion?85:245,
-    bearingHalfLife:reducedMotion?85:285
+    enabled:true,scenario:focus,category,straightStrength,decisionStrength,
+    zoom:reducedMotion?Math.min(zoom,17.45):zoom,pitch,
+    lookAheadMeters,halfLife,
+    pointHalfLife:reducedMotion?85:focus==='straight'?350:245,
+    bearingHalfLife:reducedMotion?85:focus==='straight'?390:285
   };
 }
