@@ -224,6 +224,7 @@
           <a class="guest-drawer-primary" href="{{ url_for('register') }}">Criar conta</a>
           <a class="guest-drawer-secondary" href="{{ url_for('login', next=url_for('index')) }}">Já tenho conta</a>
         </div>
+        <a class="guest-drawer-continue" href="/static/vano-offline.html" style="display:block;text-align:center;text-decoration:none">Ver minhas rotas offline</a>
         <button type="button" class="guest-drawer-continue" data-account-close>Continuar no mapa sem conta</button>
       </div>
     {% endif %}
