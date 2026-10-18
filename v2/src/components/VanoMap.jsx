@@ -5,7 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
-import {planV2DroneCamera} from '../lib/v2DroneCamera.mjs';
+import {planV2DroneCamera,observeV2DroneScene,shiftDroneView} from '../lib/v2DroneCamera.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
@@ -84,32 +84,43 @@ const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 function motionController(map,latest,status){
   let frame=0,previous=0,pose={center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()},reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
   let suspended=false,freeLook=false,active=false,completeAt=0,motoPlan=null;
-  // A modest 1.4s sampling cadence keeps building-density reads outside the
-  // rendering hot path. The value is used only during V2 simulated playback.
-  let urbanDensity=0,lastUrbanSample=0;
-  function sampleUrbanDensity(d,now){
-    if(!d.droneSimulation){urbanDensity=0;lastUrbanSample=0;return 0;}
-    if(now-lastUrbanSample<1400)return urbanDensity;
-    lastUrbanSample=now;
+  // A throttled observation of surrounding 3D buildings and upcoming route bend.
+  // No queries in the RAF hot path between samples; the HUD/GPS are untouched.
+  let droneScene={density:0,sideBias:0,bendDegrees:0},lastSceneSample=0;
+  function sampleDroneScene(d,route,now){
+    if(!d.droneSimulation){
+      droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;
+      return droneScene;
+    }
+    const period=(window.innerWidth||700)<650?1100:850;
+    if(now-lastSceneSample<period)return droneScene;
+    lastSceneSample=now;
     const point=d.motionCoords||d.gpsCoords;
-    if(!validPoint(point)||!isLoaded(map)||typeof map.queryRenderedFeatures!=='function')
-      return urbanDensity;
-    try{
-      const center=map.project(point),radius=70;
-      const bounds=[[center.x-radius,center.y-radius],[center.x+radius,center.y+radius]];
-      const seen=new Set();
-      let unnamed=0;
-      for(const feature of map.queryRenderedFeatures(bounds)||[]){
-        const layer=feature?.layer||{},props=feature?.properties||{};
-        if(!/building|3d|extrusion|structure/i.test(String(layer.id||'')+' '+String(layer.type||'')+' '+String(props.class||props.type||'')))continue;
-        const id=feature.id??props.id??props.osm_id;
-        seen.add(id!=null?String(layer.id)+':'+String(id):String(layer.id)+':anonymous-'+unnamed++);
-        if(seen.size>=36)break;
-      }
-      const observed=clamp(seen.size/18,0,1);
-      urbanDensity=urbanDensity*.67+observed*.33;
-    }catch{/* Some Mapbox styles cannot be queried while loading. */}
-    return urbanDensity;
+    if(!validPoint(point))return droneScene;
+    const heading=Number.isFinite(d.motionBearing)?d.motionBearing:(d.telemetry?.heading||0);
+    let bend=0;
+    if(route?.geometry?.coordinates?.length>2){
+      const near=nextRouteBearing(point,route.geometry,35);
+      const far=nextRouteBearing(point,route.geometry,145);
+      if(Number.isFinite(near)&&Number.isFinite(far))
+        bend=shortestAngle(near,far);
+    }
+    let observed={density:0,sideBias:0};
+    if(isLoaded(map)&&typeof map.queryRenderedFeatures==='function'){
+      try{
+        const projected=map.project(point),radius=75;
+        const bounds=[[projected.x-radius,projected.y-radius],
+          [projected.x+radius,projected.y+radius]];
+        observed=observeV2DroneScene(map.queryRenderedFeatures(bounds)||[],point,heading);
+      }catch{/* Style switches and WebGL recovery can temporarily reject reads. */}
+    }
+    const smoothing=observed.density>droneScene.density?.53:.34;
+    droneScene={
+      density:droneScene.density+(observed.density-droneScene.density)*smoothing,
+      sideBias:droneScene.sideBias+(observed.sideBias-droneScene.sideBias)*.25,
+      bendDegrees:droneScene.bendDegrees+shortestAngle(droneScene.bendDegrees,bend)*.38
+    };
+    return droneScene;
   }
   const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const preferenceChanged=()=>{reduced=Boolean(preference?.matches);start();};
@@ -136,10 +147,13 @@ function motionController(map,latest,status){
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
       vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+    if(!d.droneSimulation){droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;}
     if(!d.droneSimulation||!base)return base;
+    const scene=sampleDroneScene(d,route,now);
     const drone=planV2DroneCamera({
       enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route,
-      speed:d.telemetry?.speed,urbanDensity:sampleUrbanDensity(d,now),
+      speed:d.telemetry?.speed,urbanDensity:scene.density,
+      sideBias:scene.sideBias,bendDegrees:scene.bendDegrees,
       compactViewport:viewport.compact,reducedMotion:reduced,
       accuracy:d.telemetry?.accuracy
     });
@@ -151,14 +165,20 @@ function motionController(map,latest,status){
     ]:base.center;
     const maxZoom=typeof map.getMaxZoom==='function'?map.getMaxZoom():20;
     const maxPitch=typeof map.getMaxPitch==='function'?map.getMaxPitch():75;
-    return {...base,center,zoom:Math.min(maxZoom,drone.zoom),
+    const heading=Number.isFinite(base.bearing)?base.bearing:
+      Number.isFinite(d.motionBearing)?d.motionBearing:0;
+    return {...base,
+      center:shiftDroneView(center,heading,drone.sideMeters),
+      bearing:Number.isFinite(base.bearing)?
+        (base.bearing+drone.yawDegrees+360)%360:base.bearing,
+      zoom:Math.min(maxZoom,drone.zoom),
       pitch:Math.min(maxPitch,drone.pitch),droneCamera:drone};
 
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';
     const drone=t.droneCamera;
     const cameraHalfLife=reduced?85:drone?.halfLife??(motorcycle?350:300);
-    const pointHalfLife=reduced?90:drone?390:motorcycle?390:360;
+    const pointHalfLife=reduced?90:drone?.pointHalfLife??(motorcycle?390:360);
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
     const nextZoom=reduced?t.zoom:damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=reduced?t.pitch:damp(pose.pitch,t.pitch,dt,cameraHalfLife);
     const nextBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(drone?.bearingHalfLife??(motorcycle?420:320))));
