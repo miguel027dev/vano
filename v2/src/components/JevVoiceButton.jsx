@@ -6,6 +6,7 @@ import {api} from '../lib/api.js';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
 import {maviRecognitionRecovery} from '../lib/maviRecognitionRecovery.mjs';
+import {createMaviBargeInMonitor} from '../lib/maviDuplex.mjs';
 import {classifyMaviIntent,maviProposalDecision,maviProposalFollowup} from '../lib/maviAssistant.mjs';
 import {maviIncidentOffer,maviIncidentFollowupDecision} from '../lib/maviIncidentFollowup.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
@@ -25,7 +26,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
  const recognitionIdleEnds=useRef(0),recognitionGotSpeech=useRef(false);
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
- const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
+ const speechTimerRef=useRef(null),elevenAbortRef=useRef(null),duplexRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
  const voiceTurnRef=useRef(0),justAcceptedRouteRef=useRef(false);
  const firstMaviTurnRef=useRef(true);
@@ -60,6 +61,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    controllerRef.current?.abort?.();controllerRef.current=null;
    enabledRef.current=false;busyRef.current=false;
    stopRecognition();stopRecording();
+   duplexRef.current?.stop();duplexRef.current=null;
    clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
    speechRef.current=null;
@@ -76,6 +78,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    },delay);
  }
  function done(){
+   duplexRef.current?.arm(false,0);
    busyRef.current=false;
    if(!enabledRef.current)return;
    if(recognitionError.current)setStatus('typed');
@@ -86,6 +89,8 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    const {muted}=navRef.current;
    const synth=window.speechSynthesis,Utterance=window.SpeechSynthesisUtterance;
    busyRef.current=true;
+   // Keep an echo-cancelled mic monitor active throughout audio playback.
+   duplexRef.current?.arm(true,850);
    let finished=false,attempts=0;
    const finish=()=>{
      if(finished||voiceTurnRef.current!==turn)return;
@@ -186,6 +191,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    if(classifyMaviIntent(text)==='repeat'&&reply){speak(reply);return;}
    handlersRef.current.onDismissPreview?.();
    busyRef.current=true;setStatus('processing');setProposal(null);proposalRef.current=null;setOfferReady(false);
+   duplexRef.current?.arm(true,950);
    const seq=++requestRef.current;controllerRef.current?.abort?.();
    const controller=new AbortController();controllerRef.current=controller;
    const timeout=setTimeout(()=>controller.abort(),14000);
@@ -223,6 +229,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  function listen(mode='remote'){
    if(!enabledRef.current||busyRef.current||!Recognizer)return false;
    if(recorderRef.current?.state==='recording')return false;
+   duplexRef.current?.arm(false,0);
    stopRecognition();
    let recognition;
    try{recognition=new Recognizer();}
@@ -387,6 +394,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  },[routeContextKey]);
  useEffect(()=>onNavigationAudioStart(()=>{
    if(!enabledRef.current)return;
+   duplexRef.current?.arm(false,0);
    const wasSpeaking=Boolean(elevenAbortRef.current||speechRef.current);
    // Navigation instructions must never become the assistant's microphone input.
    if(recognitionRef.current){stopRecognition();setStatus('ready');scheduleNextListen(1400);}
@@ -416,6 +424,27 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    recognitionIdleEnds.current=0;recognitionGotSpeech.current=false;
    setEnabled(true);setStatus('ready');
    setReply('Pode conversar comigo sobre seu dia, tirar dúvidas ou pedir ajuda com uma rota. Tô ouvindo!');
+   // Explicit mic activation only. If unsupported, leave legacy flow unchanged.
+   const monitor=createMaviBargeInMonitor({onBargeIn:()=>{
+    if(!enabledRef.current||!busyRef.current||navigationAudioActive())return;
+    requestRef.current++;
+    controllerRef.current?.abort?.();controllerRef.current=null;
+    voiceTurnRef.current++;
+    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
+    if(speechRef.current){
+     speechRef.current.onend=null;speechRef.current.onerror=null;
+     try{window.speechSynthesis?.cancel?.();}catch{}
+    }
+    speechRef.current=null;
+    clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
+    busyRef.current=false;recognitionError.current='';recognitionIdleEnds.current=0;
+    setDiagnostic('Interrupção por voz detectada. Pode falar.');
+    setStatus('ready');
+    // Stale NVIDIA/Cartesia replies cannot resume a cancelled turn.
+    listenRef.current('remote');
+   }});
+   duplexRef.current=monitor;
+   void monitor.start();
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
    // Crucial: call start() inside the original click, not after a timeout/effect.
    listenRef.current('remote');
