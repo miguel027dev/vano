@@ -424,6 +424,8 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    recognitionIdleEnds.current=0;recognitionGotSpeech.current=false;
    setEnabled(true);setStatus('ready');
    setReply('Pode conversar comigo sobre seu dia, tirar dúvidas ou pedir ajuda com uma rota. Tô ouvindo!');
+   // Never open another microphone stream if this browser cannot transcribe it.
+   if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
    // Explicit mic activation only. If unsupported, leave legacy flow unchanged.
    const monitor=createMaviBargeInMonitor({onBargeIn:()=>{
     if(!enabledRef.current||!busyRef.current||navigationAudioActive())return;
@@ -445,7 +447,6 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    }});
    duplexRef.current=monitor;
    void monitor.start();
-   if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
    // Crucial: call start() inside the original click, not after a timeout/effect.
    listenRef.current('remote');
  }
