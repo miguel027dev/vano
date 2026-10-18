@@ -228,8 +228,9 @@ function motionController(map,latest,status){
           value+(behindView[index]-value)*.94),
         zoom:view.zoom+(Math.min(maxZoom,chase.zoom)-view.zoom)*.95,
         pitch:view.pitch+(Math.min(maxPitch,chase.pitch)-view.pitch)*.95,
-        bearing:Number.isFinite(view.bearing)&&Number.isFinite(markerHeading)?
-          blendAngle(view.bearing,markerHeading,.88):view.bearing,
+        // The view follows physical pointer direction, not the upcoming
+        // route bearing/yaw. The camera writer already smooths rotation.
+        bearing:Number.isFinite(markerHeading)?markerHeading:view.bearing,
         droneCamera:{...view.droneCamera,
           halfLife:chase.halfLife,pointHalfLife:chase.pointHalfLife,
           bearingHalfLife:chase.bearingHalfLife}
@@ -653,7 +654,21 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       state.point=point;
       const heading=(d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
         ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
-      if(Number.isFinite(heading))state.bearing=blendAngle(state.bearing||0,heading,1-Math.pow(.5,dt/(reduced?75:240)));
+      if(d.droneSimulation&&Number.isFinite(heading)){
+        // Do not pre-rotate at upcoming intersections. Even a 90° ramp turn
+        // begins after the animated marker crosses its route vertex.
+        if(!state.droneHeadingInitialized){
+          state.bearing=heading;state.droneHeadingInitialized=true;
+        }else{
+          const delta=shortestAngle(state.bearing||0,heading);
+          const ease=1-Math.pow(.5,dt/(reduced?85:165));
+          const limited=Math.min(Math.abs(delta)*ease,dt*.37);
+          state.bearing=(state.bearing+Math.sign(delta)*limited+360)%360;
+        }
+      }else{
+        state.droneHeadingInitialized=false;
+        if(Number.isFinite(heading))state.bearing=blendAngle(state.bearing||0,heading,1-Math.pow(.5,dt/(reduced?75:240)));
+      }
       d.motionCoords=point;d.motionBearing=state.bearing||0;
       const map=mapRef.current;
       if(map&&backend.current==='mapbox'){
@@ -817,7 +832,7 @@ function paintMapbox(map,data,selection){
     map._vanoTraveledCleared=true;
   }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
-  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:type==='vehicle'&&data.droneSimulation?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){const visibility=data.droneSimulation?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
+  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'&&!data.droneSimulation?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:type==='vehicle'&&data.droneSimulation?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){map._vanoMarker[key].setPitchAlignment?.(data.droneSimulation?'viewport':'map');const visibility=data.droneSimulation?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
   syncPrivateRoadSignMarkers(map,mapboxgl,data);
