@@ -7,6 +7,7 @@ import {simulationPointerBearing} from '../lib/adminRouteSimulator.mjs';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
+import {planAdaptiveRoadDistance} from '../lib/adaptiveRoadCamera.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
@@ -91,6 +92,46 @@ function motionController(map,latest,status){
   let droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0},lastSceneSample=0;
   let droneSceneRoute=null;
   let urbanMode='v1',urbanModeAt=0,urbanBlend=0,lastUrbanBlendAt=0;
+  // Independent real-navigation microzoom: no 3D feature queries, 850ms
+  // drone cadence or simulation GPS ever leaks into the user map.
+  let realRouteGeometry=null,realLastRoadAt=0,realStraightMeters=0;
+  let realZoom=0,realZoomGoal=0,realLastZoomAt=0;
+  let droneZoom=null,droneZoomGoal=null,lastDroneZoomAt=0;
+  function realCameraDistance(d,route,base,now){
+    if(!base||!d.navigation||d.simulationPreview||
+      !['carro','moto'].includes(d.vehicle)||!route?.geometry){
+      realRouteGeometry=null;realLastRoadAt=0;realStraightMeters=0;
+      realZoom=0;realZoomGoal=0;realLastZoomAt=0;
+      return base;
+    }
+    if(realRouteGeometry!==route.geometry){
+      realRouteGeometry=route.geometry;realLastRoadAt=0;
+      realStraightMeters=0;realZoom=0;realZoomGoal=0;realLastZoomAt=0;
+    }
+    const accuracy=d.telemetry?.accuracy;
+    const point=validPoint(d.motionCoords)?d.motionCoords:d.gpsCoords;
+    if(!realLastRoadAt||now-realLastRoadAt>=1550){
+      realLastRoadAt=now;
+      const sampled=Number.isFinite(accuracy)&&accuracy<=65&&validPoint(point)?
+        inspectV2RoadAhead(point,route.geometry):null;
+      realStraightMeters=sampled?.available?sampled.straightMeters:0;
+    }
+    const distancePlan=planAdaptiveRoadDistance({
+      enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route,
+      speed:d.telemetry?.speed,accuracy,straightMeters:realStraightMeters,
+      reducedMotion:reduced,simulation:false
+    });
+    // Ignore changes smaller than a few hundredths of a zoom level.
+    // Direction changes and nearby exits still override immediately.
+    if(Math.abs(distancePlan.zoomDelta-realZoomGoal)>.022||
+      (distancePlan.zoomDelta===0&&realZoomGoal!==0)){
+      realZoomGoal=distancePlan.zoomDelta;
+    }
+    const dt=realLastZoomAt?Math.min(90,Math.max(0,now-realLastZoomAt)):16;
+    realLastZoomAt=now;
+    realZoom=damp(realZoom,realZoomGoal,dt,realZoomGoal>realZoom?460:1080);
+    return {...base,zoom:clamp(base.zoom+realZoom,14.8,18.2)};
+  }
   function sampleDroneScene(d,route,now){
     if(!d.droneSimulation){
       droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};lastSceneSample=0;
@@ -178,6 +219,7 @@ function motionController(map,latest,status){
       droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};lastSceneSample=0;
       droneSceneRoute=null;
       urbanMode='v1';urbanModeAt=0;urbanBlend=0;lastUrbanBlendAt=0;
+      droneZoom=null;droneZoomGoal=null;lastDroneZoomAt=0;
       if(d.v2Experience){
         map._vanoV2UrbanDensity=0;
         map._vanoV2UrbanObstruction=0;
@@ -185,7 +227,7 @@ function motionController(map,latest,status){
         syncV2BuildingVisibility(map,{enabled:true,density:0,cinematic:false});
       }
     }
-    if(!d.droneSimulation||!base)return base;
+    if(!d.droneSimulation||!base)return realCameraDistance(d,route,base,now);
     const scene=sampleDroneScene(d,route,now);
     const nextMode=chooseV2UrbanCamera({
       enabled:true,density:scene.density,mode:urbanMode,
@@ -222,12 +264,21 @@ function motionController(map,latest,status){
       if(!behindView)return view;
       const maxZoom=typeof map.getMaxZoom==='function'?map.getMaxZoom():20;
       const maxPitch=typeof map.getMaxPitch==='function'?map.getMaxPitch():75;
+      const desiredZoom=Math.min(maxZoom,chase.zoom);
+      const zoomDt=lastDroneZoomAt?Math.min(90,Math.max(0,now-lastDroneZoomAt)):16;
+      lastDroneZoomAt=now;
+      // A slower zoom track for long straights prevents 850ms map-sample
+      // micro-jumps. Decisions close to entrances recover zoom promptly.
+      droneZoomGoal=desiredZoom;
+      droneZoom=droneZoom===null?desiredZoom:damp(
+        droneZoom,desiredZoom,zoomDt,chase.scenario==='straight'?1000:380
+      );
       return {...view,
         // Strong user anchoring makes the camera stay behind the marker even
         // when an urban building or the road's snapped geometry is nearby.
         center:view.center.map((value,index)=>
           value+(behindView[index]-value)*.94),
-        zoom:view.zoom+(Math.min(maxZoom,chase.zoom)-view.zoom)*.95,
+        zoom:view.zoom+(droneZoom-view.zoom)*.95,
         pitch:view.pitch+(Math.min(maxPitch,chase.pitch)-view.pitch)*.95,
         // The view follows physical pointer direction, not the upcoming
         // route bearing/yaw. The camera writer already smooths rotation.
@@ -278,7 +329,14 @@ function motionController(map,latest,status){
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
     pose={center:nextCenter,zoom:nextZoom,pitch:nextPitch,bearing:nextBearing};
     try{map.jumpTo({...pose,padding:latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20}});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
-    if(error>.005||now<completeAt){frame=requestAnimationFrame(draw);}else{active=false;status.current=t.state;}
+    // The internal microzoom easing must finish even if the outer map
+    // camera already reached an intermediate frame's target.
+    const easingPending=Math.abs(realZoomGoal-realZoom)>.008||
+      (droneZoom!==null&&droneZoomGoal!==null&&
+        Math.abs(droneZoomGoal-droneZoom)>.008);
+    if(error>.005||now<completeAt||easingPending){
+      frame=requestAnimationFrame(draw);
+    }else{active=false;status.current=t.state;}
   }
   function start(){if(suspended||freeLook||!following())return;if(!active)completeAt=performance.now()+650;active=true;if(!frame)frame=requestAnimationFrame(draw);}
   function setFree(){freeLook=true;active=false;cancelAnimationFrame(frame);frame=0;status.current=CAMERA_STATES.FREE;}

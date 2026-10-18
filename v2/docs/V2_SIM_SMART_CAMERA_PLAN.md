@@ -56,3 +56,25 @@
 - Densidade urbana baseada em features 3D visiveis varia por provedor, estilo e nivel de zoom. Nao equivale a altura real de predios ou confiabilidade de direcao.
 - A heuristica de reta usa a polilinha disponivel: ruas curvilineas ou rotas muito detalhadas podem continuar no modo conservador.
 - A posicao de camera 3D e sua oclusao dependem do renderizador Mapbox; os testes unitarios nao substituem avaliacao em browser com tiles reais.
+
+
+## Fase 2 (2026-10-17) — microzoom e camera normal do usuario
+A politica de **distancia de zoom**, nao a camera drone, agora pode ser compartilhada:
+- `adaptiveRoadCamera.mjs` e o calculador puro de distancia usado no V2 Sim e na navegacao real de carro/moto.
+- V2 Sim mantem a camera atras da seta, transparencia de predios, ajuste de inclinacao e leitura 3D. Sua reta extensa afasta ~0,55 a 0,7 nivel de zoom, incluindo ajuste residual <=0,065.
+- Mapa do usuario utiliza **apenas a distancia de zoom**, no maximo ~0,39 nivel de afastamento em retas verificadas. A manobra pode causar aproximacao de ate 0,23 nivel, preservando o `cameraTarget`, a moto, o HUD e as preferencias de acessibilidade originais.
+- Trecho reto precisa de geometria a frente suficiente, ao menos 3,5 m/s de movimento, GPS com acuracia conhecida <=65 m e manobra do provedor alem de 520 m ou `continue` confirmada.
+- Reta, retorno e bifurcacao possuem prioridade distinta; rotatoria abre para mostrar saidas, evitando recortar a decisao.
+- Observacao de geometria real do usuario a cada >=1550 ms (sem consultar predios e sem sensor de simulacao); limites das politicas se aplicam em cada quadro, mas sem processar geometria nele.
+- O zoom alvo so muda apos diferencas >=0,022 e converge com amortecimento assimetrico: ~1,08s para afastamento e ~460ms para reaproximacao. O V2 Sim filtra transicoes de reta em ~1s e decisoes em ~380ms.
+- A logica nao muda a direcao da seta, as coordenadas GPS, os calculos de rota nem a voz Mavi. Free-look e retornos manuais da camera continuam preservados.
+
+### Gate visual adicional
+- [ ] Navegacao real de carro e moto na reta: zoom discreto, sem bombeamento/"respiracao" a cada atualizacao de GPS.
+- [ ] Entrada a menos de 180m: camera recupera contexto da manobra sem saltar nem ocultar a rua.
+- [ ] Rota do usuario sem GPS confiavel ou sem guia: zoom permanece com a camera anterior.
+- [ ] Diferentes resolucoes, safe areas e fonte/tamanho de ilha dinamica nao escondem o ponteiro.
+- [ ] V2 Sim no corredor urbano segue com icone nao ocluido e sem alterar o mapa real.
+- [ ] Pedestre, transporte publico, simulador normal 6x e usuario em free-look continuam sem microzoom experimental.
+- [ ] Durante reroteamento, retorno ao app, mudanca de rota, saida e entrada no trajeto: sem pulo de zoom.
+- [ ] Confirmar fluidez e FPS no Mapbox mobile real, pois testes puros nao demonstram experiencia visual.

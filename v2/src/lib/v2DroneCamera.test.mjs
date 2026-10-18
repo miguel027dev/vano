@@ -59,7 +59,7 @@ test('new admin button is above old simulator, and simulation remains GPS-isolat
   assert.match(page,/if\(!adminV2RoadSigns\|\|!active\)return/);
   assert.match(page,/simRequestedMode\.current='drone'/);
   assert.match(page,/onClick=\{simActive\?stopRouteSimulation:startRouteSimulation\}/);
-  assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return base/);
+  assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return realCameraDistance\(d,route,base,now\)/);
   assert.match(map,/if\(!d\.droneSimulation\)/);
   assert.match(css,/\.v81-drone-sim-toggle:focus-visible/);
   assert.doesNotMatch(page,/setUserCoords\(simPosition/);
@@ -140,7 +140,7 @@ test('environmental query is rate-limited and never granted to ordinary navigati
   assert.match(map,/const view=shiftDroneView\(center,heading,drone\.sideMeters\)/);
   assert.match(map,/urbanBlend=damp\(urbanBlend,urbanMode==='v2'\?1:0,dtMix,450\)/);
   assert.match(map,/drone\?\.pointHalfLife/);
-  assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return base/);
+  assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return realCameraDistance\(d,route,base,now\)/);
 });
 
 test('hybrid V2 Sim chooses classic V1 on open roads, urban V2 around buildings',()=>{
@@ -386,7 +386,7 @@ test('smart-road preview is throttled with building observations and never touch
  assert.match(map,/const roadAhead=inspectV2RoadAhead\(point,route\?\.geometry\)/);
  assert.match(map,/if\(now-lastSceneSample<period\)return droneScene/);
  assert.match(map,/straightAheadMeters:scene\.straightAheadMeters/);
- assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return base/);
+ assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return realCameraDistance\(d,route,base,now\)/);
  assert.match(map,/droneSceneRoute=route\?\.geometry/);
  assert.match(page,/droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
  assert.match(page,/simulationPreview=\{simActive\}/);
