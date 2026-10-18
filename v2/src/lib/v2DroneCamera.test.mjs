@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView} from './v2DroneCamera.mjs';
+import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera} from './v2DroneCamera.mjs';
 const route={steps:[{type:'depart'},{type:'roundabout',modifier:'right'},{type:'off ramp'},{type:'arrive'}]};
 const maneuver=(stepIndex,distance)=>({stepIndex,distance,kind:route.steps[stepIndex].type,modifier:route.steps[stepIndex].modifier});
 
@@ -140,4 +140,26 @@ test('environmental query is rate-limited and never granted to ordinary navigati
   assert.match(map,/center:shiftDroneView\(center,heading,drone\.sideMeters\)/);
   assert.match(map,/drone\?\.pointHalfLife/);
   assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return base/);
+});
+
+test('hybrid V2 Sim chooses classic V1 on open roads, urban V2 around buildings',()=>{
+ const open=chooseV2UrbanCamera({enabled:true,density:.1,mode:'v1',nowMs:5000});
+ assert.deepEqual(open,{mode:'v1',changed:false});
+ const dense=chooseV2UrbanCamera({enabled:true,density:.72,mode:'v1',nowMs:5000});
+ assert.deepEqual(dense,{mode:'v2',changed:true});
+ const urbanStable=chooseV2UrbanCamera({enabled:true,density:.35,mode:'v2',nowMs:7000,lastSwitchAt:5000});
+ assert.equal(urbanStable.mode,'v2');
+ const backOpen=chooseV2UrbanCamera({enabled:true,density:.15,mode:'v2',nowMs:9000,lastSwitchAt:5000});
+ assert.deepEqual(backOpen,{mode:'v1',changed:true});
+});
+test('hysteresis and minimum hold prevent rapid V1/V2 toggles',()=>{
+ for(const density of [.23,.25,.42,.45]){
+   assert.equal(chooseV2UrbanCamera({enabled:true,density,mode:'v1',nowMs:6000}).mode,'v1');
+ }
+ assert.equal(chooseV2UrbanCamera({enabled:true,density:.7,mode:'v1',
+   nowMs:1100,lastSwitchAt:500}).mode,'v1');
+ assert.equal(chooseV2UrbanCamera({enabled:true,density:.1,mode:'v2',
+   nowMs:2200,lastSwitchAt:900}).mode,'v2');
+ assert.equal(chooseV2UrbanCamera({enabled:false,density:1,mode:'v2',
+   nowMs:4000}).mode,'v1');
 });
