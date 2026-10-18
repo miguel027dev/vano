@@ -193,3 +193,47 @@
  .jev-control-wrap .jev-mic,.jev-control-wrap .mavi-voice-status{transition:none}
  .jev-control-wrap .mavi-mic-pulse,.jev-control-wrap .mavi-mic-glyph{animation:none!important}
 }
+
+
+/* Android STT errors must be visible and actionable, not a silent mic loop. */
+.jev-control-wrap .mavi-mic-recovery{
+ position:absolute;right:calc(100% + 10px);bottom:0;z-index:760;
+ width:min(300px,calc(100vw - 89px));box-sizing:border-box;
+ padding:12px;border-radius:17px;
+ border:1px solid var(--border,#d8e1e6);
+ background:var(--panel,#fff);color:var(--ink,#203040);
+ box-shadow:0 14px 40px rgba(0,0,0,.18);
+ display:flex;flex-direction:column;gap:7px;text-align:left;
+ max-height:min(55dvh,370px);overflow-y:auto;
+}
+.jev-control-wrap .mavi-mic-recovery strong{font-size:12px;font-weight:800;line-height:1.4}
+.jev-control-wrap .mavi-mic-recovery p{
+ margin:0;font:500 12px/1.4 'DM Sans',sans-serif;overflow-wrap:anywhere;
+}
+.jev-control-wrap .mavi-mic-recovery small{font-size:10px;line-height:1.4;color:var(--muted,#637183)}
+.jev-control-wrap .mavi-mic-recovery-actions{display:flex;gap:6px;flex-wrap:wrap}
+.jev-control-wrap .mavi-mic-recovery-actions button{
+ border:1px solid var(--border,#dae4e8);background:var(--bg,#f2f5f5);
+ color:var(--ink,#203040);border-radius:10px;min-height:35px;
+ padding:7px 9px;font-size:11px;font-weight:750;cursor:pointer;
+}
+.jev-control-wrap .mavi-mic-recovery-actions button:first-child{
+ background:#147a57;color:#fff;border-color:#147a57;
+}
+.jev-control-wrap .mavi-mic-recovery-input{
+ display:flex;gap:5px;align-items:center;min-width:0;
+ border:1px solid var(--border,#dce4e6);border-radius:10px;padding:4px;
+}
+.jev-control-wrap .mavi-mic-recovery-input input{
+ flex:1;min-width:0;width:100%;height:32px;
+ border:none!important;background:transparent!important;color:var(--ink,#203040)!important;
+ padding:0 6px!important;outline:none!important;box-shadow:none!important;font-size:12px;
+}
+.jev-control-wrap .mavi-mic-recovery-input button{
+ width:33px;height:33px;min-width:33px;display:grid;place-items:center;
+ border:0;border-radius:8px;background:#147a57;color:#fff;
+}
+.jev-control-wrap .mavi-mic-recovery-input button:disabled{opacity:.45}
+@media(max-width:370px){
+ .jev-control-wrap .mavi-mic-recovery{width:min(260px,calc(100vw - 75px));right:calc(100% + 6px)}
+}
