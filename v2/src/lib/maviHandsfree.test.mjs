@@ -5,10 +5,10 @@ const mic=()=>readFileSync(new URL('../components/JevVoiceButton.jsx',import.met
 const map=()=>readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
 const css=()=>readFileSync(new URL('../jev-voice.css',import.meta.url),'utf8');
 
-test('MAVI retains proven direct browser microphone activation and route request',()=>{
+test('MAVI uses one-shot Android-safe browser microphone activation and preserves route request',()=>{
  const s=mic();
  assert.match(s,/const Recognizer=typeof window!=='undefined'\?\(window\.SpeechRecognition\|\|window\.webkitSpeechRecognition\):null/);
- assert.match(s,/recognition\.lang='pt-BR';recognition\.continuous=true;recognition\.interimResults=false;recognition\.maxAlternatives=1/);
+ assert.match(s,/recognition\.lang='pt-BR';recognition\.continuous=false;recognition\.interimResults=false;recognition\.maxAlternatives=1/);
  assert.match(s,/const phrase=Array\.from\(event\.results\|\|\[\]\)\.map\(row=>row\?\.\[0\]\?\.transcript\|\|''\)\.join\(' '\)\.trim\(\)/);
  assert.match(s,/recognition\.start\(\)/);
  assert.match(s,/listenRef\.current\('remote'\)/);
