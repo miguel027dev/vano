@@ -30,13 +30,13 @@ test('MAVI mic has accessible visual phases with one click toggle',()=>{
  assert.match(skin,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(skin,/focus-visible/);
 });
-test('silence does not disable listening; speech is gated until response playback completes',()=>{
+test('silent recognizer endings pause instead of reopening; successful speech is gated until playback ends',()=>{
  const jsx=mic();
  assert.match(jsx,/if\(code==='no-speech'\)\{/);
- assert.match(jsx,/recognitionError\.current='';/);
- assert.match(jsx,/setStatus\('ready'\);\s*return;/);
- assert.match(jsx,/maviRecognitionRecovery\(\{/);
- assert.match(jsx,/scheduleNextListen\(recovery\.delay\)/);
+ assert.match(jsx,/recognitionError\.current=code/);
+ assert.match(jsx,/recognitionError\.current=recognitionError\.current\|\|'no-speech'/);
+ assert.match(jsx,/setStatus\('typed'\)/);
+ assert.doesNotMatch(jsx,/scheduleNextListen\(recovery\.delay\)/);
  assert.match(jsx,/if\(navigationAudioActive\(\)\|\|window\.speechSynthesis\?\.speaking\)\{scheduleNextListen\(1100\);return;\}/);
  assert.match(jsx,/if\(!enabledRef\.current\|\|busyRef\.current\|\|recognitionError\.current\|\|!Recognizer\)return/);
  assert.match(jsx,/if\(finished\|\|!enabledRef\.current\|\|controller\.signal\.aborted\|\|voiceTurnRef\.current!==turn\)return/);
