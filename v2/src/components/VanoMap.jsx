@@ -5,7 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
-import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase} from '../lib/v2DroneCamera.mjs';
+import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
@@ -87,12 +87,20 @@ function motionController(map,latest,status){
   let suspended=false,freeLook=false,active=false,completeAt=0,motoPlan=null;
   // A throttled observation of surrounding 3D buildings and upcoming route bend.
   // No queries in the RAF hot path between samples; the HUD/GPS are untouched.
-  let droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0},lastSceneSample=0;
+  let droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0},lastSceneSample=0;
+  let droneSceneRoute=null;
   let urbanMode='v1',urbanModeAt=0,urbanBlend=0,lastUrbanBlendAt=0;
   function sampleDroneScene(d,route,now){
     if(!d.droneSimulation){
-      droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0};lastSceneSample=0;
+      droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};lastSceneSample=0;
+      droneSceneRoute=null;
       return droneScene;
+    }
+    // A new route must never inherit a previous route's straight-road estimate.
+    if(droneSceneRoute!==route?.geometry){
+      droneSceneRoute=route?.geometry;
+      droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};
+      lastSceneSample=0;
     }
     const period=(window.innerWidth||700)<650?1100:850;
     if(now-lastSceneSample<period)return droneScene;
@@ -100,6 +108,7 @@ function motionController(map,latest,status){
     const point=d.motionCoords||d.gpsCoords;
     if(!validPoint(point))return droneScene;
     const heading=Number.isFinite(d.motionBearing)?d.motionBearing:(d.telemetry?.heading||0);
+    const roadAhead=inspectV2RoadAhead(point,route?.geometry);
     let bend=0;
     if(route?.geometry?.coordinates?.length>2){
       const near=nextRouteBearing(point,route.geometry,35);
@@ -122,6 +131,7 @@ function motionController(map,latest,status){
       sideBias:droneScene.sideBias+(observed.sideBias-droneScene.sideBias)*.25,
       obstruction:droneScene.obstruction+(observed.obstruction-droneScene.obstruction)*
         (observed.obstruction>droneScene.obstruction?.6:.34),
+      straightAheadMeters:roadAhead.available?roadAhead.straightMeters:0,
       bendDegrees:droneScene.bendDegrees+shortestAngle(droneScene.bendDegrees,bend)*.38
     };
     // Buildings stay legible but translucent across /v2, independently of
@@ -164,7 +174,8 @@ function motionController(map,latest,status){
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
       vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
     if(!d.droneSimulation){
-      droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0};lastSceneSample=0;
+      droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};lastSceneSample=0;
+      droneSceneRoute=null;
       urbanMode='v1';urbanModeAt=0;urbanBlend=0;lastUrbanBlendAt=0;
       if(d.v2Experience){
         map._vanoV2UrbanDensity=0;
@@ -199,7 +210,9 @@ function motionController(map,latest,status){
         enabled:true,vehicle:d.vehicle,urbanDensity:scene.density,
         obstruction:scene.obstruction,rampStrength:ramp.strength,
         compactViewport:viewport.compact,reducedMotion:reduced,
-        speed:d.telemetry?.speed
+        speed:d.telemetry?.speed,maneuver:d.guidance,route,
+        straightAheadMeters:scene.straightAheadMeters,
+        bendDegrees:scene.bendDegrees,accuracy:d.telemetry?.accuracy
       });
       if(!chase.enabled)return view;
       const behindView=v2UserCenteredRampView(

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase} from './v2DroneCamera.mjs';
+import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from './v2DroneCamera.mjs';
 const route={steps:[{type:'depart'},{type:'roundabout',modifier:'right'},{type:'off ramp'},{type:'arrive'}]};
 const maneuver=(stepIndex,distance)=>({stepIndex,distance,kind:route.steps[stepIndex].type,modifier:route.steps[stepIndex].modifier});
 
@@ -294,4 +294,100 @@ test('V2 simulated follow uses user pointer and keeps marker visible when terrai
  assert.match(map,/obstruction:map\._vanoV2UrbanObstruction\|\|0/);
  assert.match(page,/droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
  assert.doesNotMatch(page,/setUserCoords\(simPosition/);
+});
+
+const frameRoad=metres=>[-46.69,-23.56+metres/111320];
+const straightRoad={type:'LineString',coordinates:[0,80,160,240,320,400,480,560,640,720].map(frameRoad)};
+const turnRoad={type:'LineString',coordinates:[
+ frameRoad(0),frameRoad(80),frameRoad(160),
+ [-46.69+80/(111320*Math.cos(-23.56*Math.PI/180)),frameRoad(160)[1]],
+ [-46.69+160/(111320*Math.cos(-23.56*Math.PI/180)),frameRoad(160)[1]]
+]};
+
+test('inspect actual straight line: 650m road permits wide preview, never moves user point',()=>{
+ const point=frameRoad(12),copy=point.slice();
+ const inspected=inspectV2RoadAhead(point,straightRoad);
+ assert.equal(inspected.available,true);
+ assert.ok(inspected.straightMeters>=600);
+ assert.deepEqual(point,copy);
+ assert.ok(inspectV2RoadAhead(frameRoad(12),turnRoad).straightMeters<220);
+});
+
+test('geometry guard: short routes, off-route, empty provider and huge lines fail conservative',()=>{
+ assert.deepEqual(inspectV2RoadAhead(null,straightRoad),{available:false,straightMeters:0});
+ assert.deepEqual(inspectV2RoadAhead(frameRoad(0),null),{available:false,straightMeters:0});
+ assert.deepEqual(inspectV2RoadAhead([-46.70,-23.56],straightRoad),{available:false,straightMeters:0});
+ assert.deepEqual(inspectV2RoadAhead(frameRoad(0),{coordinates:new Array(12001).fill(frameRoad(0))}),{available:false,straightMeters:0});
+ assert.equal(inspectV2RoadAhead(frameRoad(0),{coordinates:[frameRoad(0),frameRoad(80)]}).straightMeters,80);
+});
+
+test('smart camera zooms OUT on a verified long straight but stays behind the marker',()=>{
+ const base={enabled:true,vehicle:'carro',speed:16,urbanDensity:0,straightAheadMeters:640};
+ const straight=planV2RearChase({...base,maneuver:{kind:'continue',distance:800}});
+ const ordinary=planV2RearChase({...base,straightAheadMeters:0,maneuver:{kind:'continue',distance:800}});
+ assert.equal(straight.scenario,'straight');
+ assert.ok(straight.zoom<ordinary.zoom-.5);
+ assert.ok(straight.zoom>=16.72&&straight.zoom<=18.18);
+ assert.ok(straight.lookAheadMeters<=18&&straight.lookAheadMeters>0);
+ assert.ok(straight.halfLife>ordinary.halfLife,'cruising relaxes gradually');
+});
+
+test('approaching entrance overrides long straight zoom and comes close around 100m',()=>{
+ const base={enabled:true,vehicle:'carro',speed:16,straightAheadMeters:640,
+   route:{steps:[{type:'off ramp'}]},maneuver:{stepIndex:0,distance:100,kind:'off ramp'}};
+ const entrance=planV2RampApproach({...base});
+ const near=planV2RearChase({...base,rampStrength:entrance.strength});
+ const far=planV2RearChase({...base,maneuver:{kind:'continue',distance:800},rampStrength:0});
+ assert.equal(near.scenario,'entrance');
+ assert.ok(near.zoom>far.zoom+.5);
+ assert.ok(near.lookAheadMeters<far.lookAheadMeters);
+ assert.ok(near.zoom<=18.18&&near.lookAheadMeters>=5);
+});
+
+test('near turns and junctions zoom in, roundabouts widen to show the exits',()=>{
+ const args={enabled:true,vehicle:'carro',speed:10,straightAheadMeters:610};
+ const normal=planV2RearChase({...args,maneuver:{kind:'continue',distance:1200}});
+ const turn=planV2RearChase({...args,maneuver:{kind:'turn',modifier:'right',distance:60}});
+ const fork=planV2RearChase({...args,maneuver:{kind:'fork',distance:75}});
+ const circle=planV2RearChase({...args,maneuver:{kind:'roundabout',distance:65}});
+ assert.equal(turn.scenario,'turn');
+ assert.equal(fork.scenario,'junction');
+ assert.equal(circle.scenario,'roundabout');
+ assert.ok(turn.zoom>normal.zoom);
+ assert.ok(fork.zoom>normal.zoom);
+ assert.ok(circle.pitch<turn.pitch,'roundabouts reveal more of exit geometry');
+ assert.ok(circle.zoom<=turn.zoom);
+});
+
+test('uncertain GPS, stopped vehicle and approaching decisions disable aggressive distant zoom',()=>{
+ const args={enabled:true,vehicle:'carro',speed:16,straightAheadMeters:650,maneuver:{kind:'continue',distance:900}};
+ assert.equal(planV2RearChase({...args,accuracy:125}).straightStrength,0);
+ assert.equal(planV2RearChase({...args,speed:0}).straightStrength,0);
+ assert.equal(planV2RearChase({...args,bendDegrees:35}).straightStrength,0);
+ assert.equal(planV2RearChase({...args,maneuver:{kind:'turn',modifier:'left',distance:150}}).straightStrength,0);
+ assert.equal(planV2RearChase({...args,straightAheadMeters:0}).straightStrength,0);
+});
+
+test('compact/reduced motion and high-rise street preserve conservative chase framing',()=>{
+ const args={enabled:true,vehicle:'moto',compactViewport:true,urbanDensity:.9,obstruction:1,speed:12,straightAheadMeters:620};
+ const compact=planV2RearChase(args);
+ const reduced=planV2RearChase({...args,reducedMotion:true});
+ assert.ok(compact.zoom>=16.72&&compact.zoom<=18.18);
+ assert.ok(compact.pitch>=30&&compact.pitch<=58);
+ assert.ok(compact.lookAheadMeters>=5&&compact.lookAheadMeters<=18);
+ assert.equal(reduced.pitch,0);
+ assert.equal(reduced.lookAheadMeters,0);
+ assert.ok(reduced.zoom<=17.45);
+});
+
+test('smart-road preview is throttled with building observations and never touches ordinary navigation',()=>{
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ assert.match(map,/const roadAhead=inspectV2RoadAhead\(point,route\?\.geometry\)/);
+ assert.match(map,/if\(now-lastSceneSample<period\)return droneScene/);
+ assert.match(map,/straightAheadMeters:scene\.straightAheadMeters/);
+ assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return base/);
+ assert.match(map,/droneSceneRoute=route\?\.geometry/);
+ assert.match(page,/droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
+ assert.match(page,/simulationPreview=\{simActive\}/);
 });
