@@ -223,7 +223,7 @@ test('V2 Sim entry close-up anchors to the animated user icon in open and dense 
  const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  assert.match(map,/const ramp=planV2RampApproach\(/);
  assert.match(map,/const userPuck=validPoint\(d\.motionCoords\)\?d\.motionCoords:d\.gpsCoords/);
- assert.match(map,/v2UserCenteredRampView\(userPuck,markerHeading,ramp\.lookAheadMeters\)/);
+ assert.match(map,/v2UserCenteredRampView\(\s*userPuck,markerHeading,chase\.lookAheadMeters\s*\)/);
  assert.match(map,/if\(ramp\.active&&urbanBlend<\.001\)return rampCloseup\(base\)/);
  assert.match(map,/return rampCloseup\(\{\.\.\.base/);
  assert.match(map,/if\(urbanBlend<\.001\)return rampCloseup\(base\)/);
