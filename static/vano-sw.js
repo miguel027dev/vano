@@ -69,7 +69,7 @@ self.addEventListener('install',event=>{
     // Reuse files the page already fetched, under their exact build URL.
     // Never download the obsolete legacy CSS again during installation.
     await Promise.allSettled(PRECACHE.map(async path=>{
-      const url=path.startsWith('/static/vano-offline')?path:path+(/^[a-f0-9]{7,40}$/i.test(BUILD)?'?v='+BUILD:'');
+      const url=path.includes('vano-offline')?path:path+(/^[a-f0-9]{7,40}$/i.test(BUILD)?'?v='+BUILD:'');
       if(await cache.match(url))return;
       const resp=await fetch(url,{cache:'force-cache'});
       if(resp.ok)await cache.put(url,resp);
