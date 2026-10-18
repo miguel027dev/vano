@@ -69,6 +69,45 @@ test('one remote interpretation sends only short speech plus minimal booleans to
  assert.deepEqual(choice,{action:'poi',category:'grocery',scope:'route'});
  assert.equal(called,1);
 });
+test('voice context is bounded and grounded without GPS or private destination data',async()=>{
+ const model=maviNvidiaConfig(configured);
+ let inspected=false;
+ const result=await interpretMaviWithNvidia('Mavi, falta muito para a próxima manobra?',{
+   hasRoute:true,navigationActive:true,gpsReady:true,vehicle:'carro',
+   remainingMinutes:14.37,remainingKm:6.438,currentDuration:27.2,
+   nextDistanceMeters:95.7,nextInstruction:'Vire à direita na Avenida Paulista',
+   destination:'Casa do usuário',origin:[-46.7,-23.6],userId:'PRIVATE_USER_ID',
+   apiKey:'SECRET_CREDENTIAL',speedKmh:57
+ },{
+   config:model,now:()=>Date.now()+7200000,
+   fetcher:async(url,init)=>{
+     assert.equal(url,'https://integrate.api.nvidia.com/v1/chat/completions');
+     const request=JSON.parse(init.body);
+     assert.equal(request.temperature,0.15); // Preserve the existing non-GPT-OSS temperature.
+     assert.equal(request.max_tokens,420);
+     assert.match(request.messages[0].content,/resposta no campo reply será ouvida por áudio/);
+     const payload=JSON.parse(request.messages[1].content);
+     assert.equal(payload.context.hasRoute,true);
+     assert.equal(payload.context.navigationActive,true);
+     assert.equal(payload.context.gpsReady,true);
+     assert.equal(payload.context.vehicle,'carro');
+     assert.equal(payload.context.remainingMinutes,14.4);
+     assert.equal(payload.context.remainingKm,6.44);
+     assert.equal(payload.context.nextDistanceMeters,96);
+     assert.equal(payload.context.nextInstruction,'Vire à direita na Avenida Paulista');
+     assert.ok(!Object.hasOwn(payload.context,'destination'));
+     assert.ok(!Object.hasOwn(payload.context,'origin'));
+     assert.ok(!Object.hasOwn(payload.context,'speedKmh'));
+     for(const secret of ['PRIVATE_USER_ID','SECRET_CREDENTIAL','Casa do usuário','-46.7'])
+       assert.ok(!init.body.includes(secret),secret);
+     inspected=true;
+     return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify({
+       action:'information',intent:'next_maneuver',reply:'Inventei uma curva.'})}}]})};
+   }
+ });
+ assert.equal(inspected,true);
+ assert.deepEqual(result,{action:'information',intent:'next_maneuver',reply:''});
+});
 test('upstream HTTP/parse errors and missing flag always fall back locally',async()=>{
  const cfg=maviNvidiaConfig(configured);
  assert.equal(await interpretMaviWithNvidia('Mavi, me ajuda',{},{config:maviNvidiaConfig({}),
