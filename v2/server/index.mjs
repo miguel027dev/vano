@@ -994,12 +994,22 @@ async function route(req, res) {
       (localIntent==='alternative'&&mentionsNamedRoad));
     const grounding=localIntent==='unknown'&&!talkRequested?retrieveMaviKnowledge(body.text,body.context):null;
     if(grounding)return respondJev(grounding);
-    const llm=needsNvidia?await interpretMaviWithNvidia(body.text,{
-      ...body.context,talkMode:talkRequested,
-      ...(talkRequested?{conversationHistory:talkHistory}:{})
-    },{
-      requestTimeoutMs:body.context?.firstMaviTurn===true?2000:undefined
-    }):null;
+    // A client interruption must cancel its NVIDIA request as well:
+    // keeping orphan model calls alive increases latency for the next turn.
+    const nimAbort=new AbortController();
+    const cancelNim=()=>nimAbort.abort();
+    res.once('close',cancelNim);
+    let llm;
+    try{
+      llm=needsNvidia?await interpretMaviWithNvidia(body.text,{
+        ...body.context,talkMode:talkRequested,
+        ...(talkRequested?{conversationHistory:talkHistory}:{})
+      },{
+        requestTimeoutMs:body.context?.firstMaviTurn===true?2000:undefined,
+        signal:nimAbort.signal
+      }):null;
+    }finally{res.off('close',cancelNim);}
+    if(res.destroyed)return;
     // A conversational message never directly becomes a model-suggested route
     // mutation; the user must separately request an explicit navigation action.
     const conversationReply=talkRequested&&(
