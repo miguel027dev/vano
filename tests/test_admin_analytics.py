@@ -1,5 +1,4 @@
 """Read-only regression tests for the isolated VANO admin analytics queries."""
-import json
 import sqlite3
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -93,10 +92,11 @@ class AdminAnalyticsTests(unittest.TestCase):
         self.assertEqual(result[0]["label"], "navigation-start")
         self.assertNotIn("metadata", result[0])
         self.assertNotIn("ip_address", result[0])
-        self.assertEqual(load_recent_events(self.db, 7, "request", now=self.now), [
-            item for item in load_recent_events(self.db, 7, "all", now=self.now)
-            if item["event_type"] == "request"
-        ])
+        # "request" is not an exposed interaction filter, and safely falls back.
+        self.assertEqual(
+            load_recent_events(self.db, 7, "request", now=self.now),
+            load_recent_events(self.db, 7, "all", now=self.now),
+        )
 
     def test_health_lag_and_errors(self):
         result = build_admin_analytics(self.db, "health", 7, now=self.now)
