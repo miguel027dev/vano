@@ -1,0 +1,63 @@
+
+/* VANO V2 — analytics hub. Scoped, does not change routing/map/UI components. */
+.vai-insights{font-family:Manrope,Inter,system-ui,sans-serif;color:#273247}
+.vai-insights *{box-sizing:border-box}
+.vai-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:14px 0 22px}
+.vai-tabs button{display:flex;align-items:center;gap:11px;min-width:0;min-height:78px;padding:13px;background:#fff;border:1px solid #e5e8ed;border-radius:16px;color:#687387;text-align:left;cursor:pointer;box-shadow:0 4px 14px rgba(36,46,70,.02);transition:transform .16s,border-color .16s,box-shadow .16s}
+.vai-tabs button:hover{transform:translateY(-2px);border-color:#f1b58e;box-shadow:0 9px 24px rgba(224,118,65,.09)}
+.vai-tabs button.active{background:#fff1e7;color:#ae5427;border-color:#f2bd9b;box-shadow:0 8px 21px rgba(230,125,70,.08)}
+.vai-tabs button>svg{flex-shrink:0}
+.vai-tabs button span{display:block;min-width:0}
+.vai-tabs button b{font-size:12px;font-weight:850;display:block;line-height:1.4;white-space:normal}
+.vai-tabs button small{display:block;font-size:10px;font-weight:500;margin-top:3px;line-height:1.3;opacity:.82}
+.vai-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 15px}
+.vai-metric{border:1px solid #e6e9ef;border-radius:20px;background:#fff;min-width:0;padding:18px 20px;box-shadow:0 7px 28px rgba(37,47,67,.028)}
+.vai-metric>div{display:flex;gap:8px;align-items:center;justify-content:space-between;color:#778195}
+.vai-metric>div span{font-size:11px;font-weight:800;line-height:1.4}
+.vai-metric>div svg{color:#e38a57;flex-shrink:0}
+.vai-metric strong{display:block;color:#273247;margin-top:10px;font-size:clamp(26px,3vw,36px);font-weight:900;letter-spacing:-1.2px;font-variant-numeric:tabular-nums}
+.vai-metric small{display:block;margin-top:3px;font-size:10px;color:#949cac;line-height:1.4}
+.vai-layout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-bottom:13px}
+.vai-card{min-width:0;margin-bottom:13px;border:1px solid #e4e9ee;border-radius:20px;background:#fff;overflow:hidden;box-shadow:0 8px 30px rgba(40,48,64,.026)}
+.vai-layout .vai-card{margin-bottom:0}
+.vai-card>header{padding:19px 21px 9px}
+.vai-card>header small{font-size:9px;color:#d27645;letter-spacing:.13em;font-weight:900}
+.vai-card>header h2{font-size:18px;letter-spacing:-.55px;color:#273247;margin:6px 0 5px;line-height:1.35;font-weight:850}
+.vai-card>header p{margin:0;color:#828d9d;font-size:11px;line-height:1.55}
+.vai-card-body{padding:10px 21px 21px}
+.vai-stat-rows{display:flex;flex-direction:column}
+.vai-stat-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid #edf0f4;font-size:11.5px}
+.vai-stat-row:last-child{border-bottom:0}
+.vai-stat-row span{color:#667286;overflow-wrap:anywhere}
+.vai-stat-row strong{font-weight:850;color:#29374a;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
+.vai-bars{display:flex;align-items:flex-end;gap:9px;justify-content:space-evenly;padding:14px 0 2px;height:192px;overflow-x:auto}
+.vai-bars>div{min-width:31px;flex:1;max-width:65px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:170px}
+.vai-bars b{font-size:10px;color:#616d80;font-weight:750;margin-bottom:7px}
+.vai-bars span{width:100%;max-width:45px;background:linear-gradient(#f1ad7d,#e88a53);border-radius:8px 8px 3px 3px}
+.vai-bars small{font-size:10px;font-weight:600;color:#8e96a5;margin-top:9px}
+.vai-empty{color:#9ba3af;border:1px dashed #e4e6ed;background:#fafbfc;border-radius:13px;font-size:12px;text-align:center;padding:18px 12px;line-height:1.6}
+.vai-tools{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:13px}
+.vai-tools label{font-size:11px;font-weight:800;color:#778295}
+.vai-tools input{background:#fafbfc;color:#394459;min-width:180px;width:min(300px,100%);padding:10px 12px;border:1px solid #e4e7ef;border-radius:11px;font-size:12px;outline-offset:2px}
+.vai-tools span{font-size:11px;color:#8791a2;margin-left:auto}
+.vai-table-wrap{max-width:100%;overflow:auto;max-height:590px}
+.vai-table-wrap table{border-collapse:collapse;width:100%;min-width:590px;font-size:12px;text-align:left}
+.vai-table-wrap th{padding:12px;color:#8a93a3;background:#fafbfc;letter-spacing:.04em;font-size:10px;font-weight:850;white-space:nowrap;position:sticky;top:0}
+.vai-table-wrap td{padding:13px 12px;border-bottom:1px solid #eef0f5;vertical-align:top;color:#657084;line-height:1.5}
+.vai-table-wrap tr:last-child td{border-bottom:0}
+.vai-table-wrap td b{font-weight:800;color:#38465c}
+.vai-table-wrap td small{display:block;font-size:10px;color:#929dac;margin-top:4px}
+.vai-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 0;color:#8a94a3;font-size:11px}
+.vai-pagination>div{display:flex;gap:7px}
+.vai-pagination button,.v90-classic-toggle button{background:#fff;color:#3e4a5e;border:1px solid #e4e8ef;border-radius:10px;padding:10px 13px;font-size:11px;font-weight:800;cursor:pointer}
+.vai-pagination button:disabled{opacity:.38;cursor:default}
+.vai-muted{font-size:11px;color:#8b97a5;line-height:1.6;margin-top:15px}
+.vai-explain{display:flex;align-items:flex-start;gap:11px;color:#7a8596;border:1px solid #e9ebf1;background:#fcfcfd;border-radius:15px;padding:16px 18px;font-size:11px;line-height:1.7;margin:10px 0 19px}
+.vai-explain svg{color:#df8650;flex-shrink:0}
+.vai-safe-test{margin-top:13px}
+.v90-classic-toggle{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0}
+.v90-classic-toggle span{font-size:10px;color:#8b94a2}
+@media(max-width:1080px){.vai-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.vai-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.vai-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.vai-tabs button{min-height:65px;padding:10px;gap:8px}.vai-tabs button b{font-size:10px}.vai-tabs button small{font-size:9px}.vai-layout{grid-template-columns:1fr}.vai-card>header{padding:17px 15px 9px}.vai-card-body{padding:10px 15px 16px}.vai-metric{padding:15px}.vai-metric strong{font-size:27px}.vai-tools span{margin-left:0}}
+@media(max-width:390px){.vai-tabs button{gap:6px}.vai-tabs button svg{width:16px}.vai-metric>div span{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.vai-tabs button{transition:none}.vai-tabs button:hover{transform:none}}

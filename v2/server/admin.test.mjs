@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isAdminAccount,ADMIN_EMAIL,signupMethod,adminMetrics,adminUsers} from './admin.mjs';
+import {isAdminAccount,ADMIN_EMAIL,signupMethod,adminMetrics,adminUsers,platformCategory,recordOperationalEvent} from './admin.mjs';
 const owner={id:'a',name:'Proprietário',email:ADMIN_EMAIL,verifiedAt:'2026-10-01',verificationMethod:'google',googleSub:'109388900',signupMethod:'google'};
 test('admin console is restricted to the specified verified email exclusively',()=>{
  assert.equal(ADMIN_EMAIL,'miguelpinxs@gmail.com');
@@ -43,4 +43,35 @@ test('user list paginates and removes authentication credentials and personal lo
  assert.ok(!JSON.stringify(listing).includes('VERYSECRET'));
  assert.ok(!JSON.stringify(listing).includes('109388900'));
  assert.ok(!JSON.stringify(listing).includes('coords'));
+});
+
+
+test('operational categories count API use without storing IPs, devices or queries',()=>{
+ const metric={requests:0,routeRequests:0};
+ recordOperationalEvent(metric,{path:'/api/route',method:'GET',userAgent:'Mozilla Android',accept:'application/json'});
+ recordOperationalEvent(metric,{path:'/api/search',method:'GET',userAgent:'Mozilla Android'});
+ recordOperationalEvent(metric,{path:'/admin',method:'GET',userAgent:'Mozilla Android',accept:'text/html'});
+ recordOperationalEvent(metric,{path:'/mapa',method:'GET',userAgent:'Mozilla Android',accept:'text/html'});
+ assert.equal(metric.operationCounts['Cálculos de rota'],1);
+ assert.equal(metric.operationCounts['Buscas de endereço'],1);
+ assert.equal(metric.platformPageLoads.Android,2);
+ assert.equal(JSON.stringify(metric).includes('192.168'),false);
+ assert.equal(platformCategory('Mozilla/5.0 (iPhone)'), 'iOS / iPadOS');
+ assert.equal(platformCategory('Mozilla/5.0 (Windows NT)'), 'Windows');
+});
+test('V2 analytics exposes already-saved destination but not private GPS or source coordinates',()=>{
+ const today=Date.now(), createdAt=new Date(today).toISOString();
+ const data={users:[{...owner,activity:{lastVisitAt:createdAt}}],
+ sessions:[{userId:owner.id,expires:today+60000}],
+ history:[{destination:{name:'Centro',coords:[-46.6,-23.5]},routeType:'safe',distance:4,duration:12,createdAt}],reports:[]};
+ const stats=adminMetrics(data,{operationCounts:{'Cálculos de rota':2},platformPageLoads:{Android:1}},{now:today,startedAt:today});
+ assert.equal(stats.recentlySeenAccounts,1);
+ assert.equal(stats.validSessions,1);
+ assert.equal(stats.recentRoutes.length,1);
+ assert.equal(stats.recentRoutes[0].destination,'Centro');
+ assert.equal(stats.recentRoutes[0].origin,'Não registrada');
+ assert.equal(stats.operationCounts[0].count,2);
+ assert.equal(stats.platformPageLoads[0].count,1);
+ assert.equal(JSON.stringify(stats).includes('-46.6'),false);
+ assert.equal(JSON.stringify(stats).includes('192.168'),false);
 });

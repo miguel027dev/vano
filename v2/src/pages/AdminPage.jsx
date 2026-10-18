@@ -9,6 +9,7 @@ import {api} from '../lib/api';
 import {useVano} from '../context';
 import '../admin-console.css';
 import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
+import AdminInsights from '../components/AdminInsights';
 
 const num=value=>typeof value==='number'&&Number.isFinite(value)?value.toLocaleString('pt-BR'):'—';
 const shortDate=value=>{
@@ -55,6 +56,7 @@ function SourceBreakdown({stats}){
 }
 export default function AdminPage(){
  const {user,loading}=useVano();
+ const [showLegacy,setShowLegacy]=useState(false);
  const [stats,setStats]=useState(null),[users,setUsers]=useState(null),[failure,setFailure]=useState(''),
   [busy,setBusy]=useState(false),[offset,setOffset]=useState(0),[filter,setFilter]=useState('');
  async function refresh(page=offset){
@@ -88,9 +90,12 @@ export default function AdminPage(){
     <button onClick={()=>refresh(0)} type="button" disabled={busy}><RefreshCcw size={17} className={busy?'v44-refreshing':''}/>{busy?'Atualizando…':'Atualizar'}</button></div>
   </header>
   {failure&&<p className="v3-admin-error" role="alert">Não foi possível carregar o console: {failure}</p>}
-  <SafeRoutingTestPanel/>
+  {showLegacy&&<SafeRoutingTestPanel/>}
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
   {stats&&<>
+   <AdminInsights stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh}/>
+   <div className="v90-classic-toggle"><button type="button" onClick={()=>setShowLegacy(v=>!v)} aria-expanded={showLegacy}>{showLegacy?'Ocultar console anterior':'Abrir console clássico'}</button><span>O painel anterior continua disponível para diagnóstico e rollback visual.</span></div>
+   {showLegacy&&<>
    <section className="v3-kpi-grid" aria-label="Indicadores gerais">
     <Stat label="Contas criadas" value={stats.usersTotal} icon={Users} foot={`${num(stats.signups7d)} nos últimos 7 dias`}/>
     <Stat label="Pessoas que voltaram (30d)" value={stats.engagement?.returningAccounts30} icon={RefreshCcw} foot="Dois ou mais dias diferentes"/>
@@ -165,6 +170,7 @@ export default function AdminPage(){
       <button type="button" disabled={busy||offset+20>=(users?.total||0)} onClick={()=>refresh(offset+20)}>Próxima <ChevronRight size={16}/></button></div>
     </div>
    </section>
+  </>}
   </>}
  </div></main>;
 }
