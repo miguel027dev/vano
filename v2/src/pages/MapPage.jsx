@@ -511,7 +511,7 @@ export default function MapPage({active=true}){
   // server routes, report submissions, saved journeys or actual telemetry.
   const simFrame=useMemo(()=>simActive?simulationFrame(route,simMeters):null,[simActive,route,simMeters]);
   const simPosition=simActive?simFrame?.point||null:null;
-  const simTelemetry=simFrame?{heading:simFrame.bearing,speed:simulationSpeedKmh(routeVehicle)/3.6,accuracy:8}:null;
+  const simTelemetry=simFrame?{heading:simCameraMode==='drone'&&Number.isFinite(simFrame.pointerBearing)?simFrame.pointerBearing:simFrame.bearing,speed:simulationSpeedKmh(routeVehicle)/3.6,accuracy:8}:null;
   const shownGuidance=simActive?simFrame?.guidance||null:guidance;
   const simRouteTotal=useMemo(()=>buildRouteTimeline(route?.geometry).total,[route?.geometry]);
   function activateRouteSimulation(){
