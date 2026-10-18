@@ -50,7 +50,7 @@ import {rankTomTomSafeAlternative,routeCorridorPoints} from './tomtom-route-rank
 import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
-import {isAdminAccount,adminMetrics,adminUsers} from './admin.mjs';
+import {isAdminAccount,adminMetrics,adminUsers,recordOperationalEvent} from './admin.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
@@ -1443,6 +1443,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     // Google OAuth legacy callback must reach the API controller, not the React SPA fallback.
     // Otherwise React redirects /login/google/callback to /inicio before a session is created.
     const requestPath=new URL(req.url||'/','http://localhost').pathname;
+    recordOperationalEvent(runtimeMetrics,{path:requestPath,method,userAgent:req.headers['user-agent'],accept:req.headers.accept});
     if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'||requestPath==='/.well-known/vano-benchmark.json'){
       await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
