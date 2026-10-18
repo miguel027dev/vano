@@ -10,11 +10,17 @@ export function isV2BuildingLayer(layer={}){
   if(/tree|vegetation|bridge|road|terrain|tunnel|canopy|trunk/.test(id))return false;
   return sourceLayer==='building'||/building|buildings/.test(id);
 }
-export function targetV2BuildingOpacity(density=0){
-  // Open areas retain some visible city form; dense corridors become see-through.
-  return Math.round((.69-.22*clamp(density,0,1))*100)/100;
+export function targetV2BuildingOpacity(density=0,{cinematic=false,obstruction=0,entrance=0}={}){
+  // Outside simulation keep the original V2 map appearance.
+  if(!cinematic)return Math.round((.69-.22*clamp(density,0,1))*100)/100;
+  // In chase mode, a foreground building must NEVER swallow the user or the
+  // road. Opacity is a whole-layer Mapbox property, so fade the extrusions
+  // instead of mutating buildings one-by-one or deleting them.
+  const densityFactor=clamp(density,0,1),walls=clamp(obstruction,0,1),
+    ramp=clamp(entrance,0,1);
+  return Math.round(clamp(.34-densityFactor*.12-walls*.14-ramp*.065,.07,.36)*100)/100;
 }
-export function syncV2BuildingVisibility(map,{enabled=false,density=0}={}){
+export function syncV2BuildingVisibility(map,{enabled=false,density=0,cinematic=false,obstruction=0,entrance=0}={}){
   if(!map||typeof map.getStyle!=='function'||typeof map.setPaintProperty!=='function')return 0;
   const cache=map._vanoV2OriginalBuildings;
   if(!enabled){
@@ -35,7 +41,7 @@ export function syncV2BuildingVisibility(map,{enabled=false,density=0}={}){
   if(!Array.isArray(layers))return 0;
   const original=cache instanceof Map?cache:new Map();
   map._vanoV2OriginalBuildings=original;
-  const desired=targetV2BuildingOpacity(density);
+  const desired=targetV2BuildingOpacity(density,{cinematic,obstruction,entrance});
   if(map._vanoV2BuildingOpacity===desired&&original.size>0&&
      layers.filter(isV2BuildingLayer).every(x=>original.has(x.id)))return 0;
   let updated=0;

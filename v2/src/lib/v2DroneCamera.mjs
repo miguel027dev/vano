@@ -10,11 +10,11 @@ export const V2_DRONE_PLAYBACK_RATE=2.5;
  * Side bias is negative when the left side is more open, positive for the right. */
 export function observeV2DroneScene(features=[],position=null,heading=0){
   if(!Array.isArray(features)||!Array.isArray(position)||position.length<2||
-    !position.slice(0,2).every(Number.isFinite))return {density:0,sideBias:0,left:0,right:0,count:0};
+    !position.slice(0,2).every(Number.isFinite))return {density:0,sideBias:0,left:0,right:0,count:0,obstruction:0};
   const rad=(Number.isFinite(heading)?heading:0)*Math.PI/180;
   const cosLat=Math.max(.2,Math.cos(position[1]*Math.PI/180));
   const seen=new Set();
-  let left=0,right=0,count=0,anonymous=0;
+  let left=0,right=0,count=0,anonymous=0,blocked=0;
   for(const f of features){
     if(count>=48)break;
     const layer=f?.layer||{},props=f?.properties||{};
@@ -41,10 +41,19 @@ export function observeV2DroneScene(features=[],position=null,heading=0){
     const rightComponent=east*Math.cos(rad)-north*Math.sin(rad);
     if(rightComponent>0.000015)right++;
     else if(rightComponent<-.000015)left++;
+    // Buildings behind the vehicle or beside the chase-camera line of sight
+    // can hide the puck at high Mapbox pitch. Use local meters for this probe,
+    // never the snapped route or camera map center.
+    const forward=(east*Math.sin(rad)+north*Math.cos(rad))*111320;
+    const lateral=rightComponent*111320;
+    const height=Number(props.height??props.render_height??props['building:height']);
+    if(forward>=-65&&forward<=16&&Math.abs(lateral)<=31 &&
+      (!Number.isFinite(height)||height>=7))blocked++;
   }
   return {
     density:clamp(count/18,0,1),
     sideBias:clamp((left-right)/Math.max(5,left+right),-.85,.85),
+    obstruction:clamp(blocked/3,0,1),
     left,right,count
   };
 }
@@ -171,4 +180,32 @@ export function v2UserCenteredRampView(userPuck,heading,lookAheadMeters=0){
     userPuck[0]+Math.sin(rad)*meters/(111320*Math.max(.25,Math.cos(userPuck[1]*Math.PI/180))),
     userPuck[1]+Math.cos(rad)*meters/111320
   ];
+}
+
+/** Perspective camera always follows BEHIND the simulated puck.
+ * The ground target is only a few metres AHEAD of the puck, so Mapbox's
+ * tilted virtual camera sits behind it; never aim at snapped route points.
+ * Tall nearby structures lower the viewing angle to prevent wall clipping. */
+export function planV2RearChase({
+  enabled=false,vehicle='carro',urbanDensity=0,obstruction=0,
+  rampStrength=0,compactViewport=false,reducedMotion=false,speed=0
+}={}){
+  if(!enabled||!['carro','moto'].includes(vehicle))return {enabled:false};
+  const urban=clamp(urbanDensity,0,1),walls=clamp(obstruction,0,1),
+    entrance=clamp(rampStrength,0,1),velocity=clamp(speed,0,45);
+  // Consistent third-person distance; zoom ramps in but never reaches the
+  // road-level building camera that was obscuring the vehicle.
+  const zoom=clamp((compactViewport?17.61:17.79)+urban*.23+
+    entrance*.27-Math.min(.15,velocity*.005)-walls*.07,17.35,18.18);
+  const pitch=reducedMotion?0:clamp((compactViewport?46:55)-
+    urban*9-walls*10-entrance*2,30,58);
+  return {
+    enabled:true,zoom:reducedMotion?Math.min(zoom,17.45):zoom,pitch,
+    // The marker remains close to camera's lower third. Do not use the road line.
+    lookAheadMeters:reducedMotion?0:clamp((compactViewport?8:12)+
+      Math.min(5,velocity*.24)-urban*2-entrance*3-walls*2,5,18),
+    halfLife:reducedMotion?85:240,
+    pointHalfLife:reducedMotion?85:245,
+    bearingHalfLife:reducedMotion?85:285
+  };
 }

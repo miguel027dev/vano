@@ -5,7 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
-import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView} from '../lib/v2DroneCamera.mjs';
+import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase} from '../lib/v2DroneCamera.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
@@ -87,11 +87,11 @@ function motionController(map,latest,status){
   let suspended=false,freeLook=false,active=false,completeAt=0,motoPlan=null;
   // A throttled observation of surrounding 3D buildings and upcoming route bend.
   // No queries in the RAF hot path between samples; the HUD/GPS are untouched.
-  let droneScene={density:0,sideBias:0,bendDegrees:0},lastSceneSample=0;
+  let droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0},lastSceneSample=0;
   let urbanMode='v1',urbanModeAt=0,urbanBlend=0,lastUrbanBlendAt=0;
   function sampleDroneScene(d,route,now){
     if(!d.droneSimulation){
-      droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;
+      droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0};lastSceneSample=0;
       return droneScene;
     }
     const period=(window.innerWidth||700)<650?1100:850;
@@ -107,7 +107,7 @@ function motionController(map,latest,status){
       if(Number.isFinite(near)&&Number.isFinite(far))
         bend=shortestAngle(near,far);
     }
-    let observed={density:0,sideBias:0};
+    let observed={density:0,sideBias:0,obstruction:0};
     if(isLoaded(map)&&typeof map.queryRenderedFeatures==='function'){
       try{
         const projected=map.project(point),radius=75;
@@ -120,13 +120,21 @@ function motionController(map,latest,status){
     droneScene={
       density:droneScene.density+(observed.density-droneScene.density)*smoothing,
       sideBias:droneScene.sideBias+(observed.sideBias-droneScene.sideBias)*.25,
+      obstruction:droneScene.obstruction+(observed.obstruction-droneScene.obstruction)*
+        (observed.obstruction>droneScene.obstruction?.6:.34),
       bendDegrees:droneScene.bendDegrees+shortestAngle(droneScene.bendDegrees,bend)*.38
     };
     // Buildings stay legible but translucent across /v2, independently of
     // the chosen V1/V2 simulation camera.
     if(d.v2Experience){
+      const entrance=planV2RampApproach({
+        enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route
+      }).strength;
       map._vanoV2UrbanDensity=droneScene.density;
-      syncV2BuildingVisibility(map,{enabled:true,density:droneScene.density});
+      map._vanoV2UrbanObstruction=droneScene.obstruction;
+      map._vanoV2RampStrength=entrance;
+      syncV2BuildingVisibility(map,{enabled:true,density:droneScene.density,
+        cinematic:true,obstruction:droneScene.obstruction,entrance});
     }
     return droneScene;
   }
@@ -156,11 +164,13 @@ function motionController(map,latest,status){
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
       vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
     if(!d.droneSimulation){
-      droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;
+      droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0};lastSceneSample=0;
       urbanMode='v1';urbanModeAt=0;urbanBlend=0;lastUrbanBlendAt=0;
-      if(d.v2Experience&&map._vanoV2UrbanDensity!==0){
+      if(d.v2Experience){
         map._vanoV2UrbanDensity=0;
-        syncV2BuildingVisibility(map,{enabled:true,density:0});
+        map._vanoV2UrbanObstruction=0;
+        map._vanoV2RampStrength=0;
+        syncV2BuildingVisibility(map,{enabled:true,density:0,cinematic:false});
       }
     }
     if(!d.droneSimulation||!base)return base;
@@ -178,31 +188,42 @@ function motionController(map,latest,status){
       compactViewport:viewport.compact,reducedMotion:reduced
     });
     function rampCloseup(view){
-      if(!ramp.active)return view;
-      // The actual animated user icon owns this camera anchor.
-      // Never snap to route geometry or to the maneuver's road centerline.
+      // 3rd-person chase: target the ANIMATED USER PUCK, not the snapped route
+      // or an entrance centroid. Positive short look-ahead + pitch physically
+      // positions the perspective behind the simulated vehicle.
       const userPuck=validPoint(d.motionCoords)?d.motionCoords:d.gpsCoords;
       if(!validPoint(userPuck))return view;
       const markerHeading=Number.isFinite(d.motionBearing)?d.motionBearing:
         Number.isFinite(d.telemetry?.heading)?d.telemetry.heading:null;
-      const nearIcon=v2UserCenteredRampView(userPuck,markerHeading,ramp.lookAheadMeters);
-      if(!nearIcon)return view;
-      const strength=ramp.strength;
+      const chase=planV2RearChase({
+        enabled:true,vehicle:d.vehicle,urbanDensity:scene.density,
+        obstruction:scene.obstruction,rampStrength:ramp.strength,
+        compactViewport:viewport.compact,reducedMotion:reduced,
+        speed:d.telemetry?.speed
+      });
+      if(!chase.enabled)return view;
+      const behindView=v2UserCenteredRampView(
+        userPuck,markerHeading,chase.lookAheadMeters
+      );
+      if(!behindView)return view;
       const maxZoom=typeof map.getMaxZoom==='function'?map.getMaxZoom():20;
-      const closeZoom=Math.min(maxZoom,Math.max(ramp.zoom,Math.min(view.zoom,18.18)));
+      const maxPitch=typeof map.getMaxPitch==='function'?map.getMaxPitch():75;
       return {...view,
-        center:view.center.map((value,index)=>value+(nearIcon[index]-value)*strength),
-        zoom:view.zoom+(closeZoom-view.zoom)*strength,
-        pitch:view.pitch+(ramp.pitch-view.pitch)*strength,
+        // Strong user anchoring makes the camera stay behind the marker even
+        // when an urban building or the road's snapped geometry is nearby.
+        center:view.center.map((value,index)=>
+          value+(behindView[index]-value)*.94),
+        zoom:view.zoom+(Math.min(maxZoom,chase.zoom)-view.zoom)*.95,
+        pitch:view.pitch+(Math.min(maxPitch,chase.pitch)-view.pitch)*.95,
         bearing:Number.isFinite(view.bearing)&&Number.isFinite(markerHeading)?
-          blendAngle(view.bearing,markerHeading,strength*.75):view.bearing,
+          blendAngle(view.bearing,markerHeading,.88):view.bearing,
         droneCamera:{...view.droneCamera,
-          halfLife:ramp.halfLife,pointHalfLife:ramp.pointHalfLife,
-          bearingHalfLife:ramp.bearingHalfLife}
+          halfLife:chase.halfLife,pointHalfLife:chase.pointHalfLife,
+          bearingHalfLife:chase.bearingHalfLife}
       };
     }
     if(ramp.active&&urbanBlend<.001)return rampCloseup(base);
-    if(urbanBlend<.001)return base; // Open street: original V1 camera.
+    if(urbanBlend<.001)return rampCloseup(base); // Open road: V1 framing, user-anchored chase.
     const drone=planV2DroneCamera({
       enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route,
       speed:d.telemetry?.speed,urbanDensity:scene.density,
@@ -322,7 +343,10 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           try{
             syncNight3DBuildings(map,{appearance:latest.current.appearance,layer:latest.current.layer});
             syncV2BuildingVisibility(map,{enabled:latest.current.v2Experience,
-              density:map._vanoV2UrbanDensity||0});
+              density:map._vanoV2UrbanDensity||0,
+              cinematic:Boolean(latest.current.droneSimulation),
+              obstruction:map._vanoV2UrbanObstruction||0,
+              entrance:map._vanoV2RampStrength||0});
              syncNight3DScene(map,{appearance:latest.current.appearance,layer:latest.current.layer,navigation:latest.current.navigation,
                memory:typeof navigator!=='undefined'?navigator.deviceMemory:null,
                cores:typeof navigator!=='undefined'?navigator.hardwareConcurrency:null,
@@ -560,8 +584,10 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox'||!isLoaded(map))return;
-    syncV2BuildingVisibility(map,{enabled:v2Experience,density:map._vanoV2UrbanDensity||0});
-  },[v2Experience,appearance,layer]);
+    syncV2BuildingVisibility(map,{enabled:v2Experience,density:map._vanoV2UrbanDensity||0,
+      cinematic:Boolean(droneSimulation),obstruction:map._vanoV2UrbanObstruction||0,
+      entrance:map._vanoV2RampStrength||0});
+  },[v2Experience,droneSimulation,appearance,layer]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='leaflet')return;
@@ -778,7 +804,7 @@ function paintMapbox(map,data,selection){
     map._vanoTraveledCleared=true;
   }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
-  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);};
+  const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:type==='vehicle'&&data.droneSimulation?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){const visibility=data.droneSimulation?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
   syncPrivateRoadSignMarkers(map,mapboxgl,data);
