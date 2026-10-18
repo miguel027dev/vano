@@ -100,3 +100,74 @@
 [data-theme='dark'] .vhome-secondary{border-color:#89998d;background:#1e2b23;color:#f6f6ee}
 [data-theme='dark'] .vhome .brand-v3-wordmark strong,[data-theme='dark'] .vhome .brand-v3-wordmark small{color:var(--vhome-ink)}
 [data-theme='dark'] .vhome-city-glow{opacity:.28}
+
+
+/* Entry route: the city shrinks into the remaining viewport height.
+   Buttons, guest entry and legal links stay visible without vertical scrolling. */
+@media(max-width:1100px){
+ .app-shell.shell-home{height:100svh;height:100dvh;min-height:0;overflow:hidden}
+ .app-shell.shell-home>.vhome{height:100%;min-height:0}
+}
+@media(max-width:819px){
+ .vhome{height:100%;min-height:0;max-height:100%;overflow:hidden}
+ .vhome-header{flex:0 0 auto;padding-top:calc(env(safe-area-inset-top,0px) + clamp(10px,1.9dvh,19px));padding-bottom:0}
+ .vhome-wrap{flex:1 1 auto;min-height:0;height:auto;display:grid;grid-template-rows:minmax(0,1fr) auto}
+ .vhome-hero{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);align-content:stretch;gap:0;min-height:0;overflow:hidden;padding-top:clamp(6px,1.75dvh,18px);padding-bottom:0}
+ .vhome-intro{align-self:start;min-width:0;padding:0}
+ .vhome-eyebrow{margin-bottom:clamp(6px,1.5dvh,15px)}
+ .vhome-intro h1{font-size:clamp(2.55rem,min(13vw,7.6dvh),5rem);line-height:.91}
+ .vhome-city{min-height:0;height:100%;max-height:100%;width:calc(100% + 48px);max-width:none;aspect-ratio:auto;margin:0 -24px;align-self:stretch;justify-self:center;display:flex;align-items:center;justify-content:center}
+ .vhome-city-svg{height:100%;width:100%;min-height:0;max-height:100%;object-fit:contain}
+ .vhome-city-caption{left:13%;top:28%;padding:8px 11px;font-size:.75rem}
+ .vhome-bottom{flex:0 0 auto;min-height:0;margin:0;gap:clamp(3px,.9dvh,9px);padding:clamp(1px,.5dvh,5px) 23px calc(env(safe-area-inset-bottom,0px) + clamp(7px,1.45dvh,14px))}
+ .vhome-description{margin:0;font-size:clamp(.82rem,1.9dvh,1.02rem);line-height:1.27}
+ .vhome-actions{grid-template-columns:1fr;gap:clamp(4px,.75dvh,8px)}
+ .vhome-primary,.vhome-secondary{min-height:clamp(42px,6.1dvh,55px);height:auto;font-size:clamp(.88rem,1.9dvh,1rem)}
+ .vhome-explore{grid-column:auto;min-height:clamp(28px,4.2dvh,36px);font-size:clamp(.82rem,1.7dvh,.95rem)}
+ .vhome-footer{font-size:.68rem;line-height:1.1;min-height:15px}
+}
+@media(max-width:819px) and (max-height:680px){
+ .vhome-header{padding-top:calc(env(safe-area-inset-top,0px) + 8px)}
+ .vhome .brand-v3>img{width:36px;height:36px}
+ .vhome .brand-v3-wordmark strong{font-size:1.38rem}
+ .vhome .brand-v3-wordmark small{font-size:1.21rem}
+ .vhome-hero{padding-top:5px}
+ .vhome-eyebrow{font-size:.6rem;letter-spacing:.18em;margin-bottom:6px}
+ .vhome-intro h1{font-size:clamp(2.32rem,min(12vw,7.2dvh),4rem);line-height:.9}
+ .vhome-description{font-size:.86rem;line-height:1.17}
+ .vhome-bottom{gap:4px;padding-top:0;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 6px)}
+ .vhome-primary,.vhome-secondary{min-height:42px}
+ .vhome-actions{gap:4px}
+ .vhome-explore{min-height:28px}
+ .vhome-footer{font-size:.6rem;min-height:13px}
+}
+@media(max-width:819px) and (max-height:540px){
+ .vhome-header{padding-top:calc(env(safe-area-inset-top,0px) + 5px)}
+ .vhome .brand-v3>img{width:32px;height:32px}
+ .vhome .brand-v3-wordmark strong{font-size:1.25rem}
+ .vhome .brand-v3-wordmark small{font-size:1.1rem}
+ .vhome-eyebrow{font-size:.56rem;margin-bottom:4px}
+ .vhome-intro h1{font-size:clamp(2.2rem,6.9dvh,3.1rem);line-height:.88}
+ .vhome-description{font-size:.77rem}
+ .vhome-bottom{gap:2px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 3px)}
+ .vhome-primary,.vhome-secondary{min-height:40px}
+ .vhome-explore{min-height:25px}
+}
+/* Short landscape phones use two compact columns instead of a long vertical stack. */
+@media(max-width:1100px) and (orientation:landscape) and (max-height:520px){
+ .vhome-header{padding:5px 18px 0}
+ .vhome .brand-v3>img{width:31px;height:31px}
+ .vhome .brand-v3-wordmark strong{font-size:1.2rem}
+ .vhome .brand-v3-wordmark small{font-size:1.02rem}
+ .vhome-wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);grid-template-rows:minmax(0,1fr)}
+ .vhome-hero{display:grid;grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);padding:5px 9px 2px 18px;min-height:0;overflow:hidden}
+ .vhome-eyebrow{font-size:.55rem;margin-bottom:3px}
+ .vhome-intro h1{font-size:clamp(1.9rem,min(5.5vw,9dvh),3.1rem);line-height:.9}
+ .vhome-city{height:100%;width:100%;margin:0;max-height:100%;aspect-ratio:auto}
+ .vhome-bottom{margin:0;justify-content:center;gap:3px;padding:3px 18px 6px 5px;min-height:0}
+ .vhome-description{font-size:.77rem;line-height:1.1}
+ .vhome-actions{grid-template-columns:1fr;gap:3px}
+ .vhome-primary,.vhome-secondary{min-height:36px;font-size:.83rem;border-radius:11px}
+ .vhome-explore{min-height:26px;font-size:.78rem}
+ .vhome-footer{font-size:.58rem}
+}
