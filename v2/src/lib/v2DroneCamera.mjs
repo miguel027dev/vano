@@ -117,3 +117,15 @@ export function shiftDroneView(center,bearing,sideMeters=0){
     center[1]+north/111320
   ];
 }
+
+/** Hysteresis: avoid switching V1/V2 on every group of buildings. Only
+ * observed building density decides the urban camera; no synthetic places. */
+export function chooseV2UrbanCamera({enabled=false,density=0,mode='v1',
+  lastSwitchAt=0,nowMs=0,holdMs=1700}={}){
+  if(!enabled)return {mode:'v1',changed:false};
+  const current=mode==='v2'?'v2':'v1';
+  const value=clamp(density,0,1);
+  const canSwitch=Number.isFinite(nowMs)&&nowMs-lastSwitchAt>=holdMs;
+  const target=current==='v1'?(value>=.46?'v2':'v1'):(value<=.23?'v1':'v2');
+  return {mode:canSwitch?target:current,changed:canSwitch&&target!==current};
+}
