@@ -159,6 +159,11 @@
             <span class="v258-link-copy"><b>Casa e trabalho</b><small>Destinos frequentes</small></span>
             <i data-lucide="chevron-right" width="14"></i>
           </a>
+          <a class="drawer-link" href="/static/vano-offline.html">
+            <i data-lucide="map-pinned" width="17"></i>
+            <span class="v258-link-copy"><b>Rotas offline</b><small>Rever caminhos já utilizados sem internet</small></span>
+            <i data-lucide="chevron-right" width="14"></i>
+          </a>
           <a class="drawer-link" href="{{ url_for('profile') }}#vehicle">
             <i data-lucide="car-front" width="17"></i>
             <span class="v258-link-copy"><b>Meu veículo</b><small>Carro e preferências</small></span>
@@ -474,6 +479,7 @@
 {% endblock %}
 {% block scripts %}
 <script>window.VANO_BOOT={token:{{ mapbox_token|tojson }},style:{{ mapbox_style|tojson }},styleSet:{{ mapbox_styles|tojson }},mapStyleMode:{{ map_style_mode|tojson }},mapAccent:{{ map_accent_colors|tojson }},navPrefs:{{ nav_preferences|tojson }},loggedIn:{{ (current_user is not none)|tojson }},isAdmin:{{ (current_user is not none and current_user['role'] == 'admin')|tojson }},csrf:{{ csrf_token()|tojson }},distanceUnit:{{ (current_user['distance_unit'] if current_user else 'km')|tojson }},homeLabel:{{ (current_user['home_label'] if current_user else '')|tojson }},workLabel:{{ (current_user['work_label'] if current_user else '')|tojson }},presenceActive:{{ (current_user is not none and current_user['presence_visible'] and current_user['presence_terms_accepted_at'] and current_user['is_app_driver'] and (current_user['age'] or 0) >= 18)|tojson }},professionalDriver:{{ (current_user is not none and current_user['is_app_driver'])|tojson }},guestRoutesRemaining:{{ guest_routes_remaining|default(10)|tojson }},guestRouteLimit:{{ guest_route_limit|default(10)|tojson }},locale:(window.VANO_ACTIVE_LOCALE||{{ active_locale|tojson }}),loginUrl:{{ url_for('login', next=url_for('index'))|tojson }}};</script>
+<script src="{{ url_for('static', filename='vano-offline-routes.js') }}?v={{ vano_build_id }}" defer></script>
 <script src="{{ url_for('static', filename='vano-ui.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-nearby-cars.js') }}?v={{ vano_build_id }}" defer></script>
 <script src="{{ url_for('static', filename='vano-routine.js') }}?v={{ vano_build_id }}" defer></script>
