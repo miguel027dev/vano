@@ -103,7 +103,7 @@ const FR={
 
  'Entrar':'Connexion','Criar conta':'Créer un compte','Começar agora':'Commencer','Já tenho uma conta':"J'ai déjà un compte",'Explorar sem conta':'Explorer sans compte',
  'O caminho certo':'Le bon chemin','é o seu.':"c'est le vôtre.",'Escolha como chegar. A VANO encontra alternativas de rota para o seu dia.':'Choisissez votre trajet. VANO trouve des itinéraires alternatifs pour votre quotidien.',
- 'Seu caminho começa aqui.':'Votre trajet commence ici.','Privacidade':'Confidentialité','Termos':'Conditions d’utilisation',
+ 'Vá do seu jeito.':'À votre façon.','Seu caminho começa aqui.':'Votre trajet commence ici.','Privacidade':'Confidentialité','Termos':'Conditions d’utilisation',
  'CONTA VANO':'COMPTE VANO','Voltar':'Retour','Crie seu espaço.':'Créez votre espace.','Bom ter você de volta.':'Ravi de vous revoir.',
  'Uma conta para salvar seus lugares e deixar cada trajeto mais seu.':'Un compte pour enregistrer vos lieux et personnaliser vos trajets.','Entre para continuar com suas rotas e seus lugares.':'Connectez-vous pour retrouver vos trajets et vos lieux.',
  'Nome':'Nom','E-mail':'E-mail','Senha':'Mot de passe','Confirmar senha':'Confirmer le mot de passe','Seu nome':'Votre nom','Digite sua senha':'Saisissez votre mot de passe',
@@ -208,7 +208,7 @@ const PTPT={
 
  'Entrar':'Iniciar sessão','Criar conta':'Criar conta','Começar agora':'Começar agora','Já tenho uma conta':'Já tenho uma conta','Explorar sem conta':'Explorar sem conta',
  'O caminho certo':'O caminho certo','é o seu.':'é o teu.','Escolha como chegar. A VANO encontra alternativas de rota para o seu dia.':'Escolhe como chegar. A VANO encontra alternativas de percurso para o teu dia a dia.',
- 'Seu caminho começa aqui.':'O teu caminho começa aqui.','Privacidade':'Privacidade','Termos':'Termos',
+ 'Vá do seu jeito.':'Vai à tua maneira.','Seu caminho começa aqui.':'O teu caminho começa aqui.','Privacidade':'Privacidade','Termos':'Termos',
  'Crie seu espaço.':'Cria o teu espaço.','Bom ter você de volta.':'É bom ter-te de volta.',
  'Uma conta para salvar seus lugares e deixar cada trajeto mais seu.':'Uma conta para guardar os teus locais e personalizar cada percurso.','Entre para continuar com suas rotas e seus lugares.':'Inicia sessão para continuares com os teus percursos e locais.',
  'Nome':'Nome','E-mail':'E-mail','Senha':'Palavra-passe','Confirmar senha':'Confirmar palavra-passe','Seu nome':'O teu nome','Digite sua senha':'Introduz a palavra-passe',
@@ -316,7 +316,7 @@ const EN={
 
  'Entrar':'Sign in','Criar conta':'Create account','Começar agora':'Get started','Já tenho uma conta':'I have an account','Explorar sem conta':'Explore without an account',
  'O caminho certo':'The right route','é o seu.':'is yours.','Escolha como chegar. A VANO encontra alternativas de rota para o seu dia.':'Choose how to get there. VANO finds alternative routes for your day.',
- 'Seu caminho começa aqui.':'Your journey starts here.','Privacidade':'Privacy','Termos':'Terms',
+ 'Vá do seu jeito.':'Go your own way.','Seu caminho começa aqui.':'Your journey starts here.','Privacidade':'Privacy','Termos':'Terms',
  'Crie seu espaço.':'Make it yours.','Bom ter você de volta.':'Welcome back.','Uma conta para salvar seus lugares e deixar cada trajeto mais seu.':'Save places and customize your journeys.','Entre para continuar com suas rotas e seus lugares.':'Sign in to access your routes and saved places.',
  'Voltar':'Back','Nome':'Name','E-mail':'Email','Senha':'Password','Confirmar senha':'Confirm password','Seu nome':'Your name','Digite sua senha':'Enter your password','Pelo menos 12 caracteres':'At least 12 characters','Repita sua senha':'Repeat your password',
  'Use uma senha exclusiva com pelo menos 12 caracteres.':'Use a unique password of at least 12 characters.','As senhas não coincidem. Confira e tente novamente.':'Passwords do not match.','Digite seu nome para continuar.':'Enter your name to continue.',
