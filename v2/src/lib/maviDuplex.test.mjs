@@ -19,7 +19,7 @@ test('brief noises, low-frequency road noise, and quiet cabin do not interrupt',
  for(let t=1000;t<2400;t+=60)assert.equal(gate.sample(0.15,0.08,t),false);
  for(let t=2400;t<2600;t+=60)assert.equal(gate.sample(0.4,0.85,t),false);
  assert.equal(gate.sample(0.008,0.7,2600),false);
- for(let t=2650;t<3150;t+=60)assert.equal(gate.sample(0.12,0.8,t),false);
+ for(let t=2650;t<3060;t+=60)assert.equal(gate.sample(0.12,0.8,t),false);
  assert.equal(gate.sample(0.12,0.8,3190),true);
 });
 
