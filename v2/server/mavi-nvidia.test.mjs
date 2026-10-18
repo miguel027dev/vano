@@ -125,3 +125,27 @@ test('hourly request ceiling rejects future calls without provider requests',()=
  assert.equal(maviNvidiaQuota(100*3600000,1),false);
  assert.equal(maviNvidiaQuota(101*3600000,1),true);
 });
+
+test('user interruption aborts NVIDIA in flight without counting as provider failure',async()=>{
+ const cfg=maviNvidiaConfig(configured);
+ const stopped=new AbortController();
+ let invoked=0;
+ const result=interpretMaviWithNvidia('Mavi, como foi o seu dia?',{talkMode:true},{
+  config:cfg,signal:stopped.signal,now:()=>Date.now()+86400000,
+  fetcher:async(_url,init)=>{
+   invoked++;
+   return new Promise((resolve,reject)=>{
+    init.signal.addEventListener('abort',()=>reject(new Error('client_interrupted')),{once:true});
+    queueMicrotask(()=>stopped.abort());
+   });
+  }
+ });
+ assert.equal(await result,null);
+ assert.equal(invoked,1);
+ const alreadyStopped=new AbortController();
+ alreadyStopped.abort();
+ assert.equal(await interpretMaviWithNvidia('Mavi, bom dia',{},{
+  config:cfg,signal:alreadyStopped.signal,
+  fetcher:()=>{throw new Error('must not fetch');}
+ }),null);
+});
