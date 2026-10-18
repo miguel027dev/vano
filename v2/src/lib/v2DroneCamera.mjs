@@ -129,3 +129,46 @@ export function chooseV2UrbanCamera({enabled=false,density=0,mode='v1',
   const target=current==='v1'?(value>=.46?'v2':'v1'):(value<=.23?'v1':'v2');
   return {mode:canSwitch?target:current,changed:canSwitch&&target!==current};
 }
+
+/** A route-provider entrance/exit within ~100 m deserves a close camera
+ * centered around the actual user puck (not the line's snapped projection).
+ * Start gently at 180 m, be mostly close at 100 m, and ease back automatically
+ * when the provider advances to its next maneuver. */
+export function planV2RampApproach({
+  enabled=false,vehicle='carro',maneuver=null,route=null,
+  compactViewport=false,reducedMotion=false
+}={}){
+  const off={active:false,strength:0,category:'continue'};
+  if(!enabled||!['carro','moto'].includes(vehicle))return off;
+  const step=Number.isInteger(maneuver?.stepIndex)?route?.steps?.[maneuver.stepIndex]:null;
+  const category=maneuverCategory({
+    ...step,kind:maneuver?.kind||step?.type,modifier:maneuver?.modifier||step?.modifier
+  });
+  const distance=Number.isFinite(maneuver?.distance)?maneuver.distance:Infinity;
+  if(category!=='ramp'||distance<0||distance>=180)return {...off,category};
+  const strength=smooth((180-distance)/105);
+  return {
+    active:strength>.001,category,strength,
+    // ~100 m out: clear view of the ramp while keeping the user icon large.
+    zoom:reducedMotion?17.0:compactViewport?17.72:18.03,
+    pitch:reducedMotion?0:compactViewport?45:52,
+    lookAheadMeters:compactViewport?14:23,
+    halfLife:reducedMotion?85:235,
+    pointHalfLife:reducedMotion?85:240,
+    bearingHalfLife:reducedMotion?85:270
+  };
+}
+/** Position the close-up near the marker, never the route geometry.
+ * Heading comes from the actual vehicle marker; missing heading keeps the
+ * icon centered instead of inventing a route bearing. */
+export function v2UserCenteredRampView(userPuck,heading,lookAheadMeters=0){
+  if(!Array.isArray(userPuck)||userPuck.length<2||
+    !userPuck.slice(0,2).every(Number.isFinite))return null;
+  if(!Number.isFinite(heading))return userPuck.slice(0,2);
+  const meters=clamp(lookAheadMeters,0,26);
+  const rad=heading*Math.PI/180;
+  return [
+    userPuck[0]+Math.sin(rad)*meters/(111320*Math.max(.25,Math.cos(userPuck[1]*Math.PI/180))),
+    userPuck[1]+Math.cos(rad)*meters/111320
+  ];
+}
