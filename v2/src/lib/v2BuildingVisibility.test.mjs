@@ -59,8 +59,31 @@ test('render path is scoped to /v2 and leaves V1 simulated GPS separate',()=>{
   assert.match(map,/syncV2BuildingVisibility\(map,\{enabled:latest\.current\.v2Experience/);
   assert.match(map,/discardV2BuildingVisibility\(map\)/);
   assert.match(map,/chooseV2UrbanCamera\(/);
-  assert.match(map,/if\(urbanBlend<\.001\)return base/);
+  assert.match(map,/if\(urbanBlend<\.001\)return rampCloseup\(base\)/);
   assert.match(map,/zoom:base\.zoom\+\(Math\.min\(maxZoom,drone\.zoom\)-base\.zoom\)\*urbanBlend/);
   assert.match(page,/simulationPreview=\{simActive\}/);
   assert.match(page,/gpsCoords=\{simPosition\|\|userCoords\}/);
+});
+
+test('simulated rear camera gently ghosts 3D walls while normal V2 stays unchanged',()=>{
+ const base=targetV2BuildingOpacity(.8);
+ const cinematic=targetV2BuildingOpacity(.8,{cinematic:true,obstruction:.3});
+ const blocked=targetV2BuildingOpacity(.8,{cinematic:true,obstruction:1,entrance:1});
+ assert.ok(base>.45);
+ assert.ok(cinematic<base);
+ assert.ok(blocked<=.1,'buildings cannot conceal the user during a ramp maneuver');
+ assert.ok(blocked>=.07);
+ assert.equal(targetV2BuildingOpacity(.8,{cinematic:false,obstruction:1,entrance:1}),base);
+});
+
+test('switching the simulation off restores ordinary V2 building fade without leaving stale paint',()=>{
+ const map=mapFixture();
+ syncV2BuildingVisibility(map,{enabled:true,density:.85,cinematic:true,obstruction:1});
+ const veryClear=map.paints.get('building-3d');
+ assert.ok(veryClear<.2);
+ syncV2BuildingVisibility(map,{enabled:true,density:.85,cinematic:false});
+ assert.equal(map.paints.get('building-3d'),targetV2BuildingOpacity(.85));
+ syncV2BuildingVisibility(map,{enabled:false});
+ assert.equal(map.paints.get('building-3d'),.95);
+ assert.equal(map.paints.get('vano-night-tree-trunk'),.9);
 });
