@@ -23,7 +23,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const [captureActive,setCaptureActive]=useState(false);
  const enabledRef=useRef(false),mountedRef=useRef(true),busyRef=useRef(false);
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
- const recognitionIdleEnds=useRef(0),recognitionGotSpeech=useRef(false);
+ const recognitionIdleEnds=useRef(0),recognitionGotSpeech=useRef(false),recognitionWatchdogRef=useRef(null);
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
@@ -38,6 +38,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
 
  function stopRecognition(){
    clearTimeout(listenTimerRef.current);
+   clearTimeout(recognitionWatchdogRef.current);recognitionWatchdogRef.current=null;
    const engine=recognitionRef.current;recognitionRef.current=null;recognitionActive.current=false;
    if(engine){try{engine.abort();}catch{/* already closed */}}
  }
@@ -227,7 +228,9 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    let recognition;
    try{recognition=new Recognizer();}
    catch{recognitionError.current='unsupported';setStatus('typed');setReply(microphoneMessage('unsupported'));return false;}
-   recognition.lang='pt-BR';recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;
+   // Android often closes continuous recognition without yielding any result.
+   // Use one-shot to prevent reopening the system microphone in a loop.
+   recognition.lang='pt-BR';recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=1;
    if(mode==='local'&&'processLocally' in recognition)recognition.processLocally=true;
    recognitionRef.current=recognition;recognitionError.current='';recognitionGotSpeech.current=false;
    recognition.onresult=event=>{
@@ -238,11 +241,9 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    recognition.onerror=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
      const code=String(event?.error||'unknown');
-     // Silence is expected while awaiting a wake word; remain hands-free.
      if(code==='no-speech'){
-       recognitionError.current='';
-       setDiagnostic('Aguardando sua próxima fala.');
-       setStatus('ready');
+       recognitionError.current='no-speech';
+       setDiagnostic('O reconhecimento encerrou sem transcrever a fala.');
        return;
      }
      recognitionError.current=code;
@@ -252,6 +253,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    };
    recognition.onend=()=>{
      if(recognitionRef.current!==recognition)return;
+     clearTimeout(recognitionWatchdogRef.current);recognitionWatchdogRef.current=null;
      recognitionRef.current=null;recognitionActive.current=false;
      if(enabledRef.current&&!busyRef.current){
        if(!recognitionGotSpeech.current)recognitionIdleEnds.current++;
@@ -260,22 +262,27 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
          hadSpeech:recognitionGotSpeech.current,
          error:recognitionError.current
        });
-       if(recovery.retry){setStatus('ready');scheduleNextListen(recovery.delay);}
-       else{
-         // Android/Chromium can repeatedly close an idle recognizer.
-         // Pause after bounded retries instead of flashing the mic forever.
-         setStatus('typed');
-         if(recovery.reason==='idle'){
-           setDiagnostic('Escuta em pausa após períodos de silêncio.');
-           setReply('Escuta pausada. Toque no microfone para voltar a falar comigo.');
-         }
-       }
+       // No silent automatic retry after onend: Android would repeatedly beep.
+       setStatus('typed');
+       if(['idle','empty','no-speech'].includes(recovery.reason)){
+         setDiagnostic('O serviço fechou sem entregar uma transcrição.');
+         setReply('O microfone abriu, mas não recebi texto da sua fala. Toque para tentar novamente.');
+       }else if(recovery.reason==='error')setReply(microphoneMessage(recognitionError.current));
      }
    };
    try{
      // Invoked synchronously from button presses, preserving user gesture.
      recognition.start();
-     recognitionActive.current=true;setStatus('listening');setDiagnostic('Reconhecimento '+(mode==='local'?'local':'do navegador')+' iniciado.');
+     recognitionActive.current=true;setStatus('listening');
+     setDiagnostic('Reconhecimento '+(mode==='local'?'local':'do navegador')+' iniciado.');
+     // On some WebViews neither onresult nor onend arrives. Never strand the mic.
+     recognitionWatchdogRef.current=setTimeout(()=>{
+       if(recognitionRef.current!==recognition||!enabledRef.current||recognitionGotSpeech.current)return;
+       recognitionError.current='no-speech';
+       stopRecognition();
+       setStatus('typed');setDiagnostic('Tempo limite sem reconhecimento de voz.');
+       setReply('Não recebi a transcrição. Toque novamente ou utilize a gravação.');
+     },12000);
      return true;
    }catch(error){
      recognitionRef.current=null;
@@ -471,6 +478,29 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
   <span id="mavi-voice-status" className="mavi-voice-status" role="status" aria-live="polite">
     {voiceLabel}
   </span>
+  {enabled&&(status==='typed'||captureActive)&&<section className="mavi-mic-recovery" aria-label="Opções de voz da MAVI">
+    <strong>{captureActive?'Gravando voz':'A MAVI não recebeu sua fala'}</strong>
+    <p role="status">{captureActive?'Toque em concluir para enviar a gravação.':reply||microphoneMessage(recognitionError.current)}</p>
+    {diagnostic&&<small>{diagnostic}</small>}
+    <div className="mavi-mic-recovery-actions">
+      {captureActive?
+        <button type="button" onClick={stopRecording}>Concluir gravação</button>:
+        <>
+          <button type="button" onClick={()=>{recognitionIdleEnds.current=0;recognitionError.current='';setStatus('ready');listenRef.current('remote');}}>Ouvir novamente</button>
+          {serverStt&&<button type="button" onClick={startRecording}>Gravar mensagem</button>}
+          <button type="button" onClick={testMicrophone}>Testar microfone</button>
+        </>}
+    </div>
+    {!captureActive&&<form className="mavi-mic-recovery-input" onSubmit={event=>{
+      event.preventDefault();
+      const message=typed.trim();
+      if(message){setStatus('ready');void submitRef.current(message);}
+    }}>
+      <input type="text" value={typed} onChange={event=>setTyped(event.target.value)}
+        maxLength={360} placeholder="Ou digite para a MAVI…" aria-label="Mensagem para a MAVI" />
+      <button type="submit" disabled={!typed.trim()} aria-label="Enviar mensagem escrita"><Send size={15}/></button>
+    </form>}
+  </section>}
   {enabled&&offerReady&&proposal&&offerTarget&&createPortal(
     <section className="mavi-offer-card" role="group" aria-label={proposal.kind==='poi_stop'?'Parada sugerida pela MAVI':'Alternativa de rota sugerida pela MAVI'}>
       <div className="mavi-offer-header">
