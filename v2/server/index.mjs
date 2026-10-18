@@ -21,6 +21,7 @@ import {parseMaviPlaceIntent,detectMaviResume,contextualMaviIntent} from '../src
 import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mjs';
 import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
 import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
+import {streamMaviTalk} from './mavi-talk-stream.mjs';
 import {maviInstantAnswer,MAVI_FAST_OPENING_INTENTS} from './mavi-instant.mjs';
 import {isMaviTalkTurn,maviTalkFallback,limitedMaviTalkHistory} from '../src/lib/maviTalk.mjs';
 import {retrieveMaviKnowledge} from './mavi-grounding.mjs';
@@ -883,6 +884,57 @@ async function route(req, res) {
       type:'mavi-cartesia-tts',purpose:'maneuver',user:id,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
     }),...(refreshedProof?{refreshedProof}:{})});
   }
+  // Streaming READ-ONLY conversation path. Never accepts navigation actions.
+  // Each sentence gets a signed, single-use existing TTS ticket on this server.
+  if(pathname==='/api/v2/assistant/talk-stream'&&req.method==='POST'){
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'mavi-talk-stream',15,60000))return;
+    const body=await getBody(req);
+    if(typeof body.text!=='string'||body.text.trim().length<2||body.text.length>360)
+      return err(res,400,'Fala inválida.');
+    const history=limitedMaviTalkHistory(body.context?.conversationHistory);
+    if(!isMaviTalkTurn(body.text,{conversationActive:history.length>0}))
+      return err(res,422,'Este pedido requer o fluxo de navegação normal.');
+    const uid=owner(req),eleven=maviElevenConfig(),cartesia=maviCartesiaConfig();
+    const voiceType=eleven.enabled?'mavi-eleven-tts':cartesia.enabled?'mavi-cartesia-tts':null;
+    const abort=new AbortController();
+    const stop=()=>abort.abort();
+    res.once('close',stop);req.once('aborted',stop);
+    res.writeHead(200,{...headers,'Content-Type':'application/x-ndjson; charset=utf-8',
+      'Cache-Control':'no-store, no-transform','X-Accel-Buffering':'no','Connection':'keep-alive'});
+    const send=event=>{if(!res.destroyed&&!res.writableEnded&&!abort.signal.aborted)res.write(JSON.stringify(event)+'\n');};
+    let chunks=0;
+    const sendSentence=value=>{
+      const clean=maviSpeechText(value);
+      if(!clean||abort.signal.aborted||chunks>=6)return;
+      const ticket=uid&&voiceType?signedToken(secret,{
+        type:voiceType,user:uid,text:clean,expires:now()+MAVI_VOICE_TICKET_MS
+      }):null;
+      chunks++;
+      send({type:'chunk',text:clean,...(ticket?{voiceTicket:ticket}:{})});
+    };
+    try{
+      const result=await streamMaviTalk(body.text,history,{
+        signal:abort.signal,
+        budgetMs:body.context?.firstMaviTurn===true?2400:undefined,
+        onSentence:sendSentence
+      });
+      if(!abort.signal.aborted&&!chunks){
+        sendSentence(maviTalkFallback(body.text));
+      }
+      if(!abort.signal.aborted){
+        send({type:'done',text:result.text||'',fallback:Boolean(result.error)});
+        res.end();
+      }
+    }catch{
+      if(!abort.signal.aborted){
+        if(!chunks)sendSentence(maviTalkFallback(body.text));
+        send({type:'done',text:'',fallback:true});res.end();
+      }
+    }finally{res.off('close',stop);req.off('aborted',stop);}
+    return;
+  }
+
   // Public V2 assistant experiment. Guests may try it, but CSRF and IP limits
   // prevent third-party use of the paid routing provider as an open proxy.
   // Session-bound one-shot voice endpoint: the caller supplies no free-form
