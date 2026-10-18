@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {simulationFrame,simulationDistanceStep,simulationSpeedKmh,SIMULATION_PLAYBACK_RATE} from './adminRouteSimulator.mjs';
+import {simulationFrame,simulationDistanceStep,simulationSpeedKmh,SIMULATION_PLAYBACK_RATE,simulationPointerBearing} from './adminRouteSimulator.mjs';
 import {buildRouteTimeline} from './routeAnimation.js';
 import {readFileSync} from 'node:fs';
 
@@ -91,4 +91,67 @@ test('active real navigation requires confirmation before changing to GPS-isolat
  assert.match(page,/routeEpoch\.current\+\+; \/\/ Ignore any pending reroute/);
  assert.match(css,/\.v76-sim-confirm-backdrop/);
  assert.match(css,/data-map-appearance="dark"/);
+});
+
+test('V2 user pointer does not steer before reaching a ninety-degree entrance',()=>{
+ const geometry={type:'LineString',coordinates:[[-46.68,-23.58],[-46.68,-23.579],[-46.679,-23.579]]};
+ const timeline=buildRouteTimeline(geometry);
+ const vertex=timeline.cumulative[1];
+ const initial=simulationPointerBearing(timeline,vertex-10);
+ const before=simulationPointerBearing(timeline,vertex-.05);
+ const atVertex=simulationPointerBearing(timeline,vertex);
+ const justAfter=simulationPointerBearing(timeline,vertex+1);
+ const halfway=simulationPointerBearing(timeline,vertex+5);
+ const finished=simulationPointerBearing(timeline,vertex+12);
+ assert.ok(initial<2||initial>358);
+ assert.ok(Math.abs(before-initial)<1,'heading must stay straight before turn');
+ assert.ok(Math.abs(atVertex-initial)<1,'at the vertex direction is still incoming');
+ assert.ok(justAfter>0&&justAfter<35,'begin the turn only once the marker enters the new road');
+ assert.ok(halfway>justAfter&&halfway<90);
+ assert.ok(finished>88&&finished<92);
+ assert.deepEqual(simulationFrame({geometry,steps:[]},vertex-.05).point,
+   geometry.coordinates[0].map((v,i)=>v+(geometry.coordinates[1][i]-v)*((vertex-.05)/vertex)));
+});
+
+test('V2 heading follows the actual diagonal lane turn, not a look-ahead 65m route bearing',()=>{
+ const start=[-46.68,-23.58],vertex=[-46.68,-23.579],diagonal=[-46.6796,-23.5786];
+ const timeline=buildRouteTimeline({type:'LineString',coordinates:[start,vertex,diagonal]});
+ const at=timeline.cumulative[1];
+ const lastStraight=simulationPointerBearing(timeline,at-2);
+ const entered=simulationPointerBearing(timeline,at+3);
+ const settled=simulationPointerBearing(timeline,at+11);
+ assert.ok(Math.abs(lastStraight)<1);
+ assert.ok(entered>0&&entered<45,'diagonal entrance turns progressively');
+ assert.ok(settled>35&&settled<55,'settled diagonal points about 45 degrees');
+ const route={geometry:{type:'LineString',coordinates:[start,vertex,diagonal]},steps:[]};
+ const preview=simulationFrame(route,at-10);
+ assert.ok(preview.bearing>preview.pointerBearing+1,
+   'old preview may look ahead, but V2 pointer remains on its current segment');
+});
+
+test('heading handles geographic wrap, invalid route and short segments without inventing GPS',()=>{
+ assert.equal(simulationPointerBearing(null,0),null);
+ assert.equal(simulationPointerBearing({points:[[0,0]],cumulative:[0],total:0},0),null);
+ const geometry={type:'LineString',coordinates:[[-46.68,-23.58],[-46.6801,-23.5785],[-46.6802,-23.5785]]};
+ const timeline=buildRouteTimeline(geometry);
+ const current=simulationPointerBearing(timeline,timeline.cumulative[1]-1);
+ const next=simulationPointerBearing(timeline,timeline.cumulative[1]+15);
+ assert.ok(current>350||current<10,'initial segment nearly north');
+ assert.ok(next>265&&next<275,'second segment west');
+ assert.deepEqual(geometry.coordinates,[[-46.68,-23.58],[-46.6801,-23.5785],[-46.6802,-23.5785]]);
+});
+
+test('physical V2 pointer bearing is never substituted into the standard 6x simulator',()=>{
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ assert.match(page,/simCameraMode==='drone'&&Number\.isFinite\(simFrame\.pointerBearing\)\?simFrame\.pointerBearing:simFrame\.bearing/);
+ assert.match(page,/simCameraMode==='drone'\?V2_DRONE_PLAYBACK_RATE:undefined/);
+ assert.match(map,/d\.droneSimulation&&timeline\.total>0&&Number\.isFinite\(simulationMeters\)/);
+ assert.match(map,/point=sampleRoute\(timeline,state\.droneMeters\)\?\.point/);
+ assert.match(map,/simulationPointerBearing\(timeline,state\.droneMeters\)/);
+ assert.match(map,/state\.droneHeadingInitialized=true/);
+ assert.match(map,/Math\.min\(Math\.abs\(delta\)\*ease,dt\*\.37\)/);
+ assert.match(map,/const desiredPitch=data\.droneSimulation\?'viewport':'map'/);
+ assert.match(map,/setPitchAlignment\?\.\(desiredPitch\)/);
+ assert.match(map,/bearing:Number\.isFinite\(markerHeading\)\?markerHeading:view\.bearing/);
 });
