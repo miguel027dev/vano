@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera} from './v2DroneCamera.mjs';
+import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView} from './v2DroneCamera.mjs';
 const route={steps:[{type:'depart'},{type:'roundabout',modifier:'right'},{type:'off ramp'},{type:'arrive'}]};
 const maneuver=(stepIndex,distance)=>({stepIndex,distance,kind:route.steps[stepIndex].type,modifier:route.steps[stepIndex].modifier});
 
@@ -163,4 +163,71 @@ test('hysteresis and minimum hold prevent rapid V1/V2 toggles',()=>{
    nowMs:2200,lastSwitchAt:900}).mode,'v2');
  assert.equal(chooseV2UrbanCamera({enabled:false,density:1,mode:'v2',
    nowMs:4000}).mode,'v1');
+});
+
+test('approaching a ramp at 100m makes camera near user icon without excessive zoom',()=>{
+ const args={enabled:true,vehicle:'carro',route};
+ const far=planV2RampApproach({...args,maneuver:maneuver(2,230)});
+ const entering=planV2RampApproach({...args,maneuver:maneuver(2,150)});
+ const near100=planV2RampApproach({...args,maneuver:maneuver(2,100)});
+ const close=planV2RampApproach({...args,maneuver:maneuver(2,65)});
+ assert.equal(far.active,false);
+ assert.ok(entering.active);
+ assert.ok(near100.strength>.80,'at 100m, smoothly near the icon');
+ assert.ok(near100.strength>entering.strength);
+ assert.ok(close.strength>=near100.strength);
+ assert.ok(near100.zoom>=17.5&&near100.zoom<=18.18);
+ assert.ok(near100.lookAheadMeters<=26);
+ assert.ok(near100.pitch>=45&&near100.pitch<=55);
+});
+
+test('ramp close-up requires explicit provider entrance/exit, never nearby route lines',()=>{
+ const args={enabled:true,vehicle:'carro',route};
+ assert.equal(planV2RampApproach({...args,maneuver:maneuver(0,30)}).active,false);
+ assert.equal(planV2RampApproach({...args,maneuver:maneuver(1,30)}).active,false);
+ assert.equal(planV2RampApproach({...args,maneuver:maneuver(3,30)}).active,false);
+ assert.equal(planV2RampApproach({...args,maneuver:null}).active,false);
+ assert.equal(planV2RampApproach({...args,maneuver:{stepIndex:2,distance:null}}).active,false);
+ assert.equal(planV2RampApproach({...args,maneuver:maneuver(2,180)}).active,false);
+ assert.equal(planV2RampApproach({...args,maneuver:maneuver(2,100),enabled:false}).active,false);
+ assert.equal(planV2RampApproach({...args,maneuver:maneuver(2,100),vehicle:'a-pe'}).active,false);
+});
+
+test('user-icon close-up uses marker coordinates and marker direction exclusively',()=>{
+ const marker=[-46.68,-23.58],east=v2UserCenteredRampView(marker,90,23);
+ const eastMeters=(east[0]-marker[0])*111320*Math.cos(marker[1]*Math.PI/180);
+ assert.ok(eastMeters>22.9&&eastMeters<23.1);
+ assert.ok(Math.abs(east[1]-marker[1])<.000001);
+ const north=v2UserCenteredRampView(marker,0,23);
+ assert.ok(north[1]>marker[1]);
+ assert.deepEqual(v2UserCenteredRampView(marker,null,23),marker);
+ assert.deepEqual(v2UserCenteredRampView(marker,NaN,23),marker);
+ assert.deepEqual(marker,[-46.68,-23.58]);
+ assert.equal(v2UserCenteredRampView(null,20,12),null);
+});
+
+test('small-screen and reduced-motion ramp framing is limited and reversible',()=>{
+ const args={enabled:true,vehicle:'moto',route,maneuver:maneuver(2,100)};
+ const mobile=planV2RampApproach({...args,compactViewport:true});
+ assert.ok(mobile.zoom<=17.75&&mobile.lookAheadMeters<=14);
+ assert.ok(mobile.pitch<=45);
+ const reduced=planV2RampApproach({...args,reducedMotion:true});
+ assert.equal(reduced.pitch,0);
+ assert.ok(reduced.zoom<=17.0);
+ const after=planV2RampApproach({...args,maneuver:maneuver(0,500)});
+ assert.equal(after.active,false,'normal camera takes back control after maneuver');
+});
+
+test('V2 Sim entry close-up anchors to the animated user icon in open and dense corridors',()=>{
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ assert.match(map,/const ramp=planV2RampApproach\(/);
+ assert.match(map,/const userPuck=validPoint\(d\.motionCoords\)\?d\.motionCoords:d\.gpsCoords/);
+ assert.match(map,/v2UserCenteredRampView\(userPuck,markerHeading,ramp\.lookAheadMeters\)/);
+ assert.match(map,/if\(ramp\.active&&urbanBlend<\.001\)return rampCloseup\(base\)/);
+ assert.match(map,/return rampCloseup\(\{\.\.\.base/);
+ assert.match(map,/if\(urbanBlend<\.001\)return base/);
+ assert.match(page,/simulationPreview=\{simActive\}/);
+ assert.match(page,/droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
+ assert.doesNotMatch(map.slice(map.indexOf('function rampCloseup(view)'),map.indexOf('if(ramp.active&&urbanBlend<.001)')),/nearestOnRoute|lookPos|snapTo|route\.geometry/);
 });
