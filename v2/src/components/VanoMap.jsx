@@ -5,7 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
-import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera} from '../lib/v2DroneCamera.mjs';
+import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView} from '../lib/v2DroneCamera.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
@@ -173,6 +173,35 @@ function motionController(map,latest,status){
     const dtMix=lastUrbanBlendAt?Math.min(100,Math.max(0,now-lastUrbanBlendAt)):16;
     lastUrbanBlendAt=now;
     urbanBlend=damp(urbanBlend,urbanMode==='v2'?1:0,dtMix,450);
+    const ramp=planV2RampApproach({
+      enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route,
+      compactViewport:viewport.compact,reducedMotion:reduced
+    });
+    function rampCloseup(view){
+      if(!ramp.active)return view;
+      // The actual animated user icon owns this camera anchor.
+      // Never snap to route geometry or to the maneuver's road centerline.
+      const userPuck=validPoint(d.motionCoords)?d.motionCoords:d.gpsCoords;
+      if(!validPoint(userPuck))return view;
+      const markerHeading=Number.isFinite(d.motionBearing)?d.motionBearing:
+        Number.isFinite(d.telemetry?.heading)?d.telemetry.heading:null;
+      const nearIcon=v2UserCenteredRampView(userPuck,markerHeading,ramp.lookAheadMeters);
+      if(!nearIcon)return view;
+      const strength=ramp.strength;
+      const maxZoom=typeof map.getMaxZoom==='function'?map.getMaxZoom():20;
+      const closeZoom=Math.min(maxZoom,Math.max(ramp.zoom,Math.min(view.zoom,18.18)));
+      return {...view,
+        center:view.center.map((value,index)=>value+(nearIcon[index]-value)*strength),
+        zoom:view.zoom+(closeZoom-view.zoom)*strength,
+        pitch:view.pitch+(ramp.pitch-view.pitch)*strength,
+        bearing:Number.isFinite(view.bearing)&&Number.isFinite(markerHeading)?
+          blendAngle(view.bearing,markerHeading,strength*.75):view.bearing,
+        droneCamera:{...view.droneCamera,
+          halfLife:ramp.halfLife,pointHalfLife:ramp.pointHalfLife,
+          bearingHalfLife:ramp.bearingHalfLife}
+      };
+    }
+    if(ramp.active&&urbanBlend<.001)return rampCloseup(base);
     if(urbanBlend<.001)return base; // Open street: original V1 camera.
     const drone=planV2DroneCamera({
       enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route,
@@ -181,7 +210,7 @@ function motionController(map,latest,status){
       compactViewport:viewport.compact,reducedMotion:reduced,
       accuracy:d.telemetry?.accuracy
     });
-    if(!drone.enabled)return base;
+    if(!drone.enabled)return rampCloseup(base);
     const puck=d.motionCoords||d.gpsCoords;
     const center=validPoint(puck)?[
       puck[0]+(base.center[0]-puck[0])*drone.centerBlend,
@@ -194,13 +223,13 @@ function motionController(map,latest,status){
     const view=shiftDroneView(center,heading,drone.sideMeters);
     const targetBearing=Number.isFinite(base.bearing)?
       (base.bearing+drone.yawDegrees+360)%360:base.bearing;
-    return {...base,
+    return rampCloseup({...base,
       center:base.center.map((coord,index)=>coord+(view[index]-coord)*urbanBlend),
       bearing:Number.isFinite(base.bearing)&&Number.isFinite(targetBearing)?
         blendAngle(base.bearing,targetBearing,urbanBlend):base.bearing,
       zoom:base.zoom+(Math.min(maxZoom,drone.zoom)-base.zoom)*urbanBlend,
       pitch:base.pitch+(Math.min(maxPitch,drone.pitch)-base.pitch)*urbanBlend,
-      droneCamera:drone};
+      droneCamera:drone});
 
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';
