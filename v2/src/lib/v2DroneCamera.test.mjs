@@ -137,7 +137,8 @@ test('environmental query is rate-limited and never granted to ordinary navigati
   assert.match(map,/if\(now-lastSceneSample<period\)return droneScene/);
   assert.match(map,/observeV2DroneScene\(map\.queryRenderedFeatures\(bounds\)\|\|\[\],point,heading\)/);
   assert.match(map,/const scene=sampleDroneScene\(d,route,now\)/);
-  assert.match(map,/center:shiftDroneView\(center,heading,drone\.sideMeters\)/);
+  assert.match(map,/const view=shiftDroneView\(center,heading,drone\.sideMeters\)/);
+  assert.match(map,/urbanBlend=damp\(urbanBlend,urbanMode==='v2'\?1:0,dtMix,450\)/);
   assert.match(map,/drone\?\.pointHalfLife/);
   assert.match(map,/if\(!d\.droneSimulation\|\|!base\)return base/);
 });
