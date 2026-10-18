@@ -2,7 +2,8 @@ import React,{useEffect,useRef,useState} from 'react';
 import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetween,nearestOnRoute,nextRouteBearing,shortestAngle,shouldFollowLocation,validPoint} from '../lib/navigationMotion';
-import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
+import {buildRouteTimeline,distanceOnRoute,nextManeuver,sampleRoute} from '../lib/routeAnimation';
+import {simulationPointerBearing} from '../lib/adminRouteSimulator.mjs';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
@@ -649,11 +650,26 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       state.last=now;
       const d=latest.current,target=d.gpsCoords;
       if(!validPoint(target))return;
-      const point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
+      // V2 Sim follows route PROGRESS, not a raw straight-line interpolation
+      // between coordinates. This prevents the icon from cutting across sharp
+      // turns and guarantees heading belongs to the SAME animated position.
+      const simulationMeters=d.guidance?.routeMeters;
+      let point;
+      if(d.droneSimulation&&timeline.total>0&&Number.isFinite(simulationMeters)){
+        const targetMeters=clamp(simulationMeters,0,timeline.total);
+        if(!Number.isFinite(state.droneMeters))state.droneMeters=targetMeters;
+        else state.droneMeters=damp(state.droneMeters,targetMeters,dt,reduced?90:140);
+        point=sampleRoute(timeline,state.droneMeters)?.point;
+      }else{
+        state.droneMeters=null;
+        point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
+      }
       if(!validPoint(point))return;
       state.point=point;
-      const heading=(d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
-        ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
+      const heading=d.droneSimulation&&Number.isFinite(state.droneMeters)
+        ?simulationPointerBearing(timeline,state.droneMeters)
+        :(d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
+          ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
       if(d.droneSimulation&&Number.isFinite(heading)){
         // Do not pre-rotate at upcoming intersections. Even a 90° ramp turn
         // begins after the animated marker crosses its route vertex.
