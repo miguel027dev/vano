@@ -18,7 +18,8 @@ import {advanceTravelDistance} from '../lib/travelDistance.js';
 import {searchGeoBias} from '../lib/searchGeoBias.js';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
-import { api, fmtKm, fmtTime } from '../lib/api';
+import { api, fetchMaviTalkStream, fmtKm, fmtTime } from '../lib/api';
+import {readMaviTalkStream} from '../lib/maviTalkStream.mjs';
 import { navigationSummary,arrivalClock } from '../lib/navigationSummary';
 import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
@@ -718,6 +719,33 @@ export default function MapPage({active=true}){
         return {...instant,voiceTicketPromise:muted?null:api('/v2/assistant/local-voice-ticket',{
           method:'POST',signal,body:{intent:localIntent,context:payload.context}
         }).then(result=>result.voiceTicket).catch(()=>null)};
+      }
+    }
+    // Only social/read-only turns may stream natural language directly.
+    // Route mutations keep the old strict, validated JSON intent endpoint.
+    if(conversation){
+      try{
+        const audioBody=await fetchMaviTalkStream(text,{signal,context:{
+          firstMaviTurn:maviMeta.firstTurn===true,
+          conversationHistory:limitedMaviTalkHistory(maviTalkHistory.current)
+        }});
+        async function* sentences(){
+          let spoken='';
+          for await(const part of readMaviTalkStream(audioBody,{signal})){
+            if(part.type==='chunk'){spoken+=(spoken?' ':'')+part.text;yield part;}
+            else if(part.type==='done'&&!signal?.aborted){
+              const reply=spoken.trim().slice(0,340);
+              if(reply)maviTalkHistory.current=limitedMaviTalkHistory([
+                ...maviTalkHistory.current,{role:'user',text},{role:'assistant',text:reply}
+              ]);
+              yield part;
+            }
+          }
+        }
+        return {mode:'information',intent:'general',text:'',segments:sentences()};
+      }catch(error){
+        if(signal?.aborted)throw error;
+        // Unsupported browsers / endpoint errors retain the original full-response flow.
       }
     }
     return api('/v2/assistant',{method:'POST',signal,body:payload}).then(rememberReply);
