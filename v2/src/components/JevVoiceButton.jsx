@@ -5,7 +5,6 @@ import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCi
 import {api} from '../lib/api.js';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
-import {maviRecognitionRecovery} from '../lib/maviRecognitionRecovery.mjs';
 import {classifyMaviIntent,maviProposalDecision,maviProposalFollowup} from '../lib/maviAssistant.mjs';
 import {maviIncidentOffer,maviIncidentFollowupDecision} from '../lib/maviIncidentFollowup.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
@@ -23,7 +22,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const [captureActive,setCaptureActive]=useState(false);
  const enabledRef=useRef(false),mountedRef=useRef(true),busyRef=useRef(false);
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
- const recognitionIdleEnds=useRef(0),recognitionGotSpeech=useRef(false);
+ const recognitionGotSpeech=useRef(false);
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
@@ -83,7 +82,6 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  }
  function speak(message,onComplete,voiceTicket=null){
    const turn=++voiceTurnRef.current;
-   const {muted}=navRef.current;
    const synth=window.speechSynthesis,Utterance=window.SpeechSynthesisUtterance;
    busyRef.current=true;
    let finished=false,attempts=0;
@@ -97,7 +95,6 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      // Offer controls are revealed only once the voice finishes or fails safely.
      if(enabledRef.current&&mountedRef.current)onComplete?.();
    };
-   if(muted){finish();return;}
    const trySpeak=()=>{
      if(!synth||!Utterance){finish();return;}
      if(finished||!enabledRef.current||voiceTurnRef.current!==turn)return;
@@ -141,11 +138,20 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
        });
      };
      if(voiceTicket?.then){
+       // The ticket service may hang; prefer an immediate browser voice over silence.
+       // Late tickets must never start a second, overlapping spoken answer.
+       let ticketHandled=false;
+       const fallbackTicket=()=>{
+         if(ticketHandled||finished||controller.signal.aborted||!enabledRef.current||voiceTurnRef.current!==turn)return;
+         ticketHandled=true;trySpeak();
+       };
+       speechTimerRef.current=setTimeout(fallbackTicket,1800);
        Promise.resolve(voiceTicket).then(ticket=>{
-         if(finished||controller.signal.aborted||!enabledRef.current||voiceTurnRef.current!==turn)return;
+         if(ticketHandled||finished||controller.signal.aborted||!enabledRef.current||voiceTurnRef.current!==turn)return;
+         ticketHandled=true;clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
          if(typeof ticket!=='string'||ticket.length<10){trySpeak();return;}
          voiceTicket=ticket;startRemote();
-       }).catch(()=>{if(!finished&&!controller.signal.aborted)trySpeak();});
+       }).catch(fallbackTicket);
      }else startRemote();
      return;
    }
@@ -227,22 +233,24 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    let recognition;
    try{recognition=new Recognizer();}
    catch{recognitionError.current='unsupported';setStatus('typed');setReply(microphoneMessage('unsupported'));return false;}
-   recognition.lang='pt-BR';recognition.continuous=true;recognition.interimResults=false;recognition.maxAlternatives=1;
+   // One utterance per recognition session. Chromium/WebView often ends a session after silence.
+   recognition.lang='pt-BR';recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=1;
    if(mode==='local'&&'processLocally' in recognition)recognition.processLocally=true;
    recognitionRef.current=recognition;recognitionError.current='';recognitionGotSpeech.current=false;
    recognition.onresult=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
-     const phrase=Array.from(event.results||[]).map(row=>row?.[0]?.transcript||'').join(' ').trim();
-     if(phrase){recognitionGotSpeech.current=true;recognitionIdleEnds.current=0;void submitRef.current(phrase);}
+     const phrase=Array.from(event.results||[]).filter(row=>row?.isFinal!==false).map(row=>row?.[0]?.transcript||'').join(' ').trim();
+     if(phrase){recognitionGotSpeech.current=true;void submitRef.current(phrase);}
    };
    recognition.onerror=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
      const code=String(event?.error||'unknown');
-     // Silence is expected while awaiting a wake word; remain hands-free.
+     // Never restart a microphone session that ended without a transcript.
      if(code==='no-speech'){
-       recognitionError.current='';
-       setDiagnostic('Aguardando sua próxima fala.');
-       setStatus('ready');
+       recognitionError.current=code;
+       setDiagnostic('Nenhuma fala reconhecida nesta tentativa.');
+       setReply('Não consegui ouvir sua fala. Toque no microfone para tentar novamente.');
+       setStatus('typed');
        return;
      }
      recognitionError.current=code;
@@ -254,21 +262,13 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      if(recognitionRef.current!==recognition)return;
      recognitionRef.current=null;recognitionActive.current=false;
      if(enabledRef.current&&!busyRef.current){
-       if(!recognitionGotSpeech.current)recognitionIdleEnds.current++;
-       const recovery=maviRecognitionRecovery({
-         idleEnds:recognitionIdleEnds.current,
-         hadSpeech:recognitionGotSpeech.current,
-         error:recognitionError.current
-       });
-       if(recovery.retry){setStatus('ready');scheduleNextListen(recovery.delay);}
-       else{
-         // Android/Chromium can repeatedly close an idle recognizer.
-         // Pause after bounded retries instead of flashing the mic forever.
-         setStatus('typed');
-         if(recovery.reason==='idle'){
-           setDiagnostic('Escuta em pausa após períodos de silêncio.');
-           setReply('Escuta pausada. Toque no microfone para voltar a falar comigo.');
-         }
+       // Some Android recognizers emit onend without ever emitting onresult.
+       // Treat this as an unsuccessful attempt, not permission to auto-start.
+       recognitionError.current=recognitionError.current||'no-speech';
+       setStatus('typed');
+       if(!recognitionGotSpeech.current){
+         setDiagnostic('Reconhecimento encerrado sem transcrição. Toque para tentar novamente.');
+         setReply('Não consegui ouvir sua fala. Toque no microfone novamente.');
        }
      }
    };
@@ -404,7 +404,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  function toggle(){
    // Explicit reactivation after an idle timeout; a live press still toggles off.
    if(enabledRef.current&&status==='typed'&&!busyRef.current&&Recognizer){
-     recognitionIdleEnds.current=0;recognitionError.current='';
+     recognitionError.current='';
      setStatus('ready');setDiagnostic('Escuta reativada pelo usuário.');
      listenRef.current('remote');return;
    }
@@ -413,7 +413,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    }
    enabledRef.current=true;busyRef.current=false;recognitionError.current='';
    firstMaviTurnRef.current=true;
-   recognitionIdleEnds.current=0;recognitionGotSpeech.current=false;
+   recognitionGotSpeech.current=false;
    setEnabled(true);setStatus('ready');
    setReply('Pode conversar comigo sobre seu dia, tirar dúvidas ou pedir ajuda com uma rota. Tô ouvindo!');
    if(!Recognizer){setStatus('typed');setReply(microphoneMessage('unsupported'));return;}
