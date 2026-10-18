@@ -8,8 +8,14 @@ const source=path=>readFileSync(resolve(root,path),'utf8');
 
 test('logo original e ilustrações de rota acompanham a interface',()=>{
   for(const path of ['public/vano-logo-original.webp','public/vano-city-lines.svg','public/vano-trip-line.svg','public/vehicle-car.webp','public/vehicle-moto.webp'])assert.equal(existsSync(resolve(root,path)),true,`Asset ausente: ${path}`);
-  assert.match(source('src/pages/EntryPage.jsx'),/v5-entry-line/);
-  assert.doesNotMatch(source('src/pages/EntryPage.jsx'),/v4-visual-card/);
+  // The entry now renders the animated, self-contained conceptual city instead of the legacy route stamp.
+  const entry=source('src/pages/EntryPage.jsx');
+  const city=source('src/components/CityMapIntro.jsx');
+  assert.match(entry,/CityMapIntro/);
+  assert.match(city,/vhome-path/);
+  assert.match(city,/vhome-city-svg/);
+  assert.doesNotMatch(city,/mapbox-gl|geolocation|getCurrentPosition/);
+  assert.doesNotMatch(entry,/v4-visual-card/);
 });
 
 test('perfil abandonou o cartão preto legado e usa dados do histórico',()=>{
