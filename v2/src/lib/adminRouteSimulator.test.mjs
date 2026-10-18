@@ -151,6 +151,7 @@ test('physical V2 pointer bearing is never substituted into the standard 6x simu
  assert.match(map,/simulationPointerBearing\(timeline,state\.droneMeters\)/);
  assert.match(map,/state\.droneHeadingInitialized=true/);
  assert.match(map,/Math\.min\(Math\.abs\(delta\)\*ease,dt\*\.37\)/);
- assert.match(map,/setPitchAlignment\?\.\(data\.droneSimulation\?'viewport':'map'\)/);
+ assert.match(map,/const desiredPitch=data\.droneSimulation\?'viewport':'map'/);
+ assert.match(map,/setPitchAlignment\?\.\(desiredPitch\)/);
  assert.match(map,/bearing:Number\.isFinite\(markerHeading\)\?markerHeading:view\.bearing/);
 });
