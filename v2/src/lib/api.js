@@ -34,6 +34,21 @@ export async function api(path, opts = {}) {
  * No Cartesia/ElevenLabs key, text, model or voice ID crosses from the browser.
  * This deliberately uses a separate binary path from the normal JSON API.
  */
+/** Read-only conversational response stream; safe browser CSRF + session. */
+export async function fetchMaviTalkStream(text,{context={},signal}={}){
+ const token=await initializeCsrf();
+ const response=await fetch(''+BASE+'/v2/assistant/talk-stream',{
+  method:'POST',credentials:'include',signal,
+  headers:{'Content-Type':'application/json','X-VANO-CSRF':token},
+  body:JSON.stringify({text,context})
+ });
+ if(!response.ok)throw Error('mavi_talk_stream_unavailable');
+ if(!/application\/x-ndjson/i.test(response.headers.get('content-type')||''))
+  throw Error('mavi_talk_stream_invalid_type');
+ if(!response.body?.getReader)throw Error('mavi_talk_stream_unsupported');
+ return response.body;
+}
+
 export async function fetchMaviAudioStream(ticket,{signal}={}){
  if(typeof ticket!=='string'||ticket.length>2200||!ticket)throw Error('invalid_mavi_ticket');
  const token=await initializeCsrf();
