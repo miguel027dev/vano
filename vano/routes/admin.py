@@ -687,6 +687,36 @@ def admin_dashboard():
     )
 
 
+@app.route("/admin/analytics")
+@app.route("/admin/analytics/<section>")
+@admin_required
+def admin_analytics(section="overview"):
+    """Operational product analytics, read-only and restricted to administrators."""
+    from vano.services.admin_analytics import (
+        ALLOWED_DAYS, EVENT_TYPES, SECTIONS,
+        build_admin_analytics, load_recent_events,
+    )
+    if section not in {item[0] for item in SECTIONS}:
+        abort(404)
+    try:
+        days = int(request.args.get("days", "7"))
+    except (TypeError, ValueError):
+        days = 7
+    if days not in ALLOWED_DAYS:
+        days = 7
+    data = build_admin_analytics(get_db(), section, days)
+    if section == "events":
+        event_type = str(request.args.get("type", "all") or "all").lower()
+        if event_type not in EVENT_TYPES:
+            event_type = "all"
+        data["filter_type"] = event_type
+        data["event_types_filter"] = EVENT_TYPES
+        data["recent_events"] = load_recent_events(get_db(), days, event_type)
+    response = app.make_response(render_template("admin_analytics.html", analytics=data))
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
 @app.route("/api/admin/servers/status")
 @admin_required
 def api_admin_servers_status():
