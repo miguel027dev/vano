@@ -9,6 +9,9 @@ const PRECACHE=[
   '/static/vano-runtime.js',
   '/static/vano-theme.js',
   '/static/vano-map.js',
+  '/static/vano-offline.html',
+  '/static/vano-offline-routes.js',
+  '/static/vano-offline-view.js',
 
 
 
@@ -19,7 +22,7 @@ const PRECACHE=[
   '/static/vano-maps-icon-192.png',
   '/static/vano-maps-icon-512.png',
 ];
-const CORE_RE=/\/static\/(vano\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-access\.js)$/;
+const CORE_RE=/\/static\/(vano\.css|vano-runtime\.js|vano-theme\.js|vano-map\.js|vano-access\.js|vano-offline-routes\.js|vano-offline-view\.js)$/;
 const MEDIA_RE=/\.(?:png|jpe?g|webp|svg|gif|ico|mp3|ogg|wav|woff2?)$/i;
 const NEVER_CACHE_RE=/^\/(?:api|mobile\/auth|admin|login|register|logout|forgot-password|reset-password|account\/delete)(?:\/|$)/;
 const MAPBOX_CACHE_PATH_RE=/^\/(?:styles\/v1|v4|fonts\/v1)\//;
@@ -66,7 +69,7 @@ self.addEventListener('install',event=>{
     // Reuse files the page already fetched, under their exact build URL.
     // Never download the obsolete legacy CSS again during installation.
     await Promise.allSettled(PRECACHE.map(async path=>{
-      const url=path+(/^[a-f0-9]{7,40}$/i.test(BUILD)?'?v='+BUILD:'');
+      const url=path.includes('vano-offline')?path:path+(/^[a-f0-9]{7,40}$/i.test(BUILD)?'?v='+BUILD:'');
       if(await cache.match(url))return;
       const resp=await fetch(url,{cache:'force-cache'});
       if(resp.ok)await cache.put(url,resp);
@@ -90,7 +93,17 @@ self.addEventListener('fetch',event=>{
     return;
   }
   if(NEVER_CACHE_RE.test(url.pathname)) return;
-  if(req.mode==='navigate') return; // HTML must remain network-controlled/auth-safe.
+  if(req.mode==='navigate'){
+    // Only public map entrypoints may fall back to a static, account-neutral document.
+    // Never cache authenticated HTML or intercept login, admin and API navigations.
+    if(url.pathname==='/'||url.pathname==='/mobile/entry'){
+      event.respondWith((async()=>{
+        try{return await fetchWithTimeout(req,4800)}
+        catch(_){const cache=await caches.open(CACHE);return (await cache.match('/static/vano-offline.html'))||Response.error()}
+      })());
+    }
+    return;
+  }
   if(!url.pathname.startsWith('/static/')) return;
 
   // Build fingerprints apply to all local CSS/JS, not just a few older files.

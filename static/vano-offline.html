@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#101a2c">
+  <title>Minhas rotas offline | VANO MAPS</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#101a2c;color:#f3f5fa}
+    *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(circle at top right,#2d3851,#101a2c 58%);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+    main{max-width:760px;margin:auto;padding:22px 18px 64px}
+    a{color:inherit}button{font:inherit;cursor:pointer}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:36px}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:850;letter-spacing:.03em}
+    .brand img{width:40px;height:40px;border-radius:12px;background:#fff}
+    .back{border:1px solid #3a475e;padding:11px 14px;border-radius:14px;text-decoration:none;font-size:13px;color:#dce4f0}
+    .eyebrow{display:inline-block;color:#ffad6f;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;margin-bottom:9px}
+    h1{font-size:clamp(29px,8vw,43px);letter-spacing:-.04em;line-height:1.12;margin:0 0 12px}
+    .lead{color:#b7c4d8;line-height:1.55;font-size:15px;margin:0 0 24px}
+    .panel{background:#1c2940;border:1px solid #35435a;border-radius:22px;padding:20px;margin:14px 0}
+    .panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .panel h2{font-size:17px;margin:0 0 8px}.muted{color:#a9bbd2;font-size:13px;line-height:1.5}
+    .switch{appearance:none;background:#5b6680;border-radius:30px;width:52px;height:30px;position:relative;flex:none;transition:background .2s;cursor:pointer}
+    .switch:before{content:"";position:absolute;top:4px;left:4px;width:22px;height:22px;background:white;border-radius:50%;transition:transform .2s}
+    .switch:checked{background:#ff863d}.switch:checked:before{transform:translateX(22px)}
+    .section-title{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:28px 0 12px}
+    .section-title h2{margin:0;font-size:19px}.counter{font-size:12px;color:#ffb180;font-weight:700}
+    .route{display:block;width:100%;text-align:left;padding:17px;border:1px solid #384a62;border-radius:17px;background:#1a2a41;color:#f8f9fc;margin:0 0 10px}
+    .route:hover,.route:focus-visible{border-color:#ff9455;outline:none}
+    .route b{display:block;margin-bottom:5px;font-size:15px}.route small{display:block;color:#a9bbd2;font-size:12px;line-height:1.5}
+    .empty{border:1px dashed #465670;border-radius:18px;text-align:center;padding:32px 16px;color:#b7c4d8;line-height:1.5}
+    .detail{display:none}.detail.show{display:block}.route-path{display:block;width:100%;height:auto;border-radius:14px;background:#122037;margin:12px 0}
+    .route-caption{font-size:12px;color:#c7d0e0;margin:8px 0 15px}
+    .action-row{display:flex;gap:10px;flex-wrap:wrap}.action{border:1px solid #586a82;border-radius:12px;color:#fff;background:transparent;padding:11px 13px;font-size:13px;font-weight:700}
+    .action.primary{background:#f98540;border-color:#f98540;color:#18202e}.action.danger{color:#ffb6ac}
+    .steps{padding-left:21px;color:#d6deeb;font-size:13px;line-height:1.7}.steps li{padding:3px 0}
+    .notice{color:#ffcca6;background:#443126;border-radius:14px;padding:13px 14px;line-height:1.5;font-size:13px;margin:16px 0}
+    .privacy{font-size:12px;line-height:1.6;color:#9db0cb}
+    [hidden]{display:none!important}
+    @media(min-width:650px){main{padding:32px 32px 76px}.panel{padding:24px}}
+  </style>
+  <script src="/static/vano-offline-routes.js" defer></script>
+  <script src="/static/vano-offline-view.js" defer></script>
+</head>
+<body>
+<main>
+  <header>
+    <span class="brand"><img src="/static/vano-maps-icon-64.png" alt="">VANO MAPS</span>
+    <a class="back" href="/">Voltar ao mapa ↗</a>
+  </header>
+  <span class="eyebrow">Memória de trajetos</span>
+  <h1>Seus caminhos, mesmo sem internet.</h1>
+  <p class="lead">Reveja o trajeto que você já utilizou, direto deste aparelho. O caminho fica disponível mesmo que você abra o VANO sem conexão.</p>
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2>Guardar rotas automaticamente</h2><span class="muted">Salva o caminho quando você inicia uma navegação, sem enviar este histórico a outro servidor.</span></div>
+      <input type="checkbox" class="switch" id="offlineOptIn" aria-label="Ativar salvamento de rotas neste aparelho">
+    </div>
+    <p class="privacy">As rotas ficam neste dispositivo e podem ser vistas por quem tiver acesso a ele. Desativar apaga as rotas guardadas. O sistema não faz download completo das ruas nem oferece recálculo offline.</p>
+  </section>
+  <div class="section-title"><h2>Trajetos guardados</h2><span id="offlineCounter" class="counter">—</span></div>
+  <div id="offlineStatus" class="muted" role="status" aria-live="polite"></div>
+  <div id="offlineList"></div>
+  <section class="panel detail" id="offlineDetail" aria-label="Detalhes da rota salva">
+    <h2 id="offlineRouteTitle"></h2>
+    <p class="muted" id="offlineRouteMeta"></p>
+    <svg id="offlineDrawing" class="route-path" viewBox="0 0 600 420" role="img" aria-label="Desenho aproximado do caminho salvo, sem ruas ou mapa base"></svg>
+    <p class="route-caption">Linha laranja: percurso salvo. Não é um mapa viário atualizado.</p>
+    <div class="action-row">
+      <button type="button" class="action primary" id="offlineLocate">Mostrar meu GPS</button>
+      <button type="button" class="action danger" id="offlineDelete">Apagar esta rota</button>
+    </div>
+    <p id="offlineGpsStatus" class="muted" role="status"></p>
+    <div id="offlineInstructions" hidden><h2>Orientações armazenadas</h2><ol class="steps" id="offlineSteps"></ol></div>
+  </section>
+  <p class="notice">Sem conexão, o GPS do celular pode indicar sua posição, mas trânsito, interdições, endereços novos e tempo de chegada não são atualizados. Confira a sinalização da via.</p>
+  <button type="button" class="action danger" id="offlineClear">Apagar todos os trajetos</button>
+</main>
+</body>
+</html>
