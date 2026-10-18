@@ -118,9 +118,9 @@ export function maviNvidiaQuota(now=Date.now(),limit=120){
  quota.used++;return true;
 }
 export async function interpretMaviWithNvidia(value,context={},{
- config=maviNvidiaConfig(),fetcher=fetch,now=Date.now,requestTimeoutMs
+ config=maviNvidiaConfig(),fetcher=fetch,now=Date.now,requestTimeoutMs,signal
 }={}){
- if(!config.enabled||typeof value!=='string'||value.length<2||value.length>360)return null;
+ if(!config.enabled||signal?.aborted||typeof value!=='string'||value.length<2||value.length>360)return null;
  if(now()<health.openUntil||!maviNvidiaQuota(now()))return null;
  // Send relevant, bounded navigation context for more natural interpretation.
  // Never forward raw GPS, coordinates, destination labels, account data or full route geometry.
@@ -151,7 +151,10 @@ export async function interpretMaviWithNvidia(value,context={},{
  const budget=Number.isFinite(requestTimeoutMs)?Math.min(configuredBudget,Math.max(500,requestTimeoutMs)):configuredBudget;
  const history=context?.talkMode===true?limitedMaviTalkHistory(context?.conversationHistory):[];
  const started=now();
- const abort=new AbortController(),timer=setTimeout(()=>abort.abort(),budget);
+ const abort=new AbortController();
+ const cancelFromClient=()=>abort.abort();
+ signal?.addEventListener?.('abort',cancelFromClient,{once:true});
+ const timer=setTimeout(()=>abort.abort(),budget);
  try{
   const res=await fetcher(API,{
    method:'POST',signal:abort.signal,
@@ -165,12 +168,18 @@ export async function interpretMaviWithNvidia(value,context={},{
     }:{temperature:0.15,chat_template_kwargs:{enable_thinking:false}})})
   });
   if(!res?.ok){recordNvidiaFailure(res?.status===401||res?.status===403?'auth':res?.status===404?'not_found':res?.status===410?'gone':res?.status===429?'rate_limit':'http_'+(Number(res?.status)||'error'),started,now);return null;}
+  if(process.env.VANO_MAVI_METRICS_ENABLED==='1')
+   console.info('MAVI NVIDIA headersMs='+Math.round(now()-started));
   const response=await res.json();
   const result=parseMaviNvidiaDecision(response?.choices?.[0]?.message?.content);
   if(!result){recordNvidiaFailure('invalid_json',started,now);return null;}
   health.failures=0;health.openUntil=0;health.successes++;
   if(process.env.VANO_MAVI_METRICS_ENABLED==='1')console.info('MAVI NVIDIA success latencyMs='+Math.round(now()-started));
   return result;
- }catch(error){recordNvidiaFailure(abort.signal.aborted?'timeout':'network',started,now);return null;}
- finally{clearTimeout(timer);}
+ }catch(error){
+  // User barge-in or a disconnected browser is not an upstream outage.
+  if(signal?.aborted)return null;
+  recordNvidiaFailure(abort.signal.aborted?'timeout':'network',started,now);return null;
+ }
+ finally{clearTimeout(timer);signal?.removeEventListener?.('abort',cancelFromClient);}
 }
