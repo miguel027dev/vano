@@ -30,13 +30,16 @@ test('MAVI mic has accessible visual phases with one click toggle',()=>{
  assert.match(skin,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(skin,/focus-visible/);
 });
-test('silence does not disable listening; speech is gated until response playback completes',()=>{
+test('silence pauses the Android recognizer instead of repeatedly opening the microphone',()=>{
  const jsx=mic();
  assert.match(jsx,/if\(code==='no-speech'\)\{/);
- assert.match(jsx,/recognitionError\.current='';/);
- assert.match(jsx,/setStatus\('ready'\);\s*return;/);
+ assert.match(jsx,/recognitionError\.current='no-speech';/);
+ assert.match(jsx,/recognition\.continuous=false/);
  assert.match(jsx,/maviRecognitionRecovery\(\{/);
- assert.match(jsx,/scheduleNextListen\(recovery\.delay\)/);
+ assert.match(jsx,/setStatus\('typed'\)/);
+ assert.match(jsx,/mavi-mic-recovery/);
+ assert.match(jsx,/Ouvir novamente/);
+ assert.doesNotMatch(jsx.split('recognition.onend=()=>{')[1]?.split('recognition.start()')[0]||'',/scheduleNextListen\(/);
  assert.match(jsx,/if\(navigationAudioActive\(\)\|\|window\.speechSynthesis\?\.speaking\)\{scheduleNextListen\(1100\);return;\}/);
  assert.match(jsx,/if\(!enabledRef\.current\|\|busyRef\.current\|\|recognitionError\.current\|\|!Recognizer\)return/);
  assert.match(jsx,/if\(finished\|\|!enabledRef\.current\|\|controller\.signal\.aborted\|\|voiceTurnRef\.current!==turn\)return/);
