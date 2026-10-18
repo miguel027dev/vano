@@ -1,0 +1,102 @@
+/* /inicio redesign: editorial welcome + lightweight, animated conceptual city.
+   Scoped to vhome: no changes to map, profile, authentication, or Android shell. */
+.vhome{--vhome-orange:#ff5c18;--vhome-ink:#152a23;min-height:100dvh;background:#fffcf5;color:var(--vhome-ink);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;isolation:isolate;display:flex;flex-direction:column}
+.vhome-header{width:min(100%,1240px);margin-inline:auto;padding:clamp(20px,3vw,36px) clamp(24px,4vw,56px) 0;position:relative;z-index:2}
+.vhome .brand.brand-v3{gap:12px;align-items:center}
+.vhome .brand-v3>img{width:51px;height:51px;border-radius:14px}
+.vhome .brand-v3-wordmark{flex-direction:row;align-items:baseline;gap:9px;white-space:nowrap}
+.vhome .brand-v3-wordmark strong{font-size:clamp(1.58rem,2.8vw,2.34rem);font-weight:850;letter-spacing:-.07em;color:var(--vhome-ink)}
+.vhome .brand-v3-wordmark small{font-size:clamp(1.37rem,2.45vw,2.04rem);font-weight:420;letter-spacing:-.07em;color:var(--vhome-ink);padding:0}
+.vhome-wrap{width:min(100%,1240px);margin:0 auto;flex:1;display:flex;flex-direction:column}
+.vhome-hero{display:grid;grid-template-columns: .95fr 1.1fr;align-items:center;gap:0;flex:1;min-height:0;padding:0 clamp(24px,4vw,56px);position:relative}
+.vhome-intro{align-self:center;z-index:1;padding-bottom:46px}
+.vhome-eyebrow{font-size:clamp(.69rem,1.2vw,.84rem);letter-spacing:.3em;font-weight:690;color:#61766d;margin:0 0 27px}
+.vhome-intro h1{font-size:clamp(4.2rem,7.35vw,7.65rem);line-height:.88;letter-spacing:-.088em;font-weight:850;color:var(--vhome-ink);margin:0;white-space:nowrap}
+.vhome-intro h1 span{color:var(--vhome-orange)}
+.vhome-city{width:118%;max-width:none;min-width:0;aspect-ratio:816 / 510;position:relative;margin:0 0 0 -10%;align-self:center;isolation:isolate;animation:vhome-rise .9s .12s both cubic-bezier(.17,.75,.18,1)}
+.vhome-city-glow{position:absolute;inset:17% 8% 4%;border-radius:50%;background:radial-gradient(ellipse,#e6cfad63,transparent 69%);filter:blur(20px);z-index:-1}
+.vhome-city-svg{display:block;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 10px 12px #7b80651c)}
+.vhome-city-scene{transform-origin:50% 55%;animation:vhome-breathe 9s ease-in-out infinite alternate}
+.vhome-path{stroke-dasharray:1;stroke-dashoffset:1;animation:vhome-draw 2.2s .5s cubic-bezier(.24,.56,.25,1) forwards}
+.vhome-path-highlight{stroke-dasharray:1;stroke-dashoffset:1;animation:vhome-draw 2.2s .7s cubic-bezier(.24,.56,.25,1) forwards}
+.vhome-city-caption{position:absolute;left:12%;top:27%;display:flex;align-items:center;gap:9px;padding:12px 16px;border-radius:13px 13px 13px 4px;background:#243a30;color:white;font-size:clamp(.75rem,1.8vw,1.07rem);font-weight:720;box-shadow:0 12px 24px #2c463628;letter-spacing:-.03em;animation:vhome-pop .5s 1.6s both}
+.vhome-city-caption:after{content:'';position:absolute;left:20px;bottom:-10px;border:11px solid transparent;border-top-color:#243a30;border-bottom:0}
+.vhome-turn{font-weight:900;font-size:1.4em;line-height:1}
+.vhome-pin{animation:vhome-pin 2.6s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 80%}
+.vhome-pulse{animation:vhome-pulse 3s ease-in-out infinite;transform-origin:center;transform-box:fill-box}
+.vhome-city-disclaimer{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.vhome-bottom{padding:0 clamp(24px,4vw,56px) clamp(19px,3vw,30px);display:flex;align-items:center;flex-direction:column;gap:14px}
+.vhome-description{text-align:center;font-weight:560;color:#60726d;line-height:1.37;font-size:clamp(1rem,1.9vw,1.25rem);margin:0 0 4px;letter-spacing:-.035em}
+.vhome-actions{width:min(100%,580px);display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.vhome-primary,.vhome-secondary{min-height:58px;border-radius:17px;display:flex;align-items:center;justify-content:center;gap:13px;font-weight:680;font-size:1rem;transition:transform .22s ease,box-shadow .22s ease,background-color .22s ease}
+.vhome-primary{background:var(--vhome-orange);color:white;box-shadow:0 12px 24px #ff5c181b}
+.vhome-secondary{background:transparent;border:1.5px solid #22362e;color:var(--vhome-ink)}
+.vhome-primary:hover,.vhome-secondary:hover{transform:translateY(-2px)}
+.vhome-primary:hover{background:#e95012;box-shadow:0 15px 27px #ff5c182b}
+.vhome-secondary:hover{background:#f4f2e9}
+.vhome-explore{grid-column:1 / -1;justify-self:center;display:flex;align-items:center;gap:7px;color:var(--vhome-orange);font-size:.93rem;font-weight:690;min-height:35px;padding:3px 8px}
+.vhome-explore:hover{text-decoration:underline;text-underline-offset:4px}
+.vhome-footer{display:flex;justify-content:center;gap:13px;align-items:center;color:#a4ada2;font-size:.72rem}
+.vhome-footer a:hover{color:var(--vhome-orange)}
+@keyframes vhome-draw{to{stroke-dashoffset:0}}
+@keyframes vhome-rise{from{opacity:0;transform:translateY(24px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes vhome-pop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes vhome-breathe{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+@keyframes vhome-pin{50%{translate:0 -5px}}
+@keyframes vhome-pulse{50%{opacity:.06;scale:1.3}}
+@media(min-width:820px) and (min-height:650px){.vhome-hero{max-height:740px}.vhome-bottom{padding-top:12px}}
+@media(max-width:819px){
+ .vhome-header{padding:calc(env(safe-area-inset-top,0px) + 24px) 24px 0}
+ .vhome .brand-v3>img{width:46px;height:46px}
+ .vhome .brand-v3-wordmark strong{font-size:1.7rem}
+ .vhome .brand-v3-wordmark small{font-size:1.47rem}
+ .vhome-hero{display:flex;flex-direction:column;align-items:stretch;justify-content:start;flex:none;gap:0;padding:36px 24px 0}
+ .vhome-intro{padding-bottom:0;align-self:stretch}
+ .vhome-eyebrow{font-size:.73rem;letter-spacing:.25em;margin-bottom:24px}
+ .vhome-intro h1{font-size:clamp(3.5rem,11vw,6.7rem);line-height:.91;letter-spacing:-.08em}
+ .vhome-city{width:calc(100% + 56px);max-width:720px;margin:-8px -28px -8px;align-self:center}
+ .vhome-city-caption{top:29%;left:13%}
+ .vhome-bottom{padding:3px 24px max(22px,env(safe-area-inset-bottom,0px));gap:11px;margin-top:auto}
+ .vhome-actions{grid-template-columns:1fr;gap:9px}
+ .vhome-primary,.vhome-secondary{min-height:55px;border-radius:15px}
+ .vhome-explore{grid-column:auto}
+}
+@media(max-width:480px){
+ .vhome-header{padding:calc(env(safe-area-inset-top,0px) + 22px) 23px 0}
+ .vhome .brand.brand-v3{gap:9px}
+ .vhome .brand-v3>img{width:45px;height:45px;border-radius:12px}
+ .vhome .brand-v3-wordmark{gap:6px}
+ .vhome .brand-v3-wordmark strong{font-size:1.6rem}
+ .vhome .brand-v3-wordmark small{font-size:1.4rem}
+ .vhome-hero{padding:36px 23px 0}
+ .vhome-eyebrow{font-size:.67rem;letter-spacing:.24em;margin-bottom:25px}
+ .vhome-intro h1{font-size:clamp(3.65rem,12vw,5.1rem);letter-spacing:-.083em;line-height:.9}
+ .vhome-city{width:calc(100% + 67px);margin:-10px -34px -2px}
+ .vhome-city-caption{padding:8px 11px;font-size:.75rem;border-radius:11px}
+ .vhome-description{font-size:1rem}
+ .vhome-bottom{padding:4px 23px max(18px,env(safe-area-inset-bottom,0px))}
+ .vhome-primary,.vhome-secondary{min-height:53px;font-size:1rem}
+}
+@media(max-width:365px){
+ .vhome .brand-v3-wordmark strong{font-size:1.36rem}
+ .vhome .brand-v3-wordmark small{font-size:1.15rem}
+ .vhome-eyebrow{letter-spacing:.19em}
+ .vhome-intro h1{font-size:3.24rem}
+}
+@media(max-height:750px) and (max-width:819px){
+ .vhome-hero{padding-top:20px}
+ .vhome-eyebrow{margin-bottom:14px}
+ .vhome-intro h1{font-size:clamp(3.1rem,10.5vw,4.5rem)}
+ .vhome-city{margin-top:-25px;margin-bottom:-16px}
+ .vhome-bottom{gap:8px}
+ .vhome-primary,.vhome-secondary{min-height:48px}
+}
+@media(prefers-reduced-motion:reduce){
+ .vhome-city,.vhome-city-scene,.vhome-city-caption,.vhome-pin,.vhome-pulse,.vhome-path,.vhome-path-highlight{animation:none!important;transition:none!important}
+ .vhome-path,.vhome-path-highlight{stroke-dashoffset:0}
+}
+[data-theme='dark'] .vhome{background:#151e1a;color:#f7f6ef;--vhome-ink:#f2f3e9}
+[data-theme='dark'] .vhome-eyebrow,[data-theme='dark'] .vhome-description{color:#b9c8bd}
+[data-theme='dark'] .vhome-secondary{border-color:#89998d;background:#1e2b23;color:#f6f6ee}
+[data-theme='dark'] .vhome .brand-v3-wordmark strong,[data-theme='dark'] .vhome .brand-v3-wordmark small{color:var(--vhome-ink)}
+[data-theme='dark'] .vhome-city-glow{opacity:.28}
