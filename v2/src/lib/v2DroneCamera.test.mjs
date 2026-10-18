@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView} from './v2DroneCamera.mjs';
+import {planV2DroneCamera,V2_DRONE_PLAYBACK_RATE,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase} from './v2DroneCamera.mjs';
 const route={steps:[{type:'depart'},{type:'roundabout',modifier:'right'},{type:'off ramp'},{type:'arrive'}]};
 const maneuver=(stepIndex,distance)=>({stepIndex,distance,kind:route.steps[stepIndex].type,modifier:route.steps[stepIndex].modifier});
 
@@ -226,8 +226,72 @@ test('V2 Sim entry close-up anchors to the animated user icon in open and dense 
  assert.match(map,/v2UserCenteredRampView\(userPuck,markerHeading,ramp\.lookAheadMeters\)/);
  assert.match(map,/if\(ramp\.active&&urbanBlend<\.001\)return rampCloseup\(base\)/);
  assert.match(map,/return rampCloseup\(\{\.\.\.base/);
- assert.match(map,/if\(urbanBlend<\.001\)return base/);
+ assert.match(map,/if\(urbanBlend<\.001\)return rampCloseup\(base\)/);
  assert.match(page,/simulationPreview=\{simActive\}/);
  assert.match(page,/droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
  assert.doesNotMatch(map.slice(map.indexOf('function rampCloseup(view)'),map.indexOf('if(ramp.active&&urbanBlend<.001)')),/nearestOnRoute|lookPos|snapTo|route\.geometry/);
+});
+
+test('V2 cinematic camera follows behind the vehicle throughout simulated journey',()=>{
+ const base={enabled:true,vehicle:'carro',speed:11};
+ const open=planV2RearChase({...base,urbanDensity:0});
+ const urban=planV2RearChase({...base,urbanDensity:1,obstruction:.6});
+ const ramp=planV2RearChase({...base,urbanDensity:.5,rampStrength:1});
+ assert.equal(open.enabled,true);
+ assert.ok(open.pitch>=48,'open areas retain a rear third-person angle');
+ assert.ok(open.lookAheadMeters>=8&&open.lookAheadMeters<=18);
+ assert.ok(urban.pitch<open.pitch,'dense buildings lower camera to avoid walls');
+ assert.ok(ramp.zoom>open.zoom,'ramp approaches draw gently closer to the user');
+ assert.ok(ramp.zoom<=18.18);
+ assert.ok(ramp.lookAheadMeters<open.lookAheadMeters,'near entry avoid excessive forward focus');
+ const notSimulated=planV2RearChase({...base,enabled:false});
+ assert.equal(notSimulated.enabled,false);
+ assert.equal(planV2RearChase({...base,vehicle:'a-pe'}).enabled,false);
+});
+
+test('very close building walls reduce camera pitch and keep reduced-motion accessible',()=>{
+ const base={enabled:true,vehicle:'moto',compactViewport:true,urbanDensity:1};
+ const noBlock=planV2RearChase(base);
+ const blocked=planV2RearChase({...base,obstruction:1,rampStrength:1});
+ assert.ok(blocked.pitch<noBlock.pitch);
+ assert.ok(blocked.pitch>=30,'never jump below a stable safe pitch');
+ assert.ok(blocked.zoom<=18.18);
+ const accessible=planV2RearChase({...base,obstruction:1,reducedMotion:true});
+ assert.equal(accessible.pitch,0);
+ assert.equal(accessible.lookAheadMeters,0);
+});
+
+test('nearby building footprints directly behind the user trigger obstruction handling',()=>{
+ const puck=[-46.68,-23.58];
+ const polygon=(id,east,north,height=40)=>({
+   id,layer:{id:'building-3d',type:'fill-extrusion'},properties:{height},
+   geometry:{type:'Polygon',coordinates:[[
+     [puck[0]+east-.00002,puck[1]+north-.00002],
+     [puck[0]+east+.00002,puck[1]+north-.00002],
+     [puck[0]+east+.00002,puck[1]+north+.00002],
+     [puck[0]+east-.00002,puck[1]+north+.00002],
+     [puck[0]+east-.00002,puck[1]+north-.00002]
+   ]]}
+ });
+ const walls=[polygon('a',.00009,-.00018),polygon('b',-.0001,-.00027),polygon('c',.00008,-.0004)];
+ const withWalls=observeV2DroneScene(walls,puck,0);
+ assert.ok(withWalls.obstruction>=.9);
+ const farInFront=observeV2DroneScene([polygon('d',.00005,.0008)],puck,0);
+ assert.equal(farInFront.obstruction,0);
+ assert.equal(observeV2DroneScene(null,puck,0).obstruction,0);
+});
+
+test('V2 simulated follow uses user pointer and keeps marker visible when terrain occludes it',()=>{
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
+ assert.match(map,/const chase=planV2RearChase\(/);
+ assert.match(map,/v2UserCenteredRampView\(\s*userPuck,markerHeading,chase\.lookAheadMeters\s*\)/);
+ assert.match(map,/if\(urbanBlend<\.001\)return rampCloseup\(base\)/);
+ assert.match(map,/return rampCloseup\(\{\.\.\.base/);
+ assert.match(map,/getOccludedOpacity\?\.\(\)/);
+ assert.match(map,/setOccludedOpacity\?\.\(visibility\)/);
+ assert.match(map,/cinematic:Boolean\(latest\.current\.droneSimulation\)/);
+ assert.match(map,/obstruction:map\._vanoV2UrbanObstruction\|\|0/);
+ assert.match(page,/droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
+ assert.doesNotMatch(page,/setUserCoords\(simPosition/);
 });
