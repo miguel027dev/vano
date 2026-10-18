@@ -1,55 +1,60 @@
 import React, { useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowUpRight, CornerUpRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { Brand } from '../components/Brand';
 import {useVano} from '../context';
 import './entry-city.css';
 
-// Project a small, fixed illustration once. No tiles, WebGL, network or frame loop.
-const project=(x,y,z=0)=>[320+(x-y)*.72,38+(x+y)*.36-z];
-const points=vertices=>vertices.map(([x,y,z])=>project(x,y,z).join(',')).join(' ');
-const blocks=[];
-for(let row=0;row<6;row++)for(let col=0;col<6;col++){
-  const x=col*70+11,y=row*70+11;
-  blocks.push({x,y,park:(row+col)%4===0,height:17+(row*13+col*9)%27});
+// The original landing-page hero, ported without changing its geometry or motion.
+const buildings=[];
+for(let row=0;row<8;row++)for(let col=0;col<8;col++){
+  if((col===0&&row>4)||(row===4&&col<4)||(col===3&&row<5)||(row===1&&col>3)||(col+row)%4===0)continue;
+  buildings.push({x:col*100+19,y:row*100+20,h:12+((col*17+row*13)%27),sage:(col+row)%3===0});
 }
-const route=points([[70,350],[70,280],[280,280],[280,70],[350,70]]);
-const start=project(70,350),end=project(350,70);
-
 function WelcomeCity({t}){
-  const scene=useRef(null);
+  const scene=useRef(null),city=useRef(null);
+  const gridId=React.useId().replace(/:/g,'');
   useEffect(()=>{
     const element=scene.current;
     let inView=true;
     const sync=()=>{element.dataset.paused=String(document.hidden||!inView)};
     const observer=typeof IntersectionObserver==='function'?new IntersectionObserver(([entry])=>{inView=entry.isIntersecting;sync()}):null;
-    observer?.observe(element);
-    document.addEventListener('visibilitychange',sync);sync();
-    return()=>{observer?.disconnect();document.removeEventListener('visibilitychange',sync)};
+    observer?.observe(element);document.addEventListener('visibilitychange',sync);sync();
+    const media=window.matchMedia('(prefers-reduced-motion: reduce)');
+    const move=e=>{
+      if(media.matches||e.pointerType!=='mouse')return;
+      const b=element.getBoundingClientRect(),x=(e.clientX-b.left)/b.width-.5,y=(e.clientY-b.top)/b.height-.5;
+      city.current.style.transform=`rotateX(${44-y*7}deg) rotateZ(${-34+x*5}deg) translate(${x*12}px,${y*12}px)`;
+    };
+    const reset=()=>{city.current.style.transform=''};
+    element.addEventListener('pointermove',move);element.addEventListener('pointerleave',reset);media.addEventListener?.('change',reset);
+    return()=>{observer?.disconnect();document.removeEventListener('visibilitychange',sync);element.removeEventListener('pointermove',move);element.removeEventListener('pointerleave',reset);media.removeEventListener?.('change',reset)};
   },[]);
   return <div className="entry-city" ref={scene} aria-hidden="true">
-    <div className="entry-city-halo"/>
-    <svg className="entry-city-art" viewBox="0 0 640 370" fill="none" focusable="false">
-      <path d={`M${points([[0,0],[420,0],[420,420],[0,420]])}Z`} fill="var(--city-edge)" transform="translate(0 7)"/>
-      <path d={`M${points([[0,0],[420,0],[420,420],[0,420]])}Z`} fill="var(--city-ground)"/>
-      <path d={`M${points([[0,205],[420,205],[420,231],[0,231]])}Z`} fill="var(--city-water)"/>
-      {blocks.map(({x,y,park})=><path key={`lot-${x}-${y}`} d={`M${points([[x-5,y-5],[x+53,y-5],[x+53,y+53],[x-5,y+53]])}Z`} fill={park?'var(--city-park)':'var(--city-lot)'}/>)}
-      {[0,70,140,210,280,350,420].map(n=><g key={`road-${n}`} stroke="var(--city-street)" strokeWidth="7"><polyline points={points([[n,0],[n,420]])}/><polyline points={points([[0,n],[420,n]])}/></g>)}
-      <polyline points={route} stroke="var(--city-street)" strokeWidth="17" strokeLinejoin="round"/>
-      <polyline className="v5-entry-line entry-city-route" points={route} pathLength="1" stroke="var(--city-orange)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
-      <polyline className="entry-city-flow" points={route} pathLength="1" stroke="#ffdfba" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-      {blocks.map(({x,y,park,height},i)=>park?<g key={`park-${i}`}>
-        {[0,22,42].map((offset,j)=>{const [cx,cy]=project(x+offset,y+22,7);return <g key={j}><ellipse cx={cx+3} cy={cy+9} rx="9" ry="3" fill="var(--city-shadow)"/><path d={`M${cx} ${cy+3}v8`} stroke="var(--city-tree-trunk)" strokeWidth="2"/><ellipse cx={cx} cy={cy} rx="6" ry="9" fill="var(--city-tree)"/></g>})}
-      </g>:<g key={`building-${i}`}>
-        <path d={`M${points([[x,y+40],[x+38,y+40],[x+38,y+40,height],[x,y+40,height]])}Z`} fill="var(--city-building-front)"/>
-        <path d={`M${points([[x+38,y],[x+38,y+40],[x+38,y+40,height],[x+38,y,height]])}Z`} fill="var(--city-building-side)"/>
-        <path d={`M${points([[x,y,height],[x+38,y,height],[x+38,y+40,height],[x,y+40,height]])}Z`} fill="var(--city-building-top)"/>
-        <path d={`M${points([[x+7,y+7,height+2],[x+30,y+7,height+2],[x+30,y+31,height+2],[x+7,y+31,height+2]])}Z`} stroke="var(--city-roof)" strokeWidth="2"/>
-      </g>)}
-      <g transform={`translate(${end[0]} ${end[1]})`}><ellipse cy="2" rx="13" ry="6" fill="var(--city-shadow)"/><path d="M0 0C-4-6-13-14-13-22a13 13 0 0 1 26 0C13-14 4-6 0 0Z" fill="var(--city-orange)" stroke="var(--city-street)" strokeWidth="3"/><circle cy="-22" r="4" fill="white"/></g>
-      <g transform={`translate(${start[0]} ${start[1]})`}><ellipse className="entry-city-pulse" rx="27" ry="16" stroke="var(--city-orange)"/><ellipse rx="24" ry="14" fill="var(--city-orange)" opacity=".13"/><g className="entry-city-pointer"><path d="M0-20L13 9 0 4-13 9Z" fill="var(--city-orange)" stroke="var(--city-street)" strokeWidth="4" strokeLinejoin="round"/></g></g>
-    </svg>
-    <div className="entry-city-guidance"><CornerUpRight size={24} strokeWidth={2.6}/><span>{t('Vá do seu jeito.')}</span></div>
+    <div className="scene-label"><span className="scene-dot"/>{t('UM NOVO OLHAR PARA O SEU TRAJETO')}</div>
+    <div className="orb"/>
+    <div className="city-wrap" ref={city}>
+      <svg className="city" viewBox="0 0 800 800" focusable="false">
+        <defs><pattern id={gridId} width="100" height="100" patternUnits="userSpaceOnUse"><rect x="8" y="8" width="84" height="84" rx="10" fill="#d6dbcf"/><path d="M0 0H100V100" fill="none" stroke="#fffdf5" strokeWidth="12"/></pattern></defs>
+        <rect width="800" height="800" rx="20" fill={`url(#${gridId})`}/>
+        <path d="M0 650Q190 570 240 380T800 100" fill="none" stroke="#9fbfb2" strokeWidth="62"/>
+        <path d="M0 650Q190 570 240 380T800 100" fill="none" stroke="#bad2c5" strokeWidth="45"/>
+        <g>{buildings.map(({x,y,h,sage},i)=><g key={i}><path d={`M${x} ${y}h52v52h-52Z`} fill="#b8c0ac"/><path d={`M${x+52} ${y}l${h} -${h}v52l-${h} ${h}Z`} fill="#c1c8b5"/><path d={`M${x} ${y}l${h} -${h}h52l-${h} ${h}Z`} fill="#f4f2e6"/><rect x={x+h} y={y-h} width="52" height="52" rx="3" fill={sage?'#bec9af':'#e8e9d9'}/></g>)}</g>
+        <g strokeLinejoin="round" strokeLinecap="round" fill="none">
+          <path className="alt-route" d="M100 700V500H400V200H700" stroke="#fffdf7" strokeWidth="26"/>
+          <path className="main-route route-shadow" d="M100 700V500H400V200H700" stroke="#b14b22" strokeWidth="25"/>
+          <path className="v5-entry-line main-route" d="M100 700V500H400V200H700" stroke="#ed672e" strokeWidth="18"/>
+          <path className="route-dash main-route" d="M100 700V500H400V200H700" stroke="#ffd6ad" strokeWidth="3"/>
+        </g>
+        <circle cx="700" cy="200" r="24" fill="#252e27" stroke="#fffdf7" strokeWidth="8"/><circle cx="700" cy="200" r="6" fill="#fff"/>
+        <g transform="translate(400 390)"><circle r="36" fill="#fdfaf1"/><circle className="gps-pulse" r="45" fill="none" stroke="#f47a31" strokeWidth="2"/><path d="M0-23L18 17 0 10-18 17Z" fill="#ed672e"/></g>
+        <text x="480" y="680" className="map-text">SÃO PAULO</text>
+      </svg>
+    </div>
+    <div className="turn-card floating"><span className="scene-turn-icon">↱</span><div><small>{t('SEU PRÓXIMO MOVIMENTO')}</small><strong>{t('Vá do seu jeito.')}</strong></div><span className="live-dot"/></div>
+    <div className="destination floating"><span>◎</span><div><small>{t('PRÓXIMA PARADA')}</small><strong>{t('Novas possibilidades.')}</strong></div><span>↗</span></div>
+    <div className="coordinate">23°33′ S &nbsp; 46°38′ W <span>{t('FEITO PARA SE MOVER')}</span></div>
+    <div className="art-caption">{t('Visual ilustrativo • não representa uma rota real')}</div>
   </div>;
 }
 
