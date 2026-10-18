@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% block title %}Central de análises · VANO MAPS{% endblock %}
+{% block tail_head %}
+<style>
+/* Isolated analytics system: it does not change the map, admin nodes or public pages. */
+body:has(.insights-hub){background:#f5f6f9!important;color:#242b39!important}
+body:has(.insights-hub):before{display:none!important}
+.insights-hub{--i-accent:#e9804d;--i-text:#263043;--i-muted:#7b8496;--i-border:#e5e8ef;--i-panel:#fff;--i-soft:#f9fafc;box-sizing:border-box;max-width:1360px;margin:0 auto;padding:30px 24px 90px;color:var(--i-text)}
+.insights-hub *{box-sizing:border-box}
+.insights-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px}
+.insights-kicker{display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:.15em;font-weight:900;color:#cc6a3b}
+.insights-kicker span{width:7px;height:7px;border-radius:50%;background:#f29a6b;box-shadow:0 0 0 4px #fff0e9}
+.insights-hero h1{margin:7px 0 5px;font-size:clamp(27px,3.6vw,41px);font-weight:850;letter-spacing:-1.5px}
+.insights-hero p{max-width:700px;margin:0;color:var(--i-muted);font-size:13px;line-height:1.65}
+.insights-back{flex-shrink:0;display:inline-flex;align-items:center;gap:9px;padding:12px 16px;border:1px solid var(--i-border);border-radius:13px;background:white;color:var(--i-text);font-size:12px;font-weight:800;text-decoration:none}
+.insights-back:hover,.insights-tab:hover{border-color:#f4af8c;transform:translateY(-1px)}
+.insights-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:22px 0 17px}
+.insights-tab{display:flex;align-items:center;gap:11px;padding:15px 12px;border:1px solid var(--i-border);border-radius:16px;background:white;color:#626b7d;text-decoration:none;min-height:70px;transition:background .15s,border-color .15s,transform .15s}
+.insights-tab svg{flex:none}
+.insights-tab span{font-size:12px;font-weight:800;line-height:1.25}
+.insights-tab.active{background:#fff2eb;border-color:#f4c1a8;color:#ad4c22;box-shadow:0 5px 22px rgba(233,128,77,.075)}
+.insights-filters{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin:15px 0 17px}
+.insights-filters p{margin:0;color:var(--i-muted);font-size:11px}
+.insights-filters form{display:flex;align-items:center;gap:9px}
+.insights-filters label{font-size:11px;color:var(--i-muted);font-weight:700}
+.insights-filters select,.insights-filters button{height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--i-border);background:white;color:var(--i-text);font-weight:700;font-size:12px}
+.insights-filters button{background:#303849;color:white;cursor:pointer}
+.insights-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:15px}
+.insights-kpi{min-width:0;padding:17px 18px;background:var(--i-panel);border:1px solid var(--i-border);border-radius:18px}
+.insights-kpi small{display:block;color:var(--i-muted);font-size:10px;font-weight:850;letter-spacing:.04em}
+.insights-kpi strong{display:block;margin:10px 0 4px;line-height:1.1;font-size:clamp(25px,3vw,36px);font-weight:900;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.insights-kpi span{font-size:10px;color:#929aab;line-height:1.5}
+.insights-kpi.emphasis{background:#273347;border-color:#273347;color:white}
+.insights-kpi.emphasis small,.insights-kpi.emphasis span{color:#cad1de}
+.insights-content{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:13px}
+.insights-card{grid-column:span 12;min-width:0;background:var(--i-panel);border:1px solid var(--i-border);border-radius:18px;overflow:hidden}
+.insights-card.half{grid-column:span 6}
+.insights-card-head{padding:19px 20px 13px}
+.insights-card-head small{display:block;color:#d47a4d;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase}
+.insights-card-head h2{font-size:18px;letter-spacing:-.5px;margin:6px 0 3px;color:var(--i-text)}
+.insights-card-head p{margin:0;color:var(--i-muted);font-size:11px;line-height:1.6}
+.insights-card-body{padding:8px 20px 20px}
+.insights-chart{display:flex;align-items:flex-end;gap:8px;min-height:205px;overflow:auto;padding-top:12px}
+.insights-chart-item{height:185px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;flex:1;min-width:26px}
+.insights-chart-item b{font-size:9px;color:#778093;margin-bottom:6px;font-weight:700}
+.insights-chart-item .bar{width:100%;max-width:47px;background:linear-gradient(180deg,#f6a375,#e6814d);min-height:3px;border-radius:7px 7px 2px 2px}
+.insights-chart-item small{font-size:9px;color:#818b9e;margin-top:8px}
+.insights-list{display:grid;gap:0}
+.insights-list-row{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-bottom:1px solid #f0f1f5;font-size:12px}
+.insights-list-row:last-child{border-bottom:0}
+.insights-list-row b{font-weight:750;overflow-wrap:anywhere}
+.insights-list-row span{color:var(--i-muted);font-size:11px}
+.insights-list-row strong{flex-shrink:0;font-variant-numeric:tabular-nums}
+.insights-data-table-wrap{overflow:auto;max-height:620px}
+.insights-table{width:100%;border-collapse:collapse;min-width:610px;text-align:left}
+.insights-table th{padding:12px 17px;background:#fbfcfd;font-size:9px;letter-spacing:.09em;color:#8892a1;text-transform:uppercase;position:sticky;top:0}
+.insights-table td{padding:13px 17px;border-top:1px solid #eef0f4;font-size:11px;color:#505a6c;vertical-align:top}
+.insights-table td b{color:#2f394a;font-weight:750}
+.insights-table td small{display:block;color:#8f97a6;margin-top:4px;font-size:10px}
+.insights-tag{display:inline-flex;align-items:center;padding:5px 8px;border-radius:8px;background:#f3f5f9;color:#657083;font-weight:800;font-size:10px}
+.insights-tag.warn{background:#fff0e8;color:#b56139}
+.insights-empty{margin:8px 0;padding:25px 12px;border:1px dashed #dfe3eb;border-radius:12px;color:#949aab;text-align:center;font-size:12px}
+.insights-note{display:flex;gap:12px;align-items:flex-start;padding:17px 19px;margin-top:14px;border:1px solid #e7e9f0;border-radius:16px;background:#fcfcfd;color:#737d90}
+.insights-note svg{flex:none;color:#df875d}
+.insights-note div{font-size:11px;line-height:1.7}
+.insights-note b{color:#495366}
+.insights-subnav{display:flex;gap:7px;overflow:auto;padding:4px 20px 15px}
+.insights-subnav a{flex:none;padding:8px 11px;border-radius:9px;text-decoration:none;background:#f4f6f9;color:#677287;font-size:10px;font-weight:800}
+.insights-subnav a.active{background:#fae9dd;color:#a84f2b}
+.insights-mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:7px 20px 20px}
+.insights-mini{padding:13px;border:1px solid #edf0f4;border-radius:12px;background:#f9fafc}
+.insights-mini b{display:block;margin-bottom:5px;font-size:24px;font-weight:850}
+.insights-mini span{font-size:10px;color:#7a8394}
+@media(max-width:1050px){.insights-tabs{grid-template-columns:repeat(3,minmax(0,1fr))}.insights-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:750px){.insights-hub{padding:20px 14px 70px}.insights-hero{align-items:flex-start}.insights-hero h1{font-size:29px}.insights-back{padding:10px;font-size:0}.insights-back svg{width:19px;height:19px}.insights-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.insights-tab{min-height:60px;padding:12px 9px;gap:8px}.insights-tab span{font-size:10px}.insights-card.half{grid-column:span 12}.insights-kpi{padding:15px}.insights-card-head{padding:17px 15px 11px}.insights-card-body{padding:8px 15px 16px}.insights-mini-grid{grid-template-columns:1fr;padding:5px 15px 15px}.insights-chart{gap:5px}}
+@media(max-width:410px){.insights-tabs{grid-template-columns:1fr 1fr}.insights-hero p{font-size:11px}.insights-kpi strong{font-size:26px}}
+@media(prefers-reduced-motion:reduce){.insights-tab,.insights-back{transition:none}.insights-tab:hover,.insights-back:hover{transform:none}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="insights-hub" id="conteudo-principal" tabindex="-1">
+  <header class="insights-hero">
+    <div><div class="insights-kicker"><span></span> VANO CONTROL CENTER · INTELIGÊNCIA</div>
+      <h1>Central de análises</h1>
+      <p>Entenda o uso real do VANO MAPS sem misturar usuários, rotas, interações e operação numa tela só.</p>
+    </div>
+    <a class="insights-back" href="{{ url_for('admin_dashboard') }}"><i data-lucide="arrow-left" width="16"></i> Administração</a>
+  </header>
+
+  <nav class="insights-tabs" aria-label="Categorias de análise">
+    {% for key,label,icon in analytics.sections %}
+    <a href="{{ url_for('admin_analytics', section=key, days=analytics.days) }}"
+       class="insights-tab {% if analytics.section == key %}active{% endif %}" {% if analytics.section == key %}aria-current="page"{% endif %}>
+      <i data-lucide="{{ icon }}" width="19"></i><span>{{ label }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+
+  <div class="insights-filters">
+    <p>Dados registrados no servidor · Período em UTC · Atualize a página para obter novos registros</p>
+    <form method="get" action="{{ url_for('admin_analytics', section=analytics.section) }}">
+      {% if analytics.section == 'events' %}<input type="hidden" name="type" value="{{ analytics.filter_type }}">{% endif %}
+      <label for="insights-days">Intervalo</label>
+      <select id="insights-days" name="days">
+        <option value="1" {% if analytics.days==1 %}selected{% endif %}>24 horas</option>
+        <option value="7" {% if analytics.days==7 %}selected{% endif %}>7 dias</option>
+        <option value="30" {% if analytics.days==30 %}selected{% endif %}>30 dias</option>
+        <option value="90" {% if analytics.days==90 %}selected{% endif %}>90 dias</option>
+      </select>
+      <button type="submit">Aplicar</button>
+    </form>
+  </div>
+
+  <section class="insights-kpis" aria-label="Indicadores principais">
+    <article class="insights-kpi emphasis"><small>CONTAS ATIVAS · 5 MIN</small><strong>{{ analytics.active.signed_in_users or 0 }}</strong><span>Usuários autenticados com atividade registrada</span></article>
+    <article class="insights-kpi"><small>REDES / IPS DISTINTOS</small><strong>{{ analytics.summary.unique_ips or 0 }}</strong><span>Não equivale ao número de pessoas</span></article>
+    <article class="insights-kpi"><small>AMBIENTES ESTIMADOS</small><strong>{{ analytics.summary.browser_signatures or 0 }}</strong><span>Assinaturas de IP + navegador, não aparelhos físicos</span></article>
+    <article class="insights-kpi"><small>EVENTOS REGISTRADOS</small><strong>{{ analytics.summary.events or 0 }}</strong><span>No período de {{ analytics.period_label }}</span></article>
+  </section>
+
+  <div class="insights-content">
+  {% if analytics.section == 'overview' %}
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>USO DO PRODUTO</small><h2>Atividade por dia</h2><p>Volume dos eventos disponíveis na instrumentação.</p></header>
+      <div class="insights-card-body">
+        {% if analytics.daily %}
+        <div class="insights-chart" role="img" aria-label="Gráfico de eventos registrados diariamente">
+          {% for day in analytics.daily %}
+          <div class="insights-chart-item" title="{{ day.day }}: {{ day.events }} eventos">
+            <b>{{ day.events }}</b><span class="bar" style="height:{{ ((day.events / analytics.peak) * 138)|round|int }}px"></span>
+            <small>{{ day.day[5:] }}</small>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}<div class="insights-empty">Sem atividade registrada no período.</div>{% endif %}
+      </div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>NAVEGAÇÃO</small><h2>Etapas de utilização</h2><p>Contagens independentes; uma chamada não corresponde necessariamente a uma viagem.</p></header>
+      <div class="insights-card-body"><div class="insights-list">
+        <div class="insights-list-row"><b>Contas identificadas</b><strong>{{ analytics.summary.known_users or 0 }}</strong></div>
+        <div class="insights-list-row"><b>Cliques registrados</b><strong>{{ analytics.summary.clicks or 0 }}</strong></div>
+        <div class="insights-list-row"><b>Cálculos de rota respondidos com sucesso</b><strong>{{ analytics.route_calls.successes or 0 }}</strong></div>
+        <div class="insights-list-row"><b>Falhas em cálculos de rota</b><strong>{{ analytics.route_calls.failures or 0 }}</strong></div>
+        <div class="insights-list-row"><b>Erros HTTP</b><strong>{{ analytics.summary.http_errors or 0 }}</strong></div>
+      </div></div>
+    </section>
+    <section class="insights-card">
+      <header class="insights-card-head"><small>ACESSO</small><h2>Páginas mais visitadas</h2><p>Somente acessos GET registrados, sem páginas administrativas ou endpoints de API.</p></header>
+      <div class="insights-card-body">
+        {% for item in analytics.top_pages %}
+        <div class="insights-list-row"><b>{{ item.path }}</b><strong>{{ item.visits }}</strong></div>
+        {% else %}<div class="insights-empty">Ainda não há acessos registrados.</div>{% endfor %}
+      </div>
+    </section>
+
+  {% elif analytics.section == 'audience' %}
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>PUBLICO</small><h2>Quem está utilizando?</h2><p>Identidades verificáveis separadas das estimativas de redes e navegadores.</p></header>
+      <div class="insights-mini-grid">
+        <div class="insights-mini"><b>{{ analytics.summary.known_users or 0 }}</b><span>Contas com atividade no intervalo</span></div>
+        <div class="insights-mini"><b>{{ analytics.active.active_ips or 0 }}</b><span>Redes distintas nos últimos 5 minutos</span></div>
+        <div class="insights-mini"><b>{{ analytics.active.recent_events or 0 }}</b><span>Eventos nos últimos 5 minutos</span></div>
+      </div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>APARELHOS</small><h2>Plataformas detectadas</h2><p>Estimativa de ambientes por assinatura de IP e navegador.</p></header>
+      <div class="insights-card-body">
+        {% for item in analytics.platforms %}<div class="insights-list-row"><b>{{ item.platform }}</b><strong>{{ item.signatures }}</strong></div>
+        {% else %}<div class="insights-empty">Sem dados de plataforma.</div>{% endfor %}
+      </div>
+    </section>
+    <section class="insights-card">
+      <header class="insights-card-head"><small>ATIVIDADE RECENTE</small><h2>Ambientes em acesso</h2><p>Recorte dos últimos acessos; não representa um cadastro de dispositivos nem revela IPs.</p></header>
+      <div class="insights-data-table-wrap"><table class="insights-table"><thead><tr><th>Quando (UTC)</th><th>Conta</th><th>Plataforma</th><th>Página / serviço</th></tr></thead><tbody>
+        {% for item in analytics.recent_clients %}
+        <tr><td>{{ item.created_at[:19].replace('T',' ') }}</td><td><b>{{ item.user_name }}</b></td><td>{{ item.platform }}</td><td>{{ item.path }}</td></tr>
+        {% else %}<tr><td colspan="4">Nenhuma atividade recente.</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+
+  {% elif analytics.section == 'routes' %}
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>GERAÇÃO</small><h2>Chamadas de cálculo</h2><p>Requisições reais à API de rotas; pré-cálculos e recálculos podem contar separadamente.</p></header>
+      <div class="insights-mini-grid">
+        <div class="insights-mini"><b>{{ analytics.api_calls.total or 0 }}</b><span>Solicitações respondidas</span></div>
+        <div class="insights-mini"><b>{{ analytics.api_calls.success or 0 }}</b><span>Respostas bem-sucedidas</span></div>
+        <div class="insights-mini"><b>{{ analytics.api_calls.failed or 0 }}</b><span>Respostas com erro</span></div>
+      </div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>HISTÓRICO</small><h2>Rotas registradas</h2><p>Históricos salvos no banco, não todas as buscas realizadas.</p></header>
+      <div class="insights-mini-grid">
+        <div class="insights-mini"><b>{{ analytics.history_stats.saved or 0 }}</b><span>Históricos salvos</span></div>
+        <div class="insights-mini"><b>{{ ((analytics.history_stats.avg_distance_m or 0)/1000)|round(1) }}</b><span>Distância média (km)</span></div>
+        <div class="insights-mini"><b>{{ ((analytics.history_stats.avg_duration_s or 0)/60)|round(0)|int }}</b><span>Duração média (min)</span></div>
+      </div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>JORNADA</small><h2>Ações de navegação</h2><p>Eventos de telemetria; contagens podem não representar viagens únicas.</p></header>
+      <div class="insights-card-body"><div class="insights-list">
+        <div class="insights-list-row"><b>Navegações iniciadas</b><strong>{{ analytics.journey_counts['navigation-start'] }}</strong></div>
+        <div class="insights-list-row"><b>Conclusões notificadas</b><strong>{{ analytics.journey_counts['navigation-complete'] }}</strong></div>
+        <div class="insights-list-row"><b>Recálculos</b><strong>{{ analytics.journey_counts.reroute }}</strong></div>
+        <div class="insights-list-row"><b>Interações com alternativas</b><strong>{{ analytics.journey_counts.alternative }}</strong></div>
+      </div>{% if analytics.journey_sampled %}<small>Jornada resumida com os 4.000 eventos mais recentes.</small>{% endif %}</div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>PREFERÊNCIAS</small><h2>Modalidades registradas</h2><p>Distribuição por modalidade nos históricos disponíveis.</p></header>
+      <div class="insights-card-body">
+        {% for item in analytics.route_modes %}<div class="insights-list-row"><b>{{ item.mode or 'Não especificado' }}</b><strong>{{ item.total }}</strong></div>
+        {% else %}<div class="insights-empty">Não há históricos neste intervalo.</div>{% endfor %}
+      </div>
+    </section>
+    <section class="insights-card">
+      <header class="insights-card-head"><small>ORIGEM E DESTINO</small><h2>Últimas rotas salvas</h2><p>Exibe somente etiquetas já armazenadas no histórico. Não registra localização precisa adicional.</p></header>
+      <div class="insights-data-table-wrap"><table class="insights-table"><thead><tr><th>Quando (UTC)</th><th>Conta</th><th>Origem → Destino</th><th>Modalidade</th><th>Distância</th><th>Duração</th></tr></thead><tbody>
+        {% for item in analytics.recent_routes %}
+        <tr><td>{{ item.created_at[:19].replace('T',' ') }}</td><td>{{ item.user_name }}</td><td><b>{{ item.origin_label or 'Origem não informada' }} → {{ item.destination_label or 'Destino não informado' }}</b></td><td><span class="insights-tag">{{ item.mode }}</span></td><td>{{ ((item.distance_m or 0)/1000)|round(1) }} km</td><td>{{ ((item.duration_s or 0)/60)|round|int }} min</td></tr>
+        {% else %}<tr><td colspan="6">Nenhuma rota salva neste período.</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+
+  {% elif analytics.section == 'events' %}
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>INTERAÇÕES</small><h2>Eventos por categoria</h2><p>Instrumentação já implementada no VANO, excluindo requisições HTTP de rotina.</p></header>
+      <div class="insights-card-body">
+        {% for item in analytics.event_types %}<div class="insights-list-row"><b>{{ item.event_type }}</b><strong>{{ item.total }}</strong></div>
+        {% else %}<div class="insights-empty">Nenhum evento de interface neste período.</div>{% endfor %}
+      </div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>EVENTOS</small><h2>Interações recentes</h2><p>Até 100 registros por filtro. Dados de IP e agente completos não são exibidos.</p></header>
+      <nav class="insights-subnav" aria-label="Filtro de tipo de evento">
+        {% for event_type in analytics.event_types_filter %}
+        <a href="{{ url_for('admin_analytics',section='events',days=analytics.days,type=event_type) }}" class="{% if analytics.filter_type==event_type %}active{% endif %}">{{ 'Todos' if event_type=='all' else event_type }}</a>
+        {% endfor %}
+      </nav>
+      <div class="insights-data-table-wrap"><table class="insights-table"><thead><tr><th>Quando</th><th>Conta</th><th>Tipo</th><th>Interação</th></tr></thead><tbody>
+        {% for item in analytics.recent_events %}
+        <tr><td>{{ item.created_at[:19].replace('T',' ') }}</td><td>{{ item.user_name }}</td><td><span class="insights-tag">{{ item.event_type }}</span></td><td><b>{{ item.label }}</b><small>{{ item.path }}</small></td></tr>
+        {% else %}<tr><td colspan="4">Nenhuma interação encontrada para este filtro.</td></tr>{% endfor %}
+      </tbody></table></div>
+    </section>
+
+  {% elif analytics.section == 'health' %}
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>DESEMPENHO</small><h2>Tempo de resposta HTTP</h2><p>Percentis calculados sobre até 2.000 requisições recentes.</p></header>
+      <div class="insights-mini-grid">
+        <div class="insights-mini"><b>{{ analytics.latencies.p50 if analytics.latencies.p50 is not none else '—' }}</b><span>P50 · ms</span></div>
+        <div class="insights-mini"><b>{{ analytics.latencies.p95 if analytics.latencies.p95 is not none else '—' }}</b><span>P95 · ms</span></div>
+        <div class="insights-mini"><b>{{ analytics.latencies.p99 if analytics.latencies.p99 is not none else '—' }}</b><span>P99 · ms</span></div>
+      </div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>SAÚDE</small><h2>Ocorrências detectadas</h2><p>Erros de rede e eventos de erro no cliente.</p></header>
+      <div class="insights-card-body"><div class="insights-list">
+        <div class="insights-list-row"><b>Erros HTTP (4xx e 5xx)</b><strong>{{ analytics.summary.http_errors or 0 }}</strong></div>
+        <div class="insights-list-row"><b>Erros reportados pelo cliente</b><strong>{{ analytics.client_errors.total or 0 }}</strong></div>
+        <div class="insights-list-row"><b>Amostra de latência</b><strong>{{ analytics.latencies.sample }} requisições</strong></div>
+      </div></div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>HTTP</small><h2>Status de erro</h2><p>Tipos de resposta com falha.</p></header>
+      <div class="insights-card-body">
+        {% for item in analytics.status_codes %}<div class="insights-list-row"><b>HTTP {{ item.status_code }}</b><strong>{{ item.total }}</strong></div>
+        {% else %}<div class="insights-empty">Sem erros HTTP registrados.</div>{% endfor %}
+      </div>
+    </section>
+    <section class="insights-card half">
+      <header class="insights-card-head"><small>DIAGNÓSTICO</small><h2>Caminhos com mais erros</h2><p>Rotas de servidor com maior número de respostas 4xx/5xx.</p></header>
+      <div class="insights-card-body">
+        {% for item in analytics.error_paths %}<div class="insights-list-row"><b>{{ item.path }}</b><strong>{{ item.total }}</strong></div>
+        {% else %}<div class="insights-empty">Nenhuma falha registrada.</div>{% endfor %}
+        <div style="margin-top:10px"><a class="insights-back" href="{{ url_for('admin_audit_logs') }}">Abrir auditoria detalhada <i data-lucide="arrow-up-right" width="14"></i></a></div>
+      </div>
+    </section>
+  {% endif %}
+  </div>
+
+  <aside class="insights-note"><i data-lucide="shield-check" width="19"></i><div>
+    <b>Sobre a precisão e privacidade:</b> IPs representam redes compartilhadas e não pessoas. A combinação IP + navegador é apenas uma aproximação de ambientes e pode contar um aparelho mais de uma vez. Estatísticas e listas mostram somente eventos efetivamente recebidos e dentro do período de retenção configurado. Rotas com origem/destino aparecem apenas quando já existem no histórico salvo. Este painel é exclusivo de administradores.
+  </div></aside>
+</main>
+{% endblock %}
