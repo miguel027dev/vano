@@ -110,7 +110,7 @@ def build_admin_analytics(db, section, days, *, now=None):
             SELECT path,COUNT(*) AS visits FROM request_activity_logs
             WHERE created_at>=? AND {PRODUCT_SCOPE}
               AND event_type='request' AND method='GET'
-              AND path NOT LIKE '/api/%' AND path NOT LIKE '/static/%'
+              AND path NOT LIKE '/api/%' AND SUBSTR(path,1,8) <> '/static/'
             GROUP BY path ORDER BY visits DESC LIMIT 7
         """, (cutoff,))
         data["route_calls"] = _one(db, """
