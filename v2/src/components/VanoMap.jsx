@@ -5,7 +5,8 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
-import {planV2DroneCamera,observeV2DroneScene,shiftDroneView} from '../lib/v2DroneCamera.mjs';
+import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera} from '../lib/v2DroneCamera.mjs';
+import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
@@ -87,6 +88,7 @@ function motionController(map,latest,status){
   // A throttled observation of surrounding 3D buildings and upcoming route bend.
   // No queries in the RAF hot path between samples; the HUD/GPS are untouched.
   let droneScene={density:0,sideBias:0,bendDegrees:0},lastSceneSample=0;
+  let urbanMode='v1',urbanModeAt=0,urbanBlend=0,lastUrbanBlendAt=0;
   function sampleDroneScene(d,route,now){
     if(!d.droneSimulation){
       droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;
@@ -120,6 +122,12 @@ function motionController(map,latest,status){
       sideBias:droneScene.sideBias+(observed.sideBias-droneScene.sideBias)*.25,
       bendDegrees:droneScene.bendDegrees+shortestAngle(droneScene.bendDegrees,bend)*.38
     };
+    // Buildings stay legible but translucent across /v2, independently of
+    // the chosen V1/V2 simulation camera.
+    if(d.v2Experience){
+      map._vanoV2UrbanDensity=droneScene.density;
+      syncV2BuildingVisibility(map,{enabled:true,density:droneScene.density});
+    }
     return droneScene;
   }
   const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -147,9 +155,25 @@ function motionController(map,latest,status){
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
       vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
-    if(!d.droneSimulation){droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;}
+    if(!d.droneSimulation){
+      droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;
+      urbanMode='v1';urbanModeAt=0;urbanBlend=0;lastUrbanBlendAt=0;
+      if(d.v2Experience&&map._vanoV2UrbanDensity!==0){
+        map._vanoV2UrbanDensity=0;
+        syncV2BuildingVisibility(map,{enabled:true,density:0});
+      }
+    }
     if(!d.droneSimulation||!base)return base;
     const scene=sampleDroneScene(d,route,now);
+    const nextMode=chooseV2UrbanCamera({
+      enabled:true,density:scene.density,mode:urbanMode,
+      lastSwitchAt:urbanModeAt,nowMs:now
+    });
+    if(nextMode.changed){urbanMode=nextMode.mode;urbanModeAt=now;}
+    const dtMix=lastUrbanBlendAt?Math.min(100,Math.max(0,now-lastUrbanBlendAt)):16;
+    lastUrbanBlendAt=now;
+    urbanBlend=damp(urbanBlend,urbanMode==='v2'?1:0,dtMix,450);
+    if(urbanBlend<.001)return base; // Open street: original V1 camera.
     const drone=planV2DroneCamera({
       enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route,
       speed:d.telemetry?.speed,urbanDensity:scene.density,
@@ -167,12 +191,16 @@ function motionController(map,latest,status){
     const maxPitch=typeof map.getMaxPitch==='function'?map.getMaxPitch():75;
     const heading=Number.isFinite(base.bearing)?base.bearing:
       Number.isFinite(d.motionBearing)?d.motionBearing:0;
+    const view=shiftDroneView(center,heading,drone.sideMeters);
+    const targetBearing=Number.isFinite(base.bearing)?
+      (base.bearing+drone.yawDegrees+360)%360:base.bearing;
     return {...base,
-      center:shiftDroneView(center,heading,drone.sideMeters),
-      bearing:Number.isFinite(base.bearing)?
-        (base.bearing+drone.yawDegrees+360)%360:base.bearing,
-      zoom:Math.min(maxZoom,drone.zoom),
-      pitch:Math.min(maxPitch,drone.pitch),droneCamera:drone};
+      center:base.center.map((coord,index)=>coord+(view[index]-coord)*urbanBlend),
+      bearing:Number.isFinite(base.bearing)&&Number.isFinite(targetBearing)?
+        blendAngle(base.bearing,targetBearing,urbanBlend):base.bearing,
+      zoom:base.zoom+(Math.min(maxZoom,drone.zoom)-base.zoom)*urbanBlend,
+      pitch:base.pitch+(Math.min(maxPitch,drone.pitch)-base.pitch)*urbanBlend,
+      droneCamera:drone};
 
   }
   function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';
@@ -199,7 +227,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -223,7 +251,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   }
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,simulationPreview,droneSimulation,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null;const initial=coord(latest.current.userCoords);
@@ -264,6 +292,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           if(deleted||!isLoaded(map))return;
           try{
             syncNight3DBuildings(map,{appearance:latest.current.appearance,layer:latest.current.layer});
+            syncV2BuildingVisibility(map,{enabled:latest.current.v2Experience,
+              density:map._vanoV2UrbanDensity||0});
              syncNight3DScene(map,{appearance:latest.current.appearance,layer:latest.current.layer,navigation:latest.current.navigation,
                memory:typeof navigator!=='undefined'?navigator.deviceMemory:null,
                cores:typeof navigator!=='undefined'?navigator.hardwareConcurrency:null,
@@ -490,6 +520,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     // setStyle is valid during style loading. Waiting for map.loaded() can drop rapid layer taps.
     try{
       map._vanoStyle=style;
+      discardV2BuildingVisibility(map);
       delete map._vanoNightFogApplied;
       delete map._vanoNightTreeStamp;
       setError('');
@@ -497,6 +528,11 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       // style.load rehydrates route sources/layers and markers for the new style.
     }catch(e){map._vanoStyle='';setError('Não foi possível trocar a camada. Tente novamente.');console.warn('Mapbox style:',e.message);}
   },[layer,appearance,token]);
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||backend.current!=='mapbox'||!isLoaded(map))return;
+    syncV2BuildingVisibility(map,{enabled:v2Experience,density:map._vanoV2UrbanDensity||0});
+  },[v2Experience,appearance,layer]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='leaflet')return;
