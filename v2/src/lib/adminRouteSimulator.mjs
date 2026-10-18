@@ -1,6 +1,39 @@
 /** Administrator-only route playback. Never pass these samples to browser GPS,
  * trip history, incident submissions, cached real location or provider APIs. */
 import {buildRouteTimeline,sampleRoute,nextManeuver} from './routeAnimation.js';
+import {bearingBetween,shortestAngle,clamp} from './navigationMotion.js';
+
+/** Heading of the ACTUAL route segment under the simulated user pointer.
+ * Unlike sampleRoute's forward-looking guidance bearing, this never anticipates
+ * a corner. After crossing a vertex, it blends the new direction over a small
+ * physical distance, keeping sharp entrances smooth without rotating early.
+ * Only V2 Sim consumes this heading; standard 6x preview is unchanged. */
+export function simulationPointerBearing(timeline,distance){
+  const points=timeline?.points,cumulative=timeline?.cumulative;
+  if(!Array.isArray(points)||points.length<2||
+    !Array.isArray(cumulative)||cumulative.length!==points.length)return null;
+  const total=Number.isFinite(timeline.total)?timeline.total:0;
+  const at=clamp(Number.isFinite(distance)?distance:0,0,total);
+  let lo=1,hi=points.length-1;
+  while(lo<hi){
+    const mid=(lo+hi)>>1;
+    if(cumulative[mid]<at)lo=mid+1;
+    else hi=mid;
+  }
+  const end=lo,start=end-1;
+  const current=bearingBetween(points[start],points[end]);
+  if(start===0)return current;
+  const incoming=bearingBetween(points[start-1],points[start]);
+  const span=cumulative[end]-cumulative[start];
+  const sinceCorner=Math.max(0,at-cumulative[start]);
+  if(span<.1)return incoming;
+  // Faster transitions for narrow/diagonal branches. No steering before the
+  // marker crosses the vertex; never let this heading alter GPS coordinates.
+  const blendDistance=Math.min(9,Math.max(2,span*.65));
+  const t=clamp(sinceCorner/blendDistance,0,1);
+  const eased=t*t*(3-2*t);
+  return (incoming+shortestAngle(incoming,current)*eased+360)%360;
+}
 
 export const SIMULATION_PLAYBACK_RATE=6;
 export function simulationSpeedKmh(vehicle='carro'){
@@ -21,6 +54,7 @@ export function simulationFrame(route,distance){
   const maneuver=nextManeuver(route,timeline,frame.progress);
   return {
     ...frame,
+    pointerBearing:simulationPointerBearing(timeline,frame.progress),
     guidance:{...maneuver,progress:frame.fraction,routeMeters:frame.progress,
       preview:true,simulated:true,finished:frame.remaining<=1},
     finished:frame.remaining<=1,
