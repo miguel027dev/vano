@@ -26,7 +26,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
  const recognitionIdleEnds=useRef(0),recognitionGotSpeech=useRef(false);
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
- const speechTimerRef=useRef(null),elevenAbortRef=useRef(null),duplexRef=useRef(null);
+ const speechTimerRef=useRef(null),elevenAbortRef=useRef(null),duplexRef=useRef(null),segmentsActiveRef=useRef(false);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
  const voiceTurnRef=useRef(0),justAcceptedRouteRef=useRef(false);
  const firstMaviTurnRef=useRef(true);
@@ -61,6 +61,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    controllerRef.current?.abort?.();controllerRef.current=null;
    enabledRef.current=false;busyRef.current=false;
    stopRecognition();stopRecording();
+   segmentsActiveRef.current=false;
    duplexRef.current?.stop();duplexRef.current=null;
    clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
@@ -84,13 +85,13 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    if(recognitionError.current)setStatus('typed');
    else{setStatus('ready');scheduleNextListen();}
  }
- function speak(message,onComplete,voiceTicket=null){
+ function speak(message,onComplete,voiceTicket=null,keepBusy=false){
    const turn=++voiceTurnRef.current;
    const {muted}=navRef.current;
    const synth=window.speechSynthesis,Utterance=window.SpeechSynthesisUtterance;
    busyRef.current=true;
    // Keep an echo-cancelled mic monitor active throughout audio playback.
-   duplexRef.current?.arm(true,850);
+   if(!keepBusy)duplexRef.current?.arm(true,850);
    let finished=false,attempts=0;
    const finish=()=>{
      if(finished||voiceTurnRef.current!==turn)return;
@@ -98,7 +99,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
      speechRef.current=null;
      elevenAbortRef.current=null;
-     done();
+     if(!keepBusy)done();
      // Offer controls are revealed only once the voice finishes or fails safely.
      if(enabledRef.current&&mountedRef.current)onComplete?.();
    };
@@ -156,6 +157,37 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    }
    trySpeak();
  }
+ async function speakSegments(segments,seq,signal){
+   segmentsActiveRef.current=true;
+   duplexRef.current?.arm(true,850);
+   let spoken='';
+   try{
+    for await(const part of segments){
+     if(!enabledRef.current||signal.aborted||seq!==requestRef.current)break;
+     if(part.type!=='chunk'||!part.text)continue;
+     const msg=String(part.text).slice(0,340);
+     spoken+=(spoken?' ':'')+msg;
+     if(mountedRef.current)setReply(spoken.slice(0,340));
+     if(navRef.current.muted)continue;
+     await new Promise(resolve=>{
+      let ended=false;
+      const finish=()=>{
+       if(ended)return;ended=true;
+       signal.removeEventListener('abort',finish);resolve();
+      };
+      signal.addEventListener('abort',finish,{once:true});
+      if(signal.aborted){finish();return;}
+      speak(msg,finish,part.voiceTicket,true);
+     });
+    }
+   }catch{
+    if(enabledRef.current&&!signal.aborted)setDiagnostic('Transmissão de voz interrompida pela conexão.');
+   }finally{
+    segmentsActiveRef.current=false;
+    if(enabledRef.current&&seq===requestRef.current&&!signal.aborted)done();
+   }
+ }
+
  async function submit(phrase){
    const text=String(phrase||'').trim().slice(0,360);
    if(!text||!enabledRef.current||busyRef.current)return;
@@ -200,6 +232,11 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      firstMaviTurnRef.current=false;
      const response=await handlersRef.current.onCommand(routedText,controller.signal,{firstTurn});
      if(!enabledRef.current||seq!==requestRef.current)return;
+     if(response?.segments){
+      clearTimeout(timeout);setReply('');
+      await speakSegments(response.segments,seq,controller.signal);
+      return;
+     }
      const message=typeof response?.text==='string'?response.text:'Não consegui responder.';
      const nextIncident=maviIncidentOffer(response?.incidentRerouteOffer?.type);
      incidentOfferRef.current=nextIncident?{
@@ -396,6 +433,10 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    if(!enabledRef.current)return;
    duplexRef.current?.arm(false,0);
    const wasSpeaking=Boolean(elevenAbortRef.current||speechRef.current);
+   if(segmentsActiveRef.current){
+    segmentsActiveRef.current=false;requestRef.current++;
+    controllerRef.current?.abort?.();
+   }
    // Navigation instructions must never become the assistant's microphone input.
    if(recognitionRef.current){stopRecognition();setStatus('ready');scheduleNextListen(1400);}
    if(!wasSpeaking)return;
@@ -431,6 +472,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
     if(!enabledRef.current||!busyRef.current||navigationAudioActive())return;
     requestRef.current++;
     controllerRef.current?.abort?.();controllerRef.current=null;
+    segmentsActiveRef.current=false;
     voiceTurnRef.current++;
     elevenAbortRef.current?.abort();elevenAbortRef.current=null;
     if(speechRef.current){
