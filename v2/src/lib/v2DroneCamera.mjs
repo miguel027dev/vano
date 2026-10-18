@@ -1,5 +1,6 @@
 /** Adaptive V2 Sim camera. Presentation only: never mutates GPS, routing or trips. */
 import {maneuverCategory} from './navigationCameraPlanner.js';
+import {planAdaptiveRoadDistance} from './adaptiveRoadCamera.mjs';
 import {nearestOnRoute,validPoint,metersBetween,bearingBetween,shortestAngle} from './navigationMotion.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number.isFinite(v)?v:min));
 const smooth=x=>{const t=clamp(x,0,1);return t*t*(3-2*t);};
@@ -230,15 +231,15 @@ export function planV2RearChase({
   });
   const distance=Number.isFinite(maneuver?.distance)&&maneuver.distance>=0?
     maneuver.distance:Infinity;
-  const gpsUncertain=Number.isFinite(accuracy)&&accuracy>75;
   const curve=Number.isFinite(bendDegrees)?Math.abs(angle180(bendDegrees)):0;
-  // Wide straight roads: increase route visibility only with verified geometry
-  // and no approaching decision. Speed alone is not sufficient evidence.
-  const clearToCruise=(category==='continue'||distance>430)&&
-    velocity>=3.5&&!gpsUncertain&&curve<16;
-  const straightStrength=clearToCruise?smooth(
-    (clamp(straightAheadMeters,0,650)-255)/360
-  ):0;
+  // Share exactly the same verified-straight gate as the real map.
+  // V2's more expressive zoom and urban responses remain simulation-only.
+  const roadDistance=planAdaptiveRoadDistance({
+    enabled:true,vehicle,maneuver,route,speed:velocity,accuracy,
+    straightMeters:straightAheadMeters,bendDegrees,simulation:true,
+    reducedMotion
+  });
+  const straightStrength=roadDistance.straightStrength;
   const focus=entrance>0?'entrance':
     category==='roundabout'&&distance<=230?'roundabout':
     category==='junction'&&distance<=230?'junction':
@@ -257,7 +258,8 @@ export function planV2RearChase({
     Math.min(.15,velocity*.005)-walls*.07;
   let pitch=(compactViewport?46:55)-urban*9-walls*10;
   if(focus==='straight'){
-    zoom-=straightStrength*(.55+Math.min(.20,velocity*.006));
+    zoom-=straightStrength*(.55+Math.min(.20,velocity*.006))+
+      roadDistance.microZoom;
     pitch-=straightStrength*3;
   }else if(focus==='entrance'){
     zoom+=entrance*.27;
