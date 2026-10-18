@@ -239,7 +239,7 @@ export function planV2RearChase({
   const straightStrength=clearToCruise?smooth(
     (clamp(straightAheadMeters,0,650)-255)/360
   ):0;
-  const focus=category==='ramp'&&entrance>0?'entrance':
+  const focus=entrance>0?'entrance':
     category==='roundabout'&&distance<=230?'roundabout':
     category==='junction'&&distance<=230?'junction':
     category==='uturn'&&distance<=180?'uturn':
