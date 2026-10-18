@@ -124,9 +124,9 @@ test('V2 heading follows the actual diagonal lane turn, not a look-ahead 65m rou
  assert.ok(entered>0&&entered<45,'diagonal entrance turns progressively');
  assert.ok(settled>35&&settled<55,'settled diagonal points about 45 degrees');
  const route={geometry:{type:'LineString',coordinates:[start,vertex,diagonal]},steps:[]};
- const preview=simulationFrame(route,at-10);
+ const preview=simulationFrame(route,at-4);
  assert.ok(preview.bearing>preview.pointerBearing+1,
-   'old preview may look ahead, but V2 pointer remains on its current segment');
+   'guidance can anticipate a junction, while the V2 pointer still follows its current segment');
 });
 
 test('heading handles geographic wrap, invalid route and short segments without inventing GPS',()=>{
