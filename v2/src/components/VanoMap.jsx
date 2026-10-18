@@ -147,6 +147,7 @@ function motionController(map,latest,status){
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
       vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+    if(!d.droneSimulation){droneScene={density:0,sideBias:0,bendDegrees:0};lastSceneSample=0;}
     if(!d.droneSimulation||!base)return base;
     const scene=sampleDroneScene(d,route,now);
     const drone=planV2DroneCamera({
