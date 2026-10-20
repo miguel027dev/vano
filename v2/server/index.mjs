@@ -27,6 +27,7 @@ import {retrieveMaviKnowledge} from './mavi-grounding.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
+import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
@@ -507,6 +508,43 @@ async function route(req, res) {
       const safeBody=upstream.ok?await upstream.json().catch(()=>({})):{};
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
+  }
+  // Route-level ETA forensic view. On-demand only; never collect, list or
+  // retain other people's GPS. Admin role, CSRF and tight quota are mandatory.
+  if(pathname==='/api/admin/route-eta-console'&&req.method==='POST'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para abrir o diagnóstico.');
+    if(!isAdminAccount(session.user))return err(res,403,'Diagnóstico restrito ao administrador.');
+    if(!protectedWrite(req,res)||!limits(req,res,'admin-eta-console',4,60000))return;
+    const body=await getBody(req);
+    if(!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto'].includes(body.vehicle))
+      return err(res,400,'Informe origem, destino e veículo válidos.');
+    const rad=Math.PI/180,lat1=body.origin[1]*rad,lat2=body.destination[1]*rad;
+    const dLat=(body.destination[1]-body.origin[1])*rad,dLon=(body.destination[0]-body.origin[0])*rad;
+    const directKm=12742*Math.asin(Math.min(1,Math.sqrt(
+      Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2)));
+    if(directKm<.08||directKm>70)return err(res,422,'O diagnóstico exige uma rota entre 80 m e 70 km em linha reta.');
+    const started=performance.now();
+    // No reroute/proofs or persistent GPS; options match ordinary user route
+    // except for optional annotation extraction inside the Mapbox fallback.
+    const result=await directions(body.origin,body.destination,body.vehicle,{},'pt-BR',{
+      adaptive:body.adaptive!==false,variantBudget:4,safeComparison:false,
+      routeDiagnostics:true,departAt:'now'
+    });
+    if(result.source==='demonstracao')return err(res,503,'Diagnóstico exige motor de rotas real.');
+    let reportResult=result;
+    if(process.env.VANO_SAFE_VERIFIED_ROUTING_ENABLED!=='false')
+      reportResult=applySafeVerifiedReportRanking(reportResult,db.reports,{reroute:false});
+    if(process.env[TOMTOM_ENV_NAME]?.trim()){
+      const points=routeCorridorPoints(reportResult);
+      if(points.length)reportResult=rankTomTomSafeAlternative(reportResult,
+        cachedTomTomRouteIncidents(points,process.env[TOMTOM_ENV_NAME]),{reroute:false});
+    }
+    const report=etaConsoleReport(reportResult,{elapsedMs:performance.now()-started});
+    return json(res,200,{...report,request:{origin:body.origin,destination:body.destination,
+      vehicle:body.vehicle,adaptive:body.adaptive!==false,directKm:Number(directKm.toFixed(2))},
+      tomtomRoutingImpact:reportResult.tomtomTrafficUsed===true,
+      dataPolicy:'Somente solicitação manual do administrador. Nenhuma rota privada de outro usuário é exibida ou salva.'});
   }
   if(pathname==='/api/admin/safe-routing/compare'&&req.method==='POST'){
     const session=userSession(req);
