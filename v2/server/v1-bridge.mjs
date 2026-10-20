@@ -82,9 +82,14 @@ export function normalizeV1Route(payload,mode){
     adaptiveEnabled:payload?.adaptive_routing?.enabled===true,
   };
   const safetyScore=numberOrNull(selected.safety_conservative_score??selected.safety_score);
+  const routingProfile=cleanText(selected.routing_profile_used,80);
+  const trafficDataStatus=routingProfile==='driving-traffic'?'traffic-aware':
+    routingProfile?'degraded':'unverified';
   return {
     id:MODES[mode], label:({safest:'Mais segura',fastest:'Mais rápida',smart:'VANO inteligente',quietest:'Mais tranquila'})[mode],
-    duration:Math.max(1,Math.round(duration/60)),distance:Math.round(distance/100)/10,
+    duration:Math.max(1,Math.round(duration/60)),durationSeconds:duration,
+    distance:Math.round(distance/100)/10,
+    routingProfile,trafficDataStatus,etaUpdatedAt:Date.now(),
     geometry,steps,
     verifiedSafety:mode!=='fastest'&&!degraded&&selected.safety_evidence_verified===true,
     safetyScore, safetyLevel:numberOrNull(selected.safety_level),
