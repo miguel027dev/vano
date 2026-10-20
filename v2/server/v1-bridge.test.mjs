@@ -15,3 +15,16 @@ test('fast and safe are obtained from distinct original-engine modes',async()=>{
 test('advanced original modes can be requested without affecting default UI',async()=>{let n=0;const fetcher=async u=>{n++;return{ok:true,json:async()=>payload(u.searchParams.get('mode'))}};const result=await directionsFromV1('https://example.org',a,b,'carro',{}, {includeAdvanced:true},fetcher);assert.equal(n,4);assert.deepEqual(result.routes.map(x=>x.id),['safe','fast','smart','quiet']);});
 test('upstream errors are surfaced without fabricating a fallback road',async()=>{const fail=async()=>({ok:false,status:503});await assert.rejects(()=>directionsFromV1('http://127.0.0.1:8765',a,b,'carro',{}, {},fail),/HTTP 503/);});
 test('disconnected routing is declared as contingency',async()=>{const fetcher=async u=>({ok:true,json:async()=>({...payload(u.searchParams.get('mode')),degraded_mode:{active:true,advanced_scoring_skipped:true}})});const x=await directionsFromV1('http://localhost:5000',a,b,'carro',{}, {},fetcher);assert.equal(x.degraded,true);assert.equal(x.routes[0].verifiedSafety,false);});
+
+test('Python bridge preserves exact source seconds and truthfully distinguishes unavailable traffic',()=>{
+ const x=payload('fastest');x.routes[1].duration=1670;
+ x.routes[1].routing_profile_used='driving';
+ const fallback=normalizeV1Route(x,'fastest');
+ assert.equal(fallback.durationSeconds,1670);
+ assert.equal(fallback.duration,28);
+ assert.equal(fallback.trafficDataStatus,'degraded');
+ const p=payload('fastest');p.routes[1].routing_profile_used='driving-traffic';
+ assert.equal(normalizeV1Route(p,'fastest').trafficDataStatus,'traffic-aware');
+ delete p.routes[1].routing_profile_used;
+ assert.equal(normalizeV1Route(p,'fastest').trafficDataStatus,'unverified');
+});
