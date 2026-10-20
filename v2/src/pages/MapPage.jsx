@@ -19,7 +19,7 @@ import {searchGeoBias} from '../lib/searchGeoBias.js';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
-import { navigationSummary,arrivalClock } from '../lib/navigationSummary';
+import { navigationSummary,navigationSummaryWithRefresh,arrivalClock } from '../lib/navigationSummary';
 import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
 import {spokenCue} from '../lib/offlineGuidance';
@@ -87,6 +87,7 @@ export default function MapPage({active=true}){
 
   const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const voiceTrafficReport=useRef({pending:false,lastAt:0,lastCoords:null});
+  const latestEtaGuidance=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
@@ -105,6 +106,7 @@ export default function MapPage({active=true}){
   const [simCameraMode,setSimCameraMode]=useState('standard');
   const simRequestedMode=useRef('standard');
   const [maviPreview,setMaviPreview]=useState(null); // Preview only: never changes the active route without confirmation.
+  const [etaReview,setEtaReview]=useState(null),[etaPulse,setEtaPulse]=useState(Date.now());
   const [walkingFeatures,setWalkingFeatures]=useState([]); // Optional, OSM-backed markers; not routing evidence
   const [offlineMap,setOfflineMap]=useState({status:'idle',key:''}),[spokenRevision,setSpokenRevision]=useState(0),[voiceProblem,setVoiceProblem]=useState(false),[storageReady,setStorageReady]=useState(null);
   const offlineGeneration=useRef(0),cachePosition=useRef(null),spoken=useRef(new Set()),lastVoiceAttempt=useRef(null),tripBooted=useRef(false),lastSave=useRef(0),lastSaveRoute=useRef(null),lastSaveOptions=useRef('');
@@ -513,6 +515,7 @@ export default function MapPage({active=true}){
   const simPosition=simActive?simFrame?.point||null:null;
   const simTelemetry=simFrame?{heading:simCameraMode==='drone'&&Number.isFinite(simFrame.pointerBearing)?simFrame.pointerBearing:simFrame.bearing,speed:simulationSpeedKmh(routeVehicle)/3.6,accuracy:8}:null;
   const shownGuidance=simActive?simFrame?.guidance||null:guidance;
+  latestEtaGuidance.current=shownGuidance;
   const simRouteTotal=useMemo(()=>buildRouteTimeline(route?.geometry).total,[route?.geometry]);
   function activateRouteSimulation(){
     if(!adminV2RoadSigns||!active)return;
@@ -830,8 +833,67 @@ export default function MapPage({active=true}){
   },[navMode,hasLiveGPS,route,userCoords?.[0],userCoords?.[1]]);
   // The map supplies actual on-route GPS progress. Clock time follows the local device,
   // remaining minutes and kilometers shrink only as route progress is reported.
-  const navigationStats=navMode?navigationSummary(route,shownGuidance,Date.now()):null;
+  // A slow street must not be treated as taking the same seconds/km as a
+  // fast expressway. The pure ETA helper consumes provider step durations.
+  const etaNow=Math.max(Date.now(),etaPulse);
+  const baselineNavigationStats=navMode?navigationSummary(route,shownGuidance,etaNow):null;
+  const confirmedEtaReview=etaReview?.route===route&&etaNow-etaReview.checkedAt<360000?etaReview:null;
+  const navigationStats=confirmedEtaReview?
+    navigationSummaryWithRefresh(baselineNavigationStats,confirmedEtaReview,etaNow):baselineNavigationStats;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
+  const trafficUpdateAt=confirmedEtaReview?.checkedAt??route?.etaUpdatedAt;
+  const trafficDataStatus=confirmedEtaReview?'traffic-aware':route?.trafficDataStatus;
+  const currentTraffic=trafficDataStatus==='traffic-aware'&&Number.isFinite(trafficUpdateAt)&&
+    etaNow-trafficUpdateAt<=300000;
+  const etaTrafficNotice=routeVehicle==='a-pe'||simActive?'':currentTraffic?'':trafficDataStatus==='degraded'?
+    'Sem trânsito ao vivo':'Trânsito não confirmado';
+  useEffect(()=>{
+    if(!navMode)return;
+    const id=setInterval(()=>setEtaPulse(Date.now()),30000);
+    return()=>clearInterval(id);
+  },[navMode]);
+  // Refresh a current-traffic estimate at most every 2.5 minutes, without
+  // changing the selected road, the guidance, or the current route shape.
+  useEffect(()=>{
+    if(!navMode||simActive||!active||!route?.geometry||!dest||!['carro','moto'].includes(routeVehicle))return;
+    let disposed=false,inFlight=false,request=null;
+    const check=async()=>{
+      if(disposed||inFlight||navigator.onLine===false||rerouteRequest.current)return;
+      const fix=lastGpsFix.current,position=cachePosition.current;
+      if(!validPoint(position)||!hasRecentGpsFix(fix,Date.now(),12000)||fix.accuracy>35)return;
+      const vertices=route.geometry.coordinates||[];
+      if(vertices.length<3||vertices.length>100000)return;
+      const nearest=nearestOnRoute(position,route.geometry);
+      if(!Number.isFinite(nearest.distance)||nearest.distance>35)return;
+      const future=vertices.slice(Math.max(0,nearest.index));
+      const stride=Math.max(1,Math.ceil((future.length-1)/149));
+      const corridor=future.filter((_,i)=>i%stride===0||i===future.length-1);
+      if(corridor.length<2)return;
+      inFlight=true;request=new AbortController();
+      const timeout=setTimeout(()=>request?.abort(),12000);
+      try{
+        const data=await api('/route',{method:'POST',signal:request.signal,body:JSON.stringify({
+          origin:position,destination:dest.coords,vehicle:routeVehicle,language,
+          routeOptions:{reroute:true,adaptive:false,variantBudget:2}
+        })});
+        if(disposed||!data?.routes?.length||data.source==='demonstracao')return;
+        const updated=data.routes.find(candidate=>candidate.id===choice);
+        // Fail closed when there is no fresh traffic or the proposed route
+        // differs from the road that the driver is actually following.
+        if(updated?.trafficDataStatus!=='traffic-aware'||routeGeometryDiffers(updated,corridor))return;
+        const exact=Number.isFinite(updated.durationSeconds)?updated.durationSeconds:updated.duration*60;
+        const base=navigationSummary(route,latestEtaGuidance.current,Date.now());
+        if(!Number.isFinite(exact)||exact<=0||!base||base.remainingSeconds<=0||base.progress>=.995)return;
+        const expectedKm=route.distance*(1-base.progress);
+        if(Math.abs(updated.distance-expectedKm)>Math.max(.8,expectedKm*.18))return;
+        setEtaReview({route,baseSeconds:base.remainingSeconds,freshSeconds:exact,
+          progress:base.progress,checkedAt:Date.now()});
+      }catch{/* Keep old path and mark the traffic age in the UI. */}
+      finally{clearTimeout(timeout);inFlight=false;request=null;}
+    };
+    const id=setInterval(()=>{void check();},150000);
+    return()=>{disposed=true;clearInterval(id);request?.abort();};
+  },[navMode,simActive,active,route,dest?.id,choice,routeVehicle,language]);
   useEffect(()=>{
     if(!navMode||simActive||!route?.geometry||!isNativeShell())return;
     let stopped=false,lastSection=-1;
@@ -1188,7 +1250,7 @@ export default function MapPage({active=true}){
           </button>
         </div>
       </div>
-      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
+      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}{r.trafficDataStatus==='degraded'?' · sem trânsito ao vivo':''}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
        {!adminV2RoadSigns&&<section className="v70-route-details" aria-label="Detalhes e orientações do percurso">
          <h3>{routeVehicle==='a-pe'?'Caminhada, passo a passo':routeVehicle==='moto'?'Atenção a curvas e acessos':'Orientações da viagem'}</h3>
          <p className="v70-route-details-intro">{routeVehicle==='a-pe'?'Travessias e ruas mapeadas, sem substituir a sinalização real.':routeVehicle==='moto'?'Manobras reais do provedor, com atenção aos acessos.':'Próximas manobras e faixas somente quando informadas pelo provedor.'}</p>
@@ -1224,7 +1286,8 @@ export default function MapPage({active=true}){
         <button type="button" className="circle-btn v37-nav-end" onClick={reset} aria-label="Encerrar navegação" title="Encerrar navegação"><X size={22} strokeWidth={2}/></button>
         <div className="v37-nav-center">
           <span className="sr-only">Previsão de chegada</span>
-          <time className="v37-nav-arrival" dateTime={navigationStats?.arrivalAt?.toISOString()}>{estimatedArrival}</time>
+          <time className="v37-nav-arrival" dateTime={navigationStats?.arrivalAt?.toISOString()} title={etaTrafficNotice||'Previsão estimada — sujeito a alterações'}>{estimatedArrival}</time>
+          {etaTrafficNotice&&<span className="v37-eta-source-note" role="status" style={{fontSize:10,opacity:.82,display:'block',textAlign:'center',marginTop:2}}>{etaTrafficNotice}</span>}
           <div className="v37-nav-meta" aria-label="Tempo e distância restantes">
             <span>{navigationStats?fmtTime(navigationStats.remainingMinutes):'-- min'}</span>
             <span className="v37-nav-bullet" aria-hidden="true"/>
