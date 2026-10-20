@@ -19,7 +19,7 @@ import {searchGeoBias} from '../lib/searchGeoBias.js';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
-import { navigationSummary,navigationSummaryWithRefresh,arrivalClock } from '../lib/navigationSummary';
+import { navigationSummary,navigationSummaryWithRefresh,selectFreshEtaReview,arrivalClock } from '../lib/navigationSummary';
 import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
 import {spokenCue} from '../lib/offlineGuidance';
@@ -837,7 +837,7 @@ export default function MapPage({active=true}){
   // fast expressway. The pure ETA helper consumes provider step durations.
   const etaNow=Math.max(Date.now(),etaPulse);
   const baselineNavigationStats=navMode?navigationSummary(route,shownGuidance,etaNow):null;
-  const confirmedEtaReview=etaReview?.route===route&&etaNow-etaReview.checkedAt<360000?etaReview:null;
+  const confirmedEtaReview=selectFreshEtaReview(etaReview,route,etaNow);
   const navigationStats=confirmedEtaReview?
     navigationSummaryWithRefresh(baselineNavigationStats,confirmedEtaReview,etaNow):baselineNavigationStats;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
