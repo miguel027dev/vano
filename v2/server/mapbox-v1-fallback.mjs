@@ -44,6 +44,7 @@ export function mapboxDirectionsUrl(origin,destination,access,language,vehicle,t
 function stepsOf(route){
   return (route.legs||[]).flatMap(l=>(l.steps||[]).map(s=>({
     instruction:s.maneuver?.instruction||s.name||'Siga em frente',distance:s.distance,
+    duration:Number.isFinite(s.duration)&&s.duration>=0?s.duration:null,
     location:s.maneuver?.location,modifier:s.maneuver?.modifier||'straight',
     type:s.maneuver?.type||'',street:s.name||'',
     lanes:(s.intersections||[]).find(i=>Array.isArray(i.lanes))?.lanes?.slice(0,8).map(x=>({valid:x.valid===true,indications:Array.isArray(x.indications)?x.indications.slice(0,4):[]}))||[]
@@ -70,6 +71,7 @@ export function routePostedSpeedLimits(route){
 function present(route,id){
   return {id,label:id==='fast'?'Mais rápida':'Mais segura',
     duration:Math.max(1,Math.round(route.duration/60)),
+    durationSeconds:route.duration,
     distance:Math.round(route.distance/100)/10,
     geometry:route.geometry,steps:stepsOf(route),speedLimits:routePostedSpeedLimits(route),verifiedSafety:false,
     microRoute:route._microRoute===true,microStrategy:route._microStrategy||'',
@@ -148,7 +150,10 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
     const candidates=pool.slice(0,6).map(r=>({durationSeconds:r.duration,distanceMeters:r.distance,
       signature:signature(r),microRoute:r._microRoute===true,microStrategy:r._microStrategy||'',
       etaGainSeconds:r._etaGainSeconds||0}));
-    return {routes:[present(other,'safe'),present(fastest,'fast')],
+    return {routes:[present(other,'safe'),present(fastest,'fast')].map(r=>({...r,
+      routingProfile:usedProfile,
+      trafficDataStatus:usedProfile==='driving-traffic'?'traffic-aware':'degraded',
+      etaUpdatedAt:Date.now()})),
       // Internal-only candidate pool; returned to callers only on safe-comparison requests.
       ...(options.safeComparison===true?{safeCandidatePool:pool.slice(0,10).map((r,i)=>present(r,'safe-candidate-'+i))}:{}),
       source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),
