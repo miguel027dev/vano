@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {navigationSummary,navigationSummaryWithRefresh,arrivalClock} from './navigationSummary.js';
+import {navigationSummary,navigationSummaryWithRefresh,selectFreshEtaReview,arrivalClock} from './navigationSummary.js';
 
 test('total ETA and distance are shown until GPS reports travel progress',()=>{
  const now=Date.UTC(2026,9,12,22,0,0);
@@ -71,4 +71,20 @@ test('traffic refresh rescales only subsequent progress without claiming new geo
  const progressed=navigationSummaryWithRefresh(navigationSummary(route,{progress:.75},now),refresh,now);
  assert.equal(progressed.remainingMinutes,8);
  assert.equal(navigationSummaryWithRefresh(base,{...refresh,progress:.9},now),base);
+});
+
+test('map first render: null traffic review and undefined route never crash or access checkedAt',()=>{
+ assert.equal(selectFreshEtaReview(null,undefined,100000),null);
+ assert.equal(selectFreshEtaReview(null,null,100000),null);
+ assert.equal(selectFreshEtaReview(null,{duration:20},100000),null);
+ assert.equal(selectFreshEtaReview({route:undefined,checkedAt:10},undefined,100000),null);
+});
+test('traffic ETA review is accepted only with an actual matching route and recent timestamp',()=>{
+ const route={duration:25,distance:12};
+ const fresh={route,checkedAt:99999,baseSeconds:1500,freshSeconds:1600};
+ assert.equal(selectFreshEtaReview(fresh,route,100000),fresh);
+ assert.equal(selectFreshEtaReview({...fresh,checkedAt:NaN},route,100000),null);
+ assert.equal(selectFreshEtaReview({...fresh,checkedAt:200000},route,100000),null);
+ assert.equal(selectFreshEtaReview({...fresh,checkedAt:100000-360000},route,100000),null);
+ assert.equal(selectFreshEtaReview(fresh,{duration:25},100000),null);
 });
