@@ -51,6 +51,18 @@ export function navigationSummary(route,guidance,now=Date.now()){
    etaMethod:weighted===null?'proportional-fallback':'provider-steps'
  };
 }
+/** Rescale remaining provider step time after a fresh traffic query matching
+ * the SAME remaining road corridor. Never silently replace route geometry. */
+export function navigationSummaryWithRefresh(summary,refresh,now=Date.now()){
+ if(!summary||!refresh||!Number.isFinite(refresh.baseSeconds)||
+   refresh.baseSeconds<=0||!Number.isFinite(refresh.freshSeconds)||refresh.freshSeconds<=0||
+   !Number.isFinite(refresh.progress)||summary.progress+0.015<refresh.progress)return summary;
+ const factor=clamp(summary.remainingSeconds/refresh.baseSeconds,0,1);
+ const remainingSeconds=refresh.freshSeconds*factor;
+ return {...summary,remainingSeconds,remainingMinutes:Math.ceil(remainingSeconds/60),
+   arrivalAt:new Date(now+remainingSeconds*1000),
+   etaMethod:summary.etaMethod+'+verified-corridor-refresh'};
+}
 export function arrivalClock(date,locale='pt-BR'){
  if(!(date instanceof Date)||!Number.isFinite(date.getTime()))return '--:--';
  try{return new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',hour12:false}).format(date);}
