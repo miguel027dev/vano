@@ -377,7 +377,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   latest.current={active,simulationPreview,droneSimulation,v2Experience,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
-    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null;const initial=coord(latest.current.userCoords);
+    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null,styleRecoveryAttempted=false;const initial=coord(latest.current.userCoords);
     const report=e=>{if(!deleted){
    const message=e?.error?.message||e?.message||'';
    const source=e?.sourceId||e?.source?.id||'';
@@ -453,7 +453,22 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         canvas=map.getCanvas();wheelHandler=()=>motion.current?.setFree();canvas?.addEventListener('wheel',wheelHandler);
         contextLostHandler=e=>{e.preventDefault?.();if(!deleted)setForceRaster(true);};
         canvas?.addEventListener('webglcontextlost',contextLostHandler,{passive:false});
-        styleWatchdog=setTimeout(()=>{if(!deleted&&backend.current==='mapbox'&&!isLoaded(map))setForceRaster(true);},9500);
+        // A slow vector style is not a WebGL failure. Try a standard Mapbox
+        // style before permanently degrading this visit to a raster map.
+        styleWatchdog=setTimeout(()=>{
+          if(deleted||backend.current!=='mapbox'||isLoaded(map))return;
+          const standard='mapbox://styles/mapbox/standard';
+          if(!styleRecoveryAttempted&&map._vanoStyle!==standard){
+            styleRecoveryAttempted=true;
+            try{
+              map._vanoStyle=standard;
+              map.setStyle(standard,{diff:false});
+              styleWatchdog=setTimeout(()=>{
+                if(!deleted&&backend.current==='mapbox'&&!isLoaded(map))setForceRaster(true);
+              },10000);
+            }catch{setForceRaster(true);}
+          }else setForceRaster(true);
+        },14500);
       }catch(e){
         // Recover from WebGL initialization failure without retaining a
         // permanent Mapbox error above the working raster fallback.
