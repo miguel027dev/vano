@@ -55,6 +55,9 @@ function tokenSimilar(a,b){
 export function roadNameMatches(name,wanted){
  const target=roadKey(wanted),street=roadKey(name);
  if(!target||!street)return false;
+ // "Marginal Pinheiros" must never be mistaken for "Rua Pinheiros".
+ // Unknown aliases are intentionally not guessed from a matching neighborhood.
+ if(/\bmarginal\b/.test(normalize(wanted))&&!/\bmarginal\b/.test(normalize(name)))return false;
  if(street===target||street.includes(target)||target.includes(street)&&street.length>=5)return true;
  const t=target.split(' ').filter(Boolean),v=street.split(' ').filter(Boolean);
  if(!t.length||!v.length)return false;
@@ -104,6 +107,43 @@ export function excludedRoadPoints(routes,wanted,{max=5}={}){
   }
  }
  return collected;
+}
+/** A different route hash can still draw essentially the same path.
+ * Use a bounded geometric comparison of the current remaining route before
+ * telling a driver that a named avenue has been avoided. Conservative by
+ * design: unknown geometry is not proof of a meaningful street bypass.
+ */
+export function routeGeometryDiffers(route,reference){
+ const coords=route?.geometry?.coordinates;
+ if(!Array.isArray(coords)||coords.length<2||coords.length>100000||
+    !Array.isArray(reference)||reference.length<2||reference.length>400||
+    !reference.every(pointOK))return false;
+ const lat=reference[0][1]*Math.PI/180,sx=111320*Math.cos(lat),sy=110540;
+ const meters=(a,b)=>Math.hypot((a[0]-b[0])*sx,(a[1]-b[1])*sy);
+ const distanceFromReference=p=>{
+  let nearest=Infinity;
+  for(let j=1;j<reference.length;j++){
+   const a=reference[j-1],b=reference[j],dx=(b[0]-a[0])*sx,dy=(b[1]-a[1])*sy;
+   const denominator=dx*dx+dy*dy;
+   const t=denominator>0?Math.max(0,Math.min(1,((p[0]-a[0])*sx*dx+(p[1]-a[1])*sy*dy)/denominator)):0;
+   const distance=Math.hypot((p[0]-a[0])*sx-t*dx,(p[1]-a[1])*sy-t*dy);
+   if(distance<nearest)nearest=distance;
+  }
+  return nearest;
+ };
+ const stride=Math.max(1,Math.ceil((coords.length-1)/180));
+ let separatedMeters=0,maxSeparation=0,previous=0;
+ for(let index=stride;index<coords.length+stride;index+=stride){
+  const at=Math.min(coords.length-1,index),p=coords[at],from=coords[previous];
+  if(!pointOK(p)||!pointOK(from))return false;
+  const gap=distanceFromReference(p);
+  maxSeparation=Math.max(maxSeparation,gap);
+  if(gap>=65)separatedMeters+=meters(p,from);
+  previous=at;
+  if(at===coords.length-1)break;
+ }
+ // Both lateral displacement and a useful length of detour are required.
+ return maxSeparation>=90&&separatedMeters>=170;
 }
 export function findStreetCandidate(routes,sourceKey,wanted,mode){
  const candidates=(Array.isArray(routes)?routes:[]).filter(r=>
