@@ -12,8 +12,8 @@ test('navigation dock displays centered arrival clock over two remaining measure
  assert.match(view,/navigationStats\.remainingMinutes/);
  assert.match(view,/navigationStats\.remainingKm/);
  assert.match(view,/className="v37-nav-bullet"/);
- assert.match(view,/navigationSummary\\(route,shownGuidance,etaNow\\)/);
- assert.match(view,/navigationSummaryWithRefresh\\(baselineNavigationStats,confirmedEtaReview,etaNow\\)/);
+ assert.ok(view.includes('navigationSummary(route,shownGuidance,etaNow)'));
+ assert.ok(view.includes('navigationSummaryWithRefresh(baselineNavigationStats,confirmedEtaReview,etaNow)'));
  assert.match(view,/etaTrafficNotice/);
  assert.match(view,/const shownGuidance=simActive\?simFrame\?\.guidance\|\|null:guidance/);
 });
