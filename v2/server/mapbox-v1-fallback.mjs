@@ -3,6 +3,7 @@
  */
 import {pointOK} from './routing.mjs';
 import {adaptiveSpecs,denseSpecs,overlap,traffic,uniqueCandidates,signature} from './v1-candidates.mjs';
+import {mapboxEtaEvidence} from './route-eta-diagnostics.mjs';
 
 const cache=new Map(), CACHE_TTL=15000,MAX_CACHE=48;
 const clone=x=>structuredClone(x);
@@ -68,7 +69,7 @@ export function routePostedSpeedLimits(route){
  return values.some(value=>value!==null)?values:null;
 }
 
-function present(route,id){
+function present(route,id,diagnostics=false){
   return {id,label:id==='fast'?'Mais rápida':'Mais segura',
     duration:Math.max(1,Math.round(route.duration/60)),
     durationSeconds:route.duration,
@@ -77,7 +78,8 @@ function present(route,id){
     microRoute:route._microRoute===true,microStrategy:route._microStrategy||'',
     etaGainSeconds:route._etaGainSeconds||0,
     trafficScore:Math.round(traffic(route).score*10)/10,
-    routingProvider:route._provider||'mapbox'};
+    routingProvider:route._provider||'mapbox',
+    ...(diagnostics?{etaEvidence:mapboxEtaEvidence(route)}:{})};
 }
 async function request(url,fetcher,timeoutMs){
   const r=await fetcher(url,{signal:AbortSignal.timeout(timeoutMs),headers:{Accept:'application/json'}});
@@ -150,7 +152,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
     const candidates=pool.slice(0,6).map(r=>({durationSeconds:r.duration,distanceMeters:r.distance,
       signature:signature(r),microRoute:r._microRoute===true,microStrategy:r._microStrategy||'',
       etaGainSeconds:r._etaGainSeconds||0}));
-    return {routes:[present(other,'safe'),present(fastest,'fast')].map(r=>({...r,
+    return {routes:[present(other,'safe',options.routeDiagnostics===true),present(fastest,'fast',options.routeDiagnostics===true)].map(r=>({...r,
       routingProfile:usedProfile,
       trafficDataStatus:usedProfile==='driving-traffic'?'traffic-aware':'degraded',
       etaUpdatedAt:Date.now()})),
