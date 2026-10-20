@@ -31,7 +31,7 @@ import {jevRouteFingerprint} from '../lib/jevShared.mjs';
 import {selectMaviPreview,canFocusMaviPreview} from '../lib/maviPreview.mjs';
 import {classifyMaviIntent,answerMaviInformation} from '../lib/maviAssistant.mjs';
 import {isMaviTalkTurn,limitedMaviTalkHistory} from '../lib/maviTalk.mjs';
-import {routeRoadEvidence} from '../lib/jevStreetRouting.mjs';
+import {routeRoadEvidence,routeGeometryDiffers} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
 import {simulationDistanceStep,simulationFrame,simulationSpeedKmh} from '../lib/adminRouteSimulator.mjs';
@@ -799,6 +799,15 @@ export default function MapPage({active=true}){
       if(typeof road!=='string'||road.length>72||!['avoid','via'].includes(kind))return false;
       const evidence=routeRoadEvidence(selected,road);
       if(!evidence.known||evidence.uses!==(kind==='via'))return false;
+      if(kind==='avoid'){
+        const points=route.geometry?.coordinates||[];
+        if(points.length<2)return false;
+        const stride=Math.max(1,Math.ceil((points.length-1)/159));
+        const currentTrace=points.filter((_,i)=>i%stride===0||i===points.length-1);
+        // Check again at acceptance: never confirm a re-labeled version of
+        // the current geometry as a successful named-road detour.
+        if(!routeGeometryDiffers(selected,currentTrace))return false;
+      }
     }
     routeEpoch.current++;spoken.current.clear();
     setRouteData(proposal.routeData);setChoice(proposal.routeId);setGuidance(null);
