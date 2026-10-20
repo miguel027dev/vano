@@ -19,7 +19,7 @@ import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/
 import {classifyMaviIntent,answerMaviInformation,MAVI_ROUTE_INTENTS} from '../src/lib/maviAssistant.mjs';
 import {parseMaviPlaceIntent,detectMaviResume,contextualMaviIntent} from '../src/lib/maviFlexible.mjs';
 import {findMaviPlaces,validatePoiRoute,MAVI_POI_CATEGORIES} from './mavi-poi.mjs';
-import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey} from '../src/lib/jevStreetRouting.mjs';
+import {extractJevStreetRequest,findStreetCandidate,excludedRoadPoints,routeRoadEvidence,roadKey,routeGeometryDiffers} from '../src/lib/jevStreetRouting.mjs';
 import {interpretMaviWithNvidia} from './mavi-nvidia.mjs';
 import {maviInstantAnswer,MAVI_FAST_OPENING_INTENTS} from './mavi-instant.mjs';
 import {isMaviTalkTurn,maviTalkFallback,limitedMaviTalkHistory} from '../src/lib/maviTalk.mjs';
@@ -1140,8 +1140,13 @@ async function route(req, res) {
     // driver. Use actual named steps and request a Mapbox point exclusion
     // calculated from provider-returned route geometry when needed.
     let permittedRoutes=result.routes||[];
+    // The browser sends a bounded trace of the active route. A different hash
+    // by itself is not enough to promise a new path around a named road.
+    const currentTrace=Array.isArray(body.routeGeometry)&&body.routeGeometry.length>=2&&body.routeGeometry.length<=400?body.routeGeometry:null;
+    const materiallyDifferent=route=>!currentTrace||routeGeometryDiffers(route,currentTrace);
     if(streetRequest){
       permittedRoutes=findStreetCandidate(permittedRoutes,currentKey,streetRequest.road,streetRequest.kind);
+      if(streetRequest.kind==='avoid')permittedRoutes=permittedRoutes.filter(materiallyDifferent);
       if(!chooseJevProposal(permittedRoutes,currentKey,intent)&&streetRequest.kind==='avoid'){
         const observed=(result.routes||[]).some(r=>routeRoadEvidence(r,streetRequest.road).uses);
         const points=observed?excludedRoadPoints(result.routes,streetRequest.road):[];
@@ -1153,7 +1158,7 @@ async function route(req, res) {
               {...options,excludeRoadPoints:points,skipCandidateProbes:true},key
             );
             if(rerouted.source!=='demonstracao'){
-              const checked=findStreetCandidate(rerouted.routes,currentKey,streetRequest.road,'avoid');
+              const checked=findStreetCandidate(rerouted.routes,currentKey,streetRequest.road,'avoid').filter(materiallyDifferent);
               if(chooseJevProposal(checked,currentKey,intent)){
                 result=rerouted;permittedRoutes=checked;
               }
