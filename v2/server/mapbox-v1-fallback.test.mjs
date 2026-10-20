@@ -74,3 +74,16 @@ test('missing traffic mode falls back to driving without pretending to have cong
   assert.equal(result.candidateEngine.provider,'driving');
   assert.equal(result.candidateEngine.additionalRequests,0);
 });
+
+test('exact Mapbox ETA and step seconds survive into navigation, with traffic origin explicitly labeled',async()=>{
+ const r=makeRoute(1670,0,40);r.legs[0].steps[0].duration=1670;
+ const responseData=await calculateMapboxV1Candidates([-46.688,-23.58],[-46.669,-23.58],
+   'carro',{},'pt-BR',{adaptive:false,skipCandidateProbes:true},'test-token',async()=>response([r]));
+ const selected=responseData.routes.find(x=>x.id==='fast');
+ assert.equal(selected.durationSeconds,1670);
+ assert.equal(selected.duration,28);
+ assert.equal(selected.steps[0].duration,1670);
+ assert.equal(selected.trafficDataStatus,'traffic-aware');
+ assert.equal(selected.routingProfile,'driving-traffic');
+ assert.ok(Number.isFinite(selected.etaUpdatedAt));
+});
