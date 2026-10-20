@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {extractJevStreetRequest,roadNameMatches,routeRoadEvidence,excludedRoadPoints,findStreetCandidate} from './jevStreetRouting.mjs';
+import {extractJevStreetRequest,roadNameMatches,routeRoadEvidence,excludedRoadPoints,findStreetCandidate,routeGeometryDiffers} from './jevStreetRouting.mjs';
 import {chooseJevProposal,jevRouteFingerprint} from './jevShared.mjs';
 
 test('MAVI understands natural named-road avoidance in Brazilian Portuguese',()=>{
@@ -74,4 +74,30 @@ test('point exclusion samples the interior of the named road, not other steps',(
  assert.ok(points.length<=5);
  assert.ok(points.every(p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)));
  assert.equal(excludedRoadPoints([route],'Avenida Morumbi').length,0);
+});
+
+test('Marginal Pinheiros cannot be confused with an ordinary Rua Pinheiros',()=>{
+ assert.equal(roadNameMatches('Rua Pinheiros','Marginal Pinheiros'),false);
+ assert.equal(roadNameMatches('Marginal Tietê','Marginal Pinheiros'),false);
+ assert.equal(roadNameMatches('Marginal Pinheiros, pista expressa','Marginal Pinheiros'),true);
+ for(const command of [
+   'Mavi, recalcule uma rota que não passe pela Marginal Pinheiros',
+   'Mavi, troca para uma rota que não passe pela Marginal Pinheiros',
+   'Mavi, evite a Marginal Pinheiros'
+ ]){
+   const parsed=extractJevStreetRequest(command);
+   assert.equal(parsed?.kind,'avoid',command);
+   assert.equal(parsed?.road,'pinheiros',command);
+   assert.match(parsed?.spokenName||'',/marginal pinheiros/i);
+ }
+});
+test('road avoidance rejects re-labeled geometry and accepts a useful genuine detour',()=>{
+ const current=make('fast','Marginal Pinheiros');
+ const reference=current.geometry.coordinates;
+ const relabeled=make('safe','Avenida Morumbi',.00003);
+ const detour=make('safe','Avenida Morumbi',.004);
+ assert.equal(routeGeometryDiffers(current,reference),false);
+ assert.equal(routeGeometryDiffers(relabeled,reference),false);
+ assert.equal(routeGeometryDiffers(detour,reference),true);
+ assert.equal(routeGeometryDiffers(detour,[]),false);
 });
