@@ -53,6 +53,15 @@ export function navigationSummary(route,guidance,now=Date.now()){
 }
 /** Rescale remaining provider step time after a fresh traffic query matching
  * the SAME remaining road corridor. Never silently replace route geometry. */
+/** Never dereference a missing review or route on the first map render.
+ * An absent route must NOT equal an absent review.route (undefined === undefined).
+ */
+export function selectFreshEtaReview(review,route,now=Date.now()){
+ if(!review||!route||review.route!==route||!Number.isFinite(now)||
+    !Number.isFinite(review.checkedAt)||review.checkedAt>now||
+    now-review.checkedAt>=360000)return null;
+ return review;
+}
 export function navigationSummaryWithRefresh(summary,refresh,now=Date.now()){
  if(!summary||!refresh||!Number.isFinite(refresh.baseSeconds)||
    refresh.baseSeconds<=0||!Number.isFinite(refresh.freshSeconds)||refresh.freshSeconds<=0||
