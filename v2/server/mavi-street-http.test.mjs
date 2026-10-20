@@ -45,7 +45,8 @@ test('MAVI names a road, requests real exclusion points and only offers complian
    headers.Cookie=(bootstrap.headers.get('set-cookie')||'').split(';')[0];
    const ask=async(text,dest=destination)=>nativeFetch(host+'/api/v2/assistant',{method:'POST',headers,
     body:JSON.stringify({text,origin,destination:dest,vehicle:'carro',language:'pt-BR',
-      currentRouteKey:'different-from-all-provider-routes',currentDuration:17})});
+      currentRouteKey:'different-from-all-provider-routes',currentDuration:17,
+      routeGeometry:fixture('Avenida Giovanni Gronchi').geometry.coordinates})});
    const response=await ask('Mavi, tem outro caminho que não pega a Giovanni?');
    assert.equal(response.status,200);
    const proposal=await response.json();
@@ -58,6 +59,20 @@ test('MAVI names a road, requests real exclusion points and only offers complian
      'Provider must be asked to actually avoid road points, not just create a new URL-free promise.');
    assert.match(proposal.text,/giovanni/i);
    assert.equal(typeof proposal.routeData.routes[0].proof,'string');
+
+   // Different names and route fingerprints are not enough. Reject near-identical
+   // geometry, even if the provider describes it as a new street.
+   globalThis.fetch=async url=>{
+     const u=new URL(url);
+     if(!u.hostname.endsWith('mapbox.com'))return nativeFetch(url);
+     return provider([fixture('Avenida Morumbi',.00003,1030),fixture('Avenida Morumbi',.00004,1035)]);
+   };
+   const near=await ask('Mavi, recalcule uma rota que não passe pela Marginal Pinheiros',
+     [-46.7092,-23.5992]);
+   assert.equal(near.status,200);
+   const nearResult=await near.json();
+   assert.equal(nearResult.mode,'information',nearResult.text);
+   assert.match(nearResult.text,/mantive a rota atual/i);
 
    // The backend must reject requests that cannot prove the named road was excluded.
    globalThis.fetch=async url=>{
