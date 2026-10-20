@@ -95,7 +95,7 @@ export default function AdminEtaConsole(){
   </div><span className="eta-admin-readonly"><Database size={15}/> Consulta sem armazenamento</span></div>
   <form onSubmit={execute} className="eta-admin-form">
    <div className="eta-admin-presets">{presets.map((p,i)=><button type="button" key={i}
-    disabled={running} onClick={()=>{setValues({...p});setReport(null);setError('');}}>{p.label}</button>)}</div>
+    disabled={running} onClick={()=>{setValues({startLat:p.startLat,startLon:p.startLon,endLat:p.endLat,endLon:p.endLon});setReport(null);setError('');}}>{p.label}</button>)}</div>
    <div className="eta-admin-inputs">
     {field('startLat','Origem · latitude')}{field('startLon','Origem · longitude')}
     {field('endLat','Destino · latitude')}{field('endLon','Destino · longitude')}
