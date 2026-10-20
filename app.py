@@ -43,6 +43,7 @@ from vano.bootstrap import install as _vano_install
 from vano.security.route_integrity import attest_route, valid_attestation, valid_geometry, valid_metrics
 from vano.security.redaction import redact_path
 from vano.security.sessions import ResourceSessionInterface
+from vano.security.csp_templates import TrustedInlineNonceExtension
 
 _vano_install(globals(), "vano.config")
 _vano_install(globals(), "vano.services.nodes")
@@ -76,6 +77,9 @@ app.config.update(
     SEND_FILE_MAX_AGE_DEFAULT=timedelta(days=30),
 )
 Compress(app)
+# Grant script/style nonces only to trusted Jinja template markup.
+# Never inject nonces after rendering untrusted content.
+app.jinja_env.add_extension(TrustedInlineNonceExtension)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=VANO_PROXY_HOPS, x_proto=VANO_PROXY_HOPS, x_host=VANO_PROXY_HOPS)
 app.config.update(
     SECRET_KEY=SECRET_KEY,

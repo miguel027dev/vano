@@ -44,7 +44,12 @@
   const updateLanguage=(card)=>{
     root.querySelectorAll('[data-language-card]').forEach(item=>item.classList.toggle('is-selected',item===card));
     if(!card||!languageSummary)return;
-    languageSummary.innerHTML=`<span>${card.dataset.flag||''}</span><b>${card.dataset.name||''}</b><small>${card.dataset.region||''}</small>`;
+    // Dataset values may originate from user-visible language labels; keep them text-only.
+    const flag=document.createElement('span'),name=document.createElement('b'),region=document.createElement('small');
+    flag.textContent=card.dataset.flag||'';
+    name.textContent=card.dataset.name||'';
+    region.textContent=card.dataset.region||'';
+    languageSummary.replaceChildren(flag,name,region);
     languageSummary.classList.remove('is-pop');
     requestAnimationFrame(()=>languageSummary.classList.add('is-pop'));
   };

@@ -129,26 +129,8 @@ def security_headers(response):
     if response.status_code == 429:
         response.headers.setdefault("Retry-After", "60")
 
-    # Add the request nonce to every rendered script tag. Static JS remains
-    # external; JSON-LD and small bootstraps are covered without unsafe-inline.
-    if nonce and response.mimetype == "text/html" and not response.direct_passthrough:
-        try:
-            html = response.get_data(as_text=True)
-            html = re.sub(
-                r"<script(?![^>]*\bnonce=)",
-                lambda match: f'<script nonce="{nonce}"',
-                html,
-                flags=re.IGNORECASE,
-            )
-            html = re.sub(
-                r"<style(?![^>]*\bnonce=)",
-                lambda match: f'<style nonce="{nonce}"',
-                html,
-                flags=re.IGNORECASE,
-            )
-            response.set_data(html)
-        except Exception:
-            app.logger.exception("CSP nonce injection failed")
+    # CSP nonces are attached while trusted Jinja templates are compiled.
+    # Never authorize tags by rewriting the final rendered response.
     return response
 
 # -----------------------------
