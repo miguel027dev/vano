@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {navigationSummary,arrivalClock} from './navigationSummary.js';
+import {navigationSummary,navigationSummaryWithRefresh,arrivalClock} from './navigationSummary.js';
 
 test('total ETA and distance are shown until GPS reports travel progress',()=>{
  const now=Date.UTC(2026,9,12,22,0,0);
@@ -35,4 +35,40 @@ test('arrival time is presented as local clock, without fixed timezone',()=>{
  assert.equal(arrivalClock(date,'pt-BR'),expected);
  assert.equal(arrivalClock(new Date('invalid')),'--:--');
  assert.equal(arrivalClock(date,'not-a-language-tag-!'),expected);
+});
+
+test('congested first half and fast second half use provider seconds instead of half the ETA',()=>{
+ const now=Date.UTC(2026,9,20,20,0,0);
+ const route={duration:28,durationSeconds:1680,distance:14,steps:[
+   {distance:7000,duration:1200},{distance:7000,duration:480}
+ ]};
+ const result=navigationSummary(route,{progress:.5},now);
+ assert.equal(result.etaMethod,'provider-steps');
+ assert.equal(result.remainingMinutes,8);
+ assert.equal(result.arrivalAt.getTime(),now+480000);
+ assert.equal(navigationSummary(route,null,now).remainingMinutes,28);
+});
+test('broken or truncated step durations are never treated as reliable ETA',()=>{
+ const route={duration:28,durationSeconds:1680,distance:14,steps:[{distance:7000,duration:480}]};
+ const result=navigationSummary(route,{progress:.5},0);
+ assert.equal(result.etaMethod,'proportional-fallback');
+ assert.equal(result.remainingMinutes,14);
+});
+test('subminute precision survives the source duration and final ETA clock',()=>{
+ const route={duration:28,durationSeconds:1670,distance:5.6};
+ const result=navigationSummary(route,{progress:0},0);
+ assert.equal(result.remainingSeconds,1670);
+ assert.equal(result.arrivalAt.getTime(),1670000);
+});
+test('traffic refresh rescales only subsequent progress without claiming new geometry',()=>{
+ const now=100000;
+ const route={duration:20,durationSeconds:1200,distance:8};
+ const base=navigationSummary(route,{progress:.5},now);
+ const refresh={baseSeconds:600,freshSeconds:960,progress:.5,checkedAt:now};
+ const reviewed=navigationSummaryWithRefresh(base,refresh,now);
+ assert.equal(reviewed.remainingMinutes,16);
+ assert.equal(reviewed.etaMethod,'proportional-fallback+verified-corridor-refresh');
+ const progressed=navigationSummaryWithRefresh(navigationSummary(route,{progress:.75},now),refresh,now);
+ assert.equal(progressed.remainingMinutes,8);
+ assert.equal(navigationSummaryWithRefresh(base,{...refresh,progress:.9},now),base);
 });
