@@ -28,6 +28,9 @@ import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI
 import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
+import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
+import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
+import {KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
@@ -541,8 +544,26 @@ async function route(req, res) {
         cachedTomTomRouteIncidents(points,process.env[TOMTOM_ENV_NAME]),{reroute:false});
     }
     const report=etaConsoleReport(reportResult,{elapsedMs:performance.now()-started});
+    const tomtomKey=process.env[TOMTOM_ENV_NAME]||'';
+    const candidateRoutes=(reportResult.routes||[]).filter(x=>['fast','safe'].includes(x.id)).slice(0,2);
+    const insideSaoPaulo=[body.origin,body.destination].every(p=>
+      p[0]>=-47.15&&p[0]<=-46.25&&p[1]>=-24.1&&p[1]<=-23.2);
+    // All third-party corroboration is read-only; failure cannot change the
+    // ETA, geometry or original routing. No user position is recorded.
+    const [flowAudits,cet]=await Promise.all([
+      Promise.all(candidateRoutes.map(async r=>{
+        try{return {routeId:r.id,...await tomTomFlowAudit(r,tomtomKey,{maxSamples:3})};}
+        catch{return {routeId:r.id,status:'unavailable',matched:0,canAdjustEta:false,samples:[]};}
+      })),
+      insideSaoPaulo?cetPublicOverview():
+        Promise.resolve({status:'out-of-region',source:CET_SP_SOURCE,affectsEta:false})
+    ]);
     return json(res,200,{...report,request:{origin:body.origin,destination:body.destination,
       vehicle:body.vehicle,adaptive:body.adaptive!==false,directKm:Number(directKm.toFixed(2))},
+      corroboration:{flow:flowAudits,cet,
+        otherKeylessProviders:KEYLESS_ROAD_SOURCES.map(({id,label,region,routingImpact})=>({id,label,region,routingImpact})),
+        satelliteStatus:'Não fornece velocidade viária em tempo real.',
+        etaPolicy:'shadow-only; nenhuma penalidade somada à duração de Mapbox.'},
       tomtomRoutingImpact:reportResult.tomtomTrafficUsed===true,
       dataPolicy:'Somente solicitação manual do administrador. Nenhuma rota privada de outro usuário é exibida ou salva.'});
   }
