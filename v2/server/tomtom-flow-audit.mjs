@@ -98,10 +98,10 @@ async function fetchFlow(sample,secret,{fetcher=fetch,now=Date.now}={}){
  if(cache.size>cacheMax)cache.delete(cache.keys().next().value);
  return reading;
 }
-export async function tomTomFlowAudit(route,key,{fetcher=fetch,now=Date.now}={}){
+export async function tomTomFlowAudit(route,key,{fetcher=fetch,now=Date.now,maxSamples=3}={}){
  const secret=String(key||'').trim();
  if(!secret||secret.startsWith('REPLACE_'))return {status:'not-configured',source:'TomTom Traffic Flow',samples:[],matched:0,canAdjustEta:false};
- const points=selectFlowSamplePoints(route?.geometry);
+ const points=selectFlowSamplePoints(route?.geometry,Math.max(1,Math.min(4,maxSamples)));
  if(!points.length)return {status:'invalid-route',source:'TomTom Traffic Flow',samples:[],matched:0,canAdjustEta:false};
  const samples=[];
  // Serial, never a fan-out across all users or a quota-busting request burst.
