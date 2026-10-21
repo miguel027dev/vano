@@ -155,6 +155,8 @@ export default function AdminEtaConsole(){
     <Item label="Perfil global">{report.engine?.profile}</Item>
     <Item label="Candidatas calculadas">{fmt(report.engine?.candidateCount,0)}</Item>
     <Item label="Sondagens adicionais">{fmt(report.engine?.additionalRequests,0)}</Item>
+    <Item label="Quarteirões explorados">{fmt(report.engine?.urbanProbes,0)}</Item>
+    <Item label="Alternativas encontradas">{fmt(report.engine?.urbanAccepted,0)}</Item>
     <Item label="Micro-rotas encontradas">{report.engine?.microRoutingActive?'Sim':'Não / não informado'}</Item>
     <Item label="TomTom influenciou a escolha?">{report.tomtomRoutingImpact?'Sim':'Não / não informado'}</Item>
    </div>
