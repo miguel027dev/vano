@@ -238,7 +238,7 @@ function remoteIP(req) {
   // Render ingress is private. Select a trusted right-hand proxy hop rather
   // than the client-controlled leftmost entry. Hop depth is configurable.
   const hops=Number(process.env.VANO_TRUSTED_PROXY_HOPS||1);
-  return resolveClientIP(req,{trustProxy:renderWeb||process.env.VANO_TRUST_PROXY==='1',hops});
+  return resolveClientIP(req,{trustProxy:process.env.RENDER==='true'||process.env.VANO_TRUST_PROXY==='1',hops});
 }
 function limits(req, res, key, max, ms = 60000) {
   const ip = remoteIP(req).slice(0,80);
