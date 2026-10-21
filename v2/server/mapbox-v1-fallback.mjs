@@ -4,6 +4,7 @@
 import {pointOK} from './routing.mjs';
 import {adaptiveSpecs,denseSpecs,overlap,traffic,uniqueCandidates,signature} from './v1-candidates.mjs';
 import {mapboxEtaEvidence} from './route-eta-diagnostics.mjs';
+import {blockExploreSpecs,validExploredVariant} from './urban-route-exploration.mjs';
 
 const cache=new Map(), CACHE_TTL=15000,MAX_CACHE=48;
 const clone=x=>structuredClone(x);
@@ -91,7 +92,7 @@ async function request(url,fetcher,timeoutMs){
   return routes;
 }
 async function probeGroup(origin,destination,access,language,vehicle,telemetry,options,specs,fetcher,baseline,kind){
-  const results=[],concurrency=4;
+  const results=[],concurrency=kind==='urban'?2:4;
   for(let i=0;i<specs.length;i+=concurrency){
     const batch=specs.slice(i,i+concurrency);
     const found=await Promise.all(batch.map(async spec=>{
@@ -99,6 +100,17 @@ async function probeGroup(origin,destination,access,language,vehicle,telemetry,o
         const url=mapboxDirectionsUrl(origin,destination,access,language,vehicle,telemetry,options,{...spec,alternatives:false});
         const r=(await request(url,fetcher,9500))[0];
         if(!r||r.duration>baseline.duration*(kind==='adaptive'?1.70:1.48))return null;
+        if(kind==='urban'){
+          if(!validExploredVariant(r,baseline,results))return null;
+          r._urbanVariant=true;
+          r._microStrategy='urban-corridor-exclusion';
+          const gain=baseline.duration-r.duration;
+          if(gain>=12){
+            r._microRoute=true;
+            r._etaGainSeconds=Math.round(gain*10)/10;
+          }
+          return r;
+        }
         if(kind==='adaptive'){
           if(overlap(r,baseline)>=.91)return null;
           r._adaptiveVariant=true;return r;
@@ -130,20 +142,35 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       const fallback=mapboxDirectionsUrl(origin,destination,token,language,vehicle,telemetry,options,{},usedProfile);
       initial=await request(fallback,fetcher,options.reroute===true?5500:12500);
     }
-    let pool=uniqueCandidates(initial),probeCount=0,probeSuccess=0;
+    let pool=uniqueCandidates(initial),probeCount=0,probeSuccess=0,urbanProbes=0,urbanAccepted=0;
     const baseline=pool[0];
     if(usedProfile==='driving-traffic'&&options.skipCandidateProbes!==true&&options.reroute!==true){
+      const providerBudget=options.routeDiagnostics===true?9:Math.max(3,Math.min(6,(options.variantBudget||4)+1));
       if(options.adaptive!==false){
         const specs=adaptiveSpecs(pool,Math.min(2,options.variantBudget||4));
-        if(specs.length){probeCount+=specs.length;
-          const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,options,specs,fetcher,baseline,'adaptive');
+        if(specs.length){const limited=specs.slice(0,Math.max(0,providerBudget-probeCount));probeCount+=limited.length;
+          const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,options,limited,fetcher,baseline,'adaptive');
           probeSuccess+=extra.length;pool=uniqueCandidates([...pool,...extra]);
         }
       }
       const specs=denseSpecs(pool,Math.min(8,(options.variantBudget||4)+2));
-      if(specs.length){probeCount+=specs.length;
-        const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,options,specs,fetcher,baseline,'micro');
+      if(specs.length){const limited=specs.slice(0,Math.max(0,providerBudget-probeCount));probeCount+=limited.length;
+        const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,options,limited,fetcher,baseline,'micro');
         probeSuccess+=extra.length;pool=uniqueCandidates([...pool,...extra]);
+      }
+      // Mapbox alternatives and traffic-only micro-probes can both return
+      // just one path during apparently light traffic. Explore a few distinct
+      // provider-validated block corridors instead of taking "low" at face value.
+      if(options.adaptive!==false&&probeCount<providerBudget&&pool.length<6){
+        const proposals=blockExploreSpecs(pool,Math.min(options.routeDiagnostics===true?5:3,providerBudget-probeCount));
+        urbanProbes=proposals.length;probeCount+=urbanProbes;
+        if(urbanProbes){
+          const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,options,proposals,fetcher,baseline,'urban');
+          const previous=pool.length;
+          pool=uniqueCandidates([...pool,...extra]);
+          urbanAccepted=Math.max(0,pool.length-previous);
+          probeSuccess+=urbanAccepted;
+        }
       }
     }
     const fastest=pool[0];
@@ -158,12 +185,12 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       etaUpdatedAt:Date.now()})),
       // Internal-only candidate pool; returned to callers only on safe-comparison requests.
       ...(options.safeComparison===true?{safeCandidatePool:pool.slice(0,10).map((r,i)=>present(r,'safe-candidate-'+i))}:{}),
-      source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),
+      source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),urbanExplorationActive:urbanProbes>0,
       safetyMessage:'Rota rápida selecionada pelo menor ETA do provedor após avaliar alternativas e micro-desvios. A outra rota é uma alternativa sem avaliação de segurança verificada.',
       candidateEngine:{version:'v1-eta-candidate-port',provider:usedProfile,
         initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeCount,
-        acceptedProbes:probeSuccess,trafficScore:Math.round(traffic(baseline).score),candidates,
-        pipeline:['traffic-alternatives','adaptive-if-needed','congestion-block-probes','exact-deduplication','minimum-provider-eta']}};
+        acceptedProbes:probeSuccess,urbanProbes,urbanAccepted,trafficScore:Math.round(traffic(baseline).score),candidates,
+        pipeline:['traffic-alternatives','adaptive-if-needed','congestion-block-probes','independent-urban-corridors','exact-deduplication','minimum-provider-eta']}};
   }
   const work=compute();
   cache.set(key,{expires:Date.now()+CACHE_TTL,work});
