@@ -202,7 +202,7 @@ export default function BenchmarkPage(){
      </div></fieldset>
      <div className="vb-options">
       <label className="vb-select"><span>Execuções por modo</span><select data-testid="benchmark-rounds" value={rounds} disabled={running} onChange={e=>setRounds(Number(e.target.value))}><option value="1">1 execução</option><option value="2">2 execuções</option><option value="3">3 execuções</option></select></label>
-      <label className="vb-toggle"><input type="checkbox" checked={adaptive} disabled={running} onChange={e=>setAdaptive(e.target.checked)}/><span>Roteamento adaptativo</span></label>
+      <label className="vb-toggle" title="Exploração avançada disponível na navegação e no painel administrativo."><input type="checkbox" checked={false} disabled={true}/><span>Roteamento adaptativo · reservado ao administrador</span></label>
      </div>
      <details className="vb-advanced"><summary><SlidersHorizontal size={16}/> Evitar vias específicas</summary><div>{[['tolls','Pedágios'],['ferries','Balsas'],['unpaved','Não pavimentadas']].map(([key,label])=><label key={key}><input type="checkbox" checked={avoids[key]} disabled={running} onChange={e=>setAvoids(prev=>({...prev,[key]:e.target.checked}))}/>{label}</label>)}</div></details>
      <button type="submit" className="vb-run" data-testid="benchmark-run" disabled={running}>{running?'Calculando trajetos…':'Executar benchmark'}<Play size={17}/></button>
