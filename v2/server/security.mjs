@@ -60,7 +60,9 @@ export function secureHeaders(production = false) {
   const headers = {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
-    'Referrer-Policy': 'no-referrer',
+    // Send only the origin to Mapbox. Browser URL-restricted pk tokens require Referer.
+    // Do not leak query strings / full paths to other origins.
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
     'Cross-Origin-Resource-Policy': 'same-origin',
     'Permissions-Policy': 'camera=(), microphone=(self), payment=(), geolocation=(self)',
     'X-Permitted-Cross-Domain-Policies': 'none',
