@@ -388,11 +388,18 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
      latest.current.onTrafficStatus?.('unavailable');
      return;
    }
-   if(!isLoaded(map)&&/Unauthorized|Forbidden|Invalid Token|Style not found|Failed to load style/i.test(message)){
-     // Fail closed to a stable raster map; do not leave the user on a blank map.
+   // A revoked/restricted pk may load the style shell and fail on vector
+   // tile requests a moment later. Don't keep a blank WebGL canvas alive.
+   // Optional traffic data has already been excluded above.
+   const code=Number(e?.error?.status||e?.error?.statusCode||e?.status||0);
+   const authFailed=code===401||code===403||/\b(?:401|403)\b|Unauthorized|Unauthorised|Forbidden|Invalid Token|access token is invalid|Not Authorized/i.test(message);
+   const styleFailed=/Style not found|Failed to load style/i.test(message);
+   if(authFailed||(!isLoaded(map)&&styleFailed)){
+     console.warn('VANO base map authorization/style unavailable; switching to licensed raster fallback.',code||'style-error');
      setForceRaster(true);return;
    }
-   console.warn('Mapbox:',message);
+   // The provider message can contain access_token URLs. Never log it raw.
+   console.warn('VANO Mapbox map error:',code||'provider-unavailable');
  }};
     if(token && !forceRaster && (!mapboxgl.supported || mapboxgl.supported())){
       try{
@@ -490,7 +497,9 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         setError('Não foi possível carregar o mapa. Recarregue a página.');
         return()=>{};
       }
-      installLeafletBasemap(map,latest.current.layer,token,{
+      // A Mapbox auth/style failure must NOT retry the rejected pk as
+      // raster tiles. Use licensed Esri basemap directly on recovery.
+      installLeafletBasemap(map,latest.current.layer,forceRaster?'':token,{
         appearance:latest.current.appearance,
         onReady:()=>requestAnimationFrame(()=>{if(!deleted){setError('');notifyNative({action:'firstFrame',backend:'leaflet'});}}),
         onError:()=>{if(!deleted)setError('A imagem do mapa está indisponível. Verifique a conexão e recarregue.');}
@@ -684,10 +693,10 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='leaflet')return;
-    const tiles=leafletTilesFor(layer,token,appearance);
+    const tiles=leafletTilesFor(layer,forceRaster?'':token,appearance);
     if(map._vanoTilesKey!==tiles.url){
       // Layer changes keep the route, GPS and POI overlays untouched.
-      installLeafletBasemap(map,layer,token,{
+      installLeafletBasemap(map,layer,forceRaster?'':token,{
         appearance,
         onReady:()=>setError(''),
         onError:()=>setError('A imagem do mapa está indisponível. Verifique a conexão e recarregue.')
@@ -727,7 +736,10 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       if(dt<13)return;
       state.last=now;
       const d=latest.current,target=d.gpsCoords;
-      updateV2RouteFlow(mapRef.current,backend.current,d,now,reduced);
+      // Emergency stability gate: avoid continuous GL paint mutations until
+      // extended device testing. Static orange route / traffic remains.
+      if(import.meta.env.VITE_V2_ROUTE_FLOW_ANIMATION==='1')
+        updateV2RouteFlow(mapRef.current,backend.current,d,now,reduced);
       if(!validPoint(target))return;
       // V2 Sim follows route PROGRESS, not a raw straight-line interpolation
       // between coordinates. This prevents the icon from cutting across sharp
