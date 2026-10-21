@@ -7,6 +7,16 @@ import {mapboxEtaEvidence} from './route-eta-diagnostics.mjs';
 import {blockExploreSpecs,validExploredVariant,chooseStableFastRoute} from './urban-route-exploration.mjs';
 
 const cache=new Map(), CACHE_TTL=15000,MAX_CACHE=48;
+// Per-instance budget is intentionally below Mapbox's provider-wide ceiling.
+// Under load, optional exploration is skipped; baseline traffic route survives.
+const EXTRA_PROVIDER_CALLS_PER_MINUTE=120;
+let extraCallsWindow=0,extraCallsCount=0;
+function acquireExtraCall(){
+ const t=Date.now();
+ if(t-extraCallsWindow>=60000){extraCallsWindow=t;extraCallsCount=0;}
+ if(extraCallsCount>=EXTRA_PROVIDER_CALLS_PER_MINUTE)return false;
+ extraCallsCount++;return true;
+}
 const clone=x=>structuredClone(x);
 const numeric=x=>Number.isFinite(x)&&x>0;
 const vehicleKind=x=>x==='moto'?'moto':'carro';
@@ -91,12 +101,14 @@ async function request(url,fetcher,timeoutMs){
   if(!routes.length)throw Error('Mapbox não retornou rotas válidas.');
   return routes;
 }
-async function probeGroup(origin,destination,access,language,vehicle,telemetry,options,specs,fetcher,baseline,kind,existingRoutes=[]){
+async function probeGroup(origin,destination,access,language,vehicle,telemetry,options,specs,fetcher,baseline,kind,existingRoutes=[],audit=null){
   const results=[],concurrency=4;
   for(let i=0;i<specs.length;i+=concurrency){
     const batch=specs.slice(i,i+concurrency);
     const found=await Promise.all(batch.map(async spec=>{
       try{
+        if(!acquireExtraCall()){if(audit)audit.throttled++;return null;}
+        if(audit){audit.sent++;if(kind==='urban')audit.urbanSent++;}
         const url=mapboxDirectionsUrl(origin,destination,access,language,vehicle,telemetry,options,{...spec,alternatives:false});
         const r=(await request(url,fetcher,kind==='urban'?3500:9500))[0];
         if(!r||r.duration>baseline.duration*(kind==='adaptive'?1.70:1.48))return null;
@@ -143,19 +155,22 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       initial=await request(fallback,fetcher,options.reroute===true?5500:12500);
     }
     let pool=uniqueCandidates(initial,24),probeCount=0,probeSuccess=0,urbanProbes=0,urbanAccepted=0;
+    const probeAudit={sent:0,urbanSent:0,throttled:0};
     const originalBest=chooseStableFastRoute(initial,initial[0]);
     const baseline=pool[0];
     if(usedProfile==='driving-traffic'&&options.skipCandidateProbes!==true&&options.reroute!==true){
       // A maximum of 20 provider route queries, never 20 hand-drawn roads.
       // Short trips explore fewer streets to prevent latency and quota bursts.
       const explorationBudget=baseline.distance>=5000?20:baseline.distance>=2800?10:baseline.distance>=1350?5:0;
-      const maxQueries=options.adaptive===false?Math.min(4,explorationBudget):explorationBudget;
+      const maxQueries=options.adaptive===false?Math.min(4,explorationBudget):
+        (explorationBudget||((traffic(baseline).score>=34||traffic(baseline).severe>0)?
+          Math.min(4,options.variantBudget||4):0));
       const firstSpecs=options.adaptive===false?[]:
         blockExploreSpecs(pool,Math.min(10,maxQueries),{phase:1});
       if(firstSpecs.length){
         urbanProbes+=firstSpecs.length;probeCount+=firstSpecs.length;
         const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,
-          options,firstSpecs,fetcher,baseline,'urban',pool);
+          options,firstSpecs,fetcher,baseline,'urban',pool,probeAudit);
         const originalLength=pool.length;
         pool=uniqueCandidates([...pool,...extra],24);
         const added=Math.max(0,pool.length-originalLength);
@@ -169,7 +184,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         if(limited.length){
           probeCount+=limited.length;
           const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,
-            options,limited,fetcher,baseline,'adaptive');
+            options,limited,fetcher,baseline,'adaptive',[],probeAudit);
           const before=pool.length;pool=uniqueCandidates([...pool,...extra],24);
           probeSuccess+=Math.max(0,pool.length-before);
         }
@@ -179,7 +194,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         if(specs.length){
           probeCount+=specs.length;
           const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,
-            options,specs,fetcher,baseline,'micro');
+            options,specs,fetcher,baseline,'micro',[],probeAudit);
           const before=pool.length;pool=uniqueCandidates([...pool,...extra],24);
           probeSuccess+=Math.max(0,pool.length-before);
         }
@@ -192,7 +207,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         if(specs.length){
           urbanProbes+=specs.length;probeCount+=specs.length;
           const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,
-            options,specs,fetcher,baseline,'urban',pool);
+            options,specs,fetcher,baseline,'urban',pool,probeAudit);
           const before=pool.length;pool=uniqueCandidates([...pool,...extra],24);
           const added=Math.max(0,pool.length-before);
           urbanAccepted+=added;probeSuccess+=added;
@@ -213,11 +228,11 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       etaUpdatedAt:Date.now()})),
       // Internal-only candidate pool; returned to callers only on safe-comparison requests.
       ...(options.safeComparison===true?{safeCandidatePool:pool.slice(0,10).map((r,i)=>present(r,'safe-candidate-'+i))}:{}),
-      source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),urbanExplorationActive:urbanProbes>0,
-      safetyMessage:'Rota rápida selecionada pelo menor ETA do provedor após avaliar alternativas e micro-desvios. A outra rota é uma alternativa sem avaliação de segurança verificada.',
+      source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),urbanExplorationActive:probeAudit.urbanSent>0,
+      safetyMessage:'Rota recomendada por ETA do provedor, estabilidade e distância na margem de empate técnico. A outra rota é apenas uma alternativa, sem comprovação de segurança superior.',
       candidateEngine:{version:'v1-eta-candidate-port',provider:usedProfile,
-        initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeCount,
-        acceptedProbes:probeSuccess,urbanProbes,urbanAccepted,
+        initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeAudit.sent,plannedExtraRequests:probeCount,throttledRequests:probeAudit.throttled,
+        acceptedProbes:probeSuccess,urbanProbes:probeAudit.urbanSent,urbanAccepted,
         searchZones:['inicio','meio','fim'],searchLimit:20,providerRouteCount:pool.length,
         minimumSwitchSavingsSeconds:Math.round(Math.max(45,Math.min(95,(originalBest?.duration||baseline.duration)*.055))),
         stableChoiceDurationSeconds:fastest.duration,originalChoiceDurationSeconds:originalBest.duration,
