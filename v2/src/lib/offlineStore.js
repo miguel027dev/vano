@@ -1,5 +1,5 @@
 /** Private device storage. Cached account data never grants server authorization. */
-import {WARM_GPS_KEY} from './gpsWarmStart';
+import {WARM_GPS_KEY} from './gpsWarmStart.js';
 let opening;
 function db(){
   if(!globalThis.indexedDB)return Promise.reject(Error('Device storage unavailable'));
