@@ -30,3 +30,18 @@ test('report updates match geographic bounding boxes precisely',()=>{
   assert.equal(pointInsideBBox([20,0],[-46.7,-23.6,-46.6,-23.5]),false);
   assert.equal(pointInsideBBox([NaN,0],[0,-1,1,1]),false);
 });
+
+
+test('SSE enforces active streams per client and frees the slot on disconnect',()=>{
+  const hub=createReportStreamHub({capacity:5,maxPerClient:2,heartbeatMs:100000,maxLifetimeMs:100000});
+  const a=fakeStream(),b=fakeStream(),c=fakeStream(),d=fakeStream();
+  const bbox=[-47,-24,-46,-23];
+  assert.equal(hub.subscribe(new EventEmitter(),a,bbox,{},'client-a'),true);
+  assert.equal(hub.subscribe(new EventEmitter(),b,bbox,{},'client-a'),true);
+  assert.equal(hub.subscribe(new EventEmitter(),c,bbox,{},'client-a'),false);
+  assert.equal(hub.subscribe(new EventEmitter(),d,bbox,{},'client-b'),true);
+  a.emit('close');
+  assert.equal(hub.subscribe(new EventEmitter(),c,bbox,{},'client-a'),true);
+  b.emit('close');c.emit('close');d.emit('close');
+  assert.equal(hub.subscriberCount(),0);
+});

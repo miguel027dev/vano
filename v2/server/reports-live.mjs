@@ -9,10 +9,12 @@ export const pointInsideBBox=(point,bbox)=>
   Array.isArray(bbox)&&bbox.length===4&&bbox.every(Number.isFinite)&&
   point[0]>=bbox[0]&&point[0]<=bbox[2]&&point[1]>=bbox[1]&&point[1]<=bbox[3];
 
-export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20000}={}){
+export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20000,maxPerClient=3,maxLifetimeMs=20*60000}={}){
   const peers=new Set();
-  function subscribe(req,res,bbox,securityHeaders={}){
+  function subscribe(req,res,bbox,securityHeaders={},clientKey=null){
     if(peers.size>=capacity)return false;
+    // A single browser/device cannot exhaust the shared SSE connection pool.
+    if(clientKey && [...peers].filter(peer=>peer.clientKey===clientKey).length>=maxPerClient)return false;
     res.writeHead(200,{
       ...securityHeaders,
       'Content-Type':'text/event-stream; charset=utf-8',
@@ -22,8 +24,11 @@ export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20
     });
     res.flushHeaders?.();
     res.write('retry: 5000\n: connected\n\n');
-    const peer={res,bbox};
+    const peer={res,bbox,clientKey};
     peers.add(peer);
+    // Browser EventSource reconnects automatically after the advertised retry.
+    const lifetime=setTimeout(()=>{try{res.end?.();}catch{}close();},maxLifetimeMs);
+    lifetime.unref?.();
     const heartbeat=setInterval(()=>{
       if(res.destroyed||res.writableEnded){close();return;}
       try{res.write(': alive\n\n');}catch{close();}
@@ -31,6 +36,7 @@ export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20
     heartbeat.unref?.();
     function close(){
       clearInterval(heartbeat);
+      clearTimeout(lifetime);
       peers.delete(peer);
     }
     res.once('close',close);

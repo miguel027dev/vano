@@ -323,3 +323,17 @@ test('benchmark V2 público: descoberta, cenários, validação e ausência de r
   assert.equal((await a.call('/api/health')).status,200);
  }finally{await s.stop();}
 });
+
+
+test('Logout revokes both account and guest cookies',async()=>{
+  const s=await start(),a=client(s.origin);
+  try {
+    const boot=await a.call('/api/bootstrap');
+    assert.equal(boot.status,200);
+    const done=await a.call('/api/auth/logout','POST',{});
+    assert.equal(done.status,200);
+    const cookies=done.headers.getSetCookie?.()||[done.headers.get('set-cookie')||''];
+    assert.ok(cookies.some(c=>c.startsWith('vano_session=')&&c.includes('Max-Age=0')),JSON.stringify(cookies));
+    assert.ok(cookies.some(c=>c.startsWith('vano_guest=')&&c.includes('Max-Age=0')),JSON.stringify(cookies));
+  } finally { await s.stop(); }
+},{timeout:15000});
