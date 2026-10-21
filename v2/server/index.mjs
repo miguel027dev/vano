@@ -66,7 +66,7 @@ import {isReportType,reportType,publicReportsInBBox,metersApart,recordReportFeed
 import {createReportStreamHub} from './reports-live.mjs';
 import {resolveClientIP} from './client-ip.mjs';
 import {pruneGuestRecords} from './guest-retention.mjs';
-import {deleteUserRecords} from './account-deletion.mjs';
+import {deleteUserRecords,verifiedGoogleDeletion} from './account-deletion.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
@@ -680,7 +680,7 @@ async function route(req, res) {
         if(!session||session.user.id!==record.deleteUserId||session.hash!==record.deleteSessionHash){
           res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':'/entrar?google=sessao-expirada','Set-Cookie':drop});res.end();return;
         }
-        if(session.user.googleSub!==id.googleSub||session.user.email!==id.email){
+        if(!verifiedGoogleDeletion(session,record,id)){
           res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':'/conta?google=exclusao-invalida','Set-Cookie':drop});res.end();return;
         }
         deleteUserRecords(db,session.user.id);
