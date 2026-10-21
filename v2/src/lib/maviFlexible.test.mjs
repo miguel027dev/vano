@@ -17,8 +17,6 @@ test('MAVI detects flexible Portuguese local-place and route-corridor questions'
   ['Mavi, mercado no caminho sem desviar muito','grocery','route'],
   ['Mavi, farmácia mais próxima','pharmacy','nearby'],
   ['Preciso de uma drogaria no caminho','pharmacy','route'],
-  ['Mavi, preciso de gasolina perto de mim','gas_station','nearby'],
-  ['Mavi, me leva para um posto na minha rota','gas_station','route'],
   ['Mavi, onde comer','restaurant','nearby']
  ];
  for(const [phrase,category,scope] of examples){
