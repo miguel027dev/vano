@@ -43,7 +43,9 @@ function makeSpec(route,portion,phase,routeNumber,second=null){
  * exclusions on the main corridor to reveal neighborhood-scale detours.
  */
 export function blockExploreSpecs(routes,limit=10,{phase=1,seen=[]}={}){
- const ranked=uniqueCandidates(routes,24).filter(x=>x.distance>=1350&&x.distance<=100000&&x.duration>=270);
+ const all=uniqueCandidates(routes,24).filter(x=>x.distance>=1350&&x.distance<=100000&&x.duration>=270);
+ const original=all.find(r=>r===routes?.[0])||all[0];
+ const ranked=original?[original,...all.filter(r=>r!==original)]:[];
  if(!ranked.length)return [];
  const budget=Math.max(0,Math.min(BUDGET,Math.trunc(limit)||0));
  if(!budget)return [];
@@ -107,8 +109,8 @@ export function chooseStableFastRoute(candidates,original){
  if(!baseline)return null;
  const near=routes.filter(r=>Math.abs(r.duration-baseline.duration)<=45);
  let selected=baseline;
- for(const route of near)if(route.distance<selected.distance-300&&
-   route.duration<=selected.duration+45)selected=route;
+ for(const route of near)if(route.distance<=selected.distance-450&&
+   route.duration<=selected.duration+30)selected=route;
  const threshold=Math.max(45,Math.min(95,baseline.duration*.055));
  const meaningful=routes.find(r=>r.duration<=selected.duration-threshold&&
    overlap(r,selected)<.985&&r.distance<=selected.distance*1.65);
