@@ -31,8 +31,8 @@ import java.util.concurrent.*;
 
 /** Remote VANO application. No screen streaming, bundled routes or native map. */
 public final class MainActivity extends Activity {
-    private static final String BASE="https://vanu-73xu.onrender.com", ENTRY=BASE+"/mapa";
-    private static final int GEO_REQUEST=10, FILE_REQUEST=11;
+    private static final String BASE="https://vanomaps.online", ENTRY=BASE+"/mapa";
+    private static final int GEO_REQUEST=10, FILE_REQUEST=11, AUDIO_REQUEST=12;
     private final ExecutorService network=Executors.newSingleThreadExecutor();
     private WebView web;
     private OfflineCache offlineCache;
@@ -54,20 +54,21 @@ public final class MainActivity extends Activity {
     private LinearLayout errorPanel;
     private String currentUrl=ENTRY, geoOrigin;
     private GeolocationPermissions.Callback geoCallback;
+    private PermissionRequest audioRequest;
     private ValueCallback<Uri[]> fileCallback;
     private boolean destroyed, recovering, pageFailed;
     private final Handler handler=new Handler(Looper.getMainLooper());
 
     static boolean trusted(Uri uri) {
         return uri!=null && "https".equalsIgnoreCase(uri.getScheme()) &&
-            "vanu-73xu.onrender.com".equalsIgnoreCase(uri.getHost()) &&
+            ("vanomaps.online".equalsIgnoreCase(uri.getHost()) || "vanu-73xu.onrender.com".equalsIgnoreCase(uri.getHost())) &&
             (uri.getPort()==-1 || uri.getPort()==443) && uri.getUserInfo()==null;
     }
     static boolean trusted(String url) { try{return trusted(Uri.parse(url));}catch(Exception e){return false;} }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         launchAt=SystemClock.elapsedRealtime();
-        offlineCache=new OfflineCache(this,"vanu-73xu.onrender.com");
+        offlineCache=new OfflineCache(this,"vanomaps.online");
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         root=new FrameLayout(this);root.setBackgroundColor(Color.rgb(244,245,248));setContentView(root);
@@ -157,6 +158,24 @@ public final class MainActivity extends Activity {
                 else requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);
             }
             @Override public void onGeolocationPermissionsHidePrompt(){finishGeo(false);}
+            @Override public void onPermissionRequest(PermissionRequest request){
+                runOnUiThread(()->{
+                    // Only microphone capture for the trusted VANO WebView origin.
+                    // Never grant camera, protected-media or unknown resources.
+                    boolean audio=false;
+                    for(String resource:request.getResources())if(PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource))audio=true;
+                    if(!audio||!trusted(request.getOrigin())||web==null||!trusted(web.getUrl())){request.deny();return;}
+                    if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){
+                        request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});return;
+                    }
+                    if(audioRequest!=null)audioRequest.deny();
+                    audioRequest=request;
+                    requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},AUDIO_REQUEST);
+                });
+            }
+            @Override public void onPermissionRequestCanceled(PermissionRequest request){
+                if(audioRequest==request)audioRequest=null;
+            }
             @Override public boolean onJsPrompt(WebView view,String url,String message,String defaultValue,JsPromptResult result){
                 if(!"VANO_NATIVE".equals(message))return false;
                 if(!trusted(url)||!trusted(view.getUrl())){result.cancel();return true;}
@@ -261,12 +280,21 @@ public final class MainActivity extends Activity {
         loadingText=new TextView(this);loadingText.setText("Preparando seu mapa");loadingText.setTextSize(16);loadingText.setGravity(Gravity.CENTER);loadingText.setTextColor(Color.rgb(104,107,114));loadingText.setPadding(0,28,0,28);loadingPanel.addView(loadingText);
         ProgressBar progress=new ProgressBar(this);loadingPanel.addView(progress,new LinearLayout.LayoutParams(48,48));
         Button retry=new Button(this);retry.setText("Tentar novamente");retry.setOnClickListener(v->{hideError();if(web!=null)web.reload();});loadingPanel.addView(retry);
-        Button continueButton=new Button(this);continueButton.setText("Abrir interface");continueButton.setOnClickListener(v->{if(loadingPanel!=null){root.removeView(loadingPanel);loadingPanel=null;loadingText=null;}});loadingPanel.addView(continueButton);
         root.addView(loadingPanel,new FrameLayout.LayoutParams(-1,-1));
         handler.removeCallbacks(slowLoading);handler.postDelayed(slowLoading,12000);
     }
     private boolean navigate(Uri uri){
         if(trusted(uri)){
+            if("/api/auth/google/start".equals(uri.getPath()) && "1".equals(uri.getQueryParameter("delete"))){
+                // Account deletion requires an existing web session and a fresh Google
+                // reauthentication in the same browser. Native login PKCE is NOT deletion.
+                // Android WebView cookies are not shared with the external browser.
+                try{
+                    startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(BASE+"/conta")).addCategory(Intent.CATEGORY_BROWSABLE));
+                    Toast.makeText(this,"Para excluir a conta, entre no navegador e confirme no Google.",Toast.LENGTH_LONG).show();
+                }catch(ActivityNotFoundException e){Toast.makeText(this,"Abra vanomaps.online/conta no navegador para excluir sua conta.",Toast.LENGTH_LONG).show();}
+                return true;
+            }
             if("/api/auth/google/start".equals(uri.getPath())&&!"1".equals(uri.getQueryParameter("link"))){beginGoogleLogin();return true;}
             return false;
         }
@@ -278,7 +306,17 @@ public final class MainActivity extends Activity {
     }
     private boolean locationGranted(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
     private void finishGeo(boolean allow){if(geoCallback!=null){geoCallback.invoke(geoOrigin,allow,false);geoCallback=null;geoOrigin=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());startGps();}}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){
+        super.onRequestPermissionsResult(request,permissions,grants);
+        if(request==GEO_REQUEST){finishGeo(locationGranted());startGps();}
+        if(request==AUDIO_REQUEST&&audioRequest!=null){
+            PermissionRequest waiting=audioRequest;audioRequest=null;
+            if(grants.length>0&&grants[0]==PackageManager.PERMISSION_GRANTED &&
+                !destroyed&&web!=null&&trusted(web.getUrl())&&trusted(waiting.getOrigin())){
+                waiting.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            }else waiting.deny();
+        }
+    }
 
     @Override public void onActivityResult(int req,int result,Intent data){
         super.onActivityResult(req,result,data);
@@ -346,5 +384,5 @@ public final class MainActivity extends Activity {
     @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);root.requestApplyInsets();if(web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);}
     @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();syncScreenAwake();startGps();}
     @Override protected void onPause(){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();super.onPause();}
-    @Override protected void onDestroy(){destroyed=true;stopGps();if(voice!=null)voice.close();if(offlineCache!=null)offlineCache.close();handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onDestroy(){destroyed=true;stopGps();if(voice!=null)voice.close();if(offlineCache!=null)offlineCache.close();handler.removeCallbacksAndMessages(null);finishGeo(false);if(audioRequest!=null){audioRequest.deny();audioRequest=null;}if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
 }
