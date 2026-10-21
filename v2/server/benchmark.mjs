@@ -33,7 +33,7 @@ export function benchmarkCapabilities({originalEngine=false,baseUrl='',enabled=t
     version:'2.0',public:true,readOnly:true,agentReady:true,
     enabled,engine:originalEngine?'vano-original':'mapbox-v2',
     limits:{requestsPerMinutePerIp:PUBLIC_BENCHMARK_RATE,maxDistanceKm:PUBLIC_BENCHMARK_MAX_KM,
-      maxVariantBudget:4,recommendedParallelism:1,recommendedDelayMs:350},
+      maxVariantBudget:2,adaptivePublic:false,recommendedParallelism:1,recommendedDelayMs:350},
     profiles:['driving','motorcycle'],
     modes:benchmarkModes(originalEngine),
     notes:[
@@ -41,7 +41,8 @@ export function benchmarkCapabilities({originalEngine=false,baseUrl='',enabled=t
       'Traffic and safety scores can be null; never treat null as zero.',
       'Without the original engine, safest is an alternative, not a verified safety ranking.',
       'Latency is measured on the V2 server; browser round-trip time is measured separately.',
-      'Benchmark calls do not write trip history or require a user session.'
+      'Benchmark calls do not write trip history or require a user session.',
+      'Deep adaptive route probing is reserved for navigation and administrator diagnostics to prevent public API quota abuse.'
     ],
     endpoints:{
       capabilities:prefix+'/api/benchmark/v1/capabilities',
@@ -54,8 +55,8 @@ export function benchmarkCapabilities({originalEngine=false,baseUrl='',enabled=t
       optional:{
         profile:'driving | motorcycle (default driving)',
         mode:'fastest | safest | smart | quietest (check modes first)',
-        adaptive:'0 | 1 (default 0)',
-        variant_budget:'2..4 (default 2)',
+        adaptive:'0 (advanced route exploration restricted to navigation and admin)',
+        variant_budget:'2 (public benchmark)',
         include_geometry:'0 | 1 (default 0)',
         avoid_tolls:'0 | 1', avoid_ferries:'0 | 1',avoid_unpaved:'0 | 1'
       }
@@ -87,8 +88,9 @@ export function parseBenchmarkParams(query,{originalEngine=false}={}){
   const flag=name=>{const value=query.get(name);return value===null||value==='0'?false:value==='1'?true:null;};
   const names=['adaptive','include_geometry','avoid_tolls','avoid_ferries','avoid_unpaved'],flags={};
   for(const name of names){flags[name]=flag(name);if(flags[name]===null)return {error:'invalid_parameter',message:'Parâmetro inválido: '+name,status:400};}
+  if(flags.adaptive)return {error:'public_adaptive_disabled',message:'Exploração adaptativa avançada está disponível no console administrativo, não no benchmark público.',status:422};
   const raw=query.get('variant_budget')??'2';
-  if(!/^[234]$/.test(raw))return {error:'invalid_variant_budget',message:'variant_budget deve ser 2, 3 ou 4.',status:400};
+  if(raw!=='2')return {error:'invalid_variant_budget',message:'Benchmark público exige variant_budget=2.',status:400};
   return {origin,destination,profile,vehicle:profile==='motorcycle'?'moto':'carro',mode,routeId:IDS[mode],
     directDistanceKm:distance,variantBudget:Number(raw),...flags};
 }
