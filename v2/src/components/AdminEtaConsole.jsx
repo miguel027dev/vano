@@ -57,6 +57,46 @@ function OneRoute({route}){
   </details>}
  </article>;
 }
+function Corroboration({data}){
+ if(!data)return null;
+ return <section className="eta-admin-route" aria-label="Fontes independentes de trânsito">
+  <div className="eta-admin-route-head"><div><span>TRÂNSITO DE OUTROS PROVEDORES</span><h3>Auditoria independente</h3></div>
+   <span className="eta-admin-state">Não altera o ETA</span></div>
+  <p className="eta-admin-footnote">Amostras pontuais do TomTom exigem correspondência de via e sentido. Elas não comprovam a duração da rota inteira.</p>
+  {(data.flow||[]).map(flow=><div key={flow.routeId} className="eta-admin-evidence">
+   <h4><Activity size={17}/> TomTom Traffic Flow · {flow.routeId==='fast'?'Rota rápida':'Rota alternativa'}</h4>
+   <div className="eta-admin-kpis">
+    <Item label="Estado">{flow.status||'Não informado'}</Item>
+    <Item label="Amostras compatíveis">{fmt(flow.matched,0)} / {fmt(flow.attempted,0)}</Item>
+    <Item label="Fluxo vs. livre (amostras)">{flow.medianLikeWeightedFlowRatio==null?'Não verificado':fmt(flow.medianLikeWeightedFlowRatio*100)+'%'}</Item>
+    <Item label="Amostras com fluxo muito lento">{fmt(flow.lowFlowSamples,0)}</Item>
+   </div>
+   {flow.samples?.length>0&&<details className="eta-admin-details"><summary>Abrir medições e rejeições</summary>
+    <div className="eta-admin-table-wrap"><table><thead><tr><th>Estado</th><th>Distância na rota</th><th>Atual</th><th>Livre</th><th>Confiança</th><th>Compatibilidade</th></tr></thead>
+    <tbody>{flow.samples.map((s,i)=><tr key={i}><td>{s.status}{s.reason?' · '+s.reason:''}</td>
+     <td>{s.distanceFromStartKm==null?'—':fmt(s.distanceFromStartKm,2)+' km'}</td>
+     <td>{s.currentKmh==null?'—':fmt(s.currentKmh)+' km/h'}</td>
+     <td>{s.freeFlowKmh==null?'—':fmt(s.freeFlowKmh)+' km/h'}</td>
+     <td>{s.confidence==null?'—':fmt(s.confidence,2)}</td>
+     <td>{s.geomMatchMeters==null?'não confirmada':s.geomMatchMeters+' m'}</td></tr>)}</tbody></table></div>
+   </details>}
+  </div>)}
+  <div className="eta-admin-evidence">
+   <h4><Database size={17}/> CET São Paulo · Indicador urbano agregado</h4>
+   {data.cet?.status==='available'?<>
+    <p className="eta-admin-footnote">Consulta pública da CET. Lentidão por região da cidade; não corresponde necessariamente às ruas desta rota.</p>
+    <div className="eta-admin-kpis">{data.cet.regions?.map(r=><Item key={r.region} label={r.region}>
+      {fmt(r.congestionKm,0)} km de lentidão · {fmt(r.reportedPercent,0)}%
+    </Item>)}</div>
+   </>:<p className="eta-admin-footnote">Situação: {data.cet?.status||'indisponível'}. A CET não oferece aqui medições de velocidade por trecho verificadas.</p>}
+   <p><a href="https://www.cetsp.com.br/transito-agora/transito-nas-principais-vias.aspx" target="_blank" rel="noopener noreferrer">Conferir diretamente na CET</a></p>
+  </div>
+  <details className="eta-admin-details"><summary>Outras fontes públicas sem chave já cadastradas</summary>
+   <ul>{(data.otherKeylessProviders||[]).map(s=><li key={s.id}>{s.label} · {s.region} · impacto ETA: nenhum</li>)}</ul>
+   <p className="eta-admin-footnote">CEMADEN, imagens de satélite e dados históricos não medem velocidades atuais por rua. Suas licenças e formatos devem ser verificados antes da ingestão.</p>
+  </details>
+ </section>;
+}
 export default function AdminEtaConsole(){
  const [values,setValues]=useState(initial),[vehicle,setVehicle]=useState('carro'),
   [adaptive,setAdaptive]=useState(true),[running,setRunning]=useState(false),
@@ -118,6 +158,7 @@ export default function AdminEtaConsole(){
     <Item label="TomTom influenciou a escolha?">{report.tomtomRoutingImpact?'Sim':'Não / não informado'}</Item>
    </div>
    {report.routes?.map(r=><OneRoute key={r.id} route={r}/>)}
+   <Corroboration data={report.corroboration}/>
    <p className="eta-admin-footnote">A pontuação de congestionamento não é um atraso em minutos. Sem duração típica do provedor, o console não inventa penalidades. Acurácia real requer horário efetivo de chegada.</p>
    <details className="eta-admin-details"><summary>Dados técnicos completos (JSON)</summary><pre>{JSON.stringify(report,null,2)}</pre></details>
   </div>}
