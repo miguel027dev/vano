@@ -84,12 +84,13 @@ function Corroboration({data}){
   <div className="eta-admin-evidence">
    <h4><Database size={17}/> CET São Paulo · Indicador urbano agregado</h4>
    {data.cet?.status==='available'?<>
-    <p className="eta-admin-footnote">Consulta pública da CET. Lentidão por região da cidade; não corresponde necessariamente às ruas desta rota.</p>
+    <p className="eta-admin-footnote">Leitura oficial disponível: lentidão agregada por região, não velocidade das ruas desta rota.</p>
+    <p className="eta-admin-footnote">{data.cet.retrievedAt?'Consulta obtida: '+new Date(data.cet.retrievedAt).toLocaleString('pt-BR'):'Consulta sem horário de obtenção'} · Horário da medição oficial não informado{data.cet.cached?' · cache recente':''}.</p>
     <div className="eta-admin-kpis">{data.cet.regions?.map(r=><Item key={r.region} label={r.region}>
       {fmt(r.congestionKm,0)} km de lentidão · {fmt(r.reportedPercent,0)}%
     </Item>)}</div>
-   </>:<p className="eta-admin-footnote">Situação: {data.cet?.status||'indisponível'}. A CET não oferece aqui medições de velocidade por trecho verificadas.</p>}
-   <p><a href="https://www.cetsp.com.br/transito-agora/transito-nas-principais-vias.aspx" target="_blank" rel="noopener noreferrer">Conferir diretamente na CET</a></p>
+   </>:<p className="eta-admin-footnote">CET: {data.cet?.status||'indisponível'} · {data.cet?.failureReason||'Sem diagnóstico específico'}. {data.cet?.note||'Nenhuma velocidade viária verificável disponível.'}</p>}
+   <p><a href={data.cet?.sourceUrl||'https://www.cetsp.com.br/transito-agora/transito-nas-principais-vias.aspx'} target="_blank" rel="noopener noreferrer">Conferir diretamente na CET</a></p>
   </div>
   <details className="eta-admin-details"><summary>Outras fontes públicas sem chave já cadastradas</summary>
    <ul>{(data.otherKeylessProviders||[]).map(s=><li key={s.id}>{s.label} · {s.region} · impacto ETA: nenhum</li>)}</ul>
