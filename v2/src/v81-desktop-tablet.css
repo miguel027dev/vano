@@ -1,0 +1,295 @@
+/* VANO V2 | Responsive desktop and tablet workspace (21 Oct 2026).
+   This layer only affects viewports >= 768px. Mobile GPS, map and navigation
+   geometry remain unchanged. Keep map controls and legal attributions visible. */
+
+@media (min-width: 768px) {
+  /* Give searching and route planning a stable left workspace; the city stays
+     visible on the right instead of being hidden by wide centered overlays. */
+  .map-page .map-top.v31-map-top {
+    left: max(22px, env(safe-area-inset-left, 0px));
+    right: auto;
+    top: 0;
+    margin: 0;
+    width: min(462px, calc(100vw - 112px));
+    max-width: none;
+    padding: calc(env(safe-area-inset-top, 0px) + 23px) 0 0;
+  }
+
+  .map-page .map-search.v31-search {
+    height: 64px;
+    min-height: 64px;
+    border-radius: 20px;
+    box-shadow: 0 12px 35px #18291d24, 0 2px 5px #18291d0e;
+  }
+
+  .map-page .quick-scroll.v31-shortcuts {
+    padding: 13px 2px 6px;
+    gap: 9px;
+    overscroll-behavior-x: contain;
+  }
+
+  .map-page .v31-shortcuts .quick-chip {
+    min-height: 42px;
+    padding: 10px 14px;
+    border-radius: 13px;
+  }
+
+  .map-page .search-results.v32-results {
+    left: max(22px, env(safe-area-inset-left, 0px));
+    right: auto;
+    transform: none;
+    width: min(462px, calc(100vw - 112px));
+    max-width: none;
+    top: calc(env(safe-area-inset-top, 0px) + 95px);
+    max-height: min(540px, calc(100dvh - 125px));
+    border-radius: 20px;
+    box-shadow: 0 20px 46px #1a291c2b, 0 3px 10px #1a291c12;
+  }
+
+  .map-page .search-results.v32-results .suggestion {
+    min-width: 0;
+  }
+
+  .map-page .route-sheet {
+    left: max(22px, env(safe-area-inset-left, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+    top: auto;
+    transform: none;
+    width: min(462px, calc(100vw - 112px));
+    max-width: none;
+    max-height: min(52dvh, 535px);
+    padding: 4px 18px 20px;
+    border: 1px solid #e7ebe5;
+    border-radius: 23px;
+    box-shadow: 0 16px 55px #1d2f232a, 0 4px 12px #1d2f2310;
+    overscroll-behavior: contain;
+    animation: vano-wide-sheet-in .23s cubic-bezier(.2,.8,.2,1) both;
+  }
+
+  .map-page .route-sheet .sheet-handle {
+    margin-top: 7px;
+    margin-bottom: 10px;
+  }
+
+  .map-page .route-sheet .route-options {
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .map-page .route-sheet .route-option {
+    min-width: 0;
+    padding: 13px 11px;
+    gap: 8px;
+  }
+
+  .map-page .route-sheet .route-option-title {
+    white-space: normal;
+    align-items: flex-start;
+    gap: 5px;
+  }
+
+  .map-page .route-sheet .route-option-title .radio-circle {
+    flex: 0 0 20px;
+  }
+
+  .map-page .collapsed-route {
+    left: max(22px, env(safe-area-inset-left, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+    transform: none;
+    width: min(462px, calc(100vw - 112px));
+    max-width: none;
+    min-width: 0;
+    border: 1px solid #e6ebe6;
+    border-radius: 19px;
+    box-shadow: 0 12px 36px #1b2a2025;
+  }
+
+  .map-page .collapsed-route span { min-width: 0; }
+  .map-page .collapsed-route strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The chosen destination already has a collapsed card. Don't stack the GPS
+     caption directly under it on tablet/desktop. */
+  .map-page.has-collapsed-route .v31-location-card { display: none; }
+
+  .map-page:not(.in-navigation) .map-controls,
+  .map-page.has-sheet:not(.in-navigation) .map-controls,
+  .map-page.has-collapsed-route:not(.in-navigation) .map-controls {
+    right: max(23px, env(safe-area-inset-right, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+    gap: 9px;
+  }
+
+  .map-page:not(.in-navigation) .map-controls .circle-btn {
+    width: 47px;
+    height: 47px;
+    min-width: 47px;
+    border-radius: 16px;
+    box-shadow: 0 5px 18px #12211b25;
+  }
+
+  .map-page:not(.in-navigation):not(.has-sheet):not(.has-collapsed-route)
+  .v31-location-card {
+    left: max(22px, env(safe-area-inset-left, 0px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+    width: min(375px, calc(100vw - 115px));
+  }
+
+  .map-page.in-navigation .nav-instruction.v28-nav-instruction {
+    max-width: 610px;
+  }
+
+  .map-page.in-navigation .nav-bottom.v37-nav-bottom {
+    border-radius: 24px 24px 0 0;
+  }
+
+  .map-page .v5-editor-overlay {
+    align-items: center;
+    padding-top: 22px;
+  }
+
+  @keyframes vano-wide-sheet-in {
+    from { opacity: .35; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* A 900-1109px tablet is wide enough for real side navigation. The phone-like
+   portaled bottom bar otherwise wastes usable landscape screen space. */
+@media (min-width: 900px) and (max-width: 1109px) {
+  .app-shell:not(.shell-map):not(.shell-auth) .side-nav {
+    display: flex;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 200;
+    width: 192px;
+    flex-direction: column;
+    gap: 5px;
+    padding: 24px 12px 20px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-right: 1px solid var(--border);
+    scrollbar-width: thin;
+  }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .side-nav .brand {
+    margin: 0 11px 16px;
+  }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .side-nav .brand strong {
+    font-size: 1.8rem;
+  }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .side-nav .side-link {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: .8rem;
+    font-weight: 720;
+    color: var(--muted);
+  }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .side-nav .side-link.active {
+    color: #c45121;
+    background: #fff1e8;
+    box-shadow: inset 3px 0 #ed712f;
+  }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .side-nav hr {
+    width: 100%;
+    height: 1px;
+    border: 0;
+    margin: 12px 0;
+    background: var(--border);
+  }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .side-nav .side-foot {
+    margin-top: auto;
+    font-size: 11px;
+    padding: 16px 12px 0;
+  }
+
+  .bottom-nav.v5-bottom-nav { display: none !important; }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .content-page,
+  .app-shell:not(.shell-map):not(.shell-auth) .content-page.v4-profile {
+    box-sizing: border-box;
+    width: calc(100vw - 240px);
+    max-width: 940px;
+    margin-left: 216px;
+    margin-right: 24px;
+    padding-top: 28px;
+    padding-bottom: 70px;
+    min-width: 0;
+  }
+
+  .app-shell:not(.shell-map):not(.shell-auth) .v3-admin {
+    box-sizing: border-box;
+    width: calc(100vw - 192px);
+    max-width: calc(100vw - 192px);
+    margin-left: 192px;
+    margin-right: 0;
+    min-width: 0;
+  }
+
+  [data-theme='dark'] .app-shell:not(.shell-map):not(.shell-auth)
+  .side-nav .side-link.active {
+    color: #ffb084;
+    background: #392f2b;
+    box-shadow: inset 3px 0 #ff8b4c;
+  }
+}
+
+@media (min-width: 1110px) {
+  .map-page .map-top.v31-map-top,
+  .map-page .search-results.v32-results,
+  .map-page .route-sheet,
+  .map-page .collapsed-route {
+    left: max(28px, env(safe-area-inset-left, 0px));
+    width: min(492px, calc(100vw - 128px));
+  }
+
+  .map-page:not(.in-navigation) .map-controls,
+  .map-page.has-sheet:not(.in-navigation) .map-controls {
+    right: max(28px, env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (min-width: 768px) and (max-height: 620px) {
+  .map-page .route-sheet {
+    max-height: min(48dvh, calc(100dvh - 175px));
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  }
+
+  .map-page .quick-scroll.v31-shortcuts { padding-top: 8px; }
+  .map-page:not(.in-navigation) .map-controls {
+    gap: 6px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 65px);
+  }
+  .map-page:not(.in-navigation) .map-controls .circle-btn {
+    width: 42px; height: 42px; min-width: 42px;
+  }
+}
+
+@media (min-width: 768px) and (hover: hover) and (pointer: fine) {
+  .map-page .v31-shortcuts .quick-chip,
+  .map-page .route-sheet .route-option {
+    transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+  }
+  .map-page .route-sheet .route-option:hover:not(:disabled) {
+    border-color: #edb392;
+    box-shadow: 0 5px 16px #d2602812;
+  }
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+  .map-page .route-sheet { animation: none; }
+  .map-page .v31-shortcuts .quick-chip,
+  .map-page .route-sheet .route-option { transition: none; }
+}
