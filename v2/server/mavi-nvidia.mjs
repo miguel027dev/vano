@@ -18,7 +18,7 @@ export const INFO_INTENTS=new Set([
  'show_traffic','hide_traffic','weather_unavailable',
  'incidents_unavailable','places_unavailable'
 ]);
-export const POI_CATEGORIES=new Set(['grocery','hospital','restaurant','cafe','parking']);
+export const POI_CATEGORIES=new Set(['grocery','hospital','restaurant','cafe','parking','pharmacy','gas_station']);
 const NAME_RE=/^[\p{L}\p{M}0-9 .'-]{4,72}$/u;
 export function maviNvidiaConfig(env=process.env){
  const key=String(env.NVIDIA_API_KEY||'').trim();
