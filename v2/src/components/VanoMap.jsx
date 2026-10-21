@@ -13,7 +13,7 @@ import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {notifyNative} from '../lib/nativeShell';
-import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE} from '../lib/mapLayers';
+import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE,MAPBOX_STYLES} from '../lib/mapLayers';
 import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/night3DBuildings.js';
 import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
@@ -394,8 +394,20 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
    const code=Number(e?.error?.status||e?.error?.statusCode||e?.status||0);
    const authFailed=code===401||code===403||/\b(?:401|403)\b|Unauthorized|Unauthorised|Forbidden|Invalid Token|access token is invalid|Not Authorized/i.test(message);
    const styleFailed=/Style not found|Failed to load style/i.test(message);
-   if(authFailed||(!isLoaded(map)&&styleFailed)){
-     console.warn('VANO base map authorization/style unavailable; switching to licensed raster fallback.',code||'style-error');
+   // A custom Mapbox Studio style may fail authorization while the public
+   // Mapbox street style works. Recover within WebGL BEFORE choosing raster.
+   // Errors from optional resources after a loaded style must not blank the map.
+   if((authFailed||styleFailed)&&!isLoaded(map)){
+     if(!styleRecoveryAttempted&&map?._vanoStyle!==MAPBOX_STYLES.streets){
+       styleRecoveryAttempted=true;
+       try{
+         map._vanoStyle=MAPBOX_STYLES.streets;
+         map.setStyle(MAPBOX_STYLES.streets,{diff:false});
+         console.warn('VANO custom map style unavailable; retrying default vector map.');
+         return;
+       }catch{/* Vector style recovery failed; continue to stable raster. */}
+     }
+     console.warn('VANO vector map unavailable; switching to licensed raster fallback.',code||'style-error');
      setForceRaster(true);return;
    }
    // The provider message can contain access_token URLs. Never log it raw.
@@ -467,7 +479,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         // style before permanently degrading this visit to a raster map.
         styleWatchdog=setTimeout(()=>{
           if(deleted||backend.current!=='mapbox'||isLoaded(map))return;
-          const standard='mapbox://styles/mapbox/standard';
+          const standard=MAPBOX_STYLES.streets;
           if(!styleRecoveryAttempted&&map._vanoStyle!==standard){
             styleRecoveryAttempted=true;
             try{
