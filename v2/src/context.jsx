@@ -16,6 +16,9 @@ export function VanoProvider({children}) {
     next.preferences={...next.preferences,language:SUPPORTED.has(selected)?selected:'en-US'};
     setData(next); setError(''); return next; } catch(e) { setError('Não foi possível conectar. Tente novamente quando houver sinal.'); } finally { clearTimeout(deadline);setLoading(false); } },[]);
   useEffect(()=>{ refresh();const online=()=>refresh();window.addEventListener('online',online);return()=>window.removeEventListener('online',online); },[refresh]);
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get('conta')==='excluida'){
+    clearPrivateOffline();notifyNative({action:'session'});
+  }},[]);
   useEffect(()=>{ if(!toast)return; const t=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(t); },[toast]);
   const savePreference=async p => { const next=await patch('/preferences',p); if(p.language!==undefined&&!data.user){try{localStorage.setItem('vano-guest-language',p.language)}catch{}}setData(d=>({...d,preferences:next,languageExplicit:p.language!==undefined||d.languageExplicit})); setToast(translate('Preferências salvas',p.language||data.preferences?.language)); return next; };
   const saveFavorite=async item => { await post('/favorites',item); await refresh(); setToast(translate('Lugar salvo',data.preferences?.language)); };
