@@ -21,7 +21,8 @@ test('live mic is continuous but controlled; stale completions and route audio c
  const src=readFileSync(new URL('../components/JevVoiceButton.jsx',import.meta.url),'utf8');
  const security=readFileSync(new URL('../../server/security.mjs',import.meta.url),'utf8');
  assert.match(src,/recognition\.continuous=false/);
- assert.match(src,/filter\(row=>row\?\.isFinal!==false\)/);
+ assert.match(src,/maviSpeechTranscripts\(event\.results\)/);
+ assert.match(src,/recognition\.interimResults=true/);
  assert.match(src,/recognitionError\.current=recognitionError\.current\|\|'no-speech'/);
  assert.match(src,/recognitionRef\.current!==recognition/);
  assert.match(src,/if\(navigationAudioActive\(\)\|\|window\.speechSynthesis\?\.speaking\)/);
