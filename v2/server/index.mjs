@@ -104,6 +104,12 @@ if (production) {
   }
   if (process.env.VITE_DEMO_MODE === 'true') throw Error('Produção não pode usar VITE_DEMO_MODE=true.');
   if (!(process.env.VANO_V1_API_URL || process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN)) throw Error('Produção exige roteador real configurado.');
+  // Browser pk is intentionally visible. Route/geocode keys must be separate
+  // server-only credentials BEFORE URL restrictions are applied to the pk.
+  if(process.env.VANO_REQUIRE_MAPBOX_SERVER_TOKEN==='1'&&!process.env.MAPBOX_SECRET_TOKEN)
+    throw Error('Configure MAPBOX_SECRET_TOKEN separado antes de exigir um token de servidor.');
+  if(!process.env.MAPBOX_SECRET_TOKEN)
+    console.warn('VANO Mapbox: roteamento sem token exclusivo de backend. Configure MAPBOX_SECRET_TOKEN antes de restringir o pk do navegador.');
 }
 const port = Number(process.env.PORT || process.env.API_PORT || 8878);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('API_PORT inválida.');
@@ -466,12 +472,16 @@ async function route(req, res) {
     const benchmark=parseBenchmarkParams(u.searchParams,{originalEngine:Boolean(process.env.VANO_V1_API_URL?.trim())});
     if(benchmark.error)return json(res,benchmark.status,{ok:false,error:benchmark.error,message:benchmark.message});
     if(!limits(req,res,'public-benchmark-route',PUBLIC_BENCHMARK_RATE,60000))return;
+    // Global per-instance guard against many IPs exhausting the routing API.
+    const benchmarkQuota=limiter('public-benchmark:instance',24,60000);
+    if(!benchmarkQuota.allowed)return json(res,429,{ok:false,error:'busy',message:'Limite temporário do benchmark atingido.'},
+      {'Retry-After':String(benchmarkQuota.retryAfter)});
     if(benchmarkInFlight>=2)return json(res,429,{ok:false,error:'busy',message:'Servidor ocupado. Repita o teste em alguns instantes.'},{'Retry-After':'10'});
     benchmarkInFlight++;
     const started=performance.now(),requestId=randomBytes(8).toString('hex');
     try{
       const result=await directions(benchmark.origin,benchmark.destination,benchmark.vehicle,{},'pt-BR',{
-        adaptive:benchmark.adaptive,variantBudget:benchmark.variantBudget,
+        adaptive:false,variantBudget:2,skipCandidateProbes:true,safeComparison:false,
         includeAdvanced:['smart','quietest'].includes(benchmark.mode),
         avoidTolls:benchmark.avoid_tolls,avoidFerries:benchmark.avoid_ferries,
         avoidUnpaved:benchmark.avoid_unpaved
@@ -501,7 +511,9 @@ async function route(req, res) {
       throw e;
     }
   }
-  if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true,mapboxConfigured:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,googleReady,googleIssue:googleStatus.reason,v1BridgeConfigured:!!process.env.VANO_V1_API_URL,production,mailConfigured:mailReady,storage:store.kind||'json-ephemeral',persistentDb:store.persistent===true});
+  // Public uptime endpoint must reveal no DB type, provider credentials,
+  // feature flags or internal connection states. Admin metrics remain private.
+  if (pathname === '/api/health' && req.method === 'GET') return json(res,200,{ok:true});
   if (pathname === '/api/engine/status' && req.method === 'GET') {
     const configured=Boolean(process.env.VANO_V1_API_URL?.trim());
     if(!configured)return json(res,200,{configured:false,online:false,mode:'mapbox-fallback'});
@@ -1284,6 +1296,8 @@ async function route(req, res) {
   }
   if (pathname === '/api/route' && req.method === 'POST') {
     if (!limits(req,res,'route',10,60000)) return;
+    const globalRouteQuota=limiter('route:instance',120,60000);
+    if(!globalRouteQuota.allowed)return err(res,429,'Limite temporário de cálculos de rota. Tente novamente.',{'Retry-After':String(globalRouteQuota.retryAfter)});
     const id=owner(req);const body=await getBody(req);
     if (!pointOK(body.origin)||!pointOK(body.destination)||!['carro','moto','a-pe',undefined].includes(body.vehicle))return err(res,400,'Origem, destino ou veículo inválido.');
     const t=body.telemetry&&typeof body.telemetry==='object'?body.telemetry:{};
@@ -1433,7 +1447,17 @@ async function route(req, res) {
     const rec={id:hex(8),owner:id,name:cleanText(b.name,90),address:cleanText(b.address,180),category:cleanText(b.category,30),coords:b.coords,createdAt:stamp()};db.favorites.push(rec);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/favorites/')&&req.method==='DELETE'){
-    const id=pathname.split('/').pop(),own=owner(req);db.favorites=db.favorites.filter(x=>!(x.id===id&&x.owner===own));await persist();return json(res,200,{ok:true});
+    if(!limits(req,res,'favorites-delete',20,60000))return;
+    const id=pathname.split('/').pop(),own=owner(req);
+    // Guest CRUD remains supported, but a caller must own a valid cookie
+    // session (already authenticated by protectedWrite + CSRF globally).
+    if(!own)return err(res,401,'Sessão necessária para gerenciar favoritos.');
+    if(!/^[a-f0-9]{16}$/i.test(id))return err(res,404,'Favorito não encontrado.');
+    const at=db.favorites.findIndex(x=>x.id===id&&x.owner===own);
+    if(at===-1)return err(res,404,'Favorito não encontrado.');
+    db.favorites.splice(at,1);
+    await persist();
+    return json(res,200,{ok:true});
   }
   if(pathname==='/api/history'&&req.method==='POST'){
     if(!limits(req,res,'history',20,3600000))return;
