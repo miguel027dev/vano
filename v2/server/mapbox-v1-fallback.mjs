@@ -98,7 +98,7 @@ async function probeGroup(origin,destination,access,language,vehicle,telemetry,o
     const found=await Promise.all(batch.map(async spec=>{
       try{
         const url=mapboxDirectionsUrl(origin,destination,access,language,vehicle,telemetry,options,{...spec,alternatives:false});
-        const r=(await request(url,fetcher,9500))[0];
+        const r=(await request(url,fetcher,kind==='urban'?5500:9500))[0];
         if(!r||r.duration>baseline.duration*(kind==='adaptive'?1.70:1.48))return null;
         if(kind==='urban'){
           if(!validExploredVariant(r,baseline,results))return null;
