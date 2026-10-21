@@ -10,6 +10,11 @@ export function trustedProxyPeer(raw){
 export function resolveClientIP(req,{trustProxy=false,hops=1}={}){
   const direct=String(req?.socket?.remoteAddress||'unknown');
   if(!trustProxy||!trustedProxyPeer(direct))return direct;
+  // Render currently fronts traffic with Cloudflare. Cloudflare overwrites
+  // CF-Connecting-IP and Render forwards CF-Ray. Only trust these when the
+  // socket is a known ingress peer; ordinary internet peers cannot set this.
+  const cfClient=String(req?.headers?.["cf-connecting-ip"]||"").trim();
+  if(req?.headers?.["cf-ray"] && net.isIP(cfClient))return cfClient;
   // Last addresses are appended by the ingress. Untrusted clients can PREPEND
   // fake entries, so x-forwarded-for.split(',')[0] is unsafe for rate limiting.
   const chain=String(req?.headers?.['x-forwarded-for']||'').split(',').map(s=>s.trim());
