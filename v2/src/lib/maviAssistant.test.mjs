@@ -28,7 +28,7 @@ const cases={
  tolls_info:['tem pedágio','vou pagar pedágio','quanto custa o pedágio'],
  weather_unavailable:['vai chover','previsão do tempo','clima no destino'],
  incidents_unavailable:['tem acidente','tem blitz','tem enchente'],
- places_unavailable:['posto mais próximo','preciso de gasolina','onde tem hospital'],
+ places_unavailable:['onde tem banheiro','banheiro mais próximo'],
  safety_info:['essa rota é segura','é perigoso','risco da rota'],
  mute_guidance:['silenciar as orientações','desliga a voz','tirar o som','modo silencioso'],
  unmute_guidance:['ativar a voz','liga o som','volta a falar','tirar do mudo'],
@@ -84,6 +84,17 @@ test('answers use real per-request navigation state and never invent a current G
  const noRoute={...snap,hasRoute:false,currentDuration:null,currentDistance:null};
  assert.match(answerMaviInformation('arrival',noRoute).text,/calcule uma rota|escolha uma rota/i);
  assert.match(answerMaviInformation('destination',{...snap,destination:''}).text,/não tenho um destino|sem destino definido/i);
+});
+test('MAVI answers about verified route traffic without fabricating a trip-wide delay',()=>{
+ const actual=answerMaviInformation('traffic_info',{...snap,trafficSummary:{
+  hasData:true,heavySegments:2,incidentCount:2,maxIncidentDelayMinutes:4
+ }});
+ assert.match(actual.text,/2 pontos de trânsito intenso/);
+ assert.match(actual.text,/maior atraso pontual/);
+ assert.match(actual.text,/4 minutos/);
+ assert.doesNotMatch(actual.text,/18%|trânsito livre/);
+ const stale=answerMaviInformation('traffic_info',{...snap,trafficSummary:null});
+ assert.match(stale.text,/não tenho um relatório/);
 });
 test('MAVI controls only allowlisted local navigation voice state',()=>{
  const mute=answerMaviInformation('mute_guidance',snap);

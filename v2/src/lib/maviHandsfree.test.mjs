@@ -8,8 +8,8 @@ const css=()=>readFileSync(new URL('../jev-voice.css',import.meta.url),'utf8');
 test('MAVI retains proven direct browser microphone activation and route request',()=>{
  const s=mic();
  assert.match(s,/const Recognizer=typeof window!=='undefined'\?\(window\.SpeechRecognition\|\|window\.webkitSpeechRecognition\):null/);
- assert.match(s,/recognition\.lang='pt-BR';recognition\.continuous=false;recognition\.interimResults=false;recognition\.maxAlternatives=1/);
- assert.match(s,/const phrase=Array\.from\(event\.results\|\|\[\]\)\.filter\(row=>row\?\.isFinal!==false\)\.map\(row=>row\?\.\[0\]\?\.transcript\|\|''\)\.join\(' '\)\.trim\(\)/);
+ assert.match(s,/recognition\.lang='pt-BR';recognition\.continuous=false;recognition\.interimResults=true;recognition\.maxAlternatives=1/);
+ assert.match(s,/maviSpeechTranscripts\(event\.results\)/);
  assert.match(s,/recognition\.start\(\)/);
  assert.match(s,/listenRef\.current\('remote'\)/);
  assert.match(s,/async function submit\(phrase\)/);
@@ -24,14 +24,14 @@ test('only MAVI V2 shows compact route proposal under guidance or preview',()=>{
  const s=map(),m=mic();
  assert.match(s,/jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"\/>/);
  assert.equal((s.match(/id="mavi-offer-host"/g)||[]).length,2,'one host per exclusive navigation state');
- assert.match(s,/jevMode&&navMode&&<JevVoiceButton/);
+ assert.match(s,/jevMode&&\(navMode\|\|Boolean\(dest\)\)&&<JevVoiceButton/);
  assert.match(m,/createPortal\(/);
  assert.match(m,/offerTarget&&createPortal\(/);
  assert.match(m,/className="mavi-offer-card"/);
  assert.match(m,/className="mavi-offer-reject"/);
  assert.match(m,/className="mavi-offer-confirm"/);
  assert.doesNotMatch(m,/<section className="jev-panel"/);
- assert.doesNotMatch(m,/<form className="jev-text"/);
+ assert.match(m,/<form className="jev-text"/);
  assert.match(css(),/\.map-page \.mavi-offer-host/);
  assert.match(css(),/top:calc\(100% \+ 11px\)/);
 });
@@ -71,9 +71,9 @@ test('MAVI cloud voices are feature gated, route-signed and preserve existing mi
  assert.match(player,/audio\.addEventListener\('ended',complete/);
 });
 
-test('MAVI control is absent until active route navigation and unmounts on trip end',()=>{
+test('MAVI can be used before navigation once a destination is selected and still respects trip state',()=>{
  const s=map();
- assert.match(s,/\{jevMode&&navMode&&<JevVoiceButton\b/);
+ assert.match(s,/\{jevMode&&\(navMode\|\|Boolean\(dest\)\)&&<JevVoiceButton\b/);
  assert.doesNotMatch(s,/\{jevMode&&<JevVoiceButton\b/);
  assert.match(s,/async function begin\(\)\{/);
  assert.match(s,/setGuidance\(null\);setNavMode\(true\);setSheetOpen\(false\)/);

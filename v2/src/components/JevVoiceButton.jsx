@@ -8,6 +8,7 @@ import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocu
 import {classifyMaviIntent,maviProposalDecision,maviProposalFollowup} from '../lib/maviAssistant.mjs';
 import {maviIncidentOffer,maviIncidentFollowupDecision} from '../lib/maviIncidentFollowup.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
+import {maviSpeechTranscripts} from '../lib/maviRecognitionTranscript.mjs';
 
 /** The V2-only voice input has three independent paths:
  * browser SpeechRecognition, optional local SpeechRecognition and direct
@@ -22,7 +23,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  const [captureActive,setCaptureActive]=useState(false);
  const enabledRef=useRef(false),mountedRef=useRef(true),busyRef=useRef(false);
  const recognitionRef=useRef(null),recognitionActive=useRef(false),recognitionError=useRef('');
- const recognitionGotSpeech=useRef(false);
+ const recognitionGotSpeech=useRef(false),recognitionInterim=useRef('');
  const recorderRef=useRef(null),streamRef=useRef(null),recordTimerRef=useRef(null);
  const speechTimerRef=useRef(null),elevenAbortRef=useRef(null);
  const requestRef=useRef(0),controllerRef=useRef(null),listenTimerRef=useRef(null);
@@ -234,13 +235,14 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    try{recognition=new Recognizer();}
    catch{recognitionError.current='unsupported';setStatus('typed');setReply(microphoneMessage('unsupported'));return false;}
    // One utterance per recognition session. Chromium/WebView often ends a session after silence.
-   recognition.lang='pt-BR';recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=1;
+   recognition.lang='pt-BR';recognition.continuous=false;recognition.interimResults=true;recognition.maxAlternatives=1;
    if(mode==='local'&&'processLocally' in recognition)recognition.processLocally=true;
-   recognitionRef.current=recognition;recognitionError.current='';recognitionGotSpeech.current=false;
+   recognitionRef.current=recognition;recognitionError.current='';recognitionGotSpeech.current=false;recognitionInterim.current='';
    recognition.onresult=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
-     const phrase=Array.from(event.results||[]).filter(row=>row?.isFinal!==false).map(row=>row?.[0]?.transcript||'').join(' ').trim();
-     if(phrase){recognitionGotSpeech.current=true;void submitRef.current(phrase);}
+     const {final,interim}=maviSpeechTranscripts(event.results);
+     if(interim)recognitionInterim.current=interim;
+     if(final){recognitionGotSpeech.current=true;recognitionInterim.current='';void submitRef.current(final);}
    };
    recognition.onerror=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
@@ -261,6 +263,13 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    recognition.onend=()=>{
      if(recognitionRef.current!==recognition)return;
      recognitionRef.current=null;recognitionActive.current=false;
+     const interim=recognitionInterim.current;recognitionInterim.current='';
+     // Android may only deliver interim words before onend. Submit once,
+     // never repeatedly restart capture or treat silence as a command.
+     if(interim&&!recognitionGotSpeech.current&&!recognitionError.current&&enabledRef.current&&!busyRef.current){
+       recognitionGotSpeech.current=true;
+       void submitRef.current(interim);return;
+     }
      if(enabledRef.current&&!busyRef.current){
        // Some Android recognizers emit onend without ever emitting onresult.
        // Treat this as an unsuccessful attempt, not permission to auto-start.
@@ -471,6 +480,22 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
   <span id="mavi-voice-status" className="mavi-voice-status" role="status" aria-live="polite">
     {voiceLabel}
   </span>
+  {enabled&&(status==='typed'||status==='recording')&&
+    <section className="jev-panel mavi-recovery-panel" aria-label="Alternativas para falar com a MAVI">
+      <div className="jev-head"><strong>MAVI</strong><button type="button" onClick={toggle} aria-label="Desativar MAVI"><X size={16}/></button></div>
+      {reply&&<p className="jev-reply" role="status">{reply}</p>}
+      {diagnostic&&<p className="jev-diagnostic">{diagnostic}</p>}
+      <div className="jev-voice-options">
+        {status==='recording'?<button type="button" onClick={stopRecording}><Check size={15}/> Concluir gravação</button>:
+          serverStt&&<button type="button" onClick={()=>void startRecording()}><Mic size={15}/> Gravar comando</button>}
+        {status!=='recording'&&<button type="button" onClick={()=>void testMicrophone()}><ShieldCheck size={15}/> Testar microfone</button>}
+      </div>
+      {status!=='recording'&&<form className="jev-text" onSubmit={e=>{e.preventDefault();void submitRef.current(typed);}}>
+        <input aria-label="Digitar comando para MAVI" value={typed} maxLength={360} onChange={e=>setTyped(e.target.value)} placeholder="Ou digite seu pedido" />
+        <button type="submit" disabled={!typed.trim()} aria-label="Enviar comando"><Send size={15}/></button>
+      </form>}
+      <small className="jev-privacy">A gravação só começa quando você toca em Gravar e é enviada para transcrição ao concluir.</small>
+    </section>}
   {enabled&&offerReady&&proposal&&offerTarget&&createPortal(
     <section className="mavi-offer-card" role="group" aria-label={proposal.kind==='poi_stop'?'Parada sugerida pela MAVI':'Alternativa de rota sugerida pela MAVI'}>
       <div className="mavi-offer-header">

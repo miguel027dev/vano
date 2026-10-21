@@ -12,8 +12,9 @@ const categoryMatchers=[
  ['restaurant',/\b(?:restaurante\w*|lanchonet\w*|comer|almocar|jantar)\b/g],
  ['cafe',/\b(?:cafeteria\w*|cafe da manha)\b/g],
  ['parking',/\b(?:estacionament\w*|onde estacionar|parar o carro)\b/g],
+ ['pharmacy',/\b(?:farmaci\w*|drogari\w*|remedio\w*)\b/g],
 ];
-const POI_SIGNAL=/\b(?:mais perto|mais proximo|proxima|proximo|proximos|perto|onde (?:tem|fica|encontro|ha)|encontr\w*|procur\w*|ach\w*|busc\w*|quero ir|preciso de|me lev\w*|mostrar|mostr\w*|tem algum|qual(?: e| o| a)?|ir no|ir na|no caminho|na rota|pelo caminho|ao longo|desvio|parada)\b/;
+const POI_SIGNAL=/\b(?:mais perto|mais proximo|proxima|proximo|proximos|perto|onde (?:tem|fica|encontro|ha|comer|abastecer)|encontr\w*|procur\w*|ach\w*|busc\w*|quero ir|preciso de|me lev\w*|mostrar|mostr\w*|tem algum|qual(?: e| o| a)?|ir no|ir na|no caminho|na rota|pelo caminho|ao longo|desvio|parada)\b/;
 const ROUTE_SIGNAL=/\b(?:no meu caminho|no caminho|pelo caminho|ao longo da rota|na rota|perto do caminho|no trajeto|na viagem|durante a viagem|sem sair da rota|sem desviar muito|que fica no caminho|na minha rota)\b/;
 export function parseMaviPlaceIntent(value){
  const s=norm(value);
