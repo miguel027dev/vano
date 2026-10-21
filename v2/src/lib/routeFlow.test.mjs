@@ -20,7 +20,7 @@ test('route source reuses exactly identical geometry references',()=>{
   assert.equal(sameRouteShapeReferences([geometry,other],[geometry]),false);
   assert.equal(sameRouteShapeReferences(null,[]),false);
 });
-test('route decorations have no advancing dash phase in Mapbox or Leaflet',()=>{
+test('public route decorations keep their static pattern; V2 movement stays isolated',()=>{
   const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
   const css=readFileSync(new URL('../v28-navigation.css',import.meta.url),'utf8');
   assert.match(map,/'line-dasharray':STATIC_ROUTE_DASH_PATTERN/);

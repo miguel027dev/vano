@@ -2,7 +2,8 @@
  * Mercator chainage matches Mapbox line-progress; meters remain ground distance.
  * Never changes geometry, routing, speed limits or ETA.
  */
-export const TRAFFIC_COLORS=Object.freeze({unknown:'#929fa9',flowing:'#f4ca46',slow:'#ee983c',heavy:'#e85c4b',stopped:'#b83240'});
+// Orange is the brand's default route, not a claim of measured free flow.
+export const TRAFFIC_COLORS=Object.freeze({unknown:'#ff7900',flowing:'#ff7900',slow:'#ff7900',heavy:'#e85c4b',stopped:'#b83240'});
 export const TRAFFIC_MAX_AGE=180000;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 export const trafficPoint=p=>Array.isArray(p)&&p.length>=2&&p.slice(0,2).every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<=85;

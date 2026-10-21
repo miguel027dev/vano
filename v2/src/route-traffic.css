@@ -1,4 +1,4 @@
-/* Private V2 traffic: static at rest, short transitions only on interaction. */
+/* Private V2 traffic: gentle route highlights and short interaction transitions. */
 .v81-traffic-marker{pointer-events:auto}
 .v81-traffic-bubble{display:flex;align-items:center;justify-content:center;gap:5px;min-width:44px;min-height:44px;padding:0 11px;border:2px solid #fff;border-radius:24px;box-shadow:0 4px 15px #17282138;background:#f4ca46;color:#302715;font-size:12px;font-weight:600;white-space:nowrap;transition:box-shadow .22s,translate .22s}
 .v81-traffic-bubble.is-heavy{background:#e85c4b;color:#2d1714}
@@ -13,8 +13,8 @@
 .v81-traffic-summary>span:nth-child(2){flex:1;min-width:0}
 .v81-traffic-summary small{display:block;margin-top:2px;color:var(--v81-muted);font-size:11px}
 .v81-traffic-legend{display:flex;gap:3px;flex-shrink:0}
-.v81-traffic-legend i{height:7px;width:7px;border-radius:50%;background:#f4ca46}
-.v81-traffic-legend i:nth-child(2){background:#ee983c}.v81-traffic-legend i:nth-child(3){background:#e85c4b}.v81-traffic-legend i:nth-child(4){background:#929fa9}
+.v81-traffic-legend i{height:7px;width:7px;border-radius:50%;background:#ff7900}
+.v81-traffic-legend i:nth-child(2){background:#e85c4b}
 .v81-traffic-detail{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--v81-edge);animation:v81-traffic-settle .22s ease-out}
 .v81-event-icon{height:36px;width:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:13px;background:#ee983c22;color:var(--v81-ink)}
 .v81-event-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
@@ -29,6 +29,8 @@
 .v81-traffic-leaflet{background:transparent;border:0}
 .nav-bottom .v81-traffic-summary,.nav-bottom .v81-traffic-detail{margin:0 0 10px}
 @keyframes v81-traffic-settle{from{transform:translateY(5px)}to{transform:translateY(0)}}
+.v81-flow-motion{animation:v81-route-flow 6s linear infinite}
+@keyframes v81-route-flow{from{stroke-dashoffset:0}to{stroke-dashoffset:-84}}
 @media(min-width:1000px){.v81-traffic-preview{left:26px}}
 @media(max-height:600px){.v81-event-source,.v81-event-copy>span{display:none}.v81-traffic-detail{padding:6px 0}.v81-traffic-preview{bottom:100px}}
-@media(prefers-reduced-motion:reduce){.v81-traffic-bubble{transition:none}.v81-traffic-detail{animation:none}}
+@media(prefers-reduced-motion:reduce){.v81-traffic-bubble{transition:none}.v81-traffic-detail,.v81-flow-motion{animation:none}}

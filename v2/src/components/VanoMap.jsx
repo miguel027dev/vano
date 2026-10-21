@@ -27,6 +27,7 @@ import {syncPrivateRoadSignMarkers,clearPrivateRoadSignMarkers} from '../lib/pri
 import '../private-road-signs.css';
 import {syncRouteTrafficMarkers,clearRouteTrafficMarkers,syncLeafletRouteTraffic} from '../lib/routeTrafficMarkers.jsx';
 import {TRAFFIC_COLORS} from '../lib/routeTraffic.mjs';
+import {updateV2RouteFlow} from '../lib/v2RouteFlow.mjs';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -726,6 +727,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       if(dt<13)return;
       state.last=now;
       const d=latest.current,target=d.gpsCoords;
+      updateV2RouteFlow(mapRef.current,backend.current,d,now,reduced);
       if(!validPoint(target))return;
       // V2 Sim follows route PROGRESS, not a raw straight-line interpolation
       // between coordinates. This prevents the icon from cutting across sharp
@@ -822,6 +824,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     raf=requestAnimationFrame(animate);
     return()=>{
       stopped=true;cancelAnimationFrame(raf);
+      const highlight=mapRef.current?._vanoFlowLine?.getElement?.();
+      if(highlight)highlight.style.animationPlayState='paused';
       preference?.removeEventListener?.('change',preferenceChanged);
       visual.current={...state,last:0,lastPaint:0,lastReport:0};
     };
@@ -859,8 +863,6 @@ function paintLeaflet(map,data){
       className:'vano-mavi-route-preview'
     }).addTo(map);
   }
-  if(data.v2Experience&&data.vehicle!=='a-pe')map._vanoFlowLine?.remove();
-  else if(map._vanoFlowLine&&!map.hasLayer(map._vanoFlowLine))map._vanoFlowLine.addTo(map);
   syncLeafletRouteTraffic(map,L,{...data,routeTraffic:data.vehicle==='a-pe'?null:data.routeTraffic});
   syncRouteTrafficMarkers(map,'leaflet',L,data);
   map._vanoFlowLine?.bringToFront();map._vanoMaviPreviewLine?.bringToFront();
@@ -930,7 +932,7 @@ function paintMapbox(map,data,selection){
       map.setPaintProperty('vano-v2-line','line-gradient',null);
       map.setPaintProperty('vano-v2-line','line-color','#ff7900');
     }
-    map.setLayoutProperty('vano-v2-flow','visibility',traffic?'none':'visible');
+    map.setLayoutProperty('vano-v2-flow','visibility','visible');
     map._vanoTrafficGradient=traffic?.gradient;map._vanoTrafficV2=Boolean(traffic);
   }
   syncRouteTrafficMarkers(map,'mapbox',mapboxgl,data);

@@ -19,12 +19,12 @@ export function RouteTrafficCard({traffic,compact=false,etaIncludesTraffic=false
  if(!traffic?.index)return null;
  const event=traffic.selected;
  const unavailable=['unavailable','unconfigured','stale'].includes(traffic.status);
- const legend=<span className="v81-traffic-legend" aria-label="Amarelo: fluindo. Laranja: lento. Vermelho: intenso. Cinza: sem dados."><i/><i/><i/><i/></span>;
+ const legend=<span className="v81-traffic-legend" aria-label="Laranja: traçado padrão. Vermelho: congestionamento confirmado."><i/><i/></span>;
  if(!event)return <button type="button" className="v81-traffic-summary" disabled={!traffic.events.length}
   onClick={()=>traffic.select(traffic.events[0]?.id)} aria-label={traffic.events.length?'Ver ocorrências no trajeto':undefined}>
   {legend}<span>{traffic.status==='loading'?'Consultando trânsito…':unavailable?'Trânsito indisponível':traffic.hasFlow?'Trânsito por trechos':'Cobertura de trânsito parcial'}
   {!compact&&traffic.events.length>0&&<small>{traffic.events.length} {traffic.events.length===1?'ocorrência à frente':'ocorrências à frente'}</small>}
-  {!traffic.hasFlow&&traffic.status!=='loading'&&!compact&&<small>Trechos sem informação ficam em cinza</small>}</span>
+  {!traffic.hasFlow&&traffic.status!=='loading'&&!compact&&<small>Traçado laranja · sem confirmação de trânsito</small>}</span>
   {traffic.events.length>0&&<ChevronRight size={17} aria-hidden="true"/>}
  </button>;
  const ahead=Math.max(0,event.startMeters-traffic.progress);

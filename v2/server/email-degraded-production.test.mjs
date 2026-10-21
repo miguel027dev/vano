@@ -40,8 +40,7 @@ test('hosted production remains available without Resend but refuses unverified 
   }
   assert.equal(healthy,true,'Server must start without email credentials: '+errors);
   const health=await (await fetch(base+'/api/health',{headers:https})).json();
-  assert.equal(health.production,true);
-  assert.equal(health.mailConfigured,false);
+  assert.deepEqual(health,{ok:true},'public readiness must not disclose production or provider configuration');
   const boot=await fetch(base+'/api/bootstrap',{headers:https});
   assert.equal(boot.status,200);
   const cookie=boot.headers.get('set-cookie')?.split(';')[0]||'';

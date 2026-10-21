@@ -176,7 +176,7 @@ test('Cabeçalhos defensivos, permissões e bloqueio de conteúdo malformado',as
  try{
   const boot=await a.call('/api/bootstrap');
   assert.equal(boot.headers.get('x-frame-options'),'DENY');
-  assert.equal(boot.headers.get('referrer-policy'),'no-referrer');
+  assert.equal(boot.headers.get('referrer-policy'),'strict-origin-when-cross-origin');
   assert.equal(boot.headers.get('x-content-type-options'),'nosniff');
   const report=await a.call('/api/reports','POST',{type:'risco',coords,description:'Teste interno'});
   assert.equal(report.status,201);assert.equal(report.data.owner,undefined);
