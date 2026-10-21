@@ -285,6 +285,16 @@ public final class MainActivity extends Activity {
     }
     private boolean navigate(Uri uri){
         if(trusted(uri)){
+            if("/api/auth/google/start".equals(uri.getPath()) && "1".equals(uri.getQueryParameter("delete"))){
+                // Account deletion requires an existing web session and a fresh Google
+                // reauthentication in the same browser. Native login PKCE is NOT deletion.
+                // Android WebView cookies are not shared with the external browser.
+                try{
+                    startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(BASE+"/conta")).addCategory(Intent.CATEGORY_BROWSABLE));
+                    Toast.makeText(this,"Para excluir a conta, entre no navegador e confirme no Google.",Toast.LENGTH_LONG).show();
+                }catch(ActivityNotFoundException e){Toast.makeText(this,"Abra vanomaps.online/conta no navegador para excluir sua conta.",Toast.LENGTH_LONG).show();}
+                return true;
+            }
             if("/api/auth/google/start".equals(uri.getPath())&&!"1".equals(uri.getQueryParameter("link"))){beginGoogleLogin();return true;}
             return false;
         }
