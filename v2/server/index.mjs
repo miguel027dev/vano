@@ -64,6 +64,9 @@ import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, goog
 import { openStore } from './storage.mjs';
 import {isReportType,reportType,publicReportsInBBox,metersApart,recordReportFeedback} from '../src/lib/communityReports.js';
 import {createReportStreamHub} from './reports-live.mjs';
+import {resolveClientIP} from './client-ip.mjs';
+import {pruneGuestRecords} from './guest-retention.mjs';
+import {deleteUserRecords} from './account-deletion.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
@@ -126,6 +129,7 @@ const persist = async opts => {
   db.usedProofs=db.usedProofs.filter(x=>x.expires>time).slice(-3000);
   // Unverified incident reports expire after 30 days; verified community data after 180 days.
   db.reports=db.reports.filter(x=>new Date(x.createdAt).getTime()>(time-(x.status==='verificado'?180:30)*86400000));
+  pruneGuestRecords(db,time);
   await store.save(opts);
 };
 // Invalidate legacy plaintext sessions once, without leaving a plaintext backup.
@@ -231,12 +235,10 @@ function passwordMatches(password, stored) {
 }
 const dummyHash = passwordHash(hex(20));
 function remoteIP(req) {
-  const direct=String(req.socket.remoteAddress||'unknown');
-  if(process.env.VANO_TRUST_PROXY==='1' && /^(127\.|::1$|::ffff:127\.)/.test(direct)){
-    const candidate=String(req.headers['x-forwarded-for']||'').split(',')[0].trim();
-    if(net.isIP(candidate))return candidate;
-  }
-  return direct;
+  // Render ingress is private. Select a trusted right-hand proxy hop rather
+  // than the client-controlled leftmost entry. Hop depth is configurable.
+  const hops=Number(process.env.VANO_TRUSTED_PROXY_HOPS||1);
+  return resolveClientIP(req,{trustProxy:renderWeb||process.env.VANO_TRUST_PROXY==='1',hops});
 }
 function limits(req, res, key, max, ms = 60000) {
   const ip = remoteIP(req).slice(0,80);
@@ -641,20 +643,24 @@ async function route(req, res) {
     if(!limits(req,res,'google-start',15,300000))return;
     let native;try{native=readMobileRequest(u.searchParams);}catch(e){return err(res,400,e.message);}
     const linking=u.searchParams.get('link')==='1';
+    const deleting=u.searchParams.get('delete')==='1';
+    if(deleting&&(linking||native))return err(res,400,'Solicitação de exclusão inválida.');
     if(native&&linking)return err(res,400,'Entre com e-mail para conectar o Google nas configurações da conta.');
     // The Google callback must share the cookie's exact hostname.
     // Example: vanomaps.online -> vanu-73xu.onrender.com before setting the state cookie.
     // Redirect destination is from trusted server configuration, never request Host.
     const canonical=canonicalGoogleStart(req.headers.host,process.env);
     if(canonical){
-      if(linking)return err(res,409,'Para vincular o Google, entre na sua conta pelo endereço oficial deste serviço.');
+      if(linking||deleting)return err(res,409,'Para confirmar sua conta Google, entre pelo endereço de autenticação oficial deste serviço.');
       res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':canonicalMobileStart(canonical,native)});
       res.end();return;
     }
     const state=newOAuthToken(), verifier=newOAuthToken(48);
-    const session=linking?userSession(req):null;
+    const session=(linking||deleting)?userSession(req):null;
     if(linking&&!session)return err(res,401,'Entre na conta VANO antes de conectar o Google.');
-    db.oauthStates.push({native,stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:session?.user.id||null,linkSessionHash:session?.hash||null});
+    if(deleting&&(!session||!session.user.googleSub))return err(res,401,'Entre na conta Google vinculada antes de confirmar a exclusão.');
+    db.oauthStates.push({native,stateHash:hashState(state),verifier,expires:now()+600000,linkUserId:linking?session?.user.id:null,linkSessionHash:linking?session?.hash:null,
+      deleteUserId:deleting?session.user.id:null,deleteSessionHash:deleting?session.hash:null});
     db.oauthStates=db.oauthStates.filter(x=>x.expires>now()).slice(-100);
     await persist();
     res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':googleAuthUrl(process.env,state,verifier),'Set-Cookie':setCookie('vano_oauth',state,600)});
@@ -669,6 +675,19 @@ async function route(req, res) {
     db.oauthStates=db.oauthStates.filter(x=>x!==record);await persist();
     try {
       const id=await fetchGoogleIdentity(process.env,u.searchParams.get('code')||'',record.verifier);
+      if(record.deleteUserId){
+        const session=userSession(req);
+        if(!session||session.user.id!==record.deleteUserId||session.hash!==record.deleteSessionHash){
+          res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':'/entrar?google=sessao-expirada','Set-Cookie':drop});res.end();return;
+        }
+        if(session.user.googleSub!==id.googleSub||session.user.email!==id.email){
+          res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':'/conta?google=exclusao-invalida','Set-Cookie':drop});res.end();return;
+        }
+        deleteUserRecords(db,session.user.id);
+        await persist();
+        res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':'/inicio?conta=excluida',
+          'Set-Cookie':[drop,setCookie('vano_session','',0),setCookie('vano_guest','',0)]});res.end();return;
+      }
       if(record.linkUserId){
         const session=userSession(req);
         if(!session||session.user.id!==record.linkUserId||session.hash!==record.linkSessionHash){
@@ -766,7 +785,7 @@ async function route(req, res) {
     if(!limits(req,res,'community-stream',12,60000))return;
     const bbox=parseBBox(u.searchParams.get('bbox'),.065,.055);
     if(!bbox)return err(res,400,'Área da ocorrência inválida.');
-    if(!reportStreams.subscribe(req,res,bbox,headers))
+    if(!reportStreams.subscribe(req,res,bbox,headers,remoteIP(req)))
       return err(res,503,'Atualização contínua ocupada; use a consulta periódica.');
     return;
   }
@@ -1406,7 +1425,7 @@ async function route(req, res) {
   }
   if (pathname === '/api/auth/logout' && req.method === 'POST') {
     const key=sha256(cookie(req,'vano_session'));db.sessions=db.sessions.filter(x=>x.tokenHash!==key);await persist();
-    return json(res,200,{ok:true}, {'Set-Cookie':setCookie('vano_session','',0)});
+    return json(res,200,{ok:true}, {'Set-Cookie':[setCookie('vano_session','',0),setCookie('vano_guest','',0)]});
   }
   if(pathname==='/api/profile/export'&&req.method==='GET'){
     const account=requireAccount(req,res);if(!account)return;
@@ -1424,9 +1443,8 @@ async function route(req, res) {
     if(!limits(req,res,'delete',4,3600000))return;
     const b=await getBody(req),rec=db.users.find(x=>x.id===account.id);
     if(!passwordMatches(b.password,rec.passwordHash))return err(res,401,'Confirme sua senha atual para excluir a conta.');
-    db.users=db.users.filter(x=>x.id!==account.id);db.sessions=db.sessions.filter(x=>x.userId!==account.id);
-    for(const key of ['favorites','history','routines','preferences','reports'])db[key]=db[key].filter(x=>x.owner!==account.id);
-    db.emailTokens=db.emailTokens.filter(x=>x.userId!==account.id);await persist();return json(res,200,{ok:true},{'Set-Cookie':setCookie('vano_session','',0)});
+    deleteUserRecords(db,account.id);
+    await persist();return json(res,200,{ok:true},{'Set-Cookie':[setCookie('vano_session','',0),setCookie('vano_guest','',0)]});
   }
   if(pathname==='/api/preferences'&&req.method==='PATCH'){
     if(!limits(req,res,'writes',90,60000))return;
