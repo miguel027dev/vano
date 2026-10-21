@@ -1,6 +1,6 @@
 # VANO Android — VANU 3.1
 
-WebView Android 6+ que carrega https://vanu-73xu.onrender.com/mapa. Pacote com.vano.maps.vanu; atualização assinada com a mesma chave da entrega 3.0.
+WebView Android 6+ que carrega https://vanomaps.online/mapa. Mantém o host onrender.com em uma lista restrita para redirects de compatibilidade. Pacote com.vano.maps.vanu; atualização assinada com a mesma chave da entrega 3.0.
 
 ## Continuidade offline
 Prepare o trajeto conectado. O Android salva os recursos públicos do mapa e as peças ao redor da linha percorrida, em armazenamento privado limitado a 256 MiB. O início aguarda o preparo por até 3 minutos; um download incompleto é informado. Nenhuma resposta de autenticação/API é salva no cache HTTP nativo.
@@ -17,3 +17,10 @@ Google abre no navegador padrão, retorna por vano-vanu://auth/callback e troca 
 Use JDK 17 e SDK 35. Execute `./gradlew :app:assembleRelease :app:lintRelease`. Assine app/build/outputs/apk/release/app-release-unsigned.apk com a chave entregue separadamente. Nunca publique a chave/senha.
 No diretório v2, `npm test` e `npm run build` verificam integração, sessões, rotas, GPS e armazenamento. Os testes de cache nativo em tests/offline-cache usam JDK e org.json:json:20250107; as classes android desse diretório são dublês de teste e não entram no APK. Verificam persistência após reinício sem rede, exclusão da API, separação por token, HTTPS, cabeçalhos e limites de download.
 Compilação, lint, assinatura, cache e integração React foram verificados. Nenhum aparelho/emulador Android estava conectado: fala real, GPS em estrada, modo avião, consumo de bateria e fluidez em dispositivo precisam de validação no celular.
+
+
+## MAVI: microfone no WebView
+O app pede `RECORD_AUDIO` somente quando uma página VANO confiável solicita captura de áudio. A permissão WebView cobre apenas `RESOURCE_AUDIO_CAPTURE`, nunca câmera nem recursos arbitrários. A voz nativa de navegação continua separada do microfone da MAVI.
+
+## Alterações pendentes de publicação
+As mudanças deste código-fonte só chegam aos usuários após compilar, testar e publicar um novo AAB assinado na Play Store; não alteram automaticamente o aplicativo instalado.
