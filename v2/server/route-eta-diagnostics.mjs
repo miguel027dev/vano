@@ -122,6 +122,8 @@ export function etaConsoleReport(result,{elapsedMs=0,calculatedAt=new Date().toI
    initialCandidates:Number.isInteger(engine.initialCandidates)?engine.initialCandidates:null,
    additionalRequests:Number.isInteger(engine.additionalRequests)?engine.additionalRequests:null,
    acceptedProbes:Number.isInteger(engine.acceptedProbes)?engine.acceptedProbes:null,
+   urbanProbes:Number.isInteger(engine.urbanProbes)?engine.urbanProbes:null,
+   urbanAccepted:Number.isInteger(engine.urbanAccepted)?engine.urbanAccepted:null,
    microRoutingActive:result?.microRoutingActive===true,distributedUsed:result?.distributedRoutingUsed===true,
    degraded:result?.degraded===true},
   routes:routes.map(route=>summarizeEtaRoute(route,{source:result?.source,candidateEngine:engine})),
