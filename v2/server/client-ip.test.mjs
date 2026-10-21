@@ -12,3 +12,11 @@ test('Rate limiter honors trusted Render ingress but never trusts spoofed leftmo
   assert.equal(resolveClientIP(req('127.0.0.1','garbage'),{trustProxy:true}),'127.0.0.1');
   assert.equal(trustedProxyPeer('172.32.0.1'),false);
 });
+
+test('Cloudflare visitor identity separates clients behind shared Render hops',()=>{
+  const base={socket:{remoteAddress:'10.2.3.4'},headers:{'x-forwarded-for':'203.0.113.9, 192.0.2.20, 192.0.2.21','cf-ray':'8bad3d2e4a21-GRU','cf-connecting-ip':'198.51.100.17'}};
+  assert.equal(resolveClientIP(base,{trustProxy:true}),'198.51.100.17');
+  assert.equal(resolveClientIP({...base,headers:{...base.headers,'cf-connecting-ip':'198.51.100.18'}},{trustProxy:true}),'198.51.100.18');
+  assert.equal(resolveClientIP({...base,socket:{remoteAddress:'198.51.100.1'}},{trustProxy:true}),'198.51.100.1');
+  assert.equal(resolveClientIP({...base,headers:{...base.headers,'cf-connecting-ip':'not-an-ip'}},{trustProxy:true}),'192.0.2.21');
+});
