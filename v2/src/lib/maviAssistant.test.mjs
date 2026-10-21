@@ -85,6 +85,17 @@ test('answers use real per-request navigation state and never invent a current G
  assert.match(answerMaviInformation('arrival',noRoute).text,/calcule uma rota|escolha uma rota/i);
  assert.match(answerMaviInformation('destination',{...snap,destination:''}).text,/não tenho um destino|sem destino definido/i);
 });
+test('MAVI answers about verified route traffic without fabricating a trip-wide delay',()=>{
+ const actual=answerMaviInformation('traffic_info',{...snap,trafficSummary:{
+  hasData:true,heavySegments:2,incidentCount:2,maxIncidentDelayMinutes:4
+ }});
+ assert.match(actual.text,/2 pontos de trânsito intenso/);
+ assert.match(actual.text,/maior atraso pontual/);
+ assert.match(actual.text,/4 minutos/);
+ assert.doesNotMatch(actual.text,/18%|trânsito livre/);
+ const stale=answerMaviInformation('traffic_info',{...snap,trafficSummary:null});
+ assert.match(stale.text,/não tenho um relatório/);
+});
 test('MAVI controls only allowlisted local navigation voice state',()=>{
  const mute=answerMaviInformation('mute_guidance',snap);
  const unmute=answerMaviInformation('unmute_guidance',{...snap,audioMuted:true});
