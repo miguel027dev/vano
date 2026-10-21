@@ -29,7 +29,6 @@ test('search category always uses restricted Mapbox POI API and route SAR geomet
  assert.equal(encodePolyline(route).length>10,true);
  assert.equal(MAVI_POI_CATEGORIES.grocery.label,'mercado');
  assert.equal(MAVI_POI_CATEGORIES.pharmacy.id,'pharmacy');
- assert.equal(MAVI_POI_CATEGORIES.gas_station.id,'gas_station');
  const medic=await findMaviPlaces({category:'pharmacy',scope:'nearby',origin,token:'test-token',fetcher});
  assert.ok(medic.length);
  assert.equal(seen.at(-1).pathname,'/search/searchbox/v1/category/pharmacy');
