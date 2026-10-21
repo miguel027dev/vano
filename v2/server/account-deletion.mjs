@@ -1,4 +1,11 @@
 /** Remove all user-owned V2 records after verified account ownership proof. */
+export function verifiedGoogleDeletion(session,record,identity){
+  return Boolean(session && record && identity &&
+    session.user?.id===record.deleteUserId && session.hash===record.deleteSessionHash &&
+    session.user?.googleSub && session.user.googleSub===identity.googleSub &&
+    session.user.email===identity.email);
+}
+
 export function deleteUserRecords(db,userId){
   db.users=db.users.filter(u=>u.id!==userId);
   db.sessions=db.sessions.filter(s=>s.userId!==userId);
