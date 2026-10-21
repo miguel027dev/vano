@@ -1,5 +1,8 @@
 /* Experimental /v2 voice UI only. Nothing here targets ordinary /mapa controls. */
 .jev-control-wrap{position:relative;width:49px;height:49px;flex:none;isolation:isolate}
+/* Recovery panel appears only after speech failure or an explicit recording. */
+.jev-control-wrap .mavi-recovery-panel{z-index:750;max-height:min(65dvh,340px);overflow-y:auto;overscroll-behavior:contain}
+.map-page.in-navigation .jev-control-wrap .mavi-recovery-panel{max-height:min(50dvh,260px)}
 .jev-mic{width:49px;height:49px;display:flex;align-items:center;justify-content:center}
 .jev-mic-active{background:#eaf6ef!important;color:#16824e!important;border-color:#9adcb7!important}
 .jev-listening{box-shadow:0 0 0 4px #18814e29,0 5px 20px #1825411f!important;animation:jevPulse 1.8s ease-in-out infinite}
