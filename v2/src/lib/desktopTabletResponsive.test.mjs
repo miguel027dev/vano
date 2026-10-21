@@ -7,9 +7,9 @@ const main = readFileSync(new URL('../main.jsx', import.meta.url), 'utf8');
 const map = readFileSync(new URL('../pages/MapPage.jsx', import.meta.url), 'utf8');
 const nav = readFileSync(new URL('../components/Navigation.jsx', import.meta.url), 'utf8');
 
-test('wide-screen layer is imported last, after the existing night theme', () => {
+test('wide-screen layer loads before the dark theme so its colours win', () => {
   assert.match(main, /import '\.\/v81-desktop-tablet\.css'/);
-  assert.ok(main.indexOf("import './v81-desktop-tablet.css'") > main.indexOf("import './v50-night-system.css'"));
+  assert.ok(main.indexOf("import './v81-desktop-tablet.css'") < main.indexOf("import './v50-night-system.css'"));
   assert.match(css, /@media \(min-width: 768px\)/);
   assert.doesNotMatch(css, /@media \(max-width: 767px\)/);
 });
