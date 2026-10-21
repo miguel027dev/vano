@@ -55,7 +55,7 @@ test('traffic-low routes still probe city blocks and preserve genuine legal prov
  assert.equal(calls,1+data.candidateEngine.additionalRequests);
  assert.equal(data.candidateEngine.candidateCount>1,true);
  assert.ok(data.candidateEngine.urbanAccepted>0);
- assert.equal(data.candidateEngine.pipeline.includes('independent-urban-corridors'),true);
+ assert.equal(data.candidateEngine.pipeline.includes('lateral-branches-and-paired-blocks'),true);
  assert.equal(data.routes.some(r=>r.verifiedSafety===true),false);
  assert.ok(data.routes.find(r=>r.id==='fast').durationSeconds<=data.routes.find(r=>r.id==='safe').durationSeconds);
 });
