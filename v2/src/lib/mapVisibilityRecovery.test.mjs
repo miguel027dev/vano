@@ -13,7 +13,7 @@ test('invalid/restricted Mapbox pk falls back to a token-free raster map',()=>{
 });
 test('continuous paint animation defaults off, reducing unstable WebGL writes on production',()=>{
  assert.match(component,/VITE_V2_ROUTE_FLOW_ANIMATION==='1'/);
- assert.doesNotMatch(component,/^\s*updateV2RouteFlow\(/m);
+ assert.match(component,/if\(import\.meta\.env\.VITE_V2_ROUTE_FLOW_ANIMATION==='1'\)\s*updateV2RouteFlow\(/);
 });
 test('map authorization errors do not print token-containing error messages',()=>{
  assert.match(component,/The provider message can contain access_token URLs/);
