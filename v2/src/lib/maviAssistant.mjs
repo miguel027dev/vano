@@ -51,7 +51,9 @@ export function classifyMaviIntent(value){
  if(matches(s,/\b(?:como esta o transito|tem transito|esta congestionado|ta engarrafado|condicao do transito|transito na minha rota|transito pela frente)\b/))return 'traffic_info';
  if(matches(s,/\b(?:vai chover|tempo agora|como esta o tempo|previsao do tempo|clima no destino|temperatura)\b/))return 'weather_unavailable';
  if(matches(s,/\b(?:tem acidente|tem bloqueio|tem manifestacao|tem enchente|tem alagamento|tem blitz|onde tem policia|rua interditada)\b/))return 'incidents_unavailable';
- if(matches(s,/\b(?:posto mais proximo|farmacia mais proxima|hospital mais proximo|mercado mais proximo|estacionamento mais proximo|procurar posto|preciso de gasolina|preciso de farmacia|onde tem hospital|onde tem banheiro|onde comer)\b/))return 'places_unavailable';
+ // The POI parser handles real, verified establishments before the intent classifier.
+ // Only unsupported categories should return places_unavailable.
+ if(matches(s,/\b(?:onde tem banheiro|banheiro mais proximo)\b/))return 'places_unavailable';
  if(matches(s,/\b(?:esta seguro|essa rota e segura|e perigoso|risco da rota|tem assalto|zona de risco|areas perigosas|a rota e segura)\b/))return 'safety_info';
  if(matches(s,/\b(?:sem balsa|evita balsa|evitar balsa|evita ferry|sem ferry|nao quero balsa|sem barcos)\b/))return 'avoid_ferries';
  if(matches(s,/\b(?:sem estrada de terra|evita estrada de terra|evitar terra|evita via sem asfalto|so asfalto|somente asfalto|evitar vias nao pavimentadas)\b/))return 'avoid_unpaved';
