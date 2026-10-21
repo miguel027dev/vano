@@ -1505,7 +1505,10 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     if(!limits(req,res,'all',240,60000))return;
     // Google OAuth legacy callback must reach the API controller, not the React SPA fallback.
     // Otherwise React redirects /login/google/callback to /inicio before a session is created.
-    const requestPath=new URL(req.url||'/','http://localhost').pathname;
+    let parsedRequestUrl;
+    try { parsedRequestUrl=new URL(req.url||'/','http://localhost'); }
+    catch { return err(res,400,'URL inválida.'); }
+    const requestPath=parsedRequestUrl.pathname;
     recordOperationalEvent(runtimeMetrics,{path:requestPath,method,userAgent:req.headers['user-agent'],accept:req.headers.accept});
     if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'||requestPath==='/.well-known/vano-benchmark.json'){
       await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
@@ -1513,7 +1516,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
     const dist=path.join(root,'dist');
     let name;
-    try { name=decodeURIComponent(new URL(req.url,'http://localhost').pathname); }
+    try { name=decodeURIComponent(requestPath); }
     catch { return err(res,400,'URL inválida.'); }
     if(/^\/v2(?:\/|$)/i.test(name)&&!isAdminAccount(userSession(req)?.user))return err(res,403,'Mapa administrativo restrito.');
     if(method==='GET'&&PUBLIC_PATHS.includes(name))runtimeMetrics.pageViews[name]=(runtimeMetrics.pageViews[name]||0)+1;
