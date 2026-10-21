@@ -47,6 +47,7 @@ import {isNativeShell,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
 import {dynamicManeuverIsland} from '../lib/dynamicManeuverIsland.mjs';
 import {useRouteTraffic} from '../lib/useRouteTraffic.js';
+import {maviTrafficSummary} from '../lib/maviTrafficSummary.mjs';
 import {RouteTrafficCard} from '../components/RouteTraffic.jsx';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
@@ -696,6 +697,7 @@ export default function MapPage({active=true}){
       routeGeometry,
       context:{
         hasRoute:!!route,navigationActive:navMode,gpsReady:hasLiveGPS,pendingStop:!!maviPendingStop,
+        trafficSummary:maviTrafficSummary(routeTraffic,{authorized:adminV2RoadSigns&&routeVehicle!=='a-pe',hasRoute:!!route}),
         firstMaviTurn:maviMeta.firstTurn===true,replyVariant,firstMaviGreeting,
         destination:String(dest?.name||dest?.address||'').slice(0,100),
         vehicle:routeVehicle,routeId:route?.id||null,audioMuted:muted,
@@ -1230,7 +1232,7 @@ export default function MapPage({active=true}){
            <Moon className="v49-glyph-moon" size={21} strokeWidth={1.9}/>
          </span>
        </button>
-       {!simActive&&<>{jevMode&&navMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}</>}
+       {!simActive&&<>{jevMode&&(navMode||Boolean(dest))&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}</>}
       <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
       {!navMode&&<button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>}
       <button title={simActive?'Centralizar na simulação':'Minha localização'} aria-label={simActive?'Centralizar no ponto simulado':'Minha localização'} className="circle-btn" onClick={()=>simActive?mapControl.current?.center?.():validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
