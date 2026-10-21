@@ -28,7 +28,7 @@ const cases={
  tolls_info:['tem pedágio','vou pagar pedágio','quanto custa o pedágio'],
  weather_unavailable:['vai chover','previsão do tempo','clima no destino'],
  incidents_unavailable:['tem acidente','tem blitz','tem enchente'],
- places_unavailable:['posto mais próximo','preciso de gasolina','onde tem hospital'],
+ places_unavailable:['onde tem banheiro','banheiro mais próximo'],
  safety_info:['essa rota é segura','é perigoso','risco da rota'],
  mute_guidance:['silenciar as orientações','desliga a voz','tirar o som','modo silencioso'],
  unmute_guidance:['ativar a voz','liga o som','volta a falar','tirar do mudo'],
