@@ -22,5 +22,8 @@ Compilação, lint, assinatura, cache e integração React foram verificados. Ne
 ## MAVI: microfone no WebView
 O app pede `RECORD_AUDIO` somente quando uma página VANO confiável solicita captura de áudio. A permissão WebView cobre apenas `RESOURCE_AUDIO_CAPTURE`, nunca câmera nem recursos arbitrários. A voz nativa de navegação continua separada do microfone da MAVI.
 
+## Exclusão de contas Google
+A confirmação de exclusão por Google é uma operação da conta web. O WebView abre o navegador padrão em `https://vanomaps.online/conta` para concluir a reautenticação e a exclusão após novo login; não interpreta o link de exclusão como um login nativo novo.
+
 ## Alterações pendentes de publicação
 As mudanças deste código-fonte só chegam aos usuários após compilar, testar e publicar um novo AAB assinado na Play Store; não alteram automaticamente o aplicativo instalado.
