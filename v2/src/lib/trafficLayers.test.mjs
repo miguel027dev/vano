@@ -126,7 +126,7 @@ test('active navigation keeps the toolbar uncluttered without disabling traffic 
  assert.match(page,/\{!navMode&&<button type="button" className=\{\x60circle-btn v45-traffic-toggle/);
  assert.doesNotMatch(page,/title="Alternar câmera 2D\/3D"/);
  assert.doesNotMatch(page,/aria-label="Alternar inclinação da câmera"/);
- assert.match(page,/\{jevMode&&navMode&&<JevVoiceButton/);
+ assert.match(page,/\{jevMode&&\(navMode\|\|Boolean\(dest\)\)&&<JevVoiceButton/);
  assert.match(page,/trafficEnabled=\{trafficEnabled\}/);
  assert.match(map,/setTrafficVisibility\(map,trafficEnabled\)/);
 });
