@@ -136,7 +136,25 @@ export function answerMaviInformation(intent,input){
   case 'current_street':return text(intent,active&&gps&&onRoad?'A via indicada neste momento é '+onRoad+'.':'Não tenho o nome da via atual confirmado neste momento.');
   case 'clock':return text(intent,/^\d\d:\d\d$/.test(c.localClock||'')?choose('Agora são ','São ','Aqui marca ')+c.localClock+'.':'Não consegui ler as horas.');
   case 'route_summary':return text(intent,!route?'Ainda não há rota calculada. Peça uma rota para começar.': 'Seu destino é '+(target||'o local selecionado')+'. '+(eta!==null?'O tempo estimado é '+minutes(Math.ceil(eta)): 'O tempo está indisponível')+(remainingDist!==null?' e a distância aproximada é '+km(remainingDist)+' quilômetros.':'.')+(active?' Navegação ativa.':' Navegação ainda não iniciada.'));
-  case 'traffic_info':return text(intent,'O VANO considera dados do provedor ao calcular alternativas, mas não tenho um relatório de congestionamento verificado para este trecho nesta resposta. Posso buscar outra rota para comparar.');
+  case 'traffic_info':{
+    // Only summarized, fresh provider evidence from the selected route; never
+    // infer a global congestion percentage or sum overlapping incident delays.
+    const t=c.trafficSummary;
+    if(route&&t?.hasData===true){
+      const count=numeric(t.heavySegments,0,20);
+      const incidents=numeric(t.incidentCount,0,20);
+      const delay=numeric(t.maxIncidentDelayMinutes,1,120);
+      if(count!==null&&count>0)
+        return text(intent,'Nos trechos monitorados da sua rota, há '+count+
+          (count===1?' ponto de trânsito intenso.':' pontos de trânsito intenso.')+
+          (delay!==null?' O maior atraso pontual informado é de cerca de '+minutes(delay)+'.':'')+
+          ' Posso procurar uma alternativa para você comparar.');
+      if(incidents!==null&&incidents>0)
+        return text(intent,'Há '+incidents+' ocorrências de trânsito identificadas nos trechos monitorados da sua rota. Confira o mapa para detalhes.');
+      return text(intent,'Tenho leituras recentes de trânsito para alguns trechos da sua rota, sem congestionamento intenso identificado nessas amostras. Isso não garante trânsito livre no trajeto inteiro.');
+    }
+    return text(intent,'O VANO considera dados do provedor ao calcular alternativas, mas não tenho um relatório de congestionamento verificado para este trecho nesta resposta. Posso buscar outra rota para comparar.');
+  }
   case 'tolls_info':return text(intent,'Não tenho uma cobrança de pedágio confirmada para cada trecho da sua rota. Posso procurar uma alternativa com preferência para evitar pedágios.');
   case 'weather_unavailable':return text(intent,'Ainda não tenho previsão do tempo integrada à MAVI. Não vou arriscar uma previsão sem dados.');
   case 'incidents_unavailable':return text(intent,'Não tenho confirmação em tempo real desse tipo de ocorrência na sua rota. Confira a sinalização e as orientações oficiais.');
