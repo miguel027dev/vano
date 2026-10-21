@@ -459,8 +459,10 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   clearTimeout(styleWatchdog);styleWatchdog=null;
   ensureNight3d(); // Insert before route lines so navigation stays readable.
   try{paintMapbox(map,latest.current,lastSelection);}catch(error){
-    console.warn('Mapbox layers failed; recovering in raster mode:',error?.message||String(error));
-    setForceRaster(true);return;
+    // Individual radar, traffic or decorative overlay errors must NEVER
+    // replace a functioning 3D/vector basemap with a flat raster image.
+    // The map stays usable and overlays may recover on a later style update.
+    console.warn('VANO optional map overlays unavailable; vector basemap retained.');
   }
   setError('');centerOnFirstGpsFix();if(shouldFollowLocation({navigation:latest.current.navigation,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.start();else if(latest.current.destination?.coords)motion.current?.preview();};
         map.on('style.load',update);
