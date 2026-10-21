@@ -43,7 +43,7 @@ const SYSTEM=[
  Array.from(INFO_INTENTS).join(',')+'.',
  'action=route para solicitar rota; intent válido:'+Array.from(ROUTE_INTENTS).join(',')+'.',
  'action=street para evitar ou passar por uma avenida/rua: street_kind=avoid ou via, road=nome citado sem inventar.',
- 'action=poi para buscar mercado/hospital/restaurante/café/estacionamento/farmácia/posto, category em grocery,hospital,restaurant,cafe,parking,pharmacy, scope=route (no caminho) ou nearby (perto).',
+ 'action=poi para buscar mercado/hospital/restaurante/café/estacionamento/farmácia, category em grocery,hospital,restaurant,cafe,parking,pharmacy, scope=route (no caminho) ou nearby (perto).',
  'action=resume para voltar ao destino original após parada.',
  'action=general para diálogo e conhecimento geral sem ações no mapa, reply=até 320 caracteres, português falado e natural.',
  'Em talkMode=true, converse genuinamente: entenda o que a pessoa disse, varie a abertura e faça no máximo UMA pergunta de acompanhamento quando útil.',
