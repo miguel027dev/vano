@@ -145,7 +145,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const node=map.getContainer();
   // Small, display-aware budget: the selector enforces further category and spacing limits.
   const markerBudget=Math.max(20,Math.min(90,Math.round(node.clientWidth*node.clientHeight/10500)));
-  const allowed=selectPublicPins(items,project,zoom,markerBudget,{width:node.clientWidth,height:node.clientHeight},{navigation:Boolean(getNavigation())});
+  const allowed=selectPublicPins(items,project,zoom,markerBudget,{width:node.clientWidth,height:node.clientHeight},{navigation:Boolean(getNavigation())}).filter(item=>!map._vanoRouteTrafficHiddenIds?.has(item.id));
   const current=new Set(allowed.map(x=>x.id));
   for(const [id,entry] of markers)if(!current.has(id)){entry.marker.remove();markers.delete(id);}
   for(const item of allowed){

@@ -25,6 +25,8 @@ import {ensureTrafficLayers,setTrafficVisibility,TRAFFIC_SOURCE_ID} from '../lib
 import {attachMunicipalTrafficOverlay} from '../lib/trafficMunicipal.js';
 import {syncPrivateRoadSignMarkers,clearPrivateRoadSignMarkers} from '../lib/privateRoadSigns.js';
 import '../private-road-signs.css';
+import {syncRouteTrafficMarkers,clearRouteTrafficMarkers,syncLeafletRouteTraffic} from '../lib/routeTrafficMarkers.jsx';
+import {TRAFFIC_COLORS} from '../lib/routeTraffic.mjs';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -350,7 +352,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,routeTraffic=null}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -374,7 +376,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   }
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,simulationPreview,droneSimulation,v2Experience,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,routeTraffic,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null,styleRecoveryAttempted=false;const initial=coord(latest.current.userCoords);
@@ -502,6 +504,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       root.current?.addEventListener('wheel',leafletWheelHandler,{passive:true});
       map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.([e.latlng.lng,e.latlng.lat]);});
     }
+    const refreshRouteTrafficMarkers=()=>syncRouteTrafficMarkers(map,backend.current,backend.current==='mapbox'?mapboxgl:L,latest.current);
+    map.on('zoomend',refreshRouteTrafficMarkers);
     // Independent POI pins survive style changes without altering GPS or route layers.
     // Admin sign overlay is a separate, disposable DOM layer; it never edits route, style or GPS sources.
     map._vanoSyncPrivateRoadSigns=()=>{
@@ -535,7 +539,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       }};
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;detachCommunityPins?.();detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
+    return()=>{deleted=true;map.off('zoomend',refreshRouteTrafficMarkers);clearRouteTrafficMarkers(map);detachCommunityPins?.();detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token,forceRaster]);
   // Navigation switches should change POI categories immediately, without
   // remounting the map, touching GPS or triggering any provider request.
@@ -639,7 +643,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     });
   },[previewRoute,previewFocus,navigation]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
-  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
+  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy,v2Experience,routeTraffic]);
   // Changing the visual theme must never take control of a live GPS camera.
   // Away from navigation, the dark street style gains a useful 3D viewing angle.
   useEffect(()=>{
@@ -855,6 +859,10 @@ function paintLeaflet(map,data){
       className:'vano-mavi-route-preview'
     }).addTo(map);
   }
+  if(data.v2Experience&&data.vehicle!=='a-pe')map._vanoFlowLine?.remove();
+  else if(map._vanoFlowLine&&!map.hasLayer(map._vanoFlowLine))map._vanoFlowLine.addTo(map);
+  syncLeafletRouteTraffic(map,L,{...data,routeTraffic:data.vehicle==='a-pe'?null:data.routeTraffic});
+  syncRouteTrafficMarkers(map,'leaflet',L,data);
   map._vanoFlowLine?.bringToFront();map._vanoMaviPreviewLine?.bringToFront();
   if(validPoint(data.destination?.coords)){
     if(!map._vanoDestMarker){
@@ -883,7 +891,7 @@ function paintMapbox(map,data,selection){
   const upsert=(id,body)=>{
     const shapes=body.features.map(x=>x.geometry);
     const source=map.getSource(id);
-    if(!source){map.addSource(id,{type:'geojson',data:body});routeShapes[id]=shapes;return;}
+    if(!source){map.addSource(id,{type:'geojson',data:body,...(id==='vano-v2-selected'?{lineMetrics:true}:{})});routeShapes[id]=shapes;return;}
     const previous=routeShapes[id];
     if(sameRouteShapeReferences(previous,shapes))return;
     source.setData(body);routeShapes[id]=shapes;
@@ -891,6 +899,7 @@ function paintMapbox(map,data,selection){
   upsert('vano-v2-alternatives',othersGeo);upsert('vano-v2-selected',selectedGeo);
   const maviCandidate=feature(data.previewRoute);
   upsert('vano-mavi-route-preview',geo(maviCandidate?[maviCandidate]:[]));
+  if(!map.getLayer('vano-v2-line')){map._vanoTrafficGradient=null;map._vanoTrafficV2=null;}
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
   if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':13,'line-opacity':.94}});
   if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900','line-width':8,'line-opacity':1,'line-opacity-transition':{duration:250}}});
@@ -912,6 +921,19 @@ function paintMapbox(map,data,selection){
     layout:{'line-join':'round','line-cap':'butt'},
     paint:{'line-color':'#fff2df','line-width':2.1,'line-opacity':.62,'line-dasharray':STATIC_ROUTE_DASH_PATTERN}
   },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
+  const traffic=data.v2Experience&&data.vehicle!=='a-pe'?data.routeTraffic:null;
+  if(map._vanoTrafficGradient!==traffic?.gradient||map._vanoTrafficV2!==Boolean(traffic)){
+    if(traffic&&traffic.index?.points===selected?.geometry?.coordinates){
+      map.setPaintProperty('vano-v2-line','line-gradient',traffic.gradient);
+      map.setPaintProperty('vano-v2-line','line-color',TRAFFIC_COLORS.unknown);
+    }else{
+      map.setPaintProperty('vano-v2-line','line-gradient',null);
+      map.setPaintProperty('vano-v2-line','line-color','#ff7900');
+    }
+    map.setLayoutProperty('vano-v2-flow','visibility',traffic?'none':'visible');
+    map._vanoTrafficGradient=traffic?.gradient;map._vanoTrafficV2=Boolean(traffic);
+  }
+  syncRouteTrafficMarkers(map,'mapbox',mapboxgl,data);
   if(!map.getSource('vano-v2-traveled'))upsert('vano-v2-traveled',geo([]));
   // Empty progress only when navigation ends; repeated clears on every GPS update
   // caused extra source repaints and visible instability in the route overlay.

@@ -29,6 +29,7 @@ import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
+import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffic.mjs';
 import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -58,6 +59,7 @@ import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
+const routeTrafficGateway=createRouteTrafficGateway({incidentSnapshot:tomtomSnapshot});
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import {isReportType,reportType,publicReportsInBBox,metersApart,recordReportFeedback} from '../src/lib/communityReports.js';
@@ -510,6 +512,16 @@ async function route(req, res) {
       const safeBody=upstream.ok?await upstream.json().catch(()=>({})):{};
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
+  }
+  // Selected-route context for the private administrator V2 map only.
+  if(pathname==='/api/admin/route-traffic'&&req.method==='POST'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para consultar o trânsito.');
+    if(!isAdminAccount(session.user))return err(res,403,'Trânsito experimental restrito ao administrador.');
+    if(!protectedWrite(req,res)||!limits(req,res,'admin-route-traffic',6,60000))return;
+    const request=parseRouteTrafficRequest(await getBody(req));
+    if(!request)return err(res,400,'Informe um trajeto e veículo válidos.');
+    return json(res,200,await routeTrafficGateway.snapshot(request,process.env[TOMTOM_ENV_NAME]||''),{'Cache-Control':'private, no-store'});
   }
   // Route-level ETA forensic view. On-demand only; never collect, list or
   // retain other people's GPS. Admin role, CSRF and tight quota are mandatory.
