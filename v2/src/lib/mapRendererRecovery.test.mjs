@@ -22,7 +22,7 @@ test('production CSP allows licensed Mapbox and Esri imagery, not OSM volunteer 
 test('Mapbox/WebGL/style recovery keeps Leaflet fallback and error-tile placeholder',()=>{
  for(const token of ['mapboxgl.supported()','[forceRaster,setForceRaster]=useState(false)',
  'if(token && !forceRaster','setForceRaster(true)','webglcontextlost',
- 'styleWatchdog=setTimeout','installLeafletBasemap(map,latest.current.layer,token',
+ 'styleWatchdog=setTimeout','installLeafletBasemap(map,latest.current.layer,forceRaster?\'\':token',
  'errorTileUrl:EMPTY_TILE','leafletBackupTilesFor(layer)','map=L.map(root.current'])
   assert.ok(component.includes(token),'missing recovery path: '+token);
  assert.ok(!component.includes('Falha na renderização Mapbox. Reinicie o mapa'));
@@ -30,7 +30,7 @@ test('Mapbox/WebGL/style recovery keeps Leaflet fallback and error-tile placehol
 test('GPS, routes, camera and satellite stay shared by /mapa and /v2',()=>{
  const app=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  for(const token of ['import VanoMap','paintLeaflet(map,latest.current)',
- 'paintMapbox(map,latest.current,lastSelection)','leafletTilesFor(layer,token,appearance)',
+ 'paintMapbox(map,latest.current,lastSelection)','leafletTilesFor(layer,forceRaster?\'\':token,appearance)',
  'motionController(map,latest,status)'])
   assert.ok((token==='import VanoMap'?app:component).includes(token));
 });
