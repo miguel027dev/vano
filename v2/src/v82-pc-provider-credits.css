@@ -1,0 +1,47 @@
+/* VANO Maps V2 — PC-only provider-credit alignment.
+   Preserve provider logos, copyright links and native attributions.  Keep them
+   in the narrow footer strip below desktop route/location cards; never hide
+   attribution behind an overlay or change the tablet/mobile interface. */
+@media (min-width: 1110px) {
+  /* Native Mapbox wordmark (and the existing optional companion mark). */
+  .map-page .mapboxgl-ctrl-bottom-left {
+    left: max(10px, env(safe-area-inset-left, 0px)) !important;
+    right: auto !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    z-index: 0 !important;
+  }
+
+  /* Native Mapbox copyright/feedback control; Leaflet is the fallback. */
+  .map-page .mapboxgl-ctrl-bottom-right,
+  .map-page .leaflet-bottom.leaflet-right {
+    left: calc(max(10px, env(safe-area-inset-left, 0px)) + 208px) !important;
+    right: auto !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+    z-index: 0 !important;
+  }
+
+  /* Separate, clickable attribution badges mounted at .map-page level.
+     z-index 1 is required: the map canvas already occupies layer 1, so 0
+     would bury badges and their legal links underneath it. */
+  .map-page .v40-map-credit,
+  .map-page.in-navigation .v40-map-credit,
+  .map-page.has-sheet .v40-map-credit,
+  .map-page.in-navigation.has-sheet .v40-map-credit {
+    left: calc(max(10px, env(safe-area-inset-left, 0px)) + 116px) !important;
+    right: auto !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1px) !important;
+    z-index: 1 !important;
+    height: 19px;
+    min-height: 19px;
+  }
+
+  .map-page .v40-tomtom-credit,
+  .map-page.in-navigation .v40-tomtom-credit,
+  .map-page.has-sheet .v40-tomtom-credit,
+  .map-page.in-navigation.has-sheet .v40-tomtom-credit {
+    left: calc(max(10px, env(safe-area-inset-left, 0px)) + 145px) !important;
+    right: auto !important;
+    width: 54px;
+    min-width: 54px;
+  }
+}
