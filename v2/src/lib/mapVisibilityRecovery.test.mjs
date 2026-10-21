@@ -11,6 +11,12 @@ test('invalid/restricted Mapbox pk falls back to a token-free raster map',()=>{
  for(const layer of ['streets','satellite'])
   assert.deepEqual(leafletTilesFor(layer,''),leafletBackupTilesFor(layer));
 });
+test('a rejected custom style retries a real Mapbox vector style before raster and ignores optional loaded-map errors',()=>{
+ assert.match(component,/styleRecoveryAttempted&&map\?\._vanoStyle!==MAPBOX_STYLES\.streets/);
+ assert.match(component,/map\.setStyle\(MAPBOX_STYLES\.streets,\{diff:false\}\)/);
+ assert.match(component,/\(authFailed\|\|styleFailed\)&&!isLoaded\(map\)/);
+ assert.match(component,/const standard=MAPBOX_STYLES\.streets/);
+});
 test('continuous paint animation defaults off, reducing unstable WebGL writes on production',()=>{
  assert.match(component,/VITE_V2_ROUTE_FLOW_ANIMATION==='1'/);
  assert.match(component,/if\(import\.meta\.env\.VITE_V2_ROUTE_FLOW_ANIMATION==='1'\)\s*updateV2RouteFlow\(/);
