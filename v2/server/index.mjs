@@ -30,6 +30,7 @@ import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeB
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
 import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffic.mjs';
+import {createTrafficMemoryReader,assessTrafficMemory} from './traffic-memory.mjs';
 import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -60,6 +61,8 @@ import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 const routeTrafficGateway=createRouteTrafficGateway({incidentSnapshot:tomtomSnapshot});
+// Opt-in V2-only, asynchronous snapshot reader; empty on first request or missing data.
+const trafficMemoryReader=createTrafficMemoryReader(process.env.VANO_TRAFFIC_MEMORY_FILE||'');
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import {isReportType,reportType,publicReportsInBBox,metersApart,recordReportFeedback} from '../src/lib/communityReports.js';
@@ -1345,6 +1348,15 @@ async function route(req, res) {
       const elapsed=Math.max(0,performance.now()-routeStarted);
       runtimeMetrics.routeLatencyMs+=elapsed;
       if(!res.headersSent)res.setHeader('Server-Timing','route;dur='+Math.round(elapsed));
+    }
+    // V2 traffic memory never changes a provider ETA or trusted Python safety decision.
+    // Default disabled; shadow computes only audit metadata, with no route switching.
+    if(body.vehicle!=='a-pe'&&['shadow','on'].includes(process.env.VANO_TRAFFIC_MEMORY_MODE)){
+      try{result=assessTrafficMemory(result,trafficMemoryReader.get(),{
+        mode:process.env.VANO_TRAFFIC_MEMORY_MODE,
+        departAt:routeOptions.departAt&&routeOptions.departAt!=='now'?routeOptions.departAt:Date.now(),
+        now:Date.now()
+      });}catch{/* Public route calculation must not depend on optional historical data. */}
     }
     // Risk-first reshuffle is isolated to the 'safe' result; fast/smart stay unchanged.
     // Historical GeoSampa flooding layers are deliberately excluded until their
