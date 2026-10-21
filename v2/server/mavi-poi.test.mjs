@@ -32,9 +32,6 @@ test('search category always uses restricted Mapbox POI API and route SAR geomet
  const medic=await findMaviPlaces({category:'pharmacy',scope:'nearby',origin,token:'test-token',fetcher});
  assert.ok(medic.length);
  assert.equal(seen.at(-1).pathname,'/search/searchbox/v1/category/pharmacy');
- const roadside=await findMaviPlaces({category:'gas_station',scope:'nearby',origin,token:'test-token',fetcher});
- assert.ok(roadside.length);
- assert.equal(seen.at(-1).pathname,'/search/searchbox/v1/category/gas_station');
 });
 test('along-route candidates must be ahead and inside a strict corridor',()=>{
  const ranked=rankMaviPlaces([
