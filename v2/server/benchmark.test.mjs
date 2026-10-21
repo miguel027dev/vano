@@ -6,6 +6,8 @@ const parse=(s='',originalEngine=false)=>parseBenchmarkParams(new URLSearchParam
 test('public benchmark discovery is documented and agent-ready',()=>{
  const payload=benchmarkCapabilities({baseUrl:'https://vanomaps.online',originalEngine:true});
  assert.equal(payload.public,true);assert.equal(payload.agentReady,true);
+ assert.equal(payload.limits.adaptivePublic,false);
+ assert.equal(payload.limits.maxVariantBudget,2);
  assert.equal(payload.modes.length,4);assert.match(payload.endpoints.route,/api\/benchmark\/v1\/route$/);
  assert.equal(benchmarkCapabilities({originalEngine:false}).modes.length,2);
  assert.equal(benchmarkScenarios(8).length,8);
@@ -18,6 +20,9 @@ test('strict parameter validation prevents expensive malformed calls',()=>{
  assert.equal(parse('mode=smart',true).routeId,'smart');
  assert.equal(parse('adaptive=2').error,'invalid_parameter');
  assert.equal(parse('variant_budget=8').error,'invalid_variant_budget');
+ assert.equal(parse('variant_budget=4').error,'invalid_variant_budget');
+ assert.equal(parse('adaptive=1').error,'public_adaptive_disabled');
+ assert.equal(parse('adaptive=0').variantBudget,2);
  assert.equal(parse('profile=walking').error,'invalid_profile');
  assert.equal(parseBenchmarkParams(new URLSearchParams('start_lat=NaN&start_lon=0&end_lat=1&end_lon=2')).error,'invalid_coordinates');
  assert.equal(parseBenchmarkParams(new URLSearchParams('start_lat=90&start_lon=180&end_lat=-90&end_lon=-180')).error,'distance_limit');
