@@ -10,8 +10,7 @@ export const MAVI_POI_CATEGORIES=Object.freeze({
  restaurant:{id:'restaurant',label:'restaurante'},
  cafe:{id:'coffee',label:'cafeteria'},
  parking:{id:'parking',label:'estacionamento'},
- pharmacy:{id:'pharmacy',label:'farmácia'},
- gas_station:{id:'gas_station',label:'posto de combustível'}
+ pharmacy:{id:'pharmacy',label:'farmácia'}
 });
 const RAD=Math.PI/180;
 export function metersBetween(a,b){
