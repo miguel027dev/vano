@@ -120,7 +120,11 @@ if (production) {
 }
 // SPTrans key stays server-side. Polling is independent of /api/route and does not
 // persist provider data or change car/motorcycle routing until independently validated.
-const sptransOlhoVivo=createSptransOlhoVivo({token:process.env.VANO_SPTRANS_API_TOKEN||''});
+const sptransOlhoVivo=createSptransOlhoVivo({
+ token:process.env.VANO_SPTRANS_API_TOKEN||'',
+ onStatus:({online,error,placemarks})=>console.info('VANO SPTrans (somente diagnóstico):',
+  online?'online, placemarks='+placemarks:'indisponível, motivo='+error)
+});
 if(process.env.VANO_SPTRANS_LIVE_ENABLED!=='0')sptransOlhoVivo.start();
 const port = Number(process.env.PORT || process.env.API_PORT || 8878);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('API_PORT inválida.');
