@@ -220,6 +220,12 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         }
       }
     }
+    // Never show a provider-declared violation even as the secondary route.
+    // No street-name list can override a provider's legally routable geometry.
+    const compliantPool=pool.filter(r=>!hasProviderRouteViolation(r));
+    if(!compliantPool.length)throw Error('Mapbox não retornou rota sem restrição de acesso.');
+    const restrictedRejected=pool.length-compliantPool.length;
+    pool=compliantPool;
     // Fast compares real provider ETA only after excluding explicit access violations.
     // The CEM road catalog has no licensed per-direction speeds to add here.
     const fastest=chooseStableFastRoute(pool,originalBest)||pool[0];
@@ -242,6 +248,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         fastestPolicy:'provider-traffic-ETA; reject provider-flagged violations; no unverified CEM speed penalty',
         initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeAudit.sent,plannedExtraRequests:probeCount,throttledRequests:probeAudit.throttled,
         acceptedProbes:probeSuccess,urbanProbes:probeAudit.urbanSent,urbanAccepted,
+        rejectedProviderViolations:restrictedRejected,
         searchZones:['inicio','meio','fim'],searchLimit:20,providerRouteCount:pool.length,
         minimumSwitchSavingsSeconds:Math.round(Math.max(45,Math.min(95,(originalBest?.duration||baseline.duration)*.055))),
         stableChoiceDurationSeconds:fastest.duration,originalChoiceDurationSeconds:originalBest.duration,
