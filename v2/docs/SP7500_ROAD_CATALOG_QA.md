@@ -8,6 +8,8 @@
 - Divergências: 46 pares nome/distrito ausentes, 33 contagens diferentes, 30 extensões divergentes (grupos sobrepostos). 40 alternativas candidatas primárias e 38 secundárias sem nome correspondente em logradouros da mesma base. Nomes compatíveis NÃO implicam conexão ou mão permitida.
 - **Nenhum** pico horário ou velocidade foi confirmado; nenhuma direção, declive, conversão, alternativa ou licença de memória histórica foi validada para uso no roteamento.
 
+- **Avenidas:** conferência adicional de 1.368 etiquetas e 21.523 segmentos `TIPO=AV` no mesmo arquivo CEM, comparando ID, ETIQ, distrito e comprimento com os dados exportados: 1.368 etiquetas sem divergência interna. Nomes genéricos e homologação oficial CET continuam pendentes. Nenhum horário de pico aferido.
+
 ## Implementação segura
 - Painel somente /v2 **e somente administradores**, na UI (`RoadAuditPanel.jsx`) sem import no motor de rotas; fechado inicialmente.
 - A interface exibe contagens auditadas e aceita leitura local de `VANO_SP7500_Auditoria_Cruzamento_CEM2025.csv`, oferecido separadamente ao administrador. Não faz upload de CSV nem grava no servidor.
