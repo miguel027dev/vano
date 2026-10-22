@@ -40,11 +40,11 @@ function normalize(item,now){
   !Number.isInteger(item.quarter)||item.quarter<0||item.quarter>95)return null;
  if(!finite(item.speedKmh)||item.speedKmh<=1||item.speedKmh>130||
   !finite(item.freeFlowKmh)||item.freeFlowKmh<8||item.freeFlowKmh>150||
-  item.speedKmh>=item.freeFlowKmh*.9)return null;
+  item.speedKmh>item.freeFlowKmh*1.45)return null;
  const date=Date.parse(item.lastObservedAt);
  if(!Number.isFinite(date)||date>now+60000||now-date>60*86400000)return null;
  if(!Number.isInteger(item.samples)||item.samples<12||item.samples>1000000||
-  item.licenseVerified!==true||typeof item.source!=='string'||!item.source.trim()||
+  item.licenseVerified!==true||item.directionVerified!==true||typeof item.source!=='string'||!item.source.trim()||
   !/^[a-z0-9:._-]{4,70}$/i.test(item.id||''))return null;
  // Third-party data may be stored only if its own terms explicitly permit this.
  return {id:item.id,coords:c,day:item.weekday,quarter:item.quarter,
