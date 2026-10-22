@@ -247,7 +247,7 @@ function motionController(map,latest,status){
       const regular=realCameraDistance(d,route,base,now);
       return planStandardSimulationCamera({
         enabled:true,base:regular,
-        position:d.motionCoords||d.gpsCoords,heading:d.motionBearing,
+        position:d.motionCoords||d.gpsCoords,markerBearing:d.motionBearing,
         maneuver:d.guidance,route,vehicle:d.vehicle,
         compactViewport:viewport.compact,reducedMotion:reduced,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
