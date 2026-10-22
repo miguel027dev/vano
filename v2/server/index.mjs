@@ -1387,6 +1387,10 @@ async function route(req, res) {
       adaptive:provided.reroute===true?false:provided.adaptive!==false,includeAdvanced:provided.reroute===true?false:provided.includeAdvanced===true,
       safeComparison:provided.reroute!==true, // don't enumerate internal candidates while recovering from a deviation
       skipCandidateProbes:provided.reroute===true,
+      // V2 car fast-route candidate exploration. Disabled for live reroutes,
+      // walking, motorcycles and environments explicitly rolling back the feature.
+      bottleneckRouting:provided.reroute!==true&&(body.vehicle||'carro')==='carro'&&
+        process.env.VANO_V2_BOTTLENECK_ROUTING!=='off',
       variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
       localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
       safetyBias:typeof provided.safetyBias==='number'&&Number.isFinite(provided.safetyBias)?provided.safetyBias:undefined,
