@@ -69,7 +69,8 @@ def test_all_map_motion_respects_reduced_motion():
 def test_frontend_asset_budgets():
     budgets = {
         "static/vano.css": 2_500_000,
-        "static/vano-map.js": 390_000,
+        # +5 KiB budget for validated maneuver-focus camera logic (was 390 KiB decimal).
+        "static/vano-map.js": 395_000,
         "static/vano-map-fallback.js": 290_000,
         "static/vano-i18n.js": 220_000,
         "templates/index.html": 65_000,
