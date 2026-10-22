@@ -94,3 +94,40 @@ test('original camera remains unchanged and new framing is only for V2 regular P
   const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
   assert.match(page,/simulationPreview=\{simActive\} droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
 });
+
+test('Play camera holds physical vehicle heading BEFORE the entrance even if the route already bends',()=>{
+  const eagerBase={...base,bearing:90,center:[-46.688,-23.583]}; // old forward lookahead anticipated a right turn
+  const before=plan({stepIndex:0,kind:'on ramp',distance:45},{
+    base:eagerBase,markerBearing:0
+  });
+  assert.equal(before.bearing,0,'must not turn right before the simulated vehicle turns');
+  assert.ok(Math.abs(before.center[0]-puck[0])<1e-8,'behind northbound car, no artificial shift toward ramp');
+  assert.ok(before.center[1]>puck[1]);
+  assert.equal(before.droneCamera.halfLife,720);
+  assert.ok(before.droneCamera.pointHalfLife>360);
+  assert.ok(before.droneCamera.bearingHalfLife>320);
+});
+
+test('Play camera turns only with animated car, then remains behind it',()=>{
+  const inputs=[0,0,0,18,48,85,90];
+  const frames=inputs.map(markerBearing=>plan(
+    {stepIndex:0,kind:'on ramp',distance:15},
+    {markerBearing,base:{...base,bearing:90}}
+  ));
+  assert.deepEqual(frames.map(f=>f.bearing),inputs,'the route look-ahead must not steer camera');
+  assert.ok(frames[3].center[0]>frames[0].center[0]);
+  const east=frames.at(-1),north=frames[0];
+  assert.ok(east.center[0]>puck[0]&&Math.abs(east.center[1]-puck[1])<1e-7);
+  assert.ok(north.center[1]>puck[1]);
+  assert.ok(frames.every(f=>f.zoom===frames[0].zoom));
+  assert.ok(frames.every(f=>f.pitch===frames[0].pitch));
+});
+
+test('Play frame follows the vehicle rather than extrapolating upcoming route in code',()=>{
+  const src=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+  assert.match(src,/markerBearing:d\.motionBearing/);
+  assert.match(src,/const standardPlay=d\.v2Experience&&d\.simulationPreview&&!d\.droneSimulation/);
+  const policy=readFileSync(new URL('./standardSimulationCamera.mjs',import.meta.url),'utf8');
+  assert.match(policy,/bearing:heading/);
+  assert.doesNotMatch(policy,/nextRouteBearing\(/);
+});
