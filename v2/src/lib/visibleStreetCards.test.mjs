@@ -19,7 +19,7 @@ test('safe names are provider-backed; unnamed or injected markup never becomes a
  assert.equal(safeStreetName({name:'Avenida ABC'}),'Avenida ABC');
  assert.equal(isNamedRoadFeature(line('Rua Augusta')),true);
  assert.equal(isNamedRoadFeature({...line('Rua Augusta'),layer:{id:'vano-v2-line',type:'line'}}),false);
- assert.equal(isNamedRoadFeature({...line('Rua Augusta'),geometry:{type:'Polygon',coordinates:[]}}),true);
+ assert.equal(isNamedRoadFeature({...line('Rua Augusta'),geometry:{type:'Polygon',coordinates:[]}}),false);
 });
 test('long avenue anchor favors visible beginning; short street favors midpoint',()=>{
  const avenue=line('Av. Paulista',0,.016);
