@@ -8,7 +8,7 @@ function streetName(step){
  const raw=typeof step?.street==='string'?step.street.trim().replace(/\s+/g,' '):'';
  // The provider is authoritative. Never recover names from an address lookup,
  // nearby map label, or free-form navigation instruction.
- return raw&&raw.length<=90&&!UNKNOWN.test(raw)&&!/[<>\\x00-\\x1F]/.test(raw)?raw:'';
+ return raw&&raw.length<=90&&!UNKNOWN.test(raw)&&!/[<>\x00-\x1F]/.test(raw)?raw:'';
 }
 function trueTurn(step){
  const kind=String(step?.type||'').toLowerCase(),modifier=String(step?.modifier||'').toLowerCase();
