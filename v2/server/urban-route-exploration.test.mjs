@@ -95,7 +95,7 @@ test('tiny ETA advantage is not allowed to add 500m to a stable route',async()=>
  const selected=data.routes.find(r=>r.id==='fast');
  assert.equal(selected.distance,9.2);
  assert.equal(selected.durationSeconds,1100);
- assert.equal(data.candidateEngine.minimumSwitchSavingsSeconds>=45,true);
+ assert.equal(data.candidateEngine.minimumSwitchSavingsSeconds,5);
 });
 
 test('fastest route rejects Mapbox-declared access violations without guessed traffic',()=>{
@@ -108,4 +108,17 @@ test('fastest route rejects Mapbox-declared access violations without guessed tr
  assert.equal(selected,legal);
  assert.equal(validExploredVariant(dubious,baseline,[baseline]),false);
  assert.equal(hasProviderRouteViolation(legal),false);
+});
+
+test('fast route cannot be 27 seconds slower solely to save distance',()=>{
+ const fastest=mk(1000,.0012);fastest.distance=9200;
+ const longerTime=mk(1027,.003);longerTime.distance=8000;
+ assert.strictEqual(chooseStableFastRoute([longerTime,fastest]),fastest);
+});
+test('fast route honors only five-second technical tie if 450m shorter',()=>{
+ const best=mk(1000,.001);best.distance=9000;
+ const near=mk(1004,.002);near.distance=8480;
+ const out=mk(1006,.003);out.distance=7800;
+ assert.strictEqual(chooseStableFastRoute([best,near]),near);
+ assert.strictEqual(chooseStableFastRoute([best,out]),best);
 });
