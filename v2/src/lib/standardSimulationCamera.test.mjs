@@ -88,7 +88,8 @@ test('original camera remains unchanged and new framing is only for V2 regular P
   const src=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
   assert.match(src,/d\.v2Experience&&d\.simulationPreview&&!d\.droneSimulation/);
   assert.match(src,/const framedManeuver=standardPlay\?/);
-  assert.match(src,/if\(!standardPlay\|\|!regular\)return regular/);
+  assert.match(src,/if\(standardPlay&&base\)\{/);
+  assert.match(src,/if\(!d\.droneSimulation\|\|!base\)return realCameraDistance\(d,route,base,now\)/);
   assert.match(src,/planStandardSimulationCamera\(\{/);
   const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
   assert.match(page,/simulationPreview=\{simActive\} droneSimulation=\{simActive&&simCameraMode==='drone'\}/);
