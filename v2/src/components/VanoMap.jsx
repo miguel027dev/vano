@@ -247,9 +247,11 @@ function motionController(map,latest,status){
       const regular=realCameraDistance(d,route,base,now);
       return planStandardSimulationCamera({
         enabled:true,base:regular,
-        position:d.motionCoords||d.gpsCoords,maneuver:d.guidance,route,
-        vehicle:d.vehicle,compactViewport:viewport.compact,reducedMotion:reduced,
+        position:d.motionCoords||d.gpsCoords,heading:d.motionBearing,
+        maneuver:d.guidance,route,vehicle:d.vehicle,
+        compactViewport:viewport.compact,reducedMotion:reduced,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
+        viewportClearancePx:viewport.maxBehindPx,
         markerBearing:d.motionBearing
       });
     }
@@ -352,7 +354,13 @@ function motionController(map,latest,status){
     const pointHalfLife=reduced?90:drone?.pointHalfLife??(motorcycle?390:360);
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
     const nextZoom=reduced?t.zoom:damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=reduced?t.pitch:damp(pose.pitch,t.pitch,dt,cameraHalfLife);
-    const nextBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(drone?.bearingHalfLife??(motorcycle?420:320))));
+    const softenedBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(drone?.bearingHalfLife??(motorcycle?420:320))));
+    // Only admin Play: do not whip the map around when the marker enters a
+    // corner. The physical car starts rotating first; the camera follows.
+    const yawDelta=shortestAngle(pose.bearing,softenedBearing);
+    const maxYawStep=110*dt/1000;
+    const nextBearing=t.cameraFollowMarker&&!reduced?
+      (pose.bearing+clamp(yawDelta,-maxYawStep,maxYawStep)+360)%360:softenedBearing;
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
     pose={center:nextCenter,zoom:nextZoom,pitch:nextPitch,bearing:nextBearing};
     try{map.jumpTo({...pose,padding:latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20}});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
