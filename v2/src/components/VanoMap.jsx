@@ -242,9 +242,8 @@ function motionController(map,latest,status){
         syncV2BuildingVisibility(map,{enabled:true,density:0,cinematic:false});
       }
     }
-    if(!d.droneSimulation||!base){
+    if(standardPlay&&base){
       const regular=realCameraDistance(d,route,base,now);
-      if(!standardPlay||!regular)return regular;
       return planStandardSimulationCamera({
         enabled:true,base:regular,
         position:d.motionCoords||d.gpsCoords,maneuver:d.guidance,route,
@@ -252,6 +251,8 @@ function motionController(map,latest,status){
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy
       });
     }
+    // Keep the existing real-navigation and drone isolation contract intact.
+    if(!d.droneSimulation||!base)return realCameraDistance(d,route,base,now);
     const scene=sampleDroneScene(d,route,now);
     const nextMode=chooseV2UrbanCamera({
       enabled:true,density:scene.density,mode:urbanMode,
