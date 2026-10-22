@@ -105,24 +105,23 @@ export function validExploredVariant(candidate,baseline,existing){
  if(hasProviderRouteViolation(candidate))return false;
  return true;
 }
-/** Prevent 0.8-second "wins" from replacing a much shorter road path.
- * We favor shorter length within a 45s near-tie, and only switch to a
- * geometrically new corridor for a meaningful ETA improvement.
+/** A fast route cannot be up to 30s slower purely to save distance.
+ * Compare compliant provider paths using traffic-aware ETA; permit a
+ * negligible 5-second technical tie only if 450m distance is saved.
+ * Road-catalogue QA names have no measured speeds and must not set weights.
  */
-export function chooseStableFastRoute(candidates,original){
- // Filter provider-declared restriction violations BEFORE comparing ETAs;
- // this is verifiable provider metadata, not the unmeasured CEM catalog.
- const candidatePool=uniqueCandidates(candidates,24);
- const compliant=candidatePool.filter(r=>!hasProviderRouteViolation(r));
- const routes=compliant.length?compliant:candidatePool;
- const baseline=original&&routes.some(r=>r===original)?original:routes[0];
- if(!baseline)return null;
- const near=routes.filter(r=>Math.abs(r.duration-baseline.duration)<=45);
- let selected=baseline;
- for(const route of near)if(route.distance<=selected.distance-450&&
-   route.duration<=selected.duration+30)selected=route;
- const threshold=Math.max(45,Math.min(95,baseline.duration*.055));
- const meaningful=routes.find(r=>r.duration<=selected.duration-threshold&&
-   overlap(r,selected)<.985&&r.distance<=selected.distance*1.65);
- return meaningful||selected;
+export function chooseStableFastRoute(candidates){
+ const pool=uniqueCandidates(candidates,24);
+ // Provider restrictions are authoritative; do not promote a road whose
+ // point exclusion or legal restriction was explicitly violated.
+ const compliant=pool.filter(r=>!hasProviderRouteViolation(r));
+ const fastest=compliant[0];
+ if(!fastest)return null;
+ let selected=fastest;
+ for(const route of compliant){
+  if(route.duration>fastest.duration+5)break;
+  if(route.distance<=selected.distance-450&&route.duration<=selected.duration+5)
+   selected=route;
+ }
+ return selected;
 }
