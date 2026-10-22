@@ -593,7 +593,7 @@ function upcomingTurn(m,speed){const tune=cameraVehicleTuning(),d=m?.distanceAlo
 function cameraLookAhead(speed,m,motion=null){const tune=cameraVehicleTuning();let base=Math.max(tune.lookMin,Math.min(tune.lookMax,tune.lookBase+speed*tune.lookPerSpeed));const turn=upcomingTurn(m,speed);if(turn.angle>58)base*=tune.sharpLook;else if(turn.angle>34)base*=tune.turnLook;const step=currentStep(m?.distanceAlong||0),rem=(step.remainingInStep??9999);if(rem<140)base*=profile==='motorcycle'?.76:.78;if(motion?.phase==='accelerating')base*=profile==='motorcycle'?1.10:1.05;else if(motion?.phase==='braking')base*=profile==='motorcycle'?.82:.88;else if(motion?.phase==='crawl')base*=.80;return Math.max(tune.lookMin,base)}
 function roadControlAhead(type,along,maxAhead=90){let best=null;for(const x of roadAwareness||[]){if(type&&String(x.type||'')!==type)continue;if(!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon))continue;const m=nearestProgress({lat:+x.lat,lon:+x.lon}),ahead=m.distanceAlong-along;if(m.offRoute<=80&&ahead>=-10&&ahead<=maxAhead&&(!best||ahead<best.ahead))best={...x,ahead}}return best}
 function cameraJunctionContext(m,step,turn){const tune=cameraVehicleTuning(),rem=Math.max(0,+step?.remainingInStep||9999),type=String(step?.type||'').toLowerCase(),roundabout=type.includes('roundabout')||type.includes('rotary'),decision=rem<tune.decisionDistance&&(turn.angle>20||type==='fork'||type==='merge'||type==='end of road'||roundabout),large=decision&&(turn.angle>tune.largeAngle||type==='fork'||type==='merge'||roundabout);return{rem,roundabout,decision,large}}
-// Approach focus is exclusive to /mapa navigation; the admin /v2 drone camera keeps its own policy.
+// Shared turn prediction for /mapa and the /v2 admin camera; framing is mode-specific.
 function cameraManeuverFocus(m,step,speed,ts){
   const routeKey=routeClientKey(selectedRoute);
   if(cameraManeuverMemory.routeKey!==routeKey){
@@ -637,6 +637,13 @@ function cameraManeuverFocus(m,step,speed,ts){
     return{strength,held:false,turnAt};
   }
   return held();
+}
+// /v2 closes in on the chosen street without a zoom-out on simple turns.
+function v2SimulationTurnFrame(focus,cruiseZoom,cruisePitch,speed,crowd){
+  const strength=Math.max(0,Math.min(1,+focus?.strength||0));
+  const targetZoom=Math.max(cruiseZoom,Math.min(19.1,19.15-Math.min(.15,speed*.007)-crowd*.35));
+  return{zoom:cruiseZoom+(targetZoom-cruiseZoom)*strength,
+    pitch:cruisePitch+Math.max(0,Math.min(5,5-crowd*2))*strength};
 }
 function cameraUrbanContext(p,ts){
   if(!isMotorizedProfile()){cameraUrbanDensity=0;cameraUrbanLastCount=0;cameraUrbanFocus=false;return{density:0,count:0,close:false}}
@@ -699,9 +706,9 @@ function buildCameraTarget(ctx,ts){
     }
   }
   const calibrating=ts<cameraCalibrationUntil;
-  const maneuverFocus=!v2Drone&&!calibrating&&isMotorizedProfile()&&location.pathname.toLowerCase().replace(/\/+$/,'')!=='/v2'?cameraManeuverFocus(m,step,speed,ts):null;
-  if(maneuverFocus?.preparing){junction.decision=false;junction.large=false;junction.roundabout=false}
-  else if(maneuverFocus){junction.decision=true;junction.large=false;junction.roundabout=false}
+  const maneuverFocus=!calibrating&&isMotorizedProfile()&&(v2Drone||location.pathname.toLowerCase().replace(/\/+$/,'')!=='/v2')?cameraManeuverFocus(m,step,speed,ts):null;
+  if(maneuverFocus?.preparing&&!junction.roundabout){junction.decision=false;junction.large=false;junction.roundabout=false}
+  else if(maneuverFocus&&!junction.roundabout){junction.decision=true;junction.large=false;junction.roundabout=false}
   if(navCameraState!==NAV_CAMERA_STATES.REROUTING&&navCameraState!==NAV_CAMERA_STATES.FREE_LOOK){if(arrivalApproach)setNavCameraState(NAV_CAMERA_STATES.ARRIVAL);else if(junction.decision)setNavCameraState(NAV_CAMERA_STATES.MANEUVER_FOCUS);else if(!calibrating)setNavCameraState(NAV_CAMERA_STATES.FOLLOWING)}
   const offRoute=Number.isFinite(+p?._rawOffRoute)?+p._rawOffRoute:0,bearingSpan=calibrating?72:Math.max(profile==='motorcycle'?38:42,Math.min(profile==='motorcycle'?112:125,(profile==='motorcycle'?46:52)+speed*(profile==='motorcycle'?2.8:3.2))),routeBearing=routeBearingAtDistance(Math.max(0,m.distanceAlong-(calibrating?2:(profile==='motorcycle'?4:6))),bearingSpan),gpsHeading=Number.isFinite(+p.heading)?+p.heading:null;
   let rawTarget=Number.isFinite(routeBearing)?routeBearing:(Number.isFinite(lastRoutePuckBearing)?lastRoutePuckBearing:map.getBearing());
@@ -741,9 +748,10 @@ function buildCameraTarget(ctx,ts){
       const crowd=urban.close?Math.max(.25,Math.min(1,urban.density)):0;
       const smallScreen=vw<430;
       const cruiseZoom=(smallScreen?18.76:19.02)-Math.min(.28,speed*.014)-crowd*.43;
-      zoom=junction.roundabout?17.25:junction.large?17.48:junction.decision?17.75:cruiseZoom;
-      pitch=junction.roundabout?44:junction.large?47:junction.decision?52:
-        (smallScreen?65:69)-crowd*13;
+      const cruisePitch=(smallScreen?65:69)-crowd*13;
+      const focus=(!junction.roundabout&&maneuverFocus)?v2SimulationTurnFrame(maneuverFocus,cruiseZoom,cruisePitch,speed,crowd):null;
+      zoom=focus?focus.zoom:junction.roundabout?17.25:junction.large?17.48:junction.decision?17.75:cruiseZoom;
+      pitch=focus?focus.pitch:junction.roundabout?44:junction.large?47:junction.decision?52:cruisePitch;
       if(arrivalApproach){zoom=Math.min(zoom,18.10);pitch=Math.min(pitch,52)}
       if(motion.phase==='braking'&&!junction.decision)zoom=Math.min(19.1,zoom+.07);
       const maxZoom=Number.isFinite(map?.getMaxZoom?.())?map.getMaxZoom():20;
@@ -764,7 +772,7 @@ function buildCameraTarget(ctx,ts){
   if((nearlyStopped||motion.phase==='crawl')&&!junction.decision&&Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,.035);
   if(isMotorizedProfile()&&!v2Drone)zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(tune.zoomMax,zoom));
   if(Number.isFinite(navLastCameraZoom)&&Math.abs(zoom-navLastCameraZoom)<.018)zoom=navLastCameraZoom;
-  return{center,zoom,pitch,bearing,padding,rawTarget,stopped:nearlyStopped||stoppedAtSignal,junction,instant:!!ctx.instant,arrivalApproach,speed,nearlyStopped,previewing:!!previewing,motion,gpsWeak,gpsPoor,urbanClose:!!urban.close,urbanDensity:+urban.density||0}
+  return{center,zoom,pitch,bearing,padding,rawTarget,v2SimpleFocus:!!(v2Drone&&maneuverFocus?.strength&&!junction.roundabout),stopped:nearlyStopped||stoppedAtSignal,junction,instant:!!ctx.instant,arrivalApproach,speed,nearlyStopped,previewing:!!previewing,motion,gpsWeak,gpsPoor,urbanClose:!!urban.close,urbanDensity:+urban.density||0}
 }
 function primeNavigationCamera(p,m){
   if(!map||!p||!m)return;setNavCameraState(NAV_CAMERA_STATES.RECENTERING);navCameraMode='perspective';navExperienceMode='immersive';const ts=performance.now(),locked=startupRouteBearing(m,p);markCameraIntent('launch',920);if(Number.isFinite(locked)){navStartupBearing=locked;navStartupBearingUntil=ts+2800;lastCameraBearing=locked;lastRoutePuckBearing=locked}
@@ -784,6 +792,7 @@ function cameraMotionProfile(target,ts,dt){
     // canceling/restarting easeTo animations at every simulated GPS tick.
     const maneuver=roundabout||largeTurn||turning;
     if(intent==='launch'||intent==='recenter')return{label:'v2-drone-launch',posTau:115,viewTau:285,bearingTau:240,centerEps:.065,zoomEps:.0028,bearingEps:.14};
+    if(target?.v2SimpleFocus)return{label:'v2-drone-turn-focus',posTau:135,viewTau:310,bearingTau:290,centerEps:.07,zoomEps:.0028,bearingEps:.16};
     if(maneuver)return{label:'v2-drone-overview',posTau:135,viewTau:425,bearingTau:310,centerEps:.07,zoomEps:.0028,bearingEps:.16};
     if(target?.urbanClose)return{label:'v2-drone-urban',posTau:145,viewTau:500,bearingTau:325,centerEps:.08,zoomEps:.003,bearingEps:.17};
     return{label:'v2-drone-follow',posTau:132,viewTau:440,bearingTau:290,centerEps:.075,zoomEps:.003,bearingEps:.17};
@@ -2102,7 +2111,7 @@ async function startAdminSimulation({cinematic=false}={}){
     smoothedPos={...p};
     await activateNavigationAt(p,{simulated:true});
     adminSimulationButton(true);
-    showToast(useV2?'V2 Sim iniciado · câmera drone adaptativa.':
+    showToast(useV2?'V2 Sim · câmera aproxima e inclina nas conversões.':
       `Teste iniciado · ${adminSimTimeScale}x mais rápido que o tempo real.`);
     adminSimFrame=requestAnimationFrame(stepAdminSimulation);
   }catch(e){
