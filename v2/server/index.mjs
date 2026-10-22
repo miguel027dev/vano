@@ -31,6 +31,7 @@ import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
 import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffic.mjs';
 import {createTrafficMemoryReader,assessTrafficMemory} from './traffic-memory.mjs';
+import {adminStreetAuditSnapshot} from './sp-street-audit.mjs';
 import {createSptransOlhoVivo} from './sptrans-olhovivo.mjs';
 import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
 import { queryPlaces } from './search-provider.mjs';
@@ -538,6 +539,16 @@ async function route(req, res) {
       const safeBody=upstream.ok?await upstream.json().catch(()=>({})):{};
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
+  }
+  // Private V2 QA: published aggregate numbers are NOT actual traffic samples.
+  // No coordinates, route substitutions, guessed ETAs or license-sensitive
+  // third-party data are sent by this endpoint.
+  if(pathname==='/api/admin/sp-street-audit'&&req.method==='GET'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para consultar a auditoria.');
+    if(!isAdminAccount(session.user))return err(res,403,'Auditoria restrita ao administrador.');
+    if(!limits(req,res,'admin-sp-street-qa',12,60000))return;
+    return json(res,200,adminStreetAuditSnapshot(),{'Cache-Control':'private, no-store'});
   }
   // Server-only SPTrans bridge diagnostics: never reveal token, cookies, KMZ,
   // live coordinates or detailed speed measurements to public clients.
