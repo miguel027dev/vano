@@ -30,6 +30,8 @@ import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeB
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
 import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffic.mjs';
+import {createTrafficMemoryReader,assessTrafficMemory} from './traffic-memory.mjs';
+import {createSptransOlhoVivo} from './sptrans-olhovivo.mjs';
 import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -60,6 +62,8 @@ import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 const routeTrafficGateway=createRouteTrafficGateway({incidentSnapshot:tomtomSnapshot});
+// Opt-in V2-only, asynchronous snapshot reader; empty on first request or missing data.
+const trafficMemoryReader=createTrafficMemoryReader(process.env.VANO_TRAFFIC_MEMORY_FILE||'');
 import { googleOAuthStatus, canonicalGoogleStart, newOAuthToken, hashState, googleAuthUrl, fetchGoogleIdentity } from './google-oauth.mjs';
 import { openStore } from './storage.mjs';
 import {isReportType,reportType,publicReportsInBBox,metersApart,recordReportFeedback} from '../src/lib/communityReports.js';
@@ -114,6 +118,14 @@ if (production) {
   if(!process.env.MAPBOX_SECRET_TOKEN)
     console.warn('VANO Mapbox: roteamento sem token exclusivo de backend. Configure MAPBOX_SECRET_TOKEN antes de restringir o pk do navegador.');
 }
+// SPTrans key stays server-side. Polling is independent of /api/route and does not
+// persist provider data or change car/motorcycle routing until independently validated.
+const sptransOlhoVivo=createSptransOlhoVivo({
+ token:process.env.VANO_SPTRANS_API_TOKEN||'',
+ onStatus:({online,error,placemarks})=>console.info('VANO SPTrans (somente diagnóstico):',
+  online?'online, placemarks='+placemarks:'indisponível, motivo='+error)
+});
+if(process.env.VANO_SPTRANS_LIVE_ENABLED!=='0')sptransOlhoVivo.start();
 const port = Number(process.env.PORT || process.env.API_PORT || 8878);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('API_PORT inválida.');
 const file = process.env.VANO_DATA_FILE ? path.resolve(root, process.env.VANO_DATA_FILE) : path.join(root, 'data', 'store.json');
@@ -526,6 +538,18 @@ async function route(req, res) {
       const safeBody=upstream.ok?await upstream.json().catch(()=>({})):{};
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
+  }
+  // Server-only SPTrans bridge diagnostics: never reveal token, cookies, KMZ,
+  // live coordinates or detailed speed measurements to public clients.
+  if(pathname==='/api/admin/sptrans-status'&&req.method==='GET'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para consultar a SPTrans.');
+    if(!isAdminAccount(session.user))return err(res,403,'Diagnóstico restrito ao administrador.');
+    if(!limits(req,res,'admin-sptrans-status',10,60000))return;
+    return json(res,200,{...sptransOlhoVivo.status(),
+      historicalMode:['shadow','on'].includes(process.env.VANO_TRAFFIC_MEMORY_MODE)?
+        process.env.VANO_TRAFFIC_MEMORY_MODE:'off',historicalProfiles:trafficMemoryReader.get().recordCount},
+      {'Cache-Control':'private, no-store'});
   }
   // Selected-route context for the private administrator V2 map only.
   if(pathname==='/api/admin/route-traffic'&&req.method==='POST'){
@@ -1345,6 +1369,15 @@ async function route(req, res) {
       const elapsed=Math.max(0,performance.now()-routeStarted);
       runtimeMetrics.routeLatencyMs+=elapsed;
       if(!res.headersSent)res.setHeader('Server-Timing','route;dur='+Math.round(elapsed));
+    }
+    // V2 traffic memory never changes a provider ETA or trusted Python safety decision.
+    // Default disabled; shadow computes only audit metadata, with no route switching.
+    if(body.vehicle!=='a-pe'&&['shadow','on'].includes(process.env.VANO_TRAFFIC_MEMORY_MODE)){
+      try{result=assessTrafficMemory(result,trafficMemoryReader.get(),{
+        mode:process.env.VANO_TRAFFIC_MEMORY_MODE,
+        departAt:routeOptions.departAt&&routeOptions.departAt!=='now'?routeOptions.departAt:Date.now(),
+        now:Date.now()
+      });}catch{/* Public route calculation must not depend on optional historical data. */}
     }
     // Risk-first reshuffle is isolated to the 'safe' result; fast/smart stay unchanged.
     // Historical GeoSampa flooding layers are deliberately excluded until their
