@@ -103,9 +103,9 @@ test('Play camera holds physical vehicle heading BEFORE the entrance even if the
   assert.equal(before.bearing,0,'must not turn right before the simulated vehicle turns');
   assert.ok(Math.abs(before.center[0]-puck[0])<1e-8,'behind northbound car, no artificial shift toward ramp');
   assert.ok(before.center[1]>puck[1]);
-  assert.equal(before.droneCamera.halfLife,720);
-  assert.ok(before.droneCamera.pointHalfLife>360);
-  assert.ok(before.droneCamera.bearingHalfLife>320);
+  assert.equal(before.droneCamera.halfLife,980);
+  assert.ok(before.droneCamera.pointHalfLife>=200&&before.droneCamera.pointHalfLife<=280);
+  assert.ok(before.droneCamera.bearingHalfLife>=650);
 });
 
 test('Play camera turns only with animated car, then remains behind it',()=>{
@@ -174,7 +174,7 @@ test('Play-only integration limits camera yaw independently of fast marker headi
  const code=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(code,/position:d\.motionCoords\|\|d\.gpsCoords,markerBearing:d\.motionBearing/);
  assert.match(code,/const nextBearing=t\.cameraFollowMarker&&!reduced\?/);
- assert.match(code,/const maxYawStep=110\*dt\/1000/);
+ assert.match(code,/const maxYawStep=72\*dt\/1000/);
  assert.match(code,/const framedManeuver=standardPlay\?/);
  assert.match(code,/if\(!d\.droneSimulation\|\|!base\)return realCameraDistance/);
 });
