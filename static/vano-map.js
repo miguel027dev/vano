@@ -114,6 +114,7 @@ let puckRouteAlong=null,puckRouteVelocity=0,puckRouteTargetAlong=null,puckRouteT
 let markerHeadingVisual=0,markerHeadingReady=false,markerHeadingUpdatedAt=0;
 let cameraMotionFrame=null,cameraTargetContext=null,cameraVisualState=null,cameraLastPaintAt=0,internalCameraMoveUntil=0,driveCameraMood='',navStartupBearing=null,navStartupBearingUntil=0,cameraCalibrationUntil=0,cameraCalibrationStartedAt=0,cameraCalibrationTimer=null,navLaunchAnimationUntil=0,navLaunchResumeTimer=null,cameraIntent='',cameraIntentUntil=0,cameraTargetBearing=null,cameraTargetBearingAt=0;
 let cameraUrbanDensity=0,cameraUrbanSampleAt=0,cameraUrbanLastCount=0,cameraUrbanFocus=false;
+let cameraManeuverMemory={routeKey:'',holdUntil:0,holdStrength:0,turnAt:-1};
 let cameraKinematicSpeed=0,cameraKinematicAccel=0,cameraKinematicTs=0,cameraKinematicPhase='steady';
 const NAV_CAMERA_STATES=Object.freeze({FOLLOWING:'FOLLOWING',OVERVIEW:'OVERVIEW',FREE_LOOK:'FREE_LOOK',RECENTERING:'RECENTERING',MANEUVER_FOCUS:'MANEUVER_FOCUS',REROUTING:'REROUTING',ARRIVAL:'ARRIVAL'});
 let navCameraState=NAV_CAMERA_STATES.FOLLOWING;
@@ -578,8 +579,8 @@ function isV2DroneCamera(){
 }
 function cameraVehicleTuning(){
   const installedAndroid=document.documentElement.classList.contains('vano-android-shell');
-  if(profile==='motorcycle')return{kind:'motorcycle',lookMin:88,lookMax:372,lookBase:132,lookPerSpeed:7.2,turnLook:.72,sharpLook:.56,decisionDistance:270,largeAngle:34,centerLead:.76,turnLead:.66,largeLead:.60,roundLead:.56,zoomBase:installedAndroid?17.56:17.34,zoomMin:installedAndroid?16.75:16.30,zoomMax:installedAndroid?17.48:17.42,zoomPerSpeed:installedAndroid?.014:.0155,zoomSpeedOpen:installedAndroid?.34:.54,pitchCruise:installedAndroid?49:53,pitchTurn:installedAndroid?45:48,pitchLarge:installedAndroid?42:44,pitchRound:installedAndroid?39:40,bearingCruiseRate:172,bearingDecisionRate:245,bearingLargeRate:282,bearingRoundRate:315,bearingAlphaSlow:.42,bearingAlphaCruise:.58,bearingAlphaFast:.68,bearingAlphaDecision:.80,bearingAlphaLarge:.86,bearingAlphaRound:.90};
-  if(profile==='driving')return{kind:'driving',lookMin:78,lookMax:330,lookBase:118,lookPerSpeed:6.1,turnLook:.76,sharpLook:.62,decisionDistance:225,largeAngle:38,centerLead:.72,turnLead:.68,largeLead:.62,roundLead:.58,zoomBase:installedAndroid?17.48:17.24,zoomMin:installedAndroid?16.70:16.35,zoomMax:installedAndroid?17.58:17.30,zoomPerSpeed:installedAndroid?.015:.017,zoomSpeedOpen:installedAndroid?.30:.48,pitchCruise:installedAndroid?48:52,pitchTurn:installedAndroid?44:47,pitchLarge:installedAndroid?41:44,pitchRound:installedAndroid?38:41,bearingCruiseRate:135,bearingDecisionRate:190,bearingLargeRate:225,bearingRoundRate:240,bearingAlphaSlow:.34,bearingAlphaCruise:.46,bearingAlphaFast:.54,bearingAlphaDecision:.70,bearingAlphaLarge:.78,bearingAlphaRound:.84};
+  if(profile==='motorcycle')return{kind:'motorcycle',lookMin:88,lookMax:372,lookBase:132,lookPerSpeed:7.2,turnLook:.72,sharpLook:.56,decisionDistance:270,largeAngle:34,centerLead:.76,turnLead:.66,largeLead:.60,roundLead:.56,zoomBase:installedAndroid?17.56:17.34,zoomMin:installedAndroid?16.75:16.30,zoomMax:installedAndroid?18.08:17.92,zoomPerSpeed:installedAndroid?.014:.0155,zoomSpeedOpen:installedAndroid?.34:.54,pitchCruise:installedAndroid?49:53,pitchTurn:installedAndroid?45:48,pitchLarge:installedAndroid?42:44,pitchRound:installedAndroid?39:40,bearingCruiseRate:172,bearingDecisionRate:245,bearingLargeRate:282,bearingRoundRate:315,bearingAlphaSlow:.42,bearingAlphaCruise:.58,bearingAlphaFast:.68,bearingAlphaDecision:.80,bearingAlphaLarge:.86,bearingAlphaRound:.90};
+  if(profile==='driving')return{kind:'driving',lookMin:78,lookMax:330,lookBase:118,lookPerSpeed:6.1,turnLook:.76,sharpLook:.62,decisionDistance:225,largeAngle:38,centerLead:.72,turnLead:.68,largeLead:.62,roundLead:.58,zoomBase:installedAndroid?17.48:17.24,zoomMin:installedAndroid?16.70:16.35,zoomMax:installedAndroid?18.12:18.00,zoomPerSpeed:installedAndroid?.015:.017,zoomSpeedOpen:installedAndroid?.30:.48,pitchCruise:installedAndroid?48:52,pitchTurn:installedAndroid?44:47,pitchLarge:installedAndroid?41:44,pitchRound:installedAndroid?38:41,bearingCruiseRate:135,bearingDecisionRate:190,bearingLargeRate:225,bearingRoundRate:240,bearingAlphaSlow:.34,bearingAlphaCruise:.46,bearingAlphaFast:.54,bearingAlphaDecision:.70,bearingAlphaLarge:.78,bearingAlphaRound:.84};
   return{kind:'other',lookMin:28,lookMax:58,lookBase:34,lookPerSpeed:1.8,turnLook:.78,sharpLook:.66,decisionDistance:120,largeAngle:42,centerLead:.55,turnLead:.48,largeLead:.44,roundLead:.42,zoomBase:17.05,zoomMin:16.55,zoomMax:17.35,zoomPerSpeed:.02,zoomSpeedOpen:.34,pitchCruise:42,pitchTurn:38,pitchLarge:36,pitchRound:34,bearingCruiseRate:105,bearingDecisionRate:145,bearingLargeRate:170,bearingRoundRate:190,bearingAlphaSlow:.30,bearingAlphaCruise:.40,bearingAlphaFast:.46,bearingAlphaDecision:.62,bearingAlphaLarge:.70,bearingAlphaRound:.76}
 }
 function resetCameraKinematics(){cameraKinematicSpeed=0;cameraKinematicAccel=0;cameraKinematicTs=0;cameraKinematicPhase='steady'}
@@ -592,6 +593,51 @@ function upcomingTurn(m,speed){const tune=cameraVehicleTuning(),d=m?.distanceAlo
 function cameraLookAhead(speed,m,motion=null){const tune=cameraVehicleTuning();let base=Math.max(tune.lookMin,Math.min(tune.lookMax,tune.lookBase+speed*tune.lookPerSpeed));const turn=upcomingTurn(m,speed);if(turn.angle>58)base*=tune.sharpLook;else if(turn.angle>34)base*=tune.turnLook;const step=currentStep(m?.distanceAlong||0),rem=(step.remainingInStep??9999);if(rem<140)base*=profile==='motorcycle'?.76:.78;if(motion?.phase==='accelerating')base*=profile==='motorcycle'?1.10:1.05;else if(motion?.phase==='braking')base*=profile==='motorcycle'?.82:.88;else if(motion?.phase==='crawl')base*=.80;return Math.max(tune.lookMin,base)}
 function roadControlAhead(type,along,maxAhead=90){let best=null;for(const x of roadAwareness||[]){if(type&&String(x.type||'')!==type)continue;if(!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon))continue;const m=nearestProgress({lat:+x.lat,lon:+x.lon}),ahead=m.distanceAlong-along;if(m.offRoute<=80&&ahead>=-10&&ahead<=maxAhead&&(!best||ahead<best.ahead))best={...x,ahead}}return best}
 function cameraJunctionContext(m,step,turn){const tune=cameraVehicleTuning(),rem=Math.max(0,+step?.remainingInStep||9999),type=String(step?.type||'').toLowerCase(),roundabout=type.includes('roundabout')||type.includes('rotary'),decision=rem<tune.decisionDistance&&(turn.angle>20||type==='fork'||type==='merge'||type==='end of road'||roundabout),large=decision&&(turn.angle>tune.largeAngle||type==='fork'||type==='merge'||roundabout);return{rem,roundabout,decision,large}}
+// Approach focus is exclusive to /mapa navigation; the admin /v2 drone camera keeps its own policy.
+function cameraManeuverFocus(m,step,speed,ts){
+  const routeKey=routeClientKey(selectedRoute);
+  if(cameraManeuverMemory.routeKey!==routeKey){
+    cameraManeuverMemory={routeKey,holdUntil:0,holdStrength:0,turnAt:-1};
+  }
+  const memory=cameraManeuverMemory;
+  const held=()=>{
+    const remaining=memory.holdUntil-ts;
+    if(remaining<=0)return null;
+    return{strength:Math.max(0,Math.min(.92,memory.holdStrength*remaining/950)),held:true};
+  };
+  const rem=Number.isFinite(+step?.remainingInStep)?Math.max(0,+step.remainingInStep):Infinity;
+  const turnAt=(+m?.distanceAlong||0)+rem;
+  if(!Number.isFinite(turnAt)||!Number.isFinite(rem)||!Number.isFinite(routeTotalGeometry))return held();
+  const before=routeBearingAtDistance(Math.max(0,turnAt-42),26);
+  const after=routeBearingAtDistance(Math.min(Math.max(0,routeTotalGeometry-1),turnAt+12),28);
+  if(!Number.isFinite(before)||!Number.isFinite(after))return held();
+  const signed=((after-before+540)%360)-180,angle=Math.abs(signed);
+  // Ignore ordinary road bends and complex near-U-turn maneuvers.
+  if(angle<24||angle>135)return held();
+  const steps=selectedRoute?.steps||[],next=steps[(+step?.stepIndex||0)+1];
+  const candidates=[next,step];
+  const simple=candidates.some(s=>{
+    const type=String(s?.type||'').toLowerCase(),modifier=String(s?.modifier||'').toLowerCase();
+    const declared=/^(turn|end of road|continue|new name)$/.test(type)&&!modifier.includes('uturn')&&!modifier.includes('slight');
+    return declared&&((signed>0&&modifier.includes('right'))||(signed<0&&modifier.includes('left')));
+  });
+  if(!simple)return held();
+  const v=Math.max(0,+speed||0),start=Math.max(95,Math.min(260,72+v*8.5)),full=Math.max(16,Math.min(48,12+v*1.7));
+  if(rem>start)return held();
+  const t=Math.max(0,Math.min(1,(start-rem)/Math.max(1,start-full)));
+  let strength=t*t*(3-2*t);
+  // Two quick successive turns need extra surrounding street context.
+  if(next&&Number.isFinite(+next.distance)&&+next.distance<65)strength*=.78;
+  // A close view at motorway speeds would hide essential context.
+  strength*=v>21?.67:v>16?.82:1;
+  if(strength>.02){
+    memory.turnAt=turnAt;
+    memory.holdUntil=ts+950;
+    memory.holdStrength=strength;
+    return{strength,held:false,turnAt};
+  }
+  return held();
+}
 function cameraUrbanContext(p,ts){
   if(!isMotorizedProfile()){cameraUrbanDensity=0;cameraUrbanLastCount=0;cameraUrbanFocus=false;return{density:0,count:0,close:false}}
   if(!map?.loaded?.()||!p||!Number.isFinite(+p.lon)||!Number.isFinite(+p.lat)||map.getZoom()<14.2)return{density:cameraUrbanDensity,count:cameraUrbanLastCount,close:cameraUrbanFocus};
@@ -652,7 +698,10 @@ function buildCameraTarget(ctx,ts){
       junction.large=junction.large||round||/fork|merge|ramp|exit/.test(type)||turn.angle>40;
     }
   }
-  const calibrating=ts<cameraCalibrationUntil;if(navCameraState!==NAV_CAMERA_STATES.REROUTING&&navCameraState!==NAV_CAMERA_STATES.FREE_LOOK){if(arrivalApproach)setNavCameraState(NAV_CAMERA_STATES.ARRIVAL);else if(junction.decision)setNavCameraState(NAV_CAMERA_STATES.MANEUVER_FOCUS);else if(!calibrating)setNavCameraState(NAV_CAMERA_STATES.FOLLOWING)}
+  const calibrating=ts<cameraCalibrationUntil;
+  const maneuverFocus=!v2Drone&&!calibrating?cameraManeuverFocus(m,step,speed,ts):null;
+  if(maneuverFocus?.strength>.10&&!maneuverFocus.held){junction.decision=true;junction.large=false;junction.roundabout=false}
+  if(navCameraState!==NAV_CAMERA_STATES.REROUTING&&navCameraState!==NAV_CAMERA_STATES.FREE_LOOK){if(arrivalApproach)setNavCameraState(NAV_CAMERA_STATES.ARRIVAL);else if(junction.decision)setNavCameraState(NAV_CAMERA_STATES.MANEUVER_FOCUS);else if(!calibrating)setNavCameraState(NAV_CAMERA_STATES.FOLLOWING)}
   const offRoute=Number.isFinite(+p?._rawOffRoute)?+p._rawOffRoute:0,bearingSpan=calibrating?72:Math.max(profile==='motorcycle'?38:42,Math.min(profile==='motorcycle'?112:125,(profile==='motorcycle'?46:52)+speed*(profile==='motorcycle'?2.8:3.2))),routeBearing=routeBearingAtDistance(Math.max(0,m.distanceAlong-(calibrating?2:(profile==='motorcycle'?4:6))),bearingSpan),gpsHeading=Number.isFinite(+p.heading)?+p.heading:null;
   let rawTarget=Number.isFinite(routeBearing)?routeBearing:(Number.isFinite(lastRoutePuckBearing)?lastRoutePuckBearing:map.getBearing());
   if(offRoute>Math.max(55,(+p.accuracy||35)*1.5)&&gpsHeading!=null)rawTarget=gpsHeading;
@@ -679,9 +728,10 @@ function buildCameraTarget(ctx,ts){
       }
     }
     const speedOpen=Math.min(tune.zoomSpeedOpen,speed*tune.zoomPerSpeed),turnOpen=junction.roundabout?(profile==='motorcycle'?.40:.44):junction.large?(profile==='motorcycle'?.31:.34):(junction.decision?(profile==='motorcycle'?.14:.16):0),arrivalClose=arrivalApproach?.14:0,accelOpen=motion.phase==='accelerating'?(profile==='motorcycle'?.07:.04):0,brakeClose=motion.phase==='braking'?(profile==='motorcycle'?.06:.035):0;
-    zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-turnOpen-accelOpen+brakeClose+arrivalClose;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
+    zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-turnOpen-accelOpen+brakeClose+arrivalClose+(maneuverFocus?.strength||0)*.62;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
     pitch=calibrating?NAV_CAMERA_HOME.pitch:(junction.roundabout?tune.pitchRound:junction.large?tune.pitchLarge:(junction.decision||turn.angle>48?tune.pitchTurn:tune.pitchCruise));if(motion.phase==='accelerating'&&!junction.decision)pitch=Math.min(56,pitch+(profile==='motorcycle'?2:1));if(motion.phase==='braking')pitch=Math.max(42,pitch-(profile==='motorcycle'?2:1));if(arrivalApproach)pitch=Math.min(pitch,46);
     if(urban.close&&!calibrating&&!junction.large){const crowd=Math.max(0,Math.min(1,urban.density)),speedGuard=1-Math.min(.32,speed/55),urbanFocus=crowd*speedGuard;zoom+=urbanFocus*(profile==='motorcycle'?.24:.28);pitch-=urbanFocus*(profile==='motorcycle'?4.2:5.6)}
+    if(maneuverFocus?.strength){const extra=urban.close?Math.max(5,10-urban.density*4):11;pitch=Math.max(pitch,48+extra*maneuverFocus.strength)}
     // Drone framing: close to the car on open roads, widen early for choices.
     // Dense 3D building corridors get a gentler pitch and extra street context
     // so the vehicle and upcoming road remain visible (not buried by facades).
@@ -710,7 +760,7 @@ function buildCameraTarget(ctx,ts){
     if(Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,gpsPoor?(profile==='motorcycle'?.10:.08):(profile==='motorcycle'?.18:.13));
   }
   if((nearlyStopped||motion.phase==='crawl')&&!junction.decision&&Number.isFinite(lastCameraBearing))bearing=blendBearing(lastCameraBearing,bearing,.035);
-  if(isMotorizedProfile()&&!v2Drone)zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(profile==='motorcycle'?17.48:17.58,zoom));
+  if(isMotorizedProfile()&&!v2Drone)zoom=Math.max(profile==='motorcycle'?16.05:15.84,Math.min(tune.zoomMax,zoom));
   if(Number.isFinite(navLastCameraZoom)&&Math.abs(zoom-navLastCameraZoom)<.018)zoom=navLastCameraZoom;
   return{center,zoom,pitch,bearing,padding,rawTarget,stopped:nearlyStopped||stoppedAtSignal,junction,instant:!!ctx.instant,arrivalApproach,speed,nearlyStopped,previewing:!!previewing,motion,gpsWeak,gpsPoor,urbanClose:!!urban.close,urbanDensity:+urban.density||0}
 }
@@ -765,7 +815,7 @@ function cameraMotionTick(ts){
   const centerGap=hav(cameraVisualState.center,target.center),zoomGap=Math.abs(cameraVisualState.zoom-target.zoom),bearingGap=bearingDelta(cameraVisualState.bearing,target.bearing),accuracy=Math.max(0,+cameraTargetContext?.p?.accuracy||0),settleMeters=Math.max(profile.centerEps,Math.min(1.8,.28+accuracy*.018+target.speed*.025)),predicting=(puckRouteVelocity>.08&&ts-puckRouteFixAt<2200)||(Math.max(0,+cameraTargetContext.p?.speed||0)>.75&&ts-(cameraTargetContext.updatedAt||ts)<1400),intentAlive=!!activeCameraIntent(ts);
   if(centerGap>settleMeters||zoomGap>profile.zoomEps||bearingGap>profile.bearingEps||predicting||intentAlive)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
 }
-function stopCameraMotion(){if(cameraMotionFrame!==null){cancelAnimationFrame(cameraMotionFrame);cameraMotionFrame=null}if(navLaunchResumeTimer){clearTimeout(navLaunchResumeTimer);navLaunchResumeTimer=null}cameraTargetContext=null;cameraVisualState=null;cameraLastPaintAt=0;cameraTargetBearing=null;cameraTargetBearingAt=0;resetCameraKinematics()}
+function stopCameraMotion(){cameraManeuverMemory={routeKey:'',holdUntil:0,holdStrength:0,turnAt:-1};if(cameraMotionFrame!==null){cancelAnimationFrame(cameraMotionFrame);cameraMotionFrame=null}if(navLaunchResumeTimer){clearTimeout(navLaunchResumeTimer);navLaunchResumeTimer=null}cameraTargetContext=null;cameraVisualState=null;cameraLastPaintAt=0;cameraTargetBearing=null;cameraTargetBearingAt=0;resetCameraKinematics()}
 function scheduleCamera(p,instant=false,progressInfo=null){if(followMode&&navCameraState===NAV_CAMERA_STATES.RECENTERING&&performance.now()>cameraCalibrationUntil&&activeCameraIntent()!=='recenter')setNavCameraState(NAV_CAMERA_STATES.FOLLOWING);if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;
   if(!p||!map||!selectedRoute||!followMode||searchInteractionActive)return;const now=performance.now(),accuracy=Math.max(0,+p.accuracy||0);if(accuracy>145&&cameraVisualState&&!instant)return;lastCameraUpdateAt=now;cameraTargetContext={p:{...p},progressInfo:progressInfo?{...progressInfo}:nearestProgress(p),instant:!!instant,updatedAt:now};if(now<navLaunchAnimationUntil){if(navLaunchResumeTimer===null)navLaunchResumeTimer=setTimeout(()=>{navLaunchResumeTimer=null;if(cameraTargetContext&&cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)},Math.max(30,navLaunchAnimationUntil-now+20));return}const intent=activeCameraIntent(now);if(instant&&(['recenter','follow','launch'].includes(intent)||now-(cameraLastPaintAt||0)>1200))cameraVisualState=null;if(cameraMotionFrame===null)cameraMotionFrame=requestAnimationFrame(cameraMotionTick)
 }
