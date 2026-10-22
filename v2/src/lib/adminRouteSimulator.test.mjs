@@ -26,12 +26,12 @@ test('simulator interpolates inside the existing provider geometry, never beyond
  assert.equal(middle.guidance.routeMeters,middle.progress);
 });
 test('mock speed is a realistic vehicle label, while playback rate can accelerate time',()=>{
- assert.equal(SIMULATION_PLAYBACK_RATE,6);
+ assert.equal(SIMULATION_PLAYBACK_RATE,4);
  assert.equal(simulationSpeedKmh('carro'),42);
  assert.equal(simulationSpeedKmh('moto'),34);
  assert.equal(simulationSpeedKmh('a-pe'),5);
- assert.ok(Math.abs(simulationDistanceStep(0,1,10000,'carro')-35)<0.01,
-   'time increment clamps stalls to half second: 42/3.6 * .5 * 6');
+ assert.ok(Math.abs(simulationDistanceStep(0,1,10000,'carro')-(42/3.6*.5*4))<0.01,
+   'time increment clamps stalls to half second: 42/3.6 * .5 * 4');
  assert.equal(simulationDistanceStep(90,100,100,'carro'),100);
  assert.equal(simulationDistanceStep(-20,-2,100,'carro'),0);
 });
