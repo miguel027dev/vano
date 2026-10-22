@@ -7,6 +7,8 @@ import {readFile, stat} from 'node:fs/promises';
 
 const SP={west:-46.84,east:-46.36,south:-23.84,north:-23.34};
 const RAD=Math.PI/180, CELL=.001, MAX_RECORDS=20000, MAX_BYTES=5*1024*1024;
+const timeFormatter=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short',
+ hour:'2-digit',minute:'2-digit',hourCycle:'h23'}),slotCache=new Map();
 const finite=x=>typeof x==='number'&&Number.isFinite(x);
 const point=p=>Array.isArray(p)&&p.length===2&&p.every(finite)&&p[0]>=SP.west&&p[0]<=SP.east&&p[1]>=SP.south&&p[1]<=SP.north;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
@@ -21,11 +23,14 @@ function pointToLine(p,a,b){
  return Math.hypot((p[0]-a[0])*sx-u*vx,(p[1]-a[1])*sy-u*vy);
 }
 function slotFor(ms){
- const parts=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short',
-  hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(ms));
- const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));
+ const minute=Math.floor(ms/60000),cached=slotCache.get(minute);
+ if(cached)return cached;
+ const p=Object.fromEntries(timeFormatter.formatToParts(new Date(ms)).map(x=>[x.type,x.value]));
  const day=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday);
- return {day,slot:Math.floor((Number(p.hour)*60+Number(p.minute))/15)};
+ const result={day,slot:Math.floor((Number(p.hour)*60+Number(p.minute))/15)};
+ slotCache.set(minute,result);
+ if(slotCache.size>512)slotCache.delete(slotCache.keys().next().value);
+ return result;
 }
 function normalize(item,now){
  const c=item?.coordinates;
@@ -50,35 +55,42 @@ function normalize(item,now){
 export function buildTrafficMemory(snapshot,{now=Date.now()}={}){
  const rows=Array.isArray(snapshot?.records)?snapshot.records:[];
  if(rows.length>MAX_RECORDS)throw Error('traffic-memory-snapshot-too-large');
- const groups=new Map(),ids=new Set();
+ const groups=new Map(),ids=new Set(),sources=new Set();
  for(const row of rows){
   const v=normalize(row,now);if(!v||ids.has(v.id+':'+v.day+':'+v.quarter))continue;
-  ids.add(v.id+':'+v.day+':'+v.quarter);
+  ids.add(v.id+':'+v.day+':'+v.quarter);sources.add(v.source);
   const group=v.day+':'+v.quarter;
   let table=groups.get(group);if(!table){table=new Map();groups.set(group,table);}
-  const [[ax,ay],[bx,by]]=v.coords,buffer=.00045;
-  for(let x=Math.floor((Math.min(ax,bx)-buffer)/CELL);x<=Math.floor((Math.max(ax,bx)+buffer)/CELL);x++){
-   for(let y=Math.floor((Math.min(ay,by)-buffer)/CELL);y<=Math.floor((Math.max(ay,by)+buffer)/CELL);y++){
-    const k=x+':'+y;
+  const [[ax,ay],[bx,by]]=v.coords,cells=new Set();
+  // Rasterize along the observed road rather than its full diagonal bounding box.
+  const steps=Math.ceil(v.length/85);
+  for(let i=0;i<=steps;i++){
+   const f=i/steps,x=Math.floor((ax+(bx-ax)*f)/CELL),y=Math.floor((ay+(by-ay)*f)/CELL);
+   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+    const k=(x+dx)+':'+(y+dy);
+    if(cells.has(k))continue;cells.add(k);
     if(!table.has(k))table.set(k,[]);
     table.get(k).push(v);
    }
   }
  }
- return {groups,recordCount:ids.size,sourceCount:new Set(rows.map(r=>r.source).filter(Boolean)).size};
+ return {groups,recordCount:ids.size,sourceCount:sources.size};
 }
 function estimate(route,memory,departMs,now){
  const coords=route?.geometry?.coordinates;
  if(!Array.isArray(coords)||coords.length<2||coords.length>20000||!coords.every(point))return null;
  const duration=finite(route.durationSeconds)?route.durationSeconds:route.duration*60;
  if(!finite(duration)||duration<30||duration>86400)return null;
+ const stride=Math.max(1,Math.ceil((coords.length-1)/2500));
+ const sampled=coords.filter((_,i)=>i%stride===0);
+ if(sampled.at(-1)!==coords.at(-1))sampled.push(coords.at(-1));
  let total=0;
- for(let i=1;i<coords.length;i++)total+=meters(coords[i-1],coords[i]);
+ for(let i=1;i<sampled.length;i++)total+=meters(sampled[i-1],sampled[i]);
  if(total<100||total>150000)return null;
- const live=route.trafficDataStatus==='traffic-aware',seen=new Set();
+ const live=route.trafficDataStatus==='traffic-aware',used=new Map();
  let along=0,seconds=0,matched=0;
- for(let i=1;i<coords.length;i++){
-  const a=coords[i-1],b=coords[i],len=meters(a,b);
+ for(let i=1;i<sampled.length;i++){
+  const a=sampled[i-1],b=sampled[i],len=meters(a,b);
   if(len<2){continue;}
   const n=Math.min(35,Math.max(1,Math.ceil(len/110)));
   for(let k=0;k<n;k++){
@@ -91,22 +103,24 @@ function estimate(route,memory,departMs,now){
    let best=null,bestDistance=35;
    const heading=bearing(a,b);
    for(const r of neighbors){
-    if(seen.has(r.id)||angle(heading,r.bearing)>32)continue;
+    if((used.get(r.id)||0)>=r.length||angle(heading,r.bearing)>32)continue;
     const distance=pointToLine(p,r.coords[0],r.coords[1]);
     if(distance<bestDistance){best=r;bestDistance=distance;}
    }
    if(!best)continue;
-   seen.add(best.id);
+   const consumed=used.get(best.id)||0;
+   const usedMeters=Math.min(best.length-consumed,Math.max(20,len/n));
+   if(usedMeters<=0)continue;
+   used.set(best.id,consumed+usedMeters);
    const ageDays=(now-best.timestamp)/86400000;
    const confidence=(best.samples/(best.samples+30))*Math.exp(-ageDays/90);
-   const usedMeters=Math.min(best.length,Math.max(30,len/n));
    const delay=(usedMeters/1000)*(3600/best.speed-3600/best.freeFlow);
    // Mapbox driving-traffic already includes near-term congestion. Only a
    // conservative future-arrival correction is permissible (no double count).
    const minutesAhead=(arrival-now)/60000;
    const strength=live?(minutesAhead>=15?.25:0):1;
    seconds+=Math.max(0,delay)*confidence*strength;
-   matched++;
+   matched=used.size;
   }
   along+=len;
  }
