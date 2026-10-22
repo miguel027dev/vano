@@ -85,7 +85,7 @@ async function readLimited(response,limit){
  return Buffer.concat(chunks,total);
 }
 
-export function createSptransOlhoVivo({token='',fetcher=fetch,clock=Date.now,periodMs=REFRESH_MS}={}){
+export function createSptransOlhoVivo({token='',fetcher=fetch,clock=Date.now,periodMs=REFRESH_MS,onStatus=()=>{}}={}){
  const enabled=typeof token==='string'&&token.trim().length>0;
  let state={configured:enabled,mode:'observation-only',lastAttemptAt:null,
   lastSuccessAt:null,online:false,authenticated:false,kmz:null,
@@ -121,7 +121,11 @@ export function createSptransOlhoVivo({token='',fetcher=fetch,clock=Date.now,per
    // Never propagate upstream messages that might contain a URL/token.
    state={...state,online:false,lastAttemptAt:date,
     error:/^(auth-http-\d{3}|auth-denied|kmz-http-\d{3}|invalid-kmz-[\w-]+|invalid-kml|missing-kml|too-many-placemarks|unsupported-kmz-entry|kmz-without-kml|upstream-too-large|timeout)$/.test(code)?code:'provider-unavailable'};
-  }finally{clearTimeout(timer);}
+  }finally{
+   clearTimeout(timer);
+   // Only approved boolean/counter metadata; no token, upstream URL or KMZ.
+   try{onStatus({online:state.online,error:state.error,placemarks:state.kmz?.placemarks||0});}catch{}
+  }
   return {...state,kmz:state.kmz?{...state.kmz}:null};
  }
  return {
