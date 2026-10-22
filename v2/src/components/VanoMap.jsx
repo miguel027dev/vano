@@ -251,8 +251,7 @@ function motionController(map,latest,status){
         maneuver:d.guidance,route,vehicle:d.vehicle,
         compactViewport:viewport.compact,reducedMotion:reduced,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
-        viewportClearancePx:viewport.maxBehindPx,
-        markerBearing:d.motionBearing
+        viewportClearancePx:viewport.maxBehindPx
       });
     }
     // Keep the existing real-navigation and drone isolation contract intact.
