@@ -357,7 +357,7 @@ function motionController(map,latest,status){
     // Only admin Play: do not whip the map around when the marker enters a
     // corner. The physical car starts rotating first; the camera follows.
     const yawDelta=shortestAngle(pose.bearing,softenedBearing);
-    const maxYawStep=110*dt/1000;
+    const maxYawStep=72*dt/1000;
     const nextBearing=t.cameraFollowMarker&&!reduced?
       (pose.bearing+clamp(yawDelta,-maxYawStep,maxYawStep)+360)%360:softenedBearing;
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
