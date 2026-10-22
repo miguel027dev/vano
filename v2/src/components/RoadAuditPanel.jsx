@@ -1,5 +1,5 @@
-import React,{useEffect,useMemo,useRef,useState} from 'react';
-import {api} from '../lib/api.js';
+import React,{useMemo,useRef,useState} from 'react';
+import TrafficPipelineHealth from './TrafficPipelineHealth.jsx';
 import {Search,X,UploadCloud,AlertTriangle,CheckCircle2,MapPinned} from 'lucide-react';
 import {parseRoadAuditCsv,SP_ROAD_AUDIT_BASELINE} from '../lib/roadAuditCsv.mjs';
 import './RoadAuditPanel.css';
@@ -7,20 +7,6 @@ import './RoadAuditPanel.css';
 /** Administrator-only diagnostic overlay. Never touches VanoMap, route state or API. */
 export default function RoadAuditPanel({onClose}){
  const input=useRef(null),[audit,setAudit]=useState(null),[error,setError]=useState(''),[filter,setFilter]=useState(''),[onlyIssues,setOnlyIssues]=useState(false);
- const [pipeline,setPipeline]=useState(null),[pipelineError,setPipelineError]=useState(''),[pipelineBusy,setPipelineBusy]=useState(false);
- async function refreshPipeline(){
-  if(pipelineBusy)return;
-  setPipelineBusy(true);setPipelineError('');
-  try{setPipeline(await api('/admin/traffic-pipeline-status'));}
-  catch{setPipelineError('Não foi possível atualizar os provedores.');}
-  finally{setPipelineBusy(false);}
- }
- useEffect(()=>{
-  let cancelled=false;
-  api('/admin/traffic-pipeline-status').then(data=>{if(!cancelled)setPipeline(data);})
-   .catch(()=>{if(!cancelled)setPipelineError('Status do pipeline indisponível.');});
-  return()=>{cancelled=true;};
- },[]);
  const matches=useMemo(()=>{
   if(!audit)return [];
   const q=filter.trim().toLocaleLowerCase('pt-BR');
@@ -48,32 +34,7 @@ export default function RoadAuditPanel({onClose}){
    </div>
    <p className="v2-road-audit-description"><b>Avenidas:</b> {SP_ROAD_AUDIT_BASELINE.avenueLabels.toLocaleString("pt-BR")} etiquetas e {SP_ROAD_AUDIT_BASELINE.avenueSegments.toLocaleString("pt-BR")} segmentos rechecados no CEM/USP. Os dados de avenida também não são velocidades.</p>
    <p className="v2-road-audit-warning"><AlertTriangle size={16}/><span><b>Não liberado para roteamento.</b> Falta checagem externa CET/GeoSampa, sentido legal, conexão, aclive e horários com medições reais. O modo Traffic Memory permanece isolado.</span></p>
-   <div className="v2-road-pipeline" aria-label="Estado do pipeline de trânsito">
-    <div className="v2-road-pipeline-head"><strong>Fontes de trânsito · diagnóstico</strong>
-     <button type="button" disabled={pipelineBusy} onClick={()=>void refreshPipeline()}>{pipelineBusy?'Atualizando…':'Atualizar'}</button>
-    </div>
-    {pipelineError&&<small role="status">{pipelineError}</small>}
-    {pipeline&&<div className="v2-road-pipeline-grid">
-     <div><b>TomTom (trechos ao vivo)</b><span>{pipeline.sources.tomtom.configured?
-       pipeline.sources.tomtom.circuitOpen?'Em espera por erro/cota':
-       pipeline.sources.tomtom.lastSuccessAt?'Última coleta aceita':'Configurado · sem leitura aceita':
-       'Não configurado'}</span>
-      <small>{pipeline.sources.tomtom.callsToday}/{pipeline.sources.tomtom.dailyLimit} consultas hoje ·
-        cache {pipeline.sources.tomtom.cacheEntries} · sucesso {pipeline.sources.tomtom.providerSuccesses}</small>
-     </div>
-     <div><b>Mapbox Traffic</b><span>Camada visual · atualização do provedor ~8 min</span>
-      <small>Não existe medição bruta própria neste servidor</small>
-     </div>
-     <div><b>SPTrans</b><span>{pipeline.sources.sptrans.online?'Disponível':
-       pipeline.sources.sptrans.error||'Sem observações'}</span>
-      <small>Somente diagnóstico; não altera rotas</small>
-     </div>
-     <div><b>Histórico de velocidade</b><span>{pipeline.sources.historical.verifiedProfiles} perfis verificados</span>
-      <small>Modo {pipeline.sources.historical.mode} · sem extrapolar horários ausentes</small>
-     </div>
-    </div>}
-    <p className="v2-road-audit-foot">Status agregado, sem armazenar GPS de usuários. Dados de fluxo TomTom não são gravados para treinamento ou histórico. Previsões futuras dependem de dados licenciados e validação.</p>
-   </div>
+   <TrafficPipelineHealth/>
    <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={e=>{const file=e.target.files?.[0];void receiveFile(file);e.target.value='';}}/>
    <button className="v2-road-audit-upload" onClick={()=>input.current?.click()}><UploadCloud size={18}/> Abrir CSV da auditoria (7.500 ruas)</button>
    {error&&<p className="v2-road-audit-file-error" role="alert">{error}</p>}
