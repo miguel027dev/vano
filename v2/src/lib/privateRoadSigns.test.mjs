@@ -35,7 +35,9 @@ test('street/avenue turn cards migrate to /mapa without exposing admin tools',()
  assert.match(app,/path="\/v2"[\s\S]*?user\?\.isAdmin===true/);
  assert.match(map,/location\.pathname==='\/v2'&&user\?\.isAdmin===true/);
  assert.match(map,/const navigationRoadSigns=jevMode&&active&&routeVehicle!=='a-pe'/);
- assert.match(map,/privateRoadSigns=\{navigationRoadSigns\}/);
+ assert.match(map,/privateRoadSigns=\{visibleRoadSigns\}/);
+ assert.match(map,/const visibleRoadSigns=navigationRoadSigns&&\(adminV2RoadSigns\|\|/);
+ assert.match(map,/navMode&&hasLiveGPS&&routeData\?\.source!=='demonstracao'&&!simActive/);
  assert.match(map,/routeTraffic=\{adminV2RoadSigns&&/);
  assert.match(map,/\{adminV2RoadSigns&&roadAuditOpen&&<RoadAuditPanel/);
 });
