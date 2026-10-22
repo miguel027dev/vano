@@ -1,7 +1,7 @@
 # VANO /mapa — Câmera de aproximação em conversões
 
 **Branch:** feature/maneuver-focus-camera-20261022
-**Escopo:** navegação com carro/moto no mapa. O modo experimental /v2 não usa essa política.
+**Escopo:** navegação com carro/moto em /mapa e câmera drone no botão V2 Sim da página /v2. A câmera V2 não simulada permanece independente.
 
 ## Problema
 Antes, buildCameraTarget subtraía turnOpen quando detectava uma manobra, abrindo o enquadramento. O limite final de zoom impedia a câmera de aproximar além do valor padrão.
@@ -26,3 +26,11 @@ Antes, buildCameraTarget subtraía turnOpen quando detectava uma manobra, abrind
 - Pendente: rodar a suíte integral e validar visualmente em WebView Android real.
 - Cobrir semáforos, duas curvas consecutivas, rotatórias, acesso de avenida, FPS, GPS ruim e UI sobreposta.
 - A operação pode ser revertida por rollback dos commits de câmera; roteamento e APIs de tráfego não foram modificados.
+
+## Extensão V2 Sim (22/10/2026)
+- A câmera da simulação administrativa em /v2 reutiliza cameraManeuverFocus para detectar curvas simples e mantém enquadramento cinematográfico independente.
+- Antes da curva, a simulação não reduz mais para zoom 17.75/17.48 se for uma conversão simples válida; aproxima gradualmente até aproximadamente 19.1 (limitado pela velocidade e densidade urbana) e aumenta pitch em até 5 graus.
+- Para rotatórias e interseções complexas permanece o enquadramento mais aberto; o estado v2-drone-turn-focus ajusta o amortecimento para seguir a manobra sem salto.
+- Em /v2, calcular uma rota de carro/moto, entrar com conta administradora e selecionar **V2 Sim**. A autorização de simulação continua obrigatória.
+- O CI cobre a preaproximação, zoom, inclinação, situações com prédios e a preservação das rotatórias.
+- **Publicação:** as mudanças estão no PR de GitHub; o serviço Render primário chamado vanu roda a branch React preview/vano-react-v2-7, e não o backend Python que atende a simulação /v2. Não confundir status de CI com deploy ou visualização pública.
