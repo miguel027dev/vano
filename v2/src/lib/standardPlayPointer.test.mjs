@@ -12,7 +12,7 @@ const route={geometry,steps:[{type:'on ramp',modifier:'right',location:corner}]}
 const at=timeline.cumulative[1];
 
 test('Play marker accelerates toward simulated route progress near an actual entrance',()=>{
-  const prev=at-45,target=at-12;
+  const prev=at-85,target=at-48;
   const straight=planStandardPlayPointer({timeline,route,targetMeters:target,previousMeters:prev,
     dtMs:16,maneuver:{kind:'continue',distance:500}});
   const entrance=planStandardPlayPointer({timeline,route,targetMeters:target,previousMeters:prev,
