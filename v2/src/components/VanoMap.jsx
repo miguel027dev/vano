@@ -554,7 +554,13 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.([e.latlng.lng,e.latlng.lat]);});
     }
     const refreshRouteTrafficMarkers=()=>syncRouteTrafficMarkers(map,backend.current,backend.current==='mapbox'?mapboxgl:L,latest.current);
+    const refreshRoadSignLayout=()=>map._vanoSyncPrivateRoadSigns?.();
+    // Secondary signs need to be re-evaluated after zoom/pitch changes:
+    // projected screen separation changes even when route steps do not.
     map.on('zoomend',refreshRouteTrafficMarkers);
+    map.on('zoomend',refreshRoadSignLayout);
+    map.on('rotateend',refreshRoadSignLayout);
+    map.on('pitchend',refreshRoadSignLayout);
     // Independent POI pins survive style changes without altering GPS or route layers.
     // Admin sign overlay is a separate, disposable DOM layer; it never edits route, style or GPS sources.
     map._vanoSyncPrivateRoadSigns=()=>{
@@ -588,7 +594,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       }};
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;map.off('zoomend',refreshRouteTrafficMarkers);clearRouteTrafficMarkers(map);detachCommunityPins?.();detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);if(contextRestoredHandler)canvas?.removeEventListener('webglcontextrestored',contextRestoredHandler);clearTimeout(webglRecoveryTimer);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
+    return()=>{deleted=true;map.off('zoomend',refreshRouteTrafficMarkers);map.off('zoomend',refreshRoadSignLayout);map.off('rotateend',refreshRoadSignLayout);map.off('pitchend',refreshRoadSignLayout);clearRouteTrafficMarkers(map);detachCommunityPins?.();detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);if(contextRestoredHandler)canvas?.removeEventListener('webglcontextrestored',contextRestoredHandler);clearTimeout(webglRecoveryTimer);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token,forceRaster]);
   // Navigation switches should change POI categories immediately, without
   // remounting the map, touching GPS or triggering any provider request.
