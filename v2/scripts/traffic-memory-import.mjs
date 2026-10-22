@@ -33,7 +33,7 @@ for(const feature of geo.features){
  if(coords.length!==2)continue;
  const item={id,coordinates:coords,weekday:p.weekday,quarter:p.quarter,
   speedKmh:p.speedKmh,freeFlowKmh:p.freeFlowKmh,samples:p.samples,
-  lastObservedAt:p.lastObservedAt,source,licenseVerified:true};
+  lastObservedAt:p.lastObservedAt,source,licenseVerified:true,directionVerified:true};
  const fingerprint=[id,item.weekday,item.quarter].join(':');
  if(seen.has(fingerprint))continue;
  seen.add(fingerprint);
