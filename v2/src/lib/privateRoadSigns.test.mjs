@@ -29,10 +29,25 @@ test('secondary labels require real following data and screen separation',()=>{
  assert.equal(privateRoadSignCandidates(route,guidance,[],p=>({x:p[0]*100000,y:p[1]*100000})).length,2);
  assert.equal(privateRoadSignCandidates(route,{...guidance,following:{stepIndex:1,gapMeters:12}}).length,1);
 });
-test('administrator route remains role gated, public map receives no signs',()=>{
+test('street/avenue turn cards migrate to /mapa without exposing admin tools',()=>{
  const app=readFileSync(new URL('../App.jsx',import.meta.url),'utf8');
  const map=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  assert.match(app,/path="\/v2"[\s\S]*?user\?\.isAdmin===true/);
  assert.match(map,/location\.pathname==='\/v2'&&user\?\.isAdmin===true/);
- assert.match(map,/privateRoadSigns=\{adminV2RoadSigns\}/);
+ assert.match(map,/const navigationRoadSigns=jevMode&&active&&routeVehicle!=='a-pe'/);
+ assert.match(map,/privateRoadSigns=\{navigationRoadSigns\}/);
+ assert.match(map,/routeTraffic=\{adminV2RoadSigns&&/);
+ assert.match(map,/\{adminV2RoadSigns&&roadAuditOpen&&<RoadAuditPanel/);
+});
+
+test('real map plaques stay informational and do not guess a street or print code',()=>{
+ const signs=privateRoadSignCandidates({steps:[step('Av. Paulista',pt)]},{stepIndex:0,distance:20});
+ assert.equal(signs[0].street,'Av. Paulista');
+ assert.deepEqual(privateRoadSignCandidates({steps:[step('<img src=x>',pt)]},{stepIndex:0,distance:20}),[]);
+ assert.deepEqual(privateRoadSignCandidates({steps:[step('Rua Inventada',pt,'straight')]},{stepIndex:0,distance:20}),[]);
+ const source=readFileSync(new URL('./privateRoadSigns.js',import.meta.url),'utf8');
+ assert.match(source,/label.textContent=item.street/);
+ assert.match(source,/data\?\.active!==true/);
+ assert.match(source,/data\?\.vehicle==='a-pe'/);
+ assert.match(source,/x.coords,x.signalNearby/);
 });

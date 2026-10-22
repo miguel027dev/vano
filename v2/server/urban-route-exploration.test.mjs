@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {blockExploreSpecs,validExploredVariant} from './urban-route-exploration.mjs';
+import {blockExploreSpecs,validExploredVariant,chooseStableFastRoute,hasProviderRouteViolation} from './urban-route-exploration.mjs';
 import {calculateMapboxV1Candidates} from './mapbox-v1-fallback.mjs';
 const coords=Array.from({length:90},(_,i)=>[-46.72+i*.001,-23.585]);
 const mk=(seconds=1300,shift=0)=>({
@@ -96,4 +96,16 @@ test('tiny ETA advantage is not allowed to add 500m to a stable route',async()=>
  assert.equal(selected.distance,9.2);
  assert.equal(selected.durationSeconds,1100);
  assert.equal(data.candidateEngine.minimumSwitchSavingsSeconds>=45,true);
+});
+
+test('fastest route rejects Mapbox-declared access violations without guessed traffic',()=>{
+ const baseline=mk(1250);
+ const dubious=mk(790,.003);
+ dubious.legs[0].notifications=[{type:'violation',subtype:'restricted-road'}];
+ const legal=mk(1080,-.003);
+ assert.equal(hasProviderRouteViolation(dubious),true);
+ const selected=chooseStableFastRoute([baseline,dubious,legal],baseline);
+ assert.equal(selected,legal);
+ assert.equal(validExploredVariant(dubious,baseline,[baseline]),false);
+ assert.equal(hasProviderRouteViolation(legal),false);
 });

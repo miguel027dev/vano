@@ -4,7 +4,7 @@
 import {pointOK} from './routing.mjs';
 import {adaptiveSpecs,denseSpecs,overlap,traffic,uniqueCandidates,signature} from './v1-candidates.mjs';
 import {mapboxEtaEvidence} from './route-eta-diagnostics.mjs';
-import {blockExploreSpecs,validExploredVariant,chooseStableFastRoute} from './urban-route-exploration.mjs';
+import {blockExploreSpecs,validExploredVariant,chooseStableFastRoute,hasProviderRouteViolation} from './urban-route-exploration.mjs';
 
 const cache=new Map(), CACHE_TTL=15000,MAX_CACHE=48;
 // Per-instance budget is intentionally below Mapbox's provider-wide ceiling.
@@ -38,7 +38,9 @@ export function mapboxDirectionsUrl(origin,destination,access,language,vehicle,t
     if(numeric(telemetry.speed)&&telemetry.speed>=1.2&&Number.isFinite(telemetry.bearing)&&telemetry.bearing>=0&&telemetry.bearing<360){
       u.searchParams.set('bearings',Math.round(telemetry.bearing)+',70;');
       u.searchParams.set('continue_straight','true');
-      if(opts.reroute===true)u.searchParams.set('avoid_maneuver_radius',String(Math.round(Math.max(45,Math.min(160,45+telemetry.speed*7)))));
+      // Mapbox rejects avoid_maneuver_radius with future depart_at.
+      if(opts.reroute===true&&(!opts.departAt||opts.departAt==='now'))
+        u.searchParams.set('avoid_maneuver_radius',String(Math.round(Math.max(45,Math.min(160,45+telemetry.speed*7)))));
     }
   }
   const excluded=[];
@@ -89,6 +91,9 @@ function present(route,id,diagnostics=false){
     microRoute:route._microRoute===true,microStrategy:route._microStrategy||'',
     etaGainSeconds:route._etaGainSeconds||0,
     trafficScore:Math.round(traffic(route).score*10)/10,
+    // Both values are Mapbox provider ETAs; typical is NOT a measurement from the CEM street inventory.
+    ...(Number.isFinite(route.duration_typical)&&route.duration_typical>0&&route.duration_typical<86400
+      ?{durationTypicalSeconds:route.duration_typical,trafficVsTypicalSeconds:Math.round(route.duration-route.duration_typical)}:{}),
     routingProvider:route._provider||'mapbox',
     ...(diagnostics?{etaEvidence:mapboxEtaEvidence(route)}:{})};
 }
@@ -111,7 +116,8 @@ async function probeGroup(origin,destination,access,language,vehicle,telemetry,o
         if(audit){audit.sent++;if(kind==='urban')audit.urbanSent++;}
         const url=mapboxDirectionsUrl(origin,destination,access,language,vehicle,telemetry,options,{...spec,alternatives:false});
         const r=(await request(url,fetcher,kind==='urban'?3500:9500))[0];
-        if(!r||r.duration>baseline.duration*(kind==='adaptive'?1.70:1.48))return null;
+        if(!r||r.duration>baseline.duration*(kind==='adaptive'?1.70:1.48)||
+           hasProviderRouteViolation(r))return null;
         if(kind==='urban'){
           if(!validExploredVariant(r,baseline,[...existingRoutes,...results]))return null;
           r._urbanVariant=true;
@@ -214,6 +220,14 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         }
       }
     }
+    // Never show a provider-declared violation even as the secondary route.
+    // No street-name list can override a provider's legally routable geometry.
+    const compliantPool=pool.filter(r=>!hasProviderRouteViolation(r));
+    if(!compliantPool.length)throw Error('Mapbox não retornou rota sem restrição de acesso.');
+    const restrictedRejected=pool.length-compliantPool.length;
+    pool=compliantPool;
+    // Fast compares real provider ETA only after excluding explicit access violations.
+    // The CEM road catalog has no licensed per-direction speeds to add here.
     const fastest=chooseStableFastRoute(pool,originalBest)||pool[0];
 
     // The other route remains an alternative, NOT a verified safety assessment.
@@ -231,8 +245,10 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),urbanExplorationActive:probeAudit.urbanSent>0,
       safetyMessage:'Rota recomendada por ETA do provedor, estabilidade e distância na margem de empate técnico. A outra rota é apenas uma alternativa, sem comprovação de segurança superior.',
       candidateEngine:{version:'v1-eta-candidate-port',provider:usedProfile,
+        fastestPolicy:'provider-traffic-ETA; reject provider-flagged violations; no unverified CEM speed penalty',
         initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeAudit.sent,plannedExtraRequests:probeCount,throttledRequests:probeAudit.throttled,
         acceptedProbes:probeSuccess,urbanProbes:probeAudit.urbanSent,urbanAccepted,
+        rejectedProviderViolations:restrictedRejected,
         searchZones:['inicio','meio','fim'],searchLimit:20,providerRouteCount:pool.length,
         minimumSwitchSavingsSeconds:Math.round(Math.max(45,Math.min(95,(originalBest?.duration||baseline.duration)*.055))),
         stableChoiceDurationSeconds:fastest.duration,originalChoiceDurationSeconds:originalBest.duration,

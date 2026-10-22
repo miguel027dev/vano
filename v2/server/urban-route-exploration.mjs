@@ -87,6 +87,14 @@ export function blockExploreSpecs(routes,limit=10,{phase=1,seen=[]}={}){
  }
  return out.slice(0,budget);
 }
+/** Provider warning that a route would violate an access/turn restriction.
+ * An optional shortcut must never win on ETA while the provider itself says
+ * it has a violation. Unknown warnings do not become invented closures.
+ */
+export function hasProviderRouteViolation(route){
+ return (route?.legs||[]).some(leg=>(leg?.notifications||[]).some(n=>
+  String(n?.type||'').toLowerCase()==='violation'));
+}
 export function validExploredVariant(candidate,baseline,existing){
  if(!candidate?.geometry||!Number.isFinite(candidate.duration)||candidate.duration<=0||
     !Number.isFinite(candidate.distance)||candidate.distance<=0||
@@ -94,9 +102,7 @@ export function validExploredVariant(candidate,baseline,existing){
     candidate.distance>baseline.distance*1.8)return false;
  if(overlap(candidate,baseline)>=.92)return false;
  if((existing||[]).some(route=>overlap(candidate,route)>=.94))return false;
- for(const leg of candidate.legs||[]){
-  if((leg.notifications||[]).some(n=>n?.type==='violation'))return false;
- }
+ if(hasProviderRouteViolation(candidate))return false;
  return true;
 }
 /** Prevent 0.8-second "wins" from replacing a much shorter road path.
@@ -104,7 +110,11 @@ export function validExploredVariant(candidate,baseline,existing){
  * geometrically new corridor for a meaningful ETA improvement.
  */
 export function chooseStableFastRoute(candidates,original){
- const routes=uniqueCandidates(candidates,24);
+ // Filter provider-declared restriction violations BEFORE comparing ETAs;
+ // this is verifiable provider metadata, not the unmeasured CEM catalog.
+ const candidatePool=uniqueCandidates(candidates,24);
+ const compliant=candidatePool.filter(r=>!hasProviderRouteViolation(r));
+ const routes=compliant.length?compliant:candidatePool;
  const baseline=original&&routes.some(r=>r===original)?original:routes[0];
  if(!baseline)return null;
  const near=routes.filter(r=>Math.abs(r.duration-baseline.duration)<=45);

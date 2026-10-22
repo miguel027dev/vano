@@ -8,7 +8,7 @@ function streetName(step){
  const raw=typeof step?.street==='string'?step.street.trim().replace(/\s+/g,' '):'';
  // The provider is authoritative. Never recover names from an address lookup,
  // nearby map label, or free-form navigation instruction.
- return raw&&raw.length<=68&&!UNKNOWN.test(raw)?raw:'';
+ return raw&&raw.length<=90&&!UNKNOWN.test(raw)&&!/[<>\x00-\x1F]/.test(raw)?raw:'';
 }
 function trueTurn(step){
  const kind=String(step?.type||'').toLowerCase(),modifier=String(step?.modifier||'').toLowerCase();
@@ -56,14 +56,14 @@ export function syncPrivateRoadSignMarkers(map,mapboxgl,data){
  if(!map||!mapboxgl)return;
  const cache=map._vanoPrivateRoadSigns??={signature:'',markers:[]};
  const clear=()=>{for(const marker of cache.markers)marker.remove();cache.markers=[];cache.signature='';};
- if(data?.privateRoadSigns!==true||data?.navigation!==true){
+ if(data?.privateRoadSigns!==true||data?.active!==true||data?.navigation!==true||data?.vehicle==='a-pe'){
   if(cache.markers.length)clear();
   return;
  }
  const route=(data.routes||[]).find(x=>x?.id===data.selectedRoute)||data.routes?.[0];
  const signals=typeof map._vanoTrafficSignals==='function'?map._vanoTrafficSignals():[];
  const candidates=privateRoadSignCandidates(route,data.guidance,signals,point=>map.project(point));
- const signature=JSON.stringify([data.appearance,candidates.map(x=>[x.stepIndex,x.street,x.signalNearby,x.priority])]);
+ const signature=JSON.stringify([data.appearance,candidates.map(x=>[x.stepIndex,x.street,x.coords,x.signalNearby,x.priority])]);
  if(cache.signature===signature)return;
  clear();
  cache.signature=signature;
