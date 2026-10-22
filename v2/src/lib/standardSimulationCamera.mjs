@@ -12,7 +12,7 @@ const smooth=t=>{const x=clamp(t,0,1);return x*x*(3-2*x);};
 export function planStandardSimulationCamera({
   enabled=false,base=null,position=null,heading=null,maneuver=null,route=null,
   vehicle='carro',compactViewport=false,reducedMotion=false,speed=0,
-  accuracy=null,markerBearing=null
+  accuracy=null,markerBearing=null,viewportClearancePx=null
 }={}){
   if(!enabled||!base||!validPoint(position)||!['carro','moto'].includes(vehicle)||
      reducedMotion)return base;
@@ -46,22 +46,23 @@ export function planStandardSimulationCamera({
   const pitchAtDecision=compactViewport?
     Math.max(38,(config?.pitch??pitchCruise)-3):(config?.pitch??pitchCruise);
   const targetPitch=clamp(pitchCruise+(pitchAtDecision-pitchCruise)*strength,36,50);
-  const markerHeading=Number.isFinite(heading)?((heading%360)+360)%360:null;
+  const rawHeading=Number.isFinite(markerBearing)?markerBearing:heading;
+  const headingCurrent=Number.isFinite(rawHeading)?((rawHeading%360)+360)%360:null;
   const lookMeters=(17+velocity*.6)*(1-.25*strength);
   const metersPerPixel=156543.03392*
     Math.max(.1,Math.cos(position[1]*Math.PI/180))/Math.pow(2,targetZoom);
   const safeAhead=Number.isFinite(viewportClearancePx)?
     Math.max(0,viewportClearancePx)*metersPerPixel*.65:Infinity;
-  const forward=markerHeading===null?0:Math.min(lookMeters,safeAhead);
-  const rad=(markerHeading??0)*Math.PI/180;
+  const forward=headingCurrent===null?0:Math.min(lookMeters,safeAhead);
+  const rad=(headingCurrent??0)*Math.PI/180;
   const center=[
     position[0]+Math.sin(rad)*forward/(111320*Math.max(.25,Math.cos(position[1]*Math.PI/180))),
     position[1]+Math.cos(rad)*forward/111320
   ];
   return {...base,center,zoom:targetZoom,pitch:targetPitch,
-    bearing:markerHeading??base.bearing,
+    bearing:headingCurrent??base.bearing,
     // Camera rotation and zoom glide slowly; follow-center stays near the car.
     cameraFollowMarker:true,
-    droneCamera:{halfLife:850,pointHalfLife:180,bearingHalfLife:520}
+    droneCamera:{halfLife:720,pointHalfLife:380,bearingHalfLife:520}
   };
 }
