@@ -40,3 +40,49 @@ test('provider permission failure opens a cooldown and never invents flow',async
  assert.equal(result.flow.length,0);assert.ok(calls<=2);
  await gateway.snapshot(request(),'test-key');assert.ok(calls<=2);
 });
+
+test('provider status is aggregate-only, enforces quota metadata and never discloses coordinates or keys',async()=>{
+ const gateway=createRouteTrafficGateway({clock:()=>1800000000000,fetcher:async(url)=>{
+  const u=new URL(url);
+  const [lat,lon]=u.searchParams.get('point').split(',').map(Number);
+  const n=Math.min(coords.length-3,Math.max(2,Math.round((lon-coords[0][0])/.0005)));
+  return new Response(JSON.stringify(raw(coords.slice(n-1,n+2))),{status:200});
+ }});
+ const before=gateway.status();
+ assert.equal(before.callsToday,0);
+ assert.equal(before.dailyRemaining,480);
+ assert.equal(before.hourlyRemaining,60);
+ await gateway.snapshot(request(),'private-key-no-log');
+ const after=gateway.status();
+ assert.ok(after.callsToday>0&&after.callsToday<=8);
+ assert.ok(after.providerSuccesses>0);
+ assert.equal(after.routeEtaModified,false);
+ assert.equal(after.persistedProviderData,false);
+ assert.equal(after.trainedOnProviderData,false);
+ assert.doesNotMatch(JSON.stringify(after),/private-key-no-log|-46\.75|-23\.58/);
+ await gateway.snapshot(request(),'private-key-no-log');
+ const reused=gateway.status();
+ assert.equal(reused.callsToday,after.callsToday);
+ assert.ok(reused.cacheHits>0);
+});
+test('provider permission failure produces a circuit breaker without PII or credential leakage',async()=>{
+ const gateway=createRouteTrafficGateway({clock:()=>1800000000000,fetcher:async()=>new Response('',{status:403})});
+ await gateway.snapshot(request(),'a-secret');
+ const health=gateway.status();
+ assert.equal(health.circuitOpen,true);
+ assert.equal(health.lastFailureCategory,'permission-denied');
+ assert.ok(health.providerFailures>0);
+ assert.doesNotMatch(JSON.stringify(health),/a-secret/);
+});
+test('admin pipeline endpoint is session/role gated and never changes /api/route',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const code=readFileSync(new URL('./index.mjs',import.meta.url),'utf8');
+ const p=code.indexOf("pathname==='/api/admin/traffic-pipeline-status'");
+ const end=code.indexOf('  // Server-only SPTrans bridge',p);
+ assert.ok(p>0&&end>p);
+ const handler=code.slice(p,end);
+ assert.match(handler,/userSession\(req\)/);
+ assert.match(handler,/isAdminAccount\(session.user\)/);
+ assert.match(handler,/Cache-Control.*private, no-store/);
+ assert.doesNotMatch(handler,/INSERT INTO|appendFile|writeFile|directions\(/);
+});
