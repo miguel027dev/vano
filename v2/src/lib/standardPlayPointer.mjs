@@ -5,8 +5,24 @@
 import {sampleRoute} from './routeAnimation.js';
 import {simulationPointerBearing} from './adminRouteSimulator.mjs';
 import {maneuverCategory} from './navigationCameraPlanner.js';
-import {clamp,damp} from './navigationMotion.js';
+import {bearingBetween,clamp,damp,shortestAngle} from './navigationMotion.js';
 
+/** Closest true route bend, not an arbitrary map point or a guessed turn.
+ * Only vertices with a meaningful bearing change qualify.
+ */
+function isNearPhysicalCorner(timeline,meters){
+  const c=timeline?.cumulative,p=timeline?.points;
+  if(!Array.isArray(c)||!Array.isArray(p)||p.length<3)return false;
+  let lo=1,hi=c.length-1;
+  while(lo<hi){const mid=(lo+hi)>>1;if(c[mid]<meters)lo=mid+1;else hi=mid;}
+  for(const vertex of [lo-1,lo]){
+    if(vertex<=0||vertex>=p.length-1||meters<c[vertex]-22||meters>c[vertex]+28)continue;
+    const incoming=bearingBetween(p[vertex-1],p[vertex]);
+    const outgoing=bearingBetween(p[vertex],p[vertex+1]);
+    if(Math.abs(shortestAngle(incoming,outgoing))>=28)return true;
+  }
+  return false;
+}
 export function planStandardPlayPointer({
   timeline=null,targetMeters=null,previousMeters=null,dtMs=16,
   maneuver=null,route=null,reducedMotion=false
@@ -19,8 +35,8 @@ export function planStandardPlayPointer({
     ...step,kind:maneuver?.kind||step?.type,modifier:maneuver?.modifier||step?.modifier
   });
   const distance=Number.isFinite(maneuver?.distance)?maneuver.distance:Infinity;
-  const entrance=['ramp','junction','turn','uturn'].includes(category)&&
-    distance>=0&&distance<=140;
+  const entrance=(['ramp','junction','turn','uturn'].includes(category)&&
+    distance>=0&&distance<=140)||isNearPhysicalCorner(timeline,target);
   // The marker must catch up rapidly at an intersection, without jumping ahead
   // of the sampled route progress. Reverse/rewind is an intentional reset.
   const reset=!Number.isFinite(previousMeters)||previousMeters<0||
