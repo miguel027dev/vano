@@ -7,7 +7,7 @@ import {bearingBetween,shortestAngle,clamp} from './navigationMotion.js';
  * Unlike sampleRoute's forward-looking guidance bearing, this never anticipates
  * a corner. After crossing a vertex, it blends the new direction over a small
  * physical distance, keeping sharp entrances smooth without rotating early.
- * Only V2 Sim consumes this heading; standard 6x preview is unchanged. */
+ * V2 simulation pointers share this physical heading; never turn before the vertex. */
 export function simulationPointerBearing(timeline,distance){
   const points=timeline?.points,cumulative=timeline?.cumulative;
   if(!Array.isArray(points)||points.length<2||
@@ -35,7 +35,8 @@ export function simulationPointerBearing(timeline,distance){
   return (incoming+shortestAngle(incoming,current)*eased+360)%360;
 }
 
-export const SIMULATION_PLAYBACK_RATE=6;
+// Keep Play review readable through turns; V2 SIM drone keeps its independent 2.5x rate.
+export const SIMULATION_PLAYBACK_RATE=4;
 export function simulationSpeedKmh(vehicle='carro'){
   return vehicle==='a-pe'?5:vehicle==='moto'?34:42;
 }

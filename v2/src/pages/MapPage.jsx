@@ -35,7 +35,7 @@ import {isMaviTalkTurn,limitedMaviTalkHistory} from '../lib/maviTalk.mjs';
 import {routeRoadEvidence,routeGeometryDiffers} from '../lib/jevStreetRouting.mjs';
 import {upcomingCorridor} from '../lib/upcomingCorridor';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver} from '../lib/routeAnimation';
-import {simulationDistanceStep,simulationFrame,simulationSpeedKmh} from '../lib/adminRouteSimulator.mjs';
+import {simulationDistanceStep,simulationFrame,simulationSpeedKmh,SIMULATION_PLAYBACK_RATE} from '../lib/adminRouteSimulator.mjs';
 import {V2_DRONE_PLAYBACK_RATE} from '../lib/v2DroneCamera.mjs';
 import '../admin-route-simulator.css';
 import {createManeuverTracker} from '../lib/maneuverTracker.js';
@@ -1205,7 +1205,7 @@ export default function MapPage({active=true}){
     </div>}
     {simActive&&<div className="v76-sim-badge" role="group" aria-label="Controles da simulação">
       <span className="v76-sim-led" aria-hidden="true"/><strong>{simCameraMode==='drone'?'V2 SIM':'SIMULAÇÃO'}</strong>
-      <span>{Math.round((simFrame?.fraction||0)*100)}% · {shownSpeedKmh} km/h · {simCameraMode==='drone'?'2,5×':'6×'}</span>
+      <span>{Math.round((simFrame?.fraction||0)*100)}% · {shownSpeedKmh} km/h · {simCameraMode==='drone'?'2,5×':`${SIMULATION_PLAYBACK_RATE}×`}</span>
       <button type="button" onClick={()=>{
         if(simFrame?.finished){setSimMeters(0);setSimPaused(false);}
         else setSimPaused(value=>!value);
