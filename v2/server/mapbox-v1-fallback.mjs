@@ -214,7 +214,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         }
       }
     }
-    const fastest=chooseStableFastRoute(pool,originalBest)||pool[0];
+    const fastest=chooseStableFastRoute(pool)||pool[0];
 
     // The other route remains an alternative, NOT a verified safety assessment.
     const other=pool.find(r=>r!==fastest&&r.duration>=fastest.duration&&overlap(r,fastest)<.985)||
@@ -229,15 +229,17 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       // Internal-only candidate pool; returned to callers only on safe-comparison requests.
       ...(options.safeComparison===true?{safeCandidatePool:pool.slice(0,10).map((r,i)=>present(r,'safe-candidate-'+i))}:{}),
       source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),urbanExplorationActive:probeAudit.urbanSent>0,
-      safetyMessage:'Rota recomendada por ETA do provedor, estabilidade e distância na margem de empate técnico. A outra rota é apenas uma alternativa, sem comprovação de segurança superior.',
+      safetyMessage:'Rota rápida por ETA real do provedor, com desempate técnico de até 5 segundos em favor de distância menor. A outra rota é alternativa, sem comprovação de segurança superior.',
       candidateEngine:{version:'v1-eta-candidate-port',provider:usedProfile,
         initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeAudit.sent,plannedExtraRequests:probeCount,throttledRequests:probeAudit.throttled,
         acceptedProbes:probeSuccess,urbanProbes:probeAudit.urbanSent,urbanAccepted,
         searchZones:['inicio','meio','fim'],searchLimit:20,providerRouteCount:pool.length,
-        minimumSwitchSavingsSeconds:Math.round(Math.max(45,Math.min(95,(originalBest?.duration||baseline.duration)*.055))),
+        minimumSwitchSavingsSeconds:5,technicalEtaTieSeconds:5,
+         fastEvidence:usedProfile==='driving-traffic'?'mapbox-traffic-aware-eta':'mapbox-driving-static-eta',
+         streetCatalogUsage:'audit-only-no-unverified-speed-adjustments',
         stableChoiceDurationSeconds:fastest.duration,originalChoiceDurationSeconds:originalBest.duration,
         trafficScore:Math.round(traffic(baseline).score),candidates,
-        pipeline:['traffic-alternatives','beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','significant-gain-hysteresis']}};
+        pipeline:['traffic-alternatives','beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','provider-eta-first-with-5s-tie']}};
   }
   const work=compute();
   cache.set(key,{expires:Date.now()+CACHE_TTL,work});
