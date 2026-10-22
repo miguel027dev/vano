@@ -108,7 +108,8 @@ export default function MapPage({active=true}){
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
   // The same turn-name markers work on the real /mapa and admin /v2; all
   // experimental simulation/traffic controls remain administrator-only.
-  const navigationRoadSigns=jevMode&&active&&routeVehicle!=='a-pe';
+  const navigationRoadSigns=jevMode&&active&&routeVehicle!=='a-pe'&&
+    (location.pathname==='/v2'||import.meta.env.VITE_PUBLIC_ROAD_SIGNS!=='0');
   const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0),[simConfirmOpen,setSimConfirmOpen]=useState(false);
   const [simCameraMode,setSimCameraMode]=useState('standard');
   const simRequestedMode=useRef('standard');
