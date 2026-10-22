@@ -1,10 +1,12 @@
-/** Administrator-only map labels. Never generate instructions or navigation geometry. */
+/** Trusted provider road names for V2 admin and live public navigation.
+ * Visual-only labels: no route geometry, turn instructions or GPS mutations. */
 import {metersBetween,validPoint} from './navigationMotion.js';
 
 const UNKNOWN=/^(?:sem nome|rua sem nome|unnamed(?: road)?|unknown|via sem nome|road|route|—|-|desconhecid[ao])$/i;
 const NON_TURNS=new Set(['depart','departure','arrive','arrival','destination','continue','notification']);
+export const isAvenueName=street=>/^(?:av\.?\s|avenida\s)/i.test(String(street||'').trim());
 
-function streetName(step){
+export function streetName(step){
  const raw=typeof step?.street==='string'?step.street.trim().replace(/\s+/g,' '):'';
  // The provider is authoritative. Never recover names from an address lookup,
  // nearby map label, or free-form navigation instruction.
@@ -29,7 +31,7 @@ export function privateRoadSignCandidates(route,guidance,signals=[],project=null
   const step=route.steps[idx];
   const street=streetName(step);
   if(!street||!trueTurn(step)||!validPoint(step?.location))return null;
-  return {stepIndex:idx,street,coords:step.location,
+  return {stepIndex:idx,street,coords:step.location,avenue:isAvenueName(street),
    modifier:String(step.modifier||'').toLowerCase(),priority,
    signalNearby:trustedSignalAt(step.location,signals)};
  };
@@ -63,13 +65,16 @@ export function syncPrivateRoadSignMarkers(map,mapboxgl,data){
  const route=(data.routes||[]).find(x=>x?.id===data.selectedRoute)||data.routes?.[0];
  const signals=typeof map._vanoTrafficSignals==='function'?map._vanoTrafficSignals():[];
  const candidates=privateRoadSignCandidates(route,data.guidance,signals,point=>map.project(point));
- const signature=JSON.stringify([data.appearance,candidates.map(x=>[x.stepIndex,x.street,x.signalNearby,x.priority])]);
+ // Include actual maneuver coordinates, active route identity and label class.
+ // Otherwise a reroute with the same street/step may leave a stale marker.
+ const signature=JSON.stringify([data.appearance,data.selectedRoute,
+  candidates.map(x=>[x.stepIndex,x.street,x.coords,x.signalNearby,x.priority,x.avenue])]);
  if(cache.signature===signature)return;
  clear();
  cache.signature=signature;
  for(const item of candidates){
   const element=document.createElement('div');
-  element.className='vano-private-road-sign'+(item.priority==='secondary'?' is-secondary':'');
+  element.className='vano-private-road-sign'+(item.priority==='secondary'?' is-secondary':'')+(item.avenue?' is-avenue':'');
   element.dataset.theme=data.appearance==='dark'?'dark':'light';
   element.setAttribute('aria-hidden','true');
   const label=document.createElement('span');
