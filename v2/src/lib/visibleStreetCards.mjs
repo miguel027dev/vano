@@ -34,7 +34,12 @@ function linesOf(f){
  return [];
 }
 function getAnchor(coords,fraction){
- if(!Array.isArray(coords)||coords.length<1||coords.length>MAX_POINTS||!coords.every(validPoint))return null;
+ if(!Array.isArray(coords)||coords.length<1)return null;
+ const sampled=coords.length>MAX_POINTS
+  ?[...coords.filter((_,i)=>i%Math.ceil(coords.length/MAX_POINTS)===0),coords.at(-1)]
+  :coords;
+ if(!sampled.every(validPoint))return null;
+ coords=sampled;
  if(coords.length===1)return {point:coords[0],meters:0};
  const cumulative=[0];
  for(let i=1;i<coords.length;i++)cumulative.push(cumulative[i-1]+metersBetween(coords[i-1],coords[i]));
@@ -59,7 +64,7 @@ export function streetCardBudget({zoom,width,navigation=false,lowMemory=false}={
  const base=width<440?(zoom>=17?20:zoom>=15.5?16:10)
   :width<800?(zoom>=17?30:zoom>=15.5?23:15)
   :(zoom>=17?46:zoom>=15.5?34:21);
- return Math.max(4,Math.floor(base*(navigation?.52:1)*(lowMemory?.72:1)));
+ return Math.max(4,Math.floor(base*(navigation?0.52:1)*(lowMemory?0.72:1)));
 }
 /** Pure selector. Maximum one card per street name, bounded DOM and collision
  * boxes. Fraction .25 favors the beginning of long avenues; short streets use
@@ -80,7 +85,7 @@ export function visibleStreetCardCandidates(features,{
   for(const coords of linesOf(f).slice(0,5)){
    const start=getAnchor(coords,.5);if(!start)continue;
    const useStart=(start.meters>=250&&(isAvenue||start.meters>=440));
-   const a=getAnchor(coords,useStart?.26:.5);
+   const a=getAnchor(coords,useStart?0.26:0.5);
    if(!a)continue;
    // Fallback midpoint for clipped tile edges, not a fabricated position.
    const p=screenPoint(project,a.point),mid=screenPoint(project,start.point);
