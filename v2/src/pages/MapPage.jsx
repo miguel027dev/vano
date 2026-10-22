@@ -106,6 +106,9 @@ export default function MapPage({active=true}){
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
+  // The same turn-name markers work on the real /mapa and admin /v2; all
+  // experimental simulation/traffic controls remain administrator-only.
+  const navigationRoadSigns=jevMode&&active&&routeVehicle!=='a-pe';
   const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0),[simConfirmOpen,setSimConfirmOpen]=useState(false);
   const [simCameraMode,setSimCameraMode]=useState('standard');
   const simRequestedMode=useRef('standard');
@@ -1112,7 +1115,7 @@ export default function MapPage({active=true}){
   })).filter(lane=>lane.symbols.length):[];
 
   return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} v2Experience={location.pathname==='/v2'} privateRoadSigns={adminV2RoadSigns} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
+    <VanoMap routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} v2Experience={location.pathname==='/v2'} privateRoadSigns={navigationRoadSigns} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
     {adminV2RoadSigns&&roadAuditOpen&&<RoadAuditPanel onClose={()=>setRoadAuditOpen(false)}/>}
     {adminV2RoadSigns&&routeVehicle!=='a-pe'&&route&&!navMode&&!sheetOpen&&!searchOpen&&<div className="v81-traffic-preview"><RouteTrafficCard traffic={routeTraffic}/></div>}
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
