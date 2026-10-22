@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
+import RoadAuditPanel from '../components/RoadAuditPanel.jsx';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
 import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
 import {classifyMaviRoadReport} from '../lib/maviTrafficReport.mjs';
@@ -59,7 +60,8 @@ export default function MapPage({active=true}){
   const [systemDark,setSystemDark]=useState(()=>window.matchMedia?.('(prefers-color-scheme: dark)')?.matches===true);
   const [mapThemeOverride,setMapThemeOverride]=useState(null);
   const [quickReportOpen,setQuickReportOpen]=useState(false);
-  useEffect(()=>{if(!active)setQuickReportOpen(false);},[active]);
+   const [roadAuditOpen,setRoadAuditOpen]=useState(false);
+  useEffect(()=>{if(!active){setQuickReportOpen(false);setRoadAuditOpen(false);}},[active]);
   const [savingMapTheme,setSavingMapTheme]=useState(false);
   useEffect(()=>{
     const media=window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -1111,6 +1113,7 @@ export default function MapPage({active=true}){
 
   return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
     <VanoMap routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} v2Experience={location.pathname==='/v2'} privateRoadSigns={adminV2RoadSigns} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
+    {adminV2RoadSigns&&roadAuditOpen&&<RoadAuditPanel onClose={()=>setRoadAuditOpen(false)}/>}
     {adminV2RoadSigns&&routeVehicle!=='a-pe'&&route&&!navMode&&!sheetOpen&&!searchOpen&&<div className="v81-traffic-preview"><RouteTrafficCard traffic={routeTraffic}/></div>}
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
@@ -1202,6 +1205,7 @@ export default function MapPage({active=true}){
         title={simFrame?.finished?'Reiniciar':simPaused?'Retomar':'Pausar'}>{simFrame?.finished?<RotateCcw size={17}/>:simPaused?<Play size={17}/>:<Pause size={17}/>}</button>
     </div>}
     {!searchOpen&&<div className="map-controls">
+       {adminV2RoadSigns&&<button type="button" className="circle-btn v2-admin-road-audit-toggle" title="Auditoria das 7.500 ruas de São Paulo" aria-label="Abrir auditoria das ruas de São Paulo" aria-haspopup="dialog" aria-expanded={roadAuditOpen} onClick={()=>setRoadAuditOpen(v=>!v)}><MapPinned size={19}/></button>}
        {adminV2RoadSigns&&<button type="button"
          className={`circle-btn v81-drone-sim-toggle ${simActive&&simCameraMode==='drone'?'is-playing':''}`}
          title={simActive&&simCameraMode==='drone'?'Parar V2 Sim':'Iniciar V2 Sim · câmera drone'}
