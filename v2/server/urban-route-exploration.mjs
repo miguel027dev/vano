@@ -94,25 +94,27 @@ export function validExploredVariant(candidate,baseline,existing){
     candidate.distance>baseline.distance*1.8)return false;
  if(overlap(candidate,baseline)>=.92)return false;
  if((existing||[]).some(route=>overlap(candidate,route)>=.94))return false;
+ // Exclusions are best-effort. Mapbox may return access violations at
+ // either route or leg level; a proposed bypass with a violation is never safe.
+ if((candidate.notifications||[]).some(n=>n?.type==='violation'))return false;
  for(const leg of candidate.legs||[]){
   if((leg.notifications||[]).some(n=>n?.type==='violation'))return false;
  }
  return true;
 }
-/** Prevent 0.8-second "wins" from replacing a much shorter road path.
- * We favor shorter length within a 45s near-tie, and only switch to a
- * geometrically new corridor for a meaningful ETA improvement.
+/** The "Mais rápida" choice is anchored to the lowest real provider ETA.
+ * An approximately equal route (<= 5 seconds slower, never 30 seconds) may
+ * trade that negligible delay for at least 450m less distance. No street
+ * catalog or guessed hour is ever added to ETA, nor is a path synthesized.
  */
-export function chooseStableFastRoute(candidates,original){
- const routes=uniqueCandidates(candidates,24);
- const baseline=original&&routes.some(r=>r===original)?original:routes[0];
- if(!baseline)return null;
- const near=routes.filter(r=>Math.abs(r.duration-baseline.duration)<=45);
- let selected=baseline;
- for(const route of near)if(route.distance<=selected.distance-450&&
-   route.duration<=selected.duration+30)selected=route;
- const threshold=Math.max(45,Math.min(95,baseline.duration*.055));
- const meaningful=routes.find(r=>r.duration<=selected.duration-threshold&&
-   overlap(r,selected)<.985&&r.distance<=selected.distance*1.65);
- return meaningful||selected;
+export function chooseStableFastRoute(candidates){
+ const routes=uniqueCandidates(candidates,24),fastest=routes[0];
+ if(!fastest)return null;
+ let selected=fastest;
+ for(const candidate of routes){
+  if(candidate.duration>fastest.duration+5)break;
+  if(candidate.distance<=selected.distance-450&&candidate.duration<=selected.duration+5)
+   selected=candidate;
+ }
+ return selected;
 }
