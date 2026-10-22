@@ -1,4 +1,4 @@
-/* Admin V2 experiment only: map-mounted labels, never part of route/GPS layers. */
+/* Public /mapa and admin /v2: ephemeral trusted street labels, never routing state. */
 .vano-private-road-sign{
   max-width:min(216px,56vw);
   display:flex;flex-direction:column;gap:2px;align-items:center;
@@ -26,3 +26,14 @@
 .vano-private-road-sign[data-theme="dark"] .vano-private-road-sign-signal{color:#f6ce70;}
 @media(max-width:380px){.vano-private-road-sign{max-width:180px;font-size:11px;padding:7px 9px;}}
 @media(prefers-reduced-motion:reduce){.vano-private-road-sign{transition:none!important;}}
+
+/* Avenidas remain recognizable at a glance, without covering turn lanes. */
+.vano-private-road-sign.is-avenue{
+ border-color:rgba(255,119,32,.48);
+ box-shadow:0 3px 13px rgba(8,18,34,.2),inset 0 2px 0 #ff832e;
+}
+.vano-private-road-sign.is-avenue .vano-private-road-sign-name{font-weight:800;}
+.vano-private-road-sign.is-avenue[data-theme="dark"]{
+ border-color:rgba(255,156,88,.63);
+ box-shadow:0 3px 14px rgba(0,0,0,.42),inset 0 2px 0 #ff832e;
+}
