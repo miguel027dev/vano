@@ -8,6 +8,21 @@ import {inflateRawSync} from 'node:zlib';
 const BASE='https://api.olhovivo.sptrans.com.br/v2.1';
 const MAX_WIRE=2_500_000, MAX_KML=3_000_000, REFRESH_MS=10*60*1000;
 const stamp=clock=>new Date(clock()).toISOString();
+// The provider accepts an application token as a query parameter. Copy/paste
+// can add line breaks, typographic zero-width marks or matching quote wrappers.
+export function normalizeOlhoVivoToken(input){
+ let token=typeof input==='string'?input.trim():'';
+ token=token.replace(/^[\u200B-\u200D\uFEFF]+|[\u200B-\u200D\uFEFF]+$/g,'').trim();
+ if((token.startsWith('"')&&token.endsWith('"'))||
+    (token.startsWith("'")&&token.endsWith("'")))token=token.slice(1,-1).trim();
+ return token;
+}
+export function parseOlhoVivoAuth(body){
+ const normalized=String(body||'').replace(/^\uFEFF/,'').trim().replace(/^"|"$/g,'').toLowerCase();
+ if(normalized==='true')return true;
+ if(normalized==='false')return false;
+ throw Error('auth-response-unexpected');
+}
 const unescapeXml=text=>String(text).replace(/&(?:amp|lt|gt|quot|apos);/g,m=>({
  '&amp;':'&','&lt;':'<','&gt;':'>','&quot;':'"','&apos;':"'"})[m]);
 
@@ -86,7 +101,8 @@ async function readLimited(response,limit){
 }
 
 export function createSptransOlhoVivo({token='',fetcher=fetch,clock=Date.now,periodMs=REFRESH_MS,onStatus=()=>{}}={}){
- const enabled=typeof token==='string'&&token.trim().length>0;
+ const credential=normalizeOlhoVivoToken(token);
+ const enabled=credential.length>0;
  let state={configured:enabled,mode:'observation-only',lastAttemptAt:null,
   lastSuccessAt:null,online:false,authenticated:false,kmz:null,
   error:null,affectsRouting:false,persistsTraffic:false};
@@ -96,13 +112,16 @@ export function createSptransOlhoVivo({token='',fetcher=fetch,clock=Date.now,per
   let controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
   try{
    const authUrl=new URL(BASE+'/Login/Autenticar');
-   authUrl.searchParams.set('token',token.trim());
+   authUrl.searchParams.set('token',credential);
+   // Explicit zero-length form POST for IIS/proxy compatibility. The API docs
+   // require POST query-token authentication, NOT Bearer or JSON body tokens.
    const auth=await fetcher(authUrl.toString(),{method:'POST',redirect:'error',
-    headers:{Accept:'application/json'},signal:controller.signal});
+    headers:{Accept:'application/json','Content-Type':'application/x-www-form-urlencoded'},
+    body:'',signal:controller.signal});
    if(!auth.ok)throw Error('auth-http-'+auth.status);
    const cookie=sessionCookie(auth);
    const bytes=await readLimited(auth,1024);
-   if(bytes.toString('utf8').trim().replace(/^"|"$/g,'').toLowerCase()!=='true')
+   if(!parseOlhoVivoAuth(bytes.toString('utf8')))
     throw Error('auth-denied');
    clearTimeout(timer);controller=new AbortController();
    timer=setTimeout(()=>controller.abort(),timeoutMs);
@@ -119,8 +138,8 @@ export function createSptransOlhoVivo({token='',fetcher=fetch,clock=Date.now,per
   }catch(error){
    const code=error?.name==='AbortError'?'timeout':String(error?.message||'unavailable');
    // Never propagate upstream messages that might contain a URL/token.
-   state={...state,online:false,lastAttemptAt:date,
-    error:/^(auth-http-\d{3}|auth-denied|kmz-http-\d{3}|invalid-kmz-[\w-]+|invalid-kml|missing-kml|too-many-placemarks|unsupported-kmz-entry|kmz-without-kml|upstream-too-large|timeout)$/.test(code)?code:'provider-unavailable'};
+   state={...state,online:false,authenticated:false,lastAttemptAt:date,
+    error:/^(auth-http-\d{3}|auth-denied|auth-response-unexpected|kmz-http-\d{3}|invalid-kmz-[\w-]+|invalid-kml|missing-kml|too-many-placemarks|unsupported-kmz-entry|kmz-without-kml|upstream-too-large|timeout)$/.test(code)?code:'provider-unavailable'};
   }finally{
    clearTimeout(timer);
    // Only approved boolean/counter metadata; no token, upstream URL or KMZ.

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSptransOlhoVivo,inspectSptransKml,unzipSptransKml} from './sptrans-olhovivo.mjs';
+import {createSptransOlhoVivo,inspectSptransKml,unzipSptransKml,normalizeOlhoVivoToken,parseOlhoVivoAuth} from './sptrans-olhovivo.mjs';
 
 const xml='<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document>'+
  '<Placemark><ExtendedData><Data name="velocidade"><value>19</value></Data>'+
@@ -44,6 +44,9 @@ test('SPTrans client authenticates with secret token and a session cookie on ser
  assert.equal(response.kmz.lines,1);
  assert.equal(calls.length,2);
  assert.equal(calls[1].options.headers.Cookie,'ASP.NET_SessionId=sample123');
+ assert.equal(calls[0].options.method,'POST');
+ assert.equal(calls[0].options.body,'');
+ assert.equal(calls[0].options.headers['Content-Type'],'application/x-www-form-urlencoded');
  assert.ok(!JSON.stringify(client.status()).includes('test-secret'));
  await client.refresh();
  assert.equal(calls.length,2,'cooldown prevents repeated provider calls');
@@ -66,4 +69,19 @@ test('SPTrans adapter is never coupled directly into the router engine',async()=
  const src=readFileSync(new URL('./sptrans-olhovivo.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(src,/process\.env\.(?:MAPBOX|TOMTOM|DATABASE_URL)/);
  assert.doesNotMatch(src,/writeFile|INSERT INTO|fetch\(.+api\/route/);
+});
+
+test('SPTrans auth normalization handles accidental paste wrappers without disclosing credentials',()=>{
+ assert.equal(normalizeOlhoVivoToken('  "abc-123"\\n'.replace('\\n','\n')),'abc-123');
+ assert.equal(normalizeOlhoVivoToken('\u200Btoken-1\uFEFF'),'token-1');
+ assert.equal(parseOlhoVivoAuth('\uFEFF true '),true);
+ assert.equal(parseOlhoVivoAuth('false'),false);
+ assert.throws(()=>parseOlhoVivoAuth('<html>Something else</html>'),/auth-response-unexpected/);
+});
+test('SPTrans HTML/login upstream response is not mislabeled as invalid user token',async()=>{
+ const bridge=createSptransOlhoVivo({token:'test',fetcher:async()=>new Response('<html>Proxy</html>',{status:200})});
+ const result=await bridge.refresh();
+ assert.equal(result.error,'auth-response-unexpected');
+ assert.equal(result.online,false);
+ assert.equal(result.authenticated,false);
 });
