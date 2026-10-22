@@ -172,7 +172,7 @@ test('compact HUD clearance is respected for rear view and never invents heading
 });
 test('Play-only integration limits camera yaw independently of fast marker heading',()=>{
  const code=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
- assert.match(code,/position:d\.motionCoords\|\|d\.gpsCoords,heading:d\.motionBearing/);
+ assert.match(code,/position:d\.motionCoords\|\|d\.gpsCoords,markerBearing:d\.motionBearing/);
  assert.match(code,/const nextBearing=t\.cameraFollowMarker&&!reduced\?/);
  assert.match(code,/const maxYawStep=110\*dt\/1000/);
  assert.match(code,/const framedManeuver=standardPlay\?/);
