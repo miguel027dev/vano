@@ -623,7 +623,7 @@ function cameraManeuverFocus(m,step,speed,ts){
   });
   if(!simple)return held();
   const v=Math.max(0,+speed||0),start=Math.max(95,Math.min(260,72+v*8.5)),full=Math.max(16,Math.min(48,12+v*1.7));
-  if(rem>start)return held();
+  if(rem>start)return rem<=300?{strength:0,preparing:true,turnAt}:held();
   const t=Math.max(0,Math.min(1,(start-rem)/Math.max(1,start-full)));
   let strength=t*t*(3-2*t);
   // Two quick successive turns need extra surrounding street context.
@@ -699,8 +699,9 @@ function buildCameraTarget(ctx,ts){
     }
   }
   const calibrating=ts<cameraCalibrationUntil;
-  const maneuverFocus=!v2Drone&&!calibrating?cameraManeuverFocus(m,step,speed,ts):null;
-  if(maneuverFocus?.strength>.10&&!maneuverFocus.held){junction.decision=true;junction.large=false;junction.roundabout=false}
+  const maneuverFocus=!v2Drone&&!calibrating&&isMotorizedProfile()&&location.pathname.toLowerCase().replace(/\/+$/,'')!=='/v2'?cameraManeuverFocus(m,step,speed,ts):null;
+  if(maneuverFocus?.preparing){junction.decision=false;junction.large=false;junction.roundabout=false}
+  else if(maneuverFocus){junction.decision=true;junction.large=false;junction.roundabout=false}
   if(navCameraState!==NAV_CAMERA_STATES.REROUTING&&navCameraState!==NAV_CAMERA_STATES.FREE_LOOK){if(arrivalApproach)setNavCameraState(NAV_CAMERA_STATES.ARRIVAL);else if(junction.decision)setNavCameraState(NAV_CAMERA_STATES.MANEUVER_FOCUS);else if(!calibrating)setNavCameraState(NAV_CAMERA_STATES.FOLLOWING)}
   const offRoute=Number.isFinite(+p?._rawOffRoute)?+p._rawOffRoute:0,bearingSpan=calibrating?72:Math.max(profile==='motorcycle'?38:42,Math.min(profile==='motorcycle'?112:125,(profile==='motorcycle'?46:52)+speed*(profile==='motorcycle'?2.8:3.2))),routeBearing=routeBearingAtDistance(Math.max(0,m.distanceAlong-(calibrating?2:(profile==='motorcycle'?4:6))),bearingSpan),gpsHeading=Number.isFinite(+p.heading)?+p.heading:null;
   let rawTarget=Number.isFinite(routeBearing)?routeBearing:(Number.isFinite(lastRoutePuckBearing)?lastRoutePuckBearing:map.getBearing());
@@ -728,10 +729,11 @@ function buildCameraTarget(ctx,ts){
       }
     }
     const speedOpen=Math.min(tune.zoomSpeedOpen,speed*tune.zoomPerSpeed),turnOpen=junction.roundabout?(profile==='motorcycle'?.40:.44):junction.large?(profile==='motorcycle'?.31:.34):(junction.decision?(profile==='motorcycle'?.14:.16):0),arrivalClose=arrivalApproach?.14:0,accelOpen=motion.phase==='accelerating'?(profile==='motorcycle'?.07:.04):0,brakeClose=motion.phase==='braking'?(profile==='motorcycle'?.06:.035):0;
-    zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-turnOpen-accelOpen+brakeClose+arrivalClose+(maneuverFocus?.strength||0)*.62;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
+    zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-(maneuverFocus?0:turnOpen)-accelOpen+brakeClose+arrivalClose+(maneuverFocus?.strength||0)*.62;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
     pitch=calibrating?NAV_CAMERA_HOME.pitch:(junction.roundabout?tune.pitchRound:junction.large?tune.pitchLarge:(junction.decision||turn.angle>48?tune.pitchTurn:tune.pitchCruise));if(motion.phase==='accelerating'&&!junction.decision)pitch=Math.min(56,pitch+(profile==='motorcycle'?2:1));if(motion.phase==='braking')pitch=Math.max(42,pitch-(profile==='motorcycle'?2:1));if(arrivalApproach)pitch=Math.min(pitch,46);
     if(urban.close&&!calibrating&&!junction.large){const crowd=Math.max(0,Math.min(1,urban.density)),speedGuard=1-Math.min(.32,speed/55),urbanFocus=crowd*speedGuard;zoom+=urbanFocus*(profile==='motorcycle'?.24:.28);pitch-=urbanFocus*(profile==='motorcycle'?4.2:5.6)}
-    if(maneuverFocus?.strength){const extra=urban.close?Math.max(5,10-urban.density*4):11;pitch=Math.max(pitch,48+extra*maneuverFocus.strength)}
+    if(maneuverFocus?.strength){const extra=urban.close?Math.max(5,10-urban.density*4):11;pitch=Math.max(pitch,tune.pitchCruise,48+extra*maneuverFocus.strength)}
+    else if(maneuverFocus?.preparing)pitch=tune.pitchCruise;
     // Drone framing: close to the car on open roads, widen early for choices.
     // Dense 3D building corridors get a gentler pitch and extra street context
     // so the vehicle and upcoming road remain visible (not buried by facades).
