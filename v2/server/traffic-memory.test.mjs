@@ -9,7 +9,7 @@ const observation=(overrides={})=>({
  id:'segment-test-001',coordinates:[a,b],weekday:3,quarter:76,
  speedKmh:4,freeFlowKmh:45,samples:180,
  lastObservedAt:new Date(now-86400000).toISOString(),
- source:'sptrans-olhovivo',licenseVerified:true,...overrides
+ source:'sptrans-olhovivo',licenseVerified:true,directionVerified:true,...overrides
 });
 const route=(id,coords,seconds)=>({
  id,geometry:{type:'LineString',coordinates:coords},
@@ -40,7 +40,9 @@ test('off/shadow never change the selected route or provider ETA',()=>{
  assert.equal(scored.trafficMemory.selectedAlternative,false);
 });
 test('opt-in ranking may choose provider-validated side road without changing fastest ETA',()=>{
- const memory=buildTrafficMemory({records:[observation()]},{now});
+ const memory=buildTrafficMemory({records:[observation(),observation({
+  id:'segment-side-001',coordinates:[far,[-46.739,-23.61]],speedKmh:45,freeFlowKmh:45
+ })]},{now});
  const scored=assessTrafficMemory(result(),memory,{mode:'on',now,departAt:now});
  assert.equal(scored.routes[0].id,'safe');
  assert.equal(scored.routes[0].durationSeconds,625);
