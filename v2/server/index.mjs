@@ -31,6 +31,7 @@ import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
 import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffic.mjs';
 import {createTrafficMemoryReader,assessTrafficMemory} from './traffic-memory.mjs';
+import {createSptransOlhoVivo} from './sptrans-olhovivo.mjs';
 import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
 import { queryPlaces } from './search-provider.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
@@ -117,6 +118,10 @@ if (production) {
   if(!process.env.MAPBOX_SECRET_TOKEN)
     console.warn('VANO Mapbox: roteamento sem token exclusivo de backend. Configure MAPBOX_SECRET_TOKEN antes de restringir o pk do navegador.');
 }
+// SPTrans key stays server-side. Polling is independent of /api/route and does not
+// persist provider data or change car/motorcycle routing until independently validated.
+const sptransOlhoVivo=createSptransOlhoVivo({token:process.env.VANO_SPTRANS_API_TOKEN||''});
+if(process.env.VANO_SPTRANS_LIVE_ENABLED!=='0')sptransOlhoVivo.start();
 const port = Number(process.env.PORT || process.env.API_PORT || 8878);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw Error('API_PORT inválida.');
 const file = process.env.VANO_DATA_FILE ? path.resolve(root, process.env.VANO_DATA_FILE) : path.join(root, 'data', 'store.json');
@@ -529,6 +534,18 @@ async function route(req, res) {
       const safeBody=upstream.ok?await upstream.json().catch(()=>({})):{};
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
+  }
+  // Server-only SPTrans bridge diagnostics: never reveal token, cookies, KMZ,
+  // live coordinates or detailed speed measurements to public clients.
+  if(pathname==='/api/admin/sptrans-status'&&req.method==='GET'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para consultar a SPTrans.');
+    if(!isAdminAccount(session.user))return err(res,403,'Diagnóstico restrito ao administrador.');
+    if(!limits(req,res,'admin-sptrans-status',10,60000))return;
+    return json(res,200,{...sptransOlhoVivo.status(),
+      historicalMode:['shadow','on'].includes(process.env.VANO_TRAFFIC_MEMORY_MODE)?
+        process.env.VANO_TRAFFIC_MEMORY_MODE:'off',historicalProfiles:trafficMemoryReader.get().recordCount},
+      {'Cache-Control':'private, no-store'});
   }
   // Selected-route context for the private administrator V2 map only.
   if(pathname==='/api/admin/route-traffic'&&req.method==='POST'){
