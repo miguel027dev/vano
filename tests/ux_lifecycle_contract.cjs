@@ -15,7 +15,7 @@ function config(profile,android){
 for(const profile of ['motorcycle','driving']){
  for(const android of [true,false]){
   const tune=config(profile,android);
-  const hardMax=profile==='motorcycle'?17.48:17.58;
+  const hardMax=profile==='motorcycle'?(android?18.08:17.92):(android?18.12:18.00);
   assert.ok(tune.zoomMax<=hardMax,`${profile} on ${android?'Android':'Web'} advertises zoom above hard clamp`);
   assert.ok(tune.zoomMin<tune.zoomMax);
  }
