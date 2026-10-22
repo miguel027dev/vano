@@ -31,12 +31,13 @@ Construir uma memória **própria** de fluidez para trechos direcionais de São 
       "samples": 65,
       "lastObservedAt": "2026-10-21T21:00:00Z",
       "source": "sptrans-olhovivo",
-      "licenseVerified": true
+      "licenseVerified": true,
+      "directionVerified": true
     }
   ]
 }
 ```
-**Esse JSON é um exemplo de formato, não uma medição da cidade.** Apenas observações com `licenseVerified=true`, 12 ou mais amostras e registro nos últimos 60 dias entram no índice. Cada registro é um segmento pequeno orientado no sentido efetivo da circulação; sentidos opostos são perfis diferentes.
+**Esse JSON é um exemplo de formato, não uma medição da cidade.** Apenas observações com `licenseVerified=true`, `directionVerified=true`, 12 ou mais amostras e registro nos últimos 60 dias entram no índice. Cada registro é um segmento pequeno orientado no sentido efetivo da circulação; sentidos opostos são perfis diferentes.
 
 ## Rollout
 - **0 / OFF (padrão):** sem efeito. Nenhum dado importado.
