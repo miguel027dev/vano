@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS vano_v2.traffic_profiles (
  license_verified boolean NOT NULL DEFAULT false,
  updated_at timestamptz NOT NULL DEFAULT now(),
  PRIMARY KEY(segment_id,weekday,quarter,source),
- CONSTRAINT traffic_profile_slowdown CHECK(speed_kmh<free_flow_kmh*0.9)
+ CONSTRAINT traffic_profile_speed_range CHECK(speed_kmh<=free_flow_kmh*1.45)
 );
 CREATE INDEX IF NOT EXISTS traffic_profiles_lookup_idx
  ON vano_v2.traffic_profiles(weekday,quarter,last_observed_at DESC);
