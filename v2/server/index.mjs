@@ -539,6 +539,39 @@ async function route(req, res) {
       return json(res,upstream.ok?200:503,{configured:true,online:upstream.ok,mode:'original-python',dbReady:upstream.ok,mapboxConfigured:safeBody.mapbox_configured===true,latencyMs:Math.round(performance.now()-started)});
     }catch{return json(res,503,{configured:true,online:false,mode:'original-python',dbReady:false});}
   }
+  // Real-time traffic provider health for the authenticated /v2 developer.
+  // Aggregate counters only; do not expose provider keys, GPS or upstream URLs.
+  if(pathname==='/api/admin/traffic-pipeline-status'&&req.method==='GET'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para consultar o pipeline.');
+    if(!isAdminAccount(session.user))return err(res,403,'Painel de fontes restrito ao administrador.');
+    if(!limits(req,res,'admin-traffic-pipeline-status',12,60000))return;
+    const sptrans=sptransOlhoVivo.status();
+    const history=trafficMemoryReader.get();
+    return json(res,200,{
+      scope:'VANO V2 administrator',status:'observation-only',
+      routingAffectedByThisPipeline:false,
+      sources:{
+        mapbox:{source:'Mapbox Traffic v1',mode:'client-vector-visualization',
+          providerRefreshApproxMinutes:8,serverMeasured:false,
+          note:'Camada vetorial ao vivo; sem histórico bruto licenciado'},
+        tomtom:{configured:Boolean(process.env[TOMTOM_ENV_NAME]?.trim()),
+          ...routeTrafficGateway.status()},
+        sptrans:{configured:sptrans.configured,online:sptrans.online,
+          authenticated:sptrans.authenticated,
+          lastSuccessAt:sptrans.lastSuccessAt,
+          lastAttemptAt:sptrans.lastAttemptAt,error:sptrans.error,
+          mode:'diagnostics-only'},
+        historical:{mode:['off','shadow','on'].includes(process.env.VANO_TRAFFIC_MEMORY_MODE)?
+          process.env.VANO_TRAFFIC_MEMORY_MODE:'off',verifiedProfiles:history.recordCount,
+          importReady:history.recordCount>0,
+          source:'Licensed directional snapshots only'}
+      },
+      policy:{commercialHistoryLicensed:false,experimentalForecasting:false,
+        historicalEtasNotInvented:true,catalogRoadsNotTrafficObservations:true,
+        noUserLocationStoredByPipeline:true}
+    },{'Cache-Control':'private, no-store'});
+  }
   // Server-only SPTrans bridge diagnostics: never reveal token, cookies, KMZ,
   // live coordinates or detailed speed measurements to public clients.
   if(pathname==='/api/admin/sptrans-status'&&req.method==='GET'){

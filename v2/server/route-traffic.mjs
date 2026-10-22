@@ -3,7 +3,9 @@
  */
 import {trafficRouteIndex,trafficPointAt,projectTrafficPoint,matchTrafficLine,trafficPoint} from '../src/lib/routeTraffic.mjs';
 const ENDPOINT='https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/18/json';
-const TTL=120000,MAX_DAY=480;
+const TTL=120000,MAX_DAY=480,MAX_HOUR=60;
+// Live flow is ephemeral display evidence. It cannot become a historical
+// training/ETA source without a separately verified redistribution license.
 export function parseRouteTrafficRequest(body){
  const g=body?.geometry;
  if(g?.type!=='LineString'||!Array.isArray(g.coordinates)||g.coordinates.length>700||
@@ -28,29 +30,68 @@ export function normalizeRouteFlow(raw,index,sample,observedAt){
   roadClosure:d.roadClosure===true,observedAt};
 }
 export function createRouteTrafficGateway({fetcher=fetch,clock=Date.now,incidentSnapshot=()=>({features:[],status:'unavailable'})}={}){
- const cache=new Map(),pending=new Map();let day=-1,calls=0,inflight=0,holdUntil=0;
+ const cache=new Map(),pending=new Map();
+ let day=-1,calls=0,hour=-1,hourCalls=0,inflight=0,holdUntil=0;
+ const metrics={cacheHits:0,providerSuccesses:0,providerFailures:0,
+  acceptedSegments:0,rejectedSegments:0,quotaDeferrals:0,
+  lastSuccessAt:null,lastFailureAt:null,lastFailureCategory:null};
+ function rollover(){
+  const now=clock(),today=Math.floor(now/86400000),thisHour=Math.floor(now/3600000);
+  if(today!==day){day=today;calls=0;}
+  if(thisHour!==hour){hour=thisHour;hourCalls=0;}
+ }
+ function status(){
+  rollover();
+  return {mode:'live-visualization-only',provider:'TomTom Flow Segment v4',
+   dailyLimit:MAX_DAY,hourlyLimit:MAX_HOUR,callsToday:calls,callsThisHour:hourCalls,
+   dailyRemaining:Math.max(0,MAX_DAY-calls),hourlyRemaining:Math.max(0,MAX_HOUR-hourCalls),
+   inflight,cacheEntries:cache.size,cacheHits:metrics.cacheHits,
+   providerSuccesses:metrics.providerSuccesses,providerFailures:metrics.providerFailures,
+   acceptedSegments:metrics.acceptedSegments,rejectedSegments:metrics.rejectedSegments,
+   quotaDeferrals:metrics.quotaDeferrals,
+   circuitOpen:clock()<holdUntil,
+   lastSuccessAt:metrics.lastSuccessAt,lastFailureAt:metrics.lastFailureAt,
+   lastFailureCategory:metrics.lastFailureCategory,
+   snapshotLifetimeSeconds:TTL/1000,routeEtaModified:false,
+   persistedProviderData:false,trainedOnProviderData:false};
+ }
  async function reading(index,p,key){
   const cacheKey=p.map(n=>n.toFixed(5)).join(','),hit=cache.get(cacheKey),now=clock();
   if(hit&&now-hit.at<TTL){
+   metrics.cacheHits++;
    return hit.raw?normalizeRouteFlow(hit.raw,index,p,hit.at):null;
   }
   if(pending.has(cacheKey)){const saved=await pending.get(cacheKey);return saved?.raw?normalizeRouteFlow(saved.raw,index,p,saved.at):null;}
-  if(Math.floor(now/86400000)!==day){day=Math.floor(now/86400000);calls=0;}
-  if(calls>=MAX_DAY||inflight>=2||now<holdUntil)return null;
-  calls++;inflight++;
+  rollover();
+  if(calls>=MAX_DAY||hourCalls>=MAX_HOUR||inflight>=2||now<holdUntil){metrics.quotaDeferrals++;return null;}
+  calls++;hourCalls++;inflight++;
   const job=(async()=>{
    let raw=null;
    try{
     const url=new URL(ENDPOINT);url.searchParams.set('point',p[1].toFixed(6)+','+p[0].toFixed(6));
     url.searchParams.set('key',key);url.searchParams.set('unit','kmph');
     const response=await fetcher(url,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(2500)});
-    if(!response.ok){if([401,403,429].includes(response.status))holdUntil=clock()+600000;throw Error('provider-unavailable');}
+    if(!response.ok){
+     if([401,403].includes(response.status))holdUntil=clock()+60*60_000;
+     else if(response.status===429)holdUntil=clock()+10*60_000;
+     else if(response.status>=500)holdUntil=clock()+60_000;
+     throw Error(response.status===429?'rate-limited':response.status===401||response.status===403?'permission-denied':'upstream-failure');
+    }
     if(Number(response.headers?.get?.('content-length')||0)>150000)throw Error('oversize');
     const text=await response.text();if(text.length>150000)throw Error('oversize');
     const body=JSON.parse(text);
     // Retain provider evidence only in bounded process memory, never URL/key/GPS history.
-    if(normalizeRouteFlow(body,index,p,clock()))raw=body;
-   }catch{/* Never expose provider URLs or secret credentials. */}
+    if(normalizeRouteFlow(body,index,p,clock())){
+     raw=body;metrics.acceptedSegments++;metrics.providerSuccesses++;
+     metrics.lastSuccessAt=new Date(clock()).toISOString();
+    }else metrics.rejectedSegments++;
+   }catch(error){
+    metrics.providerFailures++;metrics.lastFailureAt=new Date(clock()).toISOString();
+    const kind=String(error?.message||'').toLowerCase();
+    metrics.lastFailureCategory=['permission-denied','rate-limited','upstream-failure','oversize'].includes(kind)
+     ?kind:'network-or-payload';
+    // No provider URL, credential, coordinates or response bodies in logs/status.
+   }
    const value={raw,at:clock()};cache.set(cacheKey,value);
    while(cache.size>64)cache.delete(cache.keys().next().value);
    return value;
@@ -59,7 +100,7 @@ export function createRouteTrafficGateway({fetcher=fetch,clock=Date.now,incident
   try{const saved=await job;return saved.raw?normalizeRouteFlow(saved.raw,index,p,saved.at):null;}
   finally{pending.delete(cacheKey);inflight--;}
  }
- return {async snapshot(request,secret=''){
+ return {status,async snapshot(request,secret=''){
   const key=String(secret).trim(),{index,fromMeters}=request;
   if(!key||key.startsWith('REPLACE_'))return {status:'unconfigured',flow:[],incidents:[],sampledAt:clock(),affectsEta:false};
   const end=Math.min(index.total,fromMeters+8000),span=end-fromMeters;
