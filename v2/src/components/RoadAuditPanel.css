@@ -1,0 +1,29 @@
+.v2-road-audit{position:absolute;z-index:81;right:70px;top:calc(env(safe-area-inset-top,0px) + 74px);width:min(390px,calc(100vw - 28px));max-height:calc(100dvh - 118px);overflow:hidden;display:flex;flex-direction:column;border:1px solid rgba(120,130,145,.25);border-radius:20px;background:var(--surface,#fff);color:var(--text,#17212c);box-shadow:0 18px 55px rgba(15,23,42,.28);font-family:inherit}
+.v2-road-audit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:16px 16px 12px;border-bottom:1px solid rgba(130,140,150,.17)}
+.v2-road-audit-head small{font-size:10px;letter-spacing:.1em;color:#e85d24;font-weight:800}
+.v2-road-audit-head h2{display:flex;align-items:center;gap:8px;font-size:18px;margin:4px 0 0;font-weight:800}
+.v2-road-audit-close{padding:6px;cursor:pointer;border:0;color:inherit;background:transparent}
+.v2-road-audit-content{padding:12px 16px 18px;overflow-y:auto}
+.v2-road-audit-description{font-size:12px;line-height:1.5;opacity:.82;margin:0 0 12px}
+.v2-road-audit-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.v2-road-audit-stats>div{padding:8px 4px;border-radius:9px;background:rgba(125,132,142,.1);text-align:center}
+.v2-road-audit-stats strong{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.v2-road-audit-stats small{display:block;font-size:9px;opacity:.8}
+.v2-road-audit-warning{display:flex;gap:8px;align-items:flex-start;padding:10px;border-radius:10px;background:rgba(245,158,11,.1);font-size:11px;line-height:1.45;margin:12px 0}
+.v2-road-audit-warning svg{flex:none;color:#d97706}
+.v2-road-audit-upload{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid #ea6a32;border-radius:11px;background:#e95b22;color:#fff;font:inherit;font-weight:700;font-size:12px;min-height:41px;width:100%;cursor:pointer}
+.v2-road-audit-file-error{font-size:11px;color:#b91c1c;line-height:1.4}
+.v2-road-audit-loaded{display:flex;gap:6px;align-items:flex-start;color:#047857;font-size:11px;line-height:1.45}
+.v2-road-audit-loaded svg{flex:none}
+.v2-road-audit-search{display:flex;align-items:center;gap:6px;border:1px solid rgba(130,140,150,.4);padding:7px 10px;border-radius:10px}
+.v2-road-audit-search input{background:transparent;border:0;outline:0;min-width:0;flex:1;color:inherit;font:inherit;font-size:12px}
+.v2-road-audit-toggle{display:flex;align-items:center;gap:7px;font-size:11px;margin:9px 0}
+.v2-road-audit-results{max-height:230px;overflow-y:auto}
+.v2-road-audit-item{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px;padding:9px 0;border-top:1px solid rgba(130,140,150,.15);font-size:11px}
+.v2-road-audit-item>span:first-child{max-width:74%}
+.v2-road-audit-item strong,.v2-road-audit-item small{display:block}
+.v2-road-audit-item small{opacity:.72}
+.v2-road-audit-item .v2-road-audit-issue{width:100%;font-size:10px;color:#b45309}
+.v2-road-audit-ok{color:#059669;font-weight:700}.v2-road-audit-fail{color:#dc2626;font-weight:700}
+.v2-road-audit-foot{display:block;font-size:10px;opacity:.6;margin-top:9px}
+@media(max-width:700px){.v2-road-audit{right:14px;top:calc(env(safe-area-inset-top,0px) + 92px);max-height:calc(100dvh - 120px)}}
