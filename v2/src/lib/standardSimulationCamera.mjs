@@ -63,6 +63,7 @@ export function planStandardSimulationCamera({
     bearing:headingCurrent??base.bearing,
     // Camera rotation and zoom glide slowly; follow-center stays near the car.
     cameraFollowMarker:true,
-    droneCamera:{halfLife:720,pointHalfLife:380,bearingHalfLife:520}
+    // Let the view follow the physical vehicle tightly, while easing zoom and yaw.
+    droneCamera:{halfLife:980,pointHalfLife:235,bearingHalfLife:690}
   };
 }
