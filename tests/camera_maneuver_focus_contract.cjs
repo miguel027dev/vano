@@ -25,7 +25,9 @@ function scenario(modifier='right',exitBearing=90){
  return{context,run};
 }
 const a=scenario();
-assert.equal(a.run(240,100),null,'Far from a turn, camera must not focus');
+assert.equal(a.run(370,100),null,'Far from a turn, camera must not focus');
+const preparing=a.run(240,150);
+assert.ok(preparing?.preparing&&preparing.strength===0,'Approach must not zoom out before focus begins');
 const early=a.run(115,200),near=a.run(30,400),atTurn=a.run(16,600);
 assert.ok(early&&early.strength>0&&early.strength<.6,'Focus should start gradually');
 assert.ok(near&&near.strength>early.strength,'Closer turns must progressively zoom in');
@@ -43,8 +45,8 @@ const changed=scenario();
 changed.run(18,100);
 changed.context.selectedRoute={id:'route-b',steps:[]};
 assert.equal(changed.run(300,180,12,1),null,'Reroute must invalidate retained camera focus');
-assert.ok(map.includes('const maneuverFocus=!v2Drone&&!calibrating?cameraManeuverFocus('),'Experimental /v2 camera must remain separate');
+assert.ok(map.includes("location.pathname.toLowerCase().replace(/\\/+$/,'')!=='/v2'?cameraManeuverFocus("),'Experimental /v2 camera must remain separate');
 assert.ok(map.includes('+(maneuverFocus?.strength||0)*.62'),'Turn focus must affect actual zoom target');
-assert.ok(map.includes('pitch=Math.max(pitch,48+extra*maneuverFocus.strength)'),'Turn focus must affect camera tilt');
+assert.ok(map.includes('pitch=Math.max(pitch,tune.pitchCruise,48+extra*maneuverFocus.strength)'),'Turn focus must affect camera tilt');
 assert.ok(map.includes('Math.min(tune.zoomMax,zoom)'),'Final zoom clamp must honor vehicle tuning');
 console.log('PASS: focus timing, directions, confidence, post-turn hold, reroute reset and camera integration');
