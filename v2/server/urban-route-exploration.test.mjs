@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {blockExploreSpecs,validExploredVariant} from './urban-route-exploration.mjs';
+import {blockExploreSpecs,validExploredVariant,chooseStableFastRoute} from './urban-route-exploration.mjs';
 import {calculateMapboxV1Candidates} from './mapbox-v1-fallback.mjs';
 const coords=Array.from({length:90},(_,i)=>[-46.72+i*.001,-23.585]);
 const mk=(seconds=1300,shift=0)=>({
@@ -95,5 +95,26 @@ test('tiny ETA advantage is not allowed to add 500m to a stable route',async()=>
  const selected=data.routes.find(r=>r.id==='fast');
  assert.equal(selected.distance,9.2);
  assert.equal(selected.durationSeconds,1100);
- assert.equal(data.candidateEngine.minimumSwitchSavingsSeconds>=45,true);
+ assert.equal(data.candidateEngine.minimumSwitchSavingsSeconds,5);
+ assert.equal(data.candidateEngine.fastEvidence,'mapbox-traffic-aware-eta');
+});
+
+test('fastest route can never lose 20-30 seconds just to save distance',()=>{
+ const fastest=mk(1000,.0012);fastest.distance=9200;
+ const muchSlower=mk(1027,.003);muchSlower.distance=8000;
+ const selected=chooseStableFastRoute([muchSlower,fastest]);
+ assert.strictEqual(selected,fastest);
+ assert.equal(selected.duration,1000);
+});
+test('technical 5-second ETA tie can save 450m without accepting a 6-second delay',()=>{
+ const best=mk(1000,.001);best.distance=9000;
+ const near=mk(1004,.002);near.distance=8480;
+ const out=mk(1006,.003);out.distance=7800;
+ assert.strictEqual(chooseStableFastRoute([best,near]),near);
+ assert.notStrictEqual(chooseStableFastRoute([best,out]),out);
+});
+test('block exploration rejects Mapbox top-level violation as well as leg warnings',()=>{
+ const baseline=mk(1200),proposal=mk(1000,.0024);
+ proposal.notifications=[{type:'violation',subtype:'pointExclusion'}];
+ assert.equal(validExploredVariant(proposal,baseline,[baseline]),false);
 });
