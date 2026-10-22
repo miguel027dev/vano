@@ -14,6 +14,7 @@ import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE,MAPBOX_STYLES} from '../lib/mapLayers';
+import {vectorStartupDecision,MAPBOX_VECTOR_PROBE_MS,WEBGL_CONTEXT_RESTORE_MS} from '../lib/mapRecovery.mjs';
 import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/night3DBuildings.js';
 import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
@@ -380,7 +381,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   latest.current={active,simulationPreview,droneSimulation,v2Experience,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,routeTraffic,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
-    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null,styleRecoveryAttempted=false;const initial=coord(latest.current.userCoords);
+    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false;const initial=coord(latest.current.userCoords);
     const report=e=>{if(!deleted){
    const message=e?.error?.message||e?.message||'';
    const source=e?.sourceId||e?.source?.id||'';
@@ -475,24 +476,48 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
         map.on('rotatestart',e=>{if(e.originalEvent)motion.current?.setFree();});
         canvas=map.getCanvas();wheelHandler=()=>motion.current?.setFree();canvas?.addEventListener('wheel',wheelHandler);
-        contextLostHandler=e=>{e.preventDefault?.();if(!deleted)setForceRaster(true);};
+        // Keep the vector renderer while WebGL restores a lost GPU context.
+        contextLostHandler=e=>{
+          e.preventDefault?.();
+          if(deleted)return;
+          clearTimeout(webglRecoveryTimer);
+          webglRecoveryTimer=setTimeout(()=>{
+            if(!deleted&&backend.current==='mapbox')setForceRaster(true);
+          },WEBGL_CONTEXT_RESTORE_MS);
+        };
+        contextRestoredHandler=()=>{
+          clearTimeout(webglRecoveryTimer);webglRecoveryTimer=null;
+          if(!deleted){map.resize();map.triggerRepaint();}
+        };
         canvas?.addEventListener('webglcontextlost',contextLostHandler,{passive:false});
-        // A slow vector style is not a WebGL failure. Try a standard Mapbox
-        // style before permanently degrading this visit to a raster map.
-        styleWatchdog=setTimeout(()=>{
-          if(deleted||backend.current!=='mapbox'||isLoaded(map))return;
+        canvas?.addEventListener('webglcontextrestored',contextRestoredHandler);
+        // Slow WebView tiles are not evidence of missing WebGL. Retry a real
+        // Mapbox vector style before falling back to the flat map.
+        const vectorStartedAt=Date.now();
+        const checkVectorStartup=()=>{
+          if(deleted||backend.current!=='mapbox')return;
           const standard=MAPBOX_STYLES.streets;
-          if(!styleRecoveryAttempted&&map._vanoStyle!==standard){
+          const decision=vectorStartupDecision({
+            elapsedMs:Date.now()-vectorStartedAt,
+            loaded:isLoaded(map),
+            usingCustomStyle:map._vanoStyle!==standard,
+            retriedDefaultStyle:styleRecoveryAttempted
+          });
+          if(decision==='ready')return;
+          if(decision==='raster'){setForceRaster(true);return;}
+          if(decision==='retry-default-vector'){
             styleRecoveryAttempted=true;
             try{
               map._vanoStyle=standard;
               map.setStyle(standard,{diff:false});
-              styleWatchdog=setTimeout(()=>{
-                if(!deleted&&backend.current==='mapbox'&&!isLoaded(map))setForceRaster(true);
-              },10000);
-            }catch{setForceRaster(true);}
-          }else setForceRaster(true);
-        },14500);
+              console.warn('VANO custom map slow: recovering with standard Mapbox vector style.');
+            }catch{
+              console.warn('VANO vector style recovery pending.');
+            }
+          }
+          styleWatchdog=setTimeout(checkVectorStartup,8000);
+        };
+        styleWatchdog=setTimeout(checkVectorStartup,MAPBOX_VECTOR_PROBE_MS);
       }catch(e){
         // Recover from WebGL initialization failure without retaining a
         // permanent Mapbox error above the working raster fallback.
@@ -563,7 +588,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       }};
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;map.off('zoomend',refreshRouteTrafficMarkers);clearRouteTrafficMarkers(map);detachCommunityPins?.();detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
+    return()=>{deleted=true;map.off('zoomend',refreshRouteTrafficMarkers);clearRouteTrafficMarkers(map);detachCommunityPins?.();detachPublicPins?.();clearPrivateRoadSignMarkers(map);delete map._vanoSyncPrivateRoadSigns;municipalFeed.current?.dispose();municipalFeed.current=null;document.removeEventListener('visibilitychange',visibility);if(wheelHandler)canvas?.removeEventListener('wheel',wheelHandler);if(contextLostHandler)canvas?.removeEventListener('webglcontextlost',contextLostHandler);if(contextRestoredHandler)canvas?.removeEventListener('webglcontextrestored',contextRestoredHandler);clearTimeout(webglRecoveryTimer);clearTimeout(styleWatchdog);if(leafletWheelHandler)root.current?.removeEventListener('wheel',leafletWheelHandler);motion.current?.end();if(controller)controller.current=null;motion.current=null;mapRef.current=null;backend.current=null;try{map?.remove?.();}catch(e){console.warn(e.message);}};
   },[token,forceRaster]);
   // Navigation switches should change POI categories immediately, without
   // remounting the map, touching GPS or triggering any provider request.
