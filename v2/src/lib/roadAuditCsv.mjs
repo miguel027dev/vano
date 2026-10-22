@@ -5,6 +5,7 @@
 export const SP_ROAD_AUDIT_BASELINE=Object.freeze({
   source:'CEM/USP LOG2025 RMSP (cartographic consistency only)',
   date:'2026-10-21', total:7500,consistent:7421,review:79,
+  avenueLabels:1368,avenueSegments:21523,avenueInternalMatch:1368,
   geometryNameDistrictMissing:46,segmentCountMismatch:33,lengthMismatch:30,
   confirmedPeakSlots:0,legalAlternatives:0,routingEligible:0,
   status:'CATALOG_ONLY',
