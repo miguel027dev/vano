@@ -3,6 +3,9 @@ on:
   push:
     branches: [preview/vano-react-v2-7]
     paths: ["v2/**", ".github/workflows/vano-v2-preview.yml"]
+  pull_request:
+    branches: [preview/vano-react-v2-7]
+    paths: ["v2/**", ".github/workflows/vano-v2-preview.yml"]
   workflow_dispatch:
 jobs:
   validate:
