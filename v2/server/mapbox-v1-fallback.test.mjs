@@ -108,3 +108,15 @@ test('fast route reports only provider typical/live delta, never cartographic gu
  assert.equal(fast.trafficVsTypicalSeconds,-120);
  assert.match(result.candidateEngine.fastestPolicy,/provider-traffic-ETA/);
 });
+
+test('provider-flagged invalid shortcut never appears as fast or as the second route',async()=>{
+ const fastButRestricted=makeRoute(490,.003);
+ fastButRestricted.legs[0].notifications=[{type:'violation',subtype:'access'}];
+ const regular=makeRoute(850);
+ const result=await calculateMapboxV1Candidates([-46.68981,-23.5801],[-46.66881,-23.5801],
+  'carro',{},'pt-BR',{adaptive:false,skipCandidateProbes:true},'test-token',
+  async()=>response([fastButRestricted,regular]));
+ assert.equal(result.routes.find(x=>x.id==='fast').durationSeconds,850);
+ assert.equal(result.routes.every(x=>x.durationSeconds===850),true);
+ assert.equal(result.candidateEngine.rejectedProviderViolations,1);
+});
