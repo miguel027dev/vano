@@ -9,6 +9,7 @@ import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
 import {planAdaptiveRoadDistance} from '../lib/adaptiveRoadCamera.mjs';
 import {planStandardSimulationCamera} from '../lib/standardSimulationCamera.mjs';
+import {planStandardPlayPointer} from '../lib/standardPlayPointer.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
@@ -839,19 +840,34 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       // between coordinates. This prevents the icon from cutting across sharp
       // turns and guarantees heading belongs to the SAME animated position.
       const simulationMeters=d.guidance?.routeMeters;
-      let point;
-      if(d.droneSimulation&&timeline.total>0&&Number.isFinite(simulationMeters)){
+      let point,playPointer=null;
+      const standardPlay=d.v2Experience&&d.simulationPreview&&!d.droneSimulation&&
+        timeline.total>0&&Number.isFinite(simulationMeters);
+      if(standardPlay){
+        // 6x Play: follow simulated ARC distance instead of smoothing GPS
+        // longitude/latitude across corners; reset when replay restarts.
+        playPointer=planStandardPlayPointer({
+          timeline,targetMeters:simulationMeters,previousMeters:state.playMeters,
+          dtMs:dt,maneuver:d.guidance,route,reducedMotion:reduced
+        });
+        point=playPointer?.point;
+        state.playMeters=playPointer?.progress??null;
+        state.droneMeters=null;
+      }else if(d.droneSimulation&&timeline.total>0&&Number.isFinite(simulationMeters)){
+        state.playMeters=null;
         const targetMeters=clamp(simulationMeters,0,timeline.total);
         if(!Number.isFinite(state.droneMeters))state.droneMeters=targetMeters;
         else state.droneMeters=damp(state.droneMeters,targetMeters,dt,reduced?90:140);
         point=sampleRoute(timeline,state.droneMeters)?.point;
       }else{
+        state.playMeters=null;
         state.droneMeters=null;
         point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
       }
       if(!validPoint(point))return;
       state.point=point;
-      const heading=d.droneSimulation&&Number.isFinite(state.droneMeters)
+      const heading=playPointer&&Number.isFinite(playPointer.bearing)?playPointer.bearing:
+        d.droneSimulation&&Number.isFinite(state.droneMeters)
         ?simulationPointerBearing(timeline,state.droneMeters)
         :(d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
           ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
@@ -866,8 +882,16 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           const limited=Math.min(Math.abs(delta)*ease,dt*.37);
           state.bearing=(state.bearing+Math.sign(delta)*limited+360)%360;
         }
+      }else if(playPointer){
+        state.droneHeadingInitialized=false;
+        if(Number.isFinite(heading)){
+          if(!state.playHeadingInitialized){state.bearing=heading;state.playHeadingInitialized=true;}
+          else state.bearing=blendAngle(state.bearing||0,heading,
+            1-Math.pow(.5,dt/(reduced?50:playPointer.bearingHalfLifeMs)));
+        }
       }else{
         state.droneHeadingInitialized=false;
+        state.playHeadingInitialized=false;
         if(Number.isFinite(heading))state.bearing=blendAngle(state.bearing||0,heading,1-Math.pow(.5,dt/(reduced?75:240)));
       }
       d.motionCoords=point;d.motionBearing=state.bearing||0;
