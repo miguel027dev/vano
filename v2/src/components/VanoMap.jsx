@@ -8,6 +8,7 @@ import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
 import {planAdaptiveRoadDistance} from '../lib/adaptiveRoadCamera.mjs';
+import {planStandardSimulationCamera} from '../lib/standardSimulationCamera.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
@@ -205,6 +206,10 @@ function motionController(map,latest,status){
     const userHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry?.speed>1.5&&d.telemetry?.accuracy<=75?d.motionBearing:null;
     const route=d.navigation?(d.routes?.find(r=>r.id===d.selectedRoute)||d.routes?.[0]):null;
     const viewport=d.viewport||{padding:{top:100,bottom:100,left:20,right:20},compact:false};
+    // Only the admin /v2 regular Play simulation gets this camera profile.
+    // V2 SIM drone and normal live GPS navigation keep their existing policy.
+    const standardPlay=d.v2Experience&&d.simulationPreview&&!d.droneSimulation&&
+      d.navigation&&['carro','moto'].includes(d.vehicle);
     let maneuverPlan;
     if(d.vehicle==='moto'&&d.navigation){
       motoPlan=planMotorcycleCamera({navigation:true,route,maneuver:d.guidance,
@@ -216,11 +221,15 @@ function motionController(map,latest,status){
       maneuverPlan=planManeuverCamera({navigation:d.navigation,maneuver:d.guidance,route,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced});
     }
+    // The default camera zooms OUT at exits. Cancel that visual-only change
+    // for Play, then let its dedicated planner ease a slight zoom IN instead.
+    const framedManeuver=standardPlay?
+      {...maneuverPlan,zoomOut:0,pitchDrop:0}:maneuverPlan;
     const base=cameraTarget({position:d.motionCoords||d.gpsCoords,
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan:framedManeuver,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
     if(!d.droneSimulation){
       droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};lastSceneSample=0;
       droneSceneRoute=null;
@@ -233,7 +242,16 @@ function motionController(map,latest,status){
         syncV2BuildingVisibility(map,{enabled:true,density:0,cinematic:false});
       }
     }
-    if(!d.droneSimulation||!base)return realCameraDistance(d,route,base,now);
+    if(!d.droneSimulation||!base){
+      const regular=realCameraDistance(d,route,base,now);
+      if(!standardPlay||!regular)return regular;
+      return planStandardSimulationCamera({
+        enabled:true,base:regular,
+        position:d.motionCoords||d.gpsCoords,maneuver:d.guidance,route,
+        vehicle:d.vehicle,compactViewport:viewport.compact,reducedMotion:reduced,
+        speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy
+      });
+    }
     const scene=sampleDroneScene(d,route,now);
     const nextMode=chooseV2UrbanCamera({
       enabled:true,density:scene.density,mode:urbanMode,
