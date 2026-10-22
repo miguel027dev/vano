@@ -249,7 +249,8 @@ function motionController(map,latest,status){
         enabled:true,base:regular,
         position:d.motionCoords||d.gpsCoords,maneuver:d.guidance,route,
         vehicle:d.vehicle,compactViewport:viewport.compact,reducedMotion:reduced,
-        speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy
+        speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
+        markerBearing:d.motionBearing
       });
     }
     // Keep the existing real-navigation and drone isolation contract intact.
