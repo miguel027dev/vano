@@ -16,7 +16,7 @@ const route={steps:[
 function plan(maneuver,more={}){
   return planStandardSimulationCamera({
     enabled:true,base,position:puck,vehicle:'carro',route,
-    speed:12,accuracy:8,maneuver,...more
+    speed:12,accuracy:8,heading:85,maneuver,...more
   });
 }
 
@@ -130,4 +130,51 @@ test('Play frame follows the vehicle rather than extrapolating upcoming route in
   const policy=readFileSync(new URL('./standardSimulationCamera.mjs',import.meta.url),'utf8');
   assert.match(policy,/bearing:heading/);
   assert.doesNotMatch(policy,/nextRouteBearing\(/);
+});
+
+test('camera stays behind vehicle until marker enters the new street, ignoring future road bearing',()=>{
+ const frontPuck=[-46.68,-23.58];
+ // The old navigation camera already sees the right turn and points EAST.
+ const predictive={...base,bearing:90,center:[-46.678,-23.58]};
+ const straight=planStandardSimulationCamera({
+   enabled:true,base:predictive,position:frontPuck,heading:0,
+   route,maneuver:{stepIndex:0,kind:'on ramp',distance:15},
+   vehicle:'carro',speed:12,accuracy:8
+ });
+ const turned=planStandardSimulationCamera({
+   enabled:true,base:predictive,position:frontPuck,heading:35,
+   route,maneuver:{stepIndex:0,kind:'on ramp',distance:0},
+   vehicle:'carro',speed:12,accuracy:8
+ });
+ assert.equal(straight.bearing,0,'never turn toward upcoming road until the car turns');
+ assert.ok(Math.abs(straight.center[0]-frontPuck[0])<1e-9,'forward center must be north, not east');
+ assert.ok(straight.center[1]>frontPuck[1],'view stays behind the northbound marker');
+ assert.equal(turned.bearing,35);
+ assert.ok(turned.center[0]>frontPuck[0],'forward center follows car only after it rotates');
+ assert.ok(turned.center[1]>frontPuck[1]);
+ assert.equal(straight.cameraFollowMarker,true);
+ assert.ok(straight.droneCamera.halfLife>=700);
+ assert.ok(straight.droneCamera.bearingHalfLife>=500);
+});
+test('compact HUD clearance is respected for rear view and never invents heading',()=>{
+ const position=[-46.68,-23.58];
+ const view=planStandardSimulationCamera({
+   enabled:true,base,position,heading:90,compactViewport:true,
+   viewportClearancePx:0,vehicle:'carro',speed:12
+ });
+ assert.deepEqual(view.center,position);
+ assert.equal(view.bearing,90);
+ const noHeading=planStandardSimulationCamera({
+   enabled:true,base,position,heading:null,vehicle:'carro'
+ });
+ assert.deepEqual(noHeading.center,position);
+ assert.equal(noHeading.bearing,base.bearing);
+});
+test('Play-only integration limits camera yaw independently of fast marker heading',()=>{
+ const code=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ assert.match(code,/position:d\.motionCoords\|\|d\.gpsCoords,markerBearing:d\.motionBearing/);
+ assert.match(code,/const nextBearing=t\.cameraFollowMarker&&!reduced\?/);
+ assert.match(code,/const maxYawStep=110\*dt\/1000/);
+ assert.match(code,/const framedManeuver=standardPlay\?/);
+ assert.match(code,/if\(!d\.droneSimulation\|\|!base\)return realCameraDistance/);
 });
