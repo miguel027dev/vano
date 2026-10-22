@@ -31,6 +31,7 @@ export default function RoadAuditPanel({onClose}){
     <div><strong>{SP_ROAD_AUDIT_BASELINE.review}</strong><small>a revisar</small></div>
     <div><strong>0</strong><small>picos comprovados</small></div>
    </div>
+   <p className="v2-road-audit-description"><b>Avenidas:</b> {SP_ROAD_AUDIT_BASELINE.avenueLabels.toLocaleString("pt-BR")} etiquetas e {SP_ROAD_AUDIT_BASELINE.avenueSegments.toLocaleString("pt-BR")} segmentos rechecados no CEM/USP. Os dados de avenida também não são velocidades.</p>
    <p className="v2-road-audit-warning"><AlertTriangle size={16}/><span><b>Não liberado para roteamento.</b> Falta checagem externa CET/GeoSampa, sentido legal, conexão, aclive e horários com medições reais. O modo Traffic Memory permanece isolado.</span></p>
    <input ref={input} type="file" accept=".csv,text/csv" hidden onChange={e=>{const file=e.target.files?.[0];void receiveFile(file);e.target.value='';}}/>
    <button className="v2-road-audit-upload" onClick={()=>input.current?.click()}><UploadCloud size={18}/> Abrir CSV da auditoria (7.500 ruas)</button>
