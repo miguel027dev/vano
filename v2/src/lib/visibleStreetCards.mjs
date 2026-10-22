@@ -24,6 +24,9 @@ export function isNamedRoadFeature(f){
  const layer=f?.layer||{},sourceLayer=String(f?.sourceLayer||layer['source-layer']||'');
  if(!['line','symbol'].includes(layer.type)||!ROAD_TOKEN.test(layer.id||'')&&!ROAD_TOKEN.test(sourceLayer))return false;
  if(String(layer.id||'').startsWith('vano-'))return false;
+ const kind=f?.geometry?.type;
+ if(!['LineString','MultiLineString'].includes(kind)&&
+    !(layer.type==='symbol'&&kind==='Point'))return false;
  return Boolean(safeStreetName(f.properties));
 }
 function linesOf(f){
