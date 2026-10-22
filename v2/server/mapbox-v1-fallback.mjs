@@ -228,7 +228,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
     pool=compliantPool;
     // Fast compares real provider ETA only after excluding explicit access violations.
     // The CEM road catalog has no licensed per-direction speeds to add here.
-    const fastest=chooseStableFastRoute(pool,originalBest)||pool[0];
+    const fastest=chooseStableFastRoute(pool)||pool[0];
 
     // The other route remains an alternative, NOT a verified safety assessment.
     const other=pool.find(r=>r!==fastest&&r.duration>=fastest.duration&&overlap(r,fastest)<.985)||
@@ -243,17 +243,17 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       // Internal-only candidate pool; returned to callers only on safe-comparison requests.
       ...(options.safeComparison===true?{safeCandidatePool:pool.slice(0,10).map((r,i)=>present(r,'safe-candidate-'+i))}:{}),
       source:'mapbox-v1-candidates',microRoutingActive:pool.some(r=>r._microRoute),urbanExplorationActive:probeAudit.urbanSent>0,
-      safetyMessage:'Rota recomendada por ETA do provedor, estabilidade e distância na margem de empate técnico. A outra rota é apenas uma alternativa, sem comprovação de segurança superior.',
+      safetyMessage:'Rota mais rápida baseada no ETA informado pelo provedor, com empate técnico máximo de 5 segundos para trajeto consideravelmente mais curto. A outra rota é alternativa, sem segurança superior comprovada.',
       candidateEngine:{version:'v1-eta-candidate-port',provider:usedProfile,
         fastestPolicy:'provider-traffic-ETA; reject provider-flagged violations; no unverified CEM speed penalty',
         initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeAudit.sent,plannedExtraRequests:probeCount,throttledRequests:probeAudit.throttled,
         acceptedProbes:probeSuccess,urbanProbes:probeAudit.urbanSent,urbanAccepted,
         rejectedProviderViolations:restrictedRejected,
         searchZones:['inicio','meio','fim'],searchLimit:20,providerRouteCount:pool.length,
-        minimumSwitchSavingsSeconds:Math.round(Math.max(45,Math.min(95,(originalBest?.duration||baseline.duration)*.055))),
+        technicalEtaTieSeconds:5,minimumSwitchSavingsSeconds:5,
         stableChoiceDurationSeconds:fastest.duration,originalChoiceDurationSeconds:originalBest.duration,
         trafficScore:Math.round(traffic(baseline).score),candidates,
-        pipeline:['traffic-alternatives','beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','significant-gain-hysteresis']}};
+        pipeline:['traffic-alternatives','beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','provider-eta-first-5s-technical-tie']}};
   }
   const work=compute();
   cache.set(key,{expires:Date.now()+CACHE_TTL,work});
