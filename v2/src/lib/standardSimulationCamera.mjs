@@ -12,7 +12,7 @@ const smooth=t=>{const x=clamp(t,0,1);return x*x*(3-2*x);};
 export function planStandardSimulationCamera({
   enabled=false,base=null,position=null,maneuver=null,route=null,
   vehicle='carro',compactViewport=false,reducedMotion=false,speed=0,
-  accuracy=null
+  accuracy=null,markerBearing=null
 }={}){
   if(!enabled||!base||!validPoint(position)||!['carro','moto'].includes(vehicle)||
      reducedMotion)return base;
@@ -39,18 +39,35 @@ export function planStandardSimulationCamera({
     smooth((config.start-distance)/config.start):0;
   // One stable chase view, with no yaw changes, angle jumps or zoom breathing.
   const cruiseZoom=compactViewport?16.65:16.82;
-  const targetZoom=clamp(Math.max(base.zoom,cruiseZoom)+
-    (config?.zoom||0)*strength,compactViewport?16.35:16.5,compactViewport?17.05:17.45);
+  // Stable Play baseline: the live camera's forward-looking turnFocus can
+  // zoom out BEFORE a junction. Do not inherit that pre-turn zoom behavior.
+  const targetZoom=clamp(cruiseZoom+(config?.zoom||0)*strength,
+    compactViewport?16.35:16.5,compactViewport?17.05:17.45);
   const pitchCruise=compactViewport?44:48;
   const pitchAtDecision=compactViewport?
     Math.max(38,(config?.pitch??pitchCruise)-3):(config?.pitch??pitchCruise);
   const targetPitch=clamp(pitchCruise+(pitchAtDecision-pitchCruise)*strength,36,50);
-  // Anchor the animated puck below the look-ahead point, not on the junction.
-  // Interpolate *toward* the puck from an already screen-safe base target.
-  const lookFactor=.56-.13*strength;
-  const center=validPoint(base.center)?[
-    position[0]+(base.center[0]-position[0])*lookFactor,
-    position[1]+(base.center[1]-position[1])*lookFactor
-  ]:position;
-  return {...base,center,zoom:targetZoom,pitch:targetPitch};
+  // Camera follows the *visible vehicle's current bearing*, not the route's
+  // future bearing (cameraTarget looks 60-220m ahead and rotates too early).
+  // Keep a stable rear chase: offset the map center forward along the vehicle,
+  // NEVER along the upcoming turn. Rotation begins only as the car turns.
+  const heading=Number.isFinite(markerBearing)?markerBearing:
+    Number.isFinite(base.bearing)?base.bearing:0;
+  const rad=heading*Math.PI/180;
+  const availableAhead=config&&Number.isFinite(distance)?
+    Math.max(9,distance*.7):Infinity;
+  const lookAhead=Math.min((compactViewport?28:38)-(compactViewport?12:18)*strength,
+    availableAhead);
+  const center=[
+    position[0]+Math.sin(rad)*lookAhead/(111320*Math.max(.25,Math.cos(position[1]*Math.PI/180))),
+    position[1]+Math.cos(rad)*lookAhead/111320
+  ];
+  return {
+    ...base,center,zoom:targetZoom,pitch:targetPitch,bearing:heading,
+    // The car remains responsive; only the CAMERA has deliberate inertia.
+    droneCamera:{
+      ...base.droneCamera,
+      halfLife:720,pointHalfLife:580,bearingHalfLife:540
+    }
+  };
 }
