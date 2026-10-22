@@ -74,3 +74,36 @@ test('V2 route handler is gated and does not connect historical memory to V1',()
  assert.match(index,/assessTrafficMemory/);
  assert.match(index,/VANO_TRAFFIC_MEMORY_FILE/);
 });
+
+// Source adapters are deliberately offline and require provenance/consent.
+test('offline municipal importer requires reviewed license, direction and recent aggregate',async()=>{
+ const {mkdtemp,writeFile,readFile,rm}=await import('node:fs/promises');
+ const {tmpdir}=await import('node:os');
+ const {join}=await import('node:path');
+ const {spawnSync}=await import('node:child_process');
+ const {fileURLToPath}=await import('node:url');
+ const dir=await mkdtemp(join(tmpdir(),'vano-traffic-'));
+ try{
+  const input=join(dir,'input.geojson'),output=join(dir,'snapshot.json');
+  const feature={type:'Feature',geometry:{type:'LineString',coordinates:[a,b]},
+   properties:{edgeId:'edge-test-001',source:'sptrans-olhovivo',
+    weekday:3,quarter:76,speedKmh:45,freeFlowKmh:45,samples:80,
+    lastObservedAt:new Date().toISOString(),licenseVerified:true,directionVerified:true}};
+  await writeFile(input,JSON.stringify({type:'FeatureCollection',features:[feature]}));
+  const cli=fileURLToPath(new URL('../scripts/traffic-memory-import.mjs',import.meta.url));
+  const invalid=spawnSync(process.execPath,[cli,input,output],{encoding:'utf8'});
+  assert.notEqual(invalid.status,0,'Importer must require explicit license review');
+  const good=spawnSync(process.execPath,[cli,input,output,'--license-reviewed'],{encoding:'utf8'});
+  assert.equal(good.status,0,good.stderr);
+  const snapshot=JSON.parse(await readFile(output,'utf8'));
+  assert.equal(snapshot.records.length,1);
+  assert.equal(snapshot.records[0].directionVerified,true);
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
+test('PostgreSQL export script passes syntax check without connecting',async()=>{
+ const {spawnSync}=await import('node:child_process');
+ const {fileURLToPath}=await import('node:url');
+ const file=fileURLToPath(new URL('../scripts/traffic-memory-export-pg.mjs',import.meta.url));
+ const checked=spawnSync(process.execPath,['--check',file],{encoding:'utf8'});
+ assert.equal(checked.status,0,checked.stderr);
+});
