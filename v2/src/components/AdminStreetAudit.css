@@ -1,0 +1,29 @@
+/* Private administrator V2 overlay. Hidden by default and does not cover GPS controls. */
+.v-sp-audit{position:absolute;left:12px;top:175px;z-index:32;pointer-events:none;font-family:inherit}
+.v-sp-audit>*{pointer-events:auto}
+.v-sp-audit-trigger{background:rgba(21,30,39,.94);color:#fff;border:1px solid #ff8b45;border-radius:19px;padding:7px 11px;font-size:11px;font-weight:750;box-shadow:0 3px 13px #0003;cursor:pointer}
+.v-sp-audit-trigger span{color:#ff9b55;padding-right:4px}
+.v-sp-audit-panel{margin-top:8px;width:min(350px,calc(100vw - 24px));max-height:min(70vh,590px);overflow:auto;border:1px solid #cfd7db;border-radius:15px;box-shadow:0 7px 28px #0004;background:#fff;color:#192534;padding:14px;font-size:12px}
+.v-sp-audit-panel header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;border-bottom:1px solid #d7e0e5;padding-bottom:10px}
+.v-sp-audit-panel header small{font-size:10px;letter-spacing:.6px;color:#ad5f24;font-weight:800}
+.v-sp-audit-panel h3{margin:3px 0 0;font-size:17px}
+.v-sp-audit-panel header button{border:0;background:#f0f2f5;border-radius:6px;font-size:23px;cursor:pointer;color:#3f4b55;padding:1px 8px}
+.v-sp-audit-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.v-sp-audit-stats div{background:#f3f5f7;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:3px}
+.v-sp-audit-stats strong{font-size:20px}
+.v-sp-audit-stats small{font-size:10px;color:#546372}
+.v-sp-audit-warning{border-left:3px solid #eb7824;padding:9px 10px;background:#fff5ec;line-height:1.5}
+.v-sp-audit-meta{font-size:11px;color:#586876;line-height:1.5}
+.v-sp-audit-upload{display:block;text-align:center;cursor:pointer;border:1px dashed #ea7b32;border-radius:9px;padding:11px;color:#9e4c11;font-weight:700}
+.v-sp-audit-upload input{display:none}
+.v-sp-audit-error{color:#ac2727;font-size:11px}
+.v-sp-audit-filter{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.v-sp-audit-filter>input{min-width:170px;flex:1;padding:9px;border:1px solid #cfd8df;border-radius:8px}
+.v-sp-audit-filter label{font-size:11px;white-space:nowrap}
+.v-sp-audit-browser{margin-top:11px}
+.v-sp-audit-browser ul{list-style:none;padding:0;max-height:200px;overflow:auto;margin:9px 0}
+.v-sp-audit-browser li{display:flex;flex-direction:column;padding:8px 4px;border-top:1px solid #e3e9ee;gap:2px}
+.v-sp-audit-browser li small{color:#5a6777}
+.v-sp-audit-browser li span{font-size:10px;color:#90602e}
+.v-sp-audit-panel footer{font-size:10px;color:#5b6570;border-top:1px solid #e0e3e8;padding-top:9px}
+@media(max-width:540px){.v-sp-audit{top:153px}.v-sp-audit-panel{max-height:57vh}}
