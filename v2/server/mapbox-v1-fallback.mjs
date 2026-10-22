@@ -5,6 +5,7 @@ import {pointOK} from './routing.mjs';
 import {adaptiveSpecs,denseSpecs,overlap,traffic,uniqueCandidates,signature} from './v1-candidates.mjs';
 import {mapboxEtaEvidence} from './route-eta-diagnostics.mjs';
 import {blockExploreSpecs,validExploredVariant,chooseStableFastRoute,hasProviderRouteViolation} from './urban-route-exploration.mjs';
+import {bottleneckDetourSpecs} from './congestion-bottlenecks.mjs';
 
 const cache=new Map(), CACHE_TTL=15000,MAX_CACHE=48;
 // Per-instance budget is intentionally below Mapbox's provider-wide ceiling.
@@ -118,6 +119,15 @@ async function probeGroup(origin,destination,access,language,vehicle,telemetry,o
         const r=(await request(url,fetcher,kind==='urban'?3500:9500))[0];
         if(!r||r.duration>baseline.duration*(kind==='adaptive'?1.70:1.48)||
            hasProviderRouteViolation(r))return null;
+        if(kind==='bottleneck'){
+          // Only provider-returned, faster and materially distinct whole routes can win.
+          const gain=baseline.duration-r.duration;
+          if(gain<Math.max(20,baseline.duration*.015)||overlap(r,baseline)>=.985||
+             [...existingRoutes,...results].some(existing=>signature(existing)===signature(r)))return null;
+          r._bottleneckVariant=true;r._microRoute=true;
+          r._microStrategy='bottleneck-early-escape';r._etaGainSeconds=Math.round(gain*10)/10;
+          return r;
+        }
         if(kind==='urban'){
           if(!validExploredVariant(r,baseline,[...existingRoutes,...results]))return null;
           r._urbanVariant=true;
@@ -161,6 +171,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       initial=await request(fallback,fetcher,options.reroute===true?5500:12500);
     }
     let pool=uniqueCandidates(initial,24),probeCount=0,probeSuccess=0,urbanProbes=0,urbanAccepted=0;
+    let bottleneckProbes=0,bottleneckAccepted=0,bottleneckImproved=false;
     const probeAudit={sent:0,urbanSent:0,throttled:0};
     const originalBest=chooseStableFastRoute(initial,initial[0]);
     const baseline=pool[0];
@@ -171,8 +182,24 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       const maxQueries=options.adaptive===false?Math.min(4,explorationBudget):
         (explorationBudget||((traffic(baseline).score>=34||traffic(baseline).severe>0)?
           Math.min(4,options.variantBudget||4):0));
-      const firstSpecs=options.adaptive===false?[]:
-        blockExploreSpecs(pool,Math.min(10,maxQueries),{phase:1});
+      // Focus on verified jams first; search 300m-1km upstream before trying
+      // general block exclusions. This path is opt-in from V2 /api/route only.
+      if(options.bottleneckRouting===true&&options.adaptive!==false&&maxQueries>0){
+        const focused=bottleneckDetourSpecs(pool,Math.min(4,maxQueries));
+        if(focused.length){
+          probeCount+=focused.length;
+          const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,
+            options,focused,fetcher,baseline,'bottleneck',pool,probeAudit);
+          bottleneckProbes=focused.length;bottleneckAccepted=extra.length;
+          const before=pool.length;pool=uniqueCandidates([...pool,...extra],24);
+          probeSuccess+=Math.max(0,pool.length-before);
+          // If a focused search found a meaningful speedup, spare provider quota
+          // and avoid delaying the navigation UI with exploratory probes.
+          bottleneckImproved=pool[0].duration<=baseline.duration-Math.max(25,Math.min(90,baseline.duration*.025));
+        }
+      }
+      const firstSpecs=bottleneckImproved||options.adaptive===false?[]:
+        blockExploreSpecs(pool,Math.min(10,Math.max(0,maxQueries-probeCount)),{phase:1});
       if(firstSpecs.length){
         urbanProbes+=firstSpecs.length;probeCount+=firstSpecs.length;
         const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,
@@ -184,7 +211,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       }
       const remaining=()=>Math.max(0,maxQueries-probeCount);
       // Existing traffic-triggered probes still run where congestion warrants.
-      if(options.adaptive!==false&&remaining()>0){
+      if(!bottleneckImproved&&options.adaptive!==false&&remaining()>0){
         const specs=adaptiveSpecs(pool,Math.min(2,remaining()));
         const limited=specs.slice(0,remaining());
         if(limited.length){
@@ -195,7 +222,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
           probeSuccess+=Math.max(0,pool.length-before);
         }
       }
-      if(remaining()>0){
+      if(!bottleneckImproved&&remaining()>0){
         const specs=denseSpecs(pool,Math.min(8,remaining())).slice(0,remaining());
         if(specs.length){
           probeCount+=specs.length;
@@ -207,7 +234,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       }
       // Second wave: inspect REAL nearby branches discovered in phase one,
       // plus paired block exclusions where no side corridor was returned.
-      if(options.adaptive!==false&&remaining()>0){
+      if(!bottleneckImproved&&options.adaptive!==false&&remaining()>0){
         const lateral=[baseline,...pool.filter(r=>r!==baseline)];
         const specs=blockExploreSpecs(lateral,remaining(),{phase:2,seen:firstSpecs});
         if(specs.length){
@@ -231,8 +258,12 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
     const fastest=chooseStableFastRoute(pool)||pool[0];
 
     // The other route remains an alternative, NOT a verified safety assessment.
-    const other=pool.find(r=>r!==fastest&&r.duration>=fastest.duration&&overlap(r,fastest)<.985)||
-      pool.find(r=>r!==fastest&&r.duration>=fastest.duration)||fastest;
+    // Bottleneck exploration improves ONLY the fast option; it does not
+    // silently redefine the independent, not-yet-verified safe alternative.
+    const safePool=pool.filter(r=>!r._bottleneckVariant);
+    const other=safePool.find(r=>r!==fastest&&r.duration>=fastest.duration&&overlap(r,fastest)<.985)||
+      safePool.find(r=>r!==fastest&&r.duration>=fastest.duration)||
+      safePool.find(r=>r!==fastest)||fastest;
     const candidates=pool.slice(0,20).map(r=>({durationSeconds:r.duration,distanceMeters:r.distance,
       signature:signature(r),microRoute:r._microRoute===true,microStrategy:r._microStrategy||'',
       etaGainSeconds:r._etaGainSeconds||0}));
@@ -248,12 +279,13 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         fastestPolicy:'provider-traffic-ETA; reject provider-flagged violations; no unverified CEM speed penalty',
         initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeAudit.sent,plannedExtraRequests:probeCount,throttledRequests:probeAudit.throttled,
         acceptedProbes:probeSuccess,urbanProbes:probeAudit.urbanSent,urbanAccepted,
+        bottleneckProbes,bottleneckAccepted,bottleneckImproved,
         rejectedProviderViolations:restrictedRejected,
         searchZones:['inicio','meio','fim'],searchLimit:20,providerRouteCount:pool.length,
         technicalEtaTieSeconds:5,minimumSwitchSavingsSeconds:5,
         stableChoiceDurationSeconds:fastest.duration,originalChoiceDurationSeconds:originalBest.duration,
         trafficScore:Math.round(traffic(baseline).score),candidates,
-        pipeline:['traffic-alternatives','beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','provider-eta-first-5s-technical-tie']}};
+        pipeline:['traffic-alternatives',...(options.bottleneckRouting===true?['priority-bottleneck-detours']:[]),'beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','provider-eta-first-5s-technical-tie']}};
   }
   const work=compute();
   cache.set(key,{expires:Date.now()+CACHE_TTL,work});
