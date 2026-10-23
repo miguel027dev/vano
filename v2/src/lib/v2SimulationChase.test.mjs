@@ -57,7 +57,7 @@ test('V2 simulator is isolated, uses actual puck as target and has one camera wr
   assert.match(map,/const targetPadding=t\.cameraPadding\|\|defaultPadding/);
   assert.match(map,/chasePaddingTop=damp\(chasePaddingTop,chasePaddingGoal,dt/);
   assert.match(map,/padding:smoothPadding/);
-  assert.match(map,/const maxYawStep=\(latest\.current\.droneSimulation\?82:72\)\*dt\/1000/);
+  assert.match(map,/const maxYawStep=\(latest\.current\.droneSimulation\|\|latest\.current\.v2Experience&&latest\.current\.simulationPreview\?82:72\)\*dt\/1000/);
   assert.match(map,/targetMeters\+12<state\.droneMeters/);
   assert.equal((map.match(/map\.jumpTo\(\{\.\.\.pose,padding:/g)||[]).length,1);
 });
