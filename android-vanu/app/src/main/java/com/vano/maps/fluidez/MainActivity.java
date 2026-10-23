@@ -32,11 +32,15 @@ import java.util.concurrent.*;
 /** Remote VANO application. No screen streaming, bundled routes or native map. */
 public final class MainActivity extends Activity {
     private static final String BASE="https://vanu-73xu.onrender.com", ENTRY=BASE+"/mapa";
-    private static final int GEO_REQUEST=10, FILE_REQUEST=11;
+    private static final int GEO_REQUEST=10, FILE_REQUEST=11, MIC_REQUEST=12;
     private final ExecutorService network=Executors.newSingleThreadExecutor();
     private WebView web;
     private OfflineCache offlineCache;
     private LocalVoice voice;
+    private NativeSpeech speech;
+    private PermissionRequest audioPermission;
+    private String pendingSpeechId="",pendingSpeechLanguage="pt-BR";
+    private boolean microphonePrompt=false;
     private LocationManager gps;
     private boolean routeTracking=false;
     private final LocationListener gpsListener=new LocationListener(){
@@ -101,7 +105,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false); // Spoken navigation follows the explicit start-trip action.
-        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.3");
+        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.4");
         settings.setSupportMultipleWindows(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
@@ -156,6 +160,15 @@ public final class MainActivity extends Activity {
             }
         });
         web.setWebChromeClient(new WebChromeClient(){
+            @Override public void onPermissionRequest(PermissionRequest request){runOnUiThread(()->{
+                if(destroyed||web==null||!trusted(request.getOrigin())||!trusted(web.getUrl())){request.deny();return;}
+                boolean audio=false;for(String resource:request.getResources())if(PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource))audio=true;
+                if(!audio){request.deny();return;}
+                if(audioPermission!=null)audioPermission.deny();audioPermission=request;
+                if(speech!=null)speech.cancel();
+                requestMicrophone();
+            });}
+            @Override public void onPermissionRequestCanceled(PermissionRequest request){runOnUiThread(()->{if(audioPermission==request)audioPermission=null;});}
             @Override public void onGeolocationPermissionsShowPrompt(String origin,GeolocationPermissions.Callback callback){
                 if(!trusted(origin)||!trusted(web.getUrl())){callback.invoke(origin,false,false);return;}
                 if(geoCallback!=null)geoCallback.invoke(geoOrigin,false,false);
@@ -170,7 +183,7 @@ public final class MainActivity extends Activity {
                 try{
                     if(defaultValue==null||defaultValue.length()>130000)throw new IllegalArgumentException();
                     JSONObject data=new JSONObject(defaultValue);String action=data.optString("action");
-                    if("firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)||"speak".equals(action)||"stopSpeech".equals(action)||"navigation".equals(action)||"prepareMap".equals(action)||"voiceSettings".equals(action)||"session".equals(action)){
+                    if("firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)||"speak".equals(action)||"stopSpeech".equals(action)||"navigation".equals(action)||"prepareMap".equals(action)||"voiceSettings".equals(action)||"session".equals(action)||"startSpeechRecognition".equals(action)||"stopSpeechRecognition".equals(action)||"abortSpeechRecognition".equals(action)){
                         handleNative(view,data);result.confirm("ok");
                     }else result.cancel();
                 }catch(Exception e){result.cancel();}
@@ -193,8 +206,9 @@ public final class MainActivity extends Activity {
             }
         });
     }
-    private String runtimeScript(){
-        try(InputStream in=getAssets().open("shell.js")){
+    private String runtimeScript(){return readRuntimeAsset("native-audio.js")+"\n"+readRuntimeAsset("shell.js");}
+    private String readRuntimeAsset(String name){
+        try(InputStream in=getAssets().open(name)){
             java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;
             while((n=in.read(buffer))!=-1)out.write(buffer,0,n);
             return out.toString("UTF-8");
@@ -222,9 +236,19 @@ public final class MainActivity extends Activity {
                 int id=data.optInt("id");offlineCache.prepare(coords,count->runOnUiThread(()->{try{dispatch("vano:offline-map",new JSONObject().put("id",id).put("ok",count>=0).put("tiles",Math.max(0,count)));}catch(Exception ignored){}}));
             }catch(Exception ignored){}
         }else if("navigation".equals(action)){
-            routeTracking=data.optBoolean("active");if(routeTracking){ensureVoice();startGps();}else{stopGps();if(voice!=null)voice.stop();}
-        }else if("speak".equals(action)){ensureVoice();voice.speak(data.optString("text"),data.optString("language","pt-BR"));}
-        else if("stopSpeech".equals(action)){if(voice!=null)voice.stop();}
+            routeTracking=data.optBoolean("active");if(routeTracking){startGps();}else{stopGps();if(voice!=null)voice.stop();}
+        }else if("speak".equals(action)){ensureVoice();voice.speak(data.optString("text"),data.optString("language","pt-BR"),data.optString("utteranceId"));}
+        else if("stopSpeech".equals(action)){if(voice!=null)voice.stop(data.optString("utteranceId"));}
+        else if("startSpeechRecognition".equals(action)){
+            String id=data.optString("id");if(!id.matches("[A-Za-z0-9_-]{1,80}"))return;
+            if(audioPermission!=null){audioPermission.deny();audioPermission=null;}
+            if(speech!=null)speech.cancel();
+            pendingSpeechId=id;pendingSpeechLanguage=data.optString("language","pt-BR");requestMicrophone();
+        }else if("stopSpeechRecognition".equals(action)){if(speech!=null)speech.stop(data.optString("id"));}
+        else if("abortSpeechRecognition".equals(action)){
+            String id=data.optString("id");if(id.equals(pendingSpeechId))pendingSpeechId="";
+            if(speech!=null)speech.cancel(id);
+        }
         else if("google".equals(action))beginGoogleLogin();
         else if("share".equals(action)){
             Intent share=new Intent(Intent.ACTION_SEND).setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,data.optString("text")+"\n"+data.optString("url"));
@@ -232,7 +256,24 @@ public final class MainActivity extends Activity {
         }
     }
     private void dispatch(String event,JSONObject detail){if(!destroyed&&web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new CustomEvent("+JSONObject.quote(event)+",{detail:"+detail.toString()+"}));",null);}
-    private void ensureVoice(){if(voice==null)voice=new LocalVoice(this,status->runOnUiThread(()->{try{dispatch("vano:voice-status",new JSONObject().put("status",status));}catch(Exception ignored){}}));}
+    private void ensureVoice(){if(voice==null)voice=new LocalVoice(this,(status,id)->runOnUiThread(()->{try{
+        JSONObject event=new JSONObject().put("status",status).put("id",id);
+        dispatch("vano:tts",event);
+        if(!id.startsWith("mavi-"))dispatch("vano:voice-status",event);
+    }catch(Exception ignored){}}));}
+    private void speechEvent(String id,String type,String value){try{dispatch("vano:speech-recognition",new JSONObject().put("id",id).put("type",type).put("text","result".equals(type)?value:"").put("error","error".equals(type)?value:""));}catch(Exception ignored){}}
+    private void requestMicrophone(){
+        if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED){finishMicrophone(true);return;}
+        if(!microphonePrompt){microphonePrompt=true;requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},MIC_REQUEST);}
+    }
+    private void finishMicrophone(boolean allowed){
+        microphonePrompt=false;allowed=allowed&&!destroyed&&web!=null&&trusted(web.getUrl());
+        if(audioPermission!=null){PermissionRequest request=audioPermission;audioPermission=null;if(allowed&&trusted(request.getOrigin()))request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});else request.deny();}
+        String id=pendingSpeechId;pendingSpeechId="";if(id.isEmpty())return;
+        if(!allowed){speechEvent(id,"error","not-allowed");speechEvent(id,"end","");return;}
+        if(speech==null)speech=new NativeSpeech(this,this::speechEvent);
+        speech.start(id,pendingSpeechLanguage);
+    }
     private void dispatchPosition(Location fix){
         if(!routeTracking||fix==null||fix.getTime()<=0)return;
         try{JSONObject coords=new JSONObject().put("latitude",fix.getLatitude()).put("longitude",fix.getLongitude()).put("accuracy",fix.getAccuracy()).put("heading",fix.hasBearing()?fix.getBearing():JSONObject.NULL).put("speed",fix.hasSpeed()?fix.getSpeed():JSONObject.NULL);dispatch("vano:native-position",new JSONObject().put("coords",coords).put("timestamp",fix.getTime()));}catch(Exception ignored){}
@@ -288,7 +329,7 @@ public final class MainActivity extends Activity {
     }
     private boolean locationGranted(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
     private void finishGeo(boolean allow){if(geoCallback!=null){geoCallback.invoke(geoOrigin,allow,false);geoCallback=null;geoOrigin=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());startGps();}}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());startGps();}else if(request==MIC_REQUEST)finishMicrophone(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED);}
 
     @Override public void onActivityResult(int req,int result,Intent data){
         super.onActivityResult(req,result,data);
@@ -355,6 +396,6 @@ public final class MainActivity extends Activity {
     @Override protected void onSaveInstanceState(Bundle state){if(web!=null){Bundle saved=new Bundle();web.saveState(saved);state.putBundle("web",saved);}super.onSaveInstanceState(state);}
     @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);root.requestApplyInsets();if(web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);}
     @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();syncScreenAwake();startGps();}
-    @Override protected void onPause(){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();super.onPause();}
-    @Override protected void onDestroy(){destroyed=true;stopGps();if(voice!=null)voice.close();if(offlineCache!=null)offlineCache.close();handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onPause(){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();if(speech!=null)speech.cancel();super.onPause();}
+    @Override protected void onDestroy(){destroyed=true;stopGps();pendingSpeechId="";if(speech!=null)speech.cancel();if(audioPermission!=null){audioPermission.deny();audioPermission=null;}if(voice!=null)voice.close();if(offlineCache!=null)offlineCache.close();handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
 }

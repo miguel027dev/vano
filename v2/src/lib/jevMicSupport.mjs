@@ -1,6 +1,16 @@
 // Browser microphone and speech service capabilities are independent.
 // Never report a SpeechRecognition service failure as proof that getUserMedia is denied.
-export function microphoneMessage(code) {
+export function microphoneMessage(code,{native=false}={}) {
+ if(native){
+  const messages={
+   'not-allowed':'O acesso ao microfone foi negado. Permita o microfone nas configurações do VANO e tente novamente.',
+   'service-not-allowed':'O serviço de reconhecimento de voz do Android não está disponível. Verifique se um serviço de voz está instalado e ativado.',
+   'audio-capture':'O Android não conseguiu abrir o microfone. Feche outros aplicativos que estejam usando áudio e tente novamente.',
+   'language-not-supported':'O serviço de voz do Android não oferece português neste aparelho. Verifique os idiomas do serviço de voz.',
+   'network':'O serviço de reconhecimento do Android não conseguiu se conectar. Confira a internet e tente novamente.'
+  };
+  if(messages[code])return messages[code];
+ }
  const messages = {
   'not-allowed':'O navegador impediu o reconhecimento por voz. Isso não confirma que o microfone esteja bloqueado.',
   'service-not-allowed':'O serviço de transcrição do navegador foi recusado. O microfone pode continuar funcionando.',

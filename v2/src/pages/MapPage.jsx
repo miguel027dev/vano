@@ -93,6 +93,7 @@ export default function MapPage({active=true}){
   const voiceTrafficReport=useRef({pending:false,lastAt:0,lastCoords:null});
   const latestEtaGuidance=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
+  const deviceVoiceFocusRef=useRef(null),deviceVoiceSequence=useRef(0);
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
   function syncMeasuredDistance(force=false){
@@ -128,7 +129,15 @@ export default function MapPage({active=true}){
   useEffect(()=>{try{window.localStorage.setItem('vano-traffic-layer',trafficEnabled?'on':'off');}catch{/* Private-mode storage unavailable. */}},[trafficEnabled]);
   useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;if(value.measuredTrip?.id){measuredTrip.current=value.measuredTrip;odometer.current={meters:Number(value.measuredTrip.meters)||0,anchor:null,lastSeenAt:null};}setDest(value.destination);setMaviPendingStop(value.maviPendingStop?.originalDestination?.coords?.length===2?value.maviPendingStop:null);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setRouteVehicle(['carro','moto','a-pe'].includes(value.vehicle)?value.vehicle:preferences?.vehicle==='moto'?'moto':'carro');setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
   useEffect(()=>{
-    const status=()=>setVoiceProblem(true);
+    const status=event=>{
+      const value=event?.detail?.status,id=event?.detail?.id;
+      if(id&&deviceVoiceFocusRef.current&&id!==deviceVoiceFocusRef.current.id)return;
+      if(['done','canceled','unavailable','missing-language'].includes(value))releaseDeviceVoiceFocus();
+      if(['unavailable','missing-language'].includes(value)){
+        if(lastVoiceAttempt.current?.key){spoken.current.delete(lastVoiceAttempt.current.key);setSpokenRevision(v=>v+1);}
+        setVoiceProblem(true);
+      }else if(['speaking','done'].includes(value))setVoiceProblem(false);
+    };
     const nativeFailure=event=>{
       const error=String(event?.detail?.error||'');
       // Existing Android WebView emits failed TTS here instead of voice-status.
@@ -938,9 +947,10 @@ export default function MapPage({active=true}){
   function speakManeuver(text,key=null){
     if(simActive)return false; // Simulation must never request spoken directions.
     if(jevMode){
-      // V2 navigation never invokes browser TTS. Cartesia speaks actual
-      // verified turn cues, authorized with the signed route proof.
+      // Prefer the configured voice for verified route cues. Android's device
+      // voice remains available when the online voice or route proof expires.
       if(!route?.proof||language!=='pt-BR'){
+        if(isNativeShell())return speakDeviceManeuver(text,key);
         setVoiceProblem(true);return false;
       }
       if(maneuverAudioRef.current){
@@ -971,23 +981,41 @@ export default function MapPage({active=true}){
           if(!controller.signal.aborted){
             if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
             voiceRetryAfterRef.current=Date.now()+12000;
-            setVoiceProblem(true);
+            if(isNativeShell())speakDeviceManeuver(text,key);
+            else setVoiceProblem(true);
           }
         }finally{releaseAudioFocus();if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;}
       })();
       return true;
     }
+    return speakDeviceManeuver(text,key);
+  }
+  function releaseDeviceVoiceFocus(){
+    const lease=deviceVoiceFocusRef.current;deviceVoiceFocusRef.current=null;
+    if(lease){clearTimeout(lease.timer);lease.release();}
+  }
+  useEffect(()=>()=>releaseDeviceVoiceFocus(),[]);
+  function speakDeviceManeuver(text,key=null){
+    releaseDeviceVoiceFocus();
+    const utteranceId='navigation-'+Date.now()+'-'+(++deviceVoiceSequence.current);
+    if(isNativeShell()){
+      const release=acquireNavigationAudioFocus();
+      const timer=setTimeout(()=>{if(deviceVoiceFocusRef.current?.id===utteranceId){notifyNative({action:'stopSpeech',utteranceId});releaseDeviceVoiceFocus();}},20000);
+      deviceVoiceFocusRef.current={id:utteranceId,release,timer};
+    }
     lastVoiceAttempt.current={text,key};
     const result=speakNavigationVoice(text,language,{
-      native:isNativeShell(),sendNative:notifyNative,
+      native:isNativeShell(),sendNative:notifyNative,utteranceId,
       onStart:()=>setVoiceProblem(false),
       onFailure:()=>{
+        releaseDeviceVoiceFocus();
         if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
         setVoiceProblem(true);
       }
     });
     // A missing browser speech API must NEVER mark a maneuver as spoken.
     if(result.ok&&key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
+    if(!result.ok||result.channel!=='native')releaseDeviceVoiceFocus();
     return result.ok;
   }
   useEffect(()=>{
@@ -1022,6 +1050,7 @@ export default function MapPage({active=true}){
     mappedCrossing?.id,mappedCrossing?.distance,guidance?.distance,recalculating,language,jevMode]);
   useEffect(()=>{
     if(jevMode&&(!navMode||muted))maneuverAudioRef.current?.abort();
+    if(!navMode||muted)releaseDeviceVoiceFocus();
     if(!navMode||muted)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
     return()=>{if(jevMode)maneuverAudioRef.current?.abort();if(navMode)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});};
   },[navMode,muted]);
@@ -1315,7 +1344,7 @@ export default function MapPage({active=true}){
         </div>
         {!simActive&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
       </div>
-      {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Voz de navegação indisponível no aparelho.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
+      {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Não foi possível reproduzir a orientação por voz.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakDeviceManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
       {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
       {!hasLiveGPS&&!simActive&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
       {simActive&&<p className="nav-demo" role="status">Simulação administrativa · sem GPS real. Nenhuma viagem é registrada.</p>}

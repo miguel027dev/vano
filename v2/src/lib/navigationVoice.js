@@ -5,14 +5,14 @@
 const VOICE_LOCALE=Object.freeze({'pt-BR':'pt-BR','pt-PT':'pt-PT','fr-FR':'fr-FR','en-US':'en-US'});
 export function speakNavigationVoice(text,language='pt-BR',{
   native=false,sendNative=()=>false,scope=typeof window!=='undefined'?window:null,
-  onFailure=()=>{},onStart=()=>{}
+  onFailure=()=>{},onStart=()=>{},utteranceId=null
 }={}){
  const phrase=String(text||'').trim();
  if(!phrase)return {ok:false,reason:'empty'};
  const locale=VOICE_LOCALE[language]||'pt-BR';
  if(native){
   try{
-   if(sendNative({action:'speak',text:phrase,lang:locale,language:locale})){
+   if(sendNative({action:'speak',text:phrase,lang:locale,language:locale,...(utteranceId?{utteranceId}:{})})){
     onStart();return {ok:true,channel:'native'};
    }
   }catch{/* Unavailable native host: fall back to Web Speech. */}
