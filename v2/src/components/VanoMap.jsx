@@ -106,6 +106,9 @@ function motionController(map,latest,status){
   let realRouteGeometry=null,realLastRoadAt=0,realStraightMeters=0;
   let realZoom=0,realZoomGoal=0,realLastZoomAt=0;
   let droneZoom=null,droneZoomGoal=null,lastDroneZoomAt=0;
+  // Standard Play scene is independent from the V2 SIM's observation state.
+  let playScene={density:0,obstruction:0,straightAheadMeters:0,bendDegrees:0};
+  let playSceneRoute=null,lastPlaySceneSample=0;
   // Padding affects the projected puck as much as center/zoom: ease it too.
   let chasePaddingTop=null,chasePaddingGoal=null;
   function realCameraDistance(d,route,base,now){
@@ -201,6 +204,57 @@ function motionController(map,latest,status){
     }
     return droneScene;
   }
+  function sampleStandardPlayScene(d,route,now){
+    if(playSceneRoute!==route?.geometry){
+      playSceneRoute=route?.geometry;
+      playScene={density:0,obstruction:0,straightAheadMeters:0,bendDegrees:0};
+      lastPlaySceneSample=0;
+    }
+    // Observe geometry/buildings infrequently; never query GL or scan
+    // full polylines at every animation frame.
+    const period=(window.innerWidth||700)<650?1100:850;
+    if(now-lastPlaySceneSample<period)return playScene;
+    lastPlaySceneSample=now;
+    const point=validPoint(d.motionCoords)?d.motionCoords:d.gpsCoords;
+    if(!validPoint(point))return playScene;
+    const heading=Number.isFinite(d.motionBearing)?d.motionBearing:0;
+    const roadAhead=inspectV2RoadAhead(point,route?.geometry);
+    let bend=0;
+    if(route?.geometry?.coordinates?.length>2){
+      const near=nextRouteBearing(point,route.geometry,35);
+      const far=nextRouteBearing(point,route.geometry,145);
+      if(Number.isFinite(near)&&Number.isFinite(far))
+        bend=shortestAngle(near,far);
+    }
+    let observed={density:0,obstruction:0};
+    if(isLoaded(map)&&typeof map.queryRenderedFeatures==='function'){
+      try{
+        const projected=map.project(point),radius=75;
+        const bounds=[[projected.x-radius,projected.y-radius],
+          [projected.x+radius,projected.y+radius]];
+        observed=observeV2DroneScene(map.queryRenderedFeatures(bounds)||[],point,heading);
+      }catch{/* Style reload / WebGL recovery keeps the previous safe result. */}
+    }
+    playScene={
+      density:playScene.density+(observed.density-playScene.density)*
+        (observed.density>playScene.density?.53:.34),
+      obstruction:playScene.obstruction+(observed.obstruction-playScene.obstruction)*
+        (observed.obstruction>playScene.obstruction?.6:.34),
+      straightAheadMeters:roadAhead.available?roadAhead.straightMeters:0,
+      bendDegrees:playScene.bendDegrees+shortestAngle(playScene.bendDegrees,bend)*.38
+    };
+    if(d.v2Experience){
+      const entrance=planV2RampApproach({
+        enabled:true,vehicle:d.vehicle,maneuver:d.guidance,route
+      }).strength;
+      map._vanoV2UrbanDensity=playScene.density;
+      map._vanoV2UrbanObstruction=playScene.obstruction;
+      map._vanoV2RampStrength=entrance;
+      syncV2BuildingVisibility(map,{enabled:true,density:playScene.density,
+        cinematic:true,obstruction:playScene.obstruction,entrance});
+    }
+    return playScene;
+  }
   const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const preferenceChanged=()=>{reduced=Boolean(preference?.matches);start();};
   preference?.addEventListener?.('change',preferenceChanged);
@@ -214,6 +268,10 @@ function motionController(map,latest,status){
     // V2 SIM drone and normal live GPS navigation keep their existing policy.
     const standardPlay=d.v2Experience&&d.simulationPreview&&!d.droneSimulation&&
       d.navigation&&['carro','moto'].includes(d.vehicle);
+    if(!standardPlay){
+      playScene={density:0,obstruction:0,straightAheadMeters:0,bendDegrees:0};
+      playSceneRoute=null;lastPlaySceneSample=0;
+    }
     let maneuverPlan;
     if(d.vehicle==='moto'&&d.navigation){
       motoPlan=planMotorcycleCamera({navigation:true,route,maneuver:d.guidance,
@@ -239,7 +297,7 @@ function motionController(map,latest,status){
       droneSceneRoute=null;
       urbanMode='v1';urbanModeAt=0;urbanBlend=0;lastUrbanBlendAt=0;
       droneZoom=null;droneZoomGoal=null;lastDroneZoomAt=0;
-      if(d.v2Experience){
+      if(d.v2Experience&&!standardPlay){
         map._vanoV2UrbanDensity=0;
         map._vanoV2UrbanObstruction=0;
         map._vanoV2RampStrength=0;
@@ -247,6 +305,7 @@ function motionController(map,latest,status){
       }
     }
     if(standardPlay&&base){
+      const scene=sampleStandardPlayScene(d,route,now);
       const regular=realCameraDistance(d,route,base,now);
       return planStandardSimulationCamera({
         enabled:true,base:regular,
@@ -254,7 +313,9 @@ function motionController(map,latest,status){
         maneuver:d.guidance,route,vehicle:d.vehicle,
         compactViewport:viewport.compact,reducedMotion:reduced,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
-        viewportClearancePx:viewport.maxBehindPx
+        viewport,
+        urbanDensity:scene.density,obstruction:scene.obstruction,
+        straightAheadMeters:scene.straightAheadMeters,bendDegrees:scene.bendDegrees
       });
     }
     // Keep the existing real-navigation and drone isolation contract intact.
@@ -363,7 +424,7 @@ function motionController(map,latest,status){
     // Only admin Play: do not whip the map around when the marker enters a
     // corner. The physical car starts rotating first; the camera follows.
     const yawDelta=shortestAngle(pose.bearing,softenedBearing);
-    const maxYawStep=(latest.current.droneSimulation?82:72)*dt/1000;
+    const maxYawStep=(latest.current.droneSimulation||latest.current.v2Experience&&latest.current.simulationPreview?82:72)*dt/1000;
     const nextBearing=t.cameraFollowMarker&&!reduced?
       (pose.bearing+clamp(yawDelta,-maxYawStep,maxYawStep)+360)%360:softenedBearing;
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
