@@ -863,13 +863,26 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       // style.load rehydrates route sources/layers and markers for the new style.
     }catch(e){map._vanoStyle='';setError('Não foi possível trocar a camada. Tente novamente.');console.warn('Mapbox style:',e.message);}
   },[layer,appearance,token]);
+  // When either simulator starts/stops, restore building visibility for the
+  // departing mode. Live map must never inherit simulated 3D opacity.
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox'||!isLoaded(map))return;
+    if(!simulationPreview&&!droneSimulation){
+      map._vanoV2UrbanDensity=0;
+      map._vanoV2UrbanObstruction=0;
+      map._vanoV2RampStrength=0;
+    }
     syncV2BuildingVisibility(map,{enabled:v2Experience,density:map._vanoV2UrbanDensity||0,
-      cinematic:Boolean(droneSimulation),obstruction:map._vanoV2UrbanObstruction||0,
+      cinematic:Boolean(droneSimulation||(v2Experience&&simulationPreview)),
+      obstruction:map._vanoV2UrbanObstruction||0,
       entrance:map._vanoV2RampStrength||0});
-  },[v2Experience,droneSimulation,appearance,layer]);
+  },[v2Experience,simulationPreview,droneSimulation,appearance,layer]);
+  // A mode switch while playback is PAUSED still starts the cinematic camera
+  // transition. The existing single motion writer owns all Mapbox properties.
+  useEffect(()=>{
+    if(navigation&&backend.current==='mapbox')motion.current?.start();
+  },[simulationPreview,droneSimulation,navigation]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='leaflet')return;
