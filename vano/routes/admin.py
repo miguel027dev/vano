@@ -1091,3 +1091,12 @@ def admin_risk_zone_delete(zone_id):
 # API
 # -----------------------------
 
+
+
+# VANO Intelligence is an admin-surface extension. Register it here so the
+# V2 engine and the audited app.py source hash remain untouched.
+from vano.services.intelligence import register_intelligence as _register_intelligence
+_register_intelligence(
+    app, get_db=get_db, admin_required=admin_required,
+    validate_csrf=validate_csrf, rate_limit=rate_limit,
+)
