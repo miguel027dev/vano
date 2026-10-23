@@ -1,4 +1,4 @@
-/** VANO V2 route legibility. Paint-only styling: NEVER animate the
+/** VANO selected-route legibility for /mapa and /v2. Paint-only: NEVER animate the
  * camera, replace route geometry, or modify route traffic evidence.
  * Widths are CSS pixels; Mapbox interpolates them on the GPU by zoom.
  */
@@ -9,6 +9,13 @@ export const V2_ROUTE_CASING_STOPS=Object.freeze([
   [14,9],[15,10],[16,12],[17,14],[18,16],[19,17]
 ]);
 export const V2_ROUTE_CASING_COLOR='#192837';
+/** The public map opts into exactly the existing V2 route stroke.
+ * Keep this switch independent of private V2 permissions, traffic providers
+ * and camera/simulation flags. */
+export function shouldHighlightSelectedRoute(data){
+  return Boolean(data?.v2Experience||data?.readableRouteStroke);
+}
+
 const asMapboxWidth=stops=>['interpolate',['linear'],['zoom'],
   ...stops.flatMap(([zoom,width])=>[zoom,width])];
 
