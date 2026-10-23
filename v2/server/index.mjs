@@ -85,6 +85,11 @@ if (fs.existsSync(envFile)) for (const line of fs.readFileSync(envFile, 'utf8').
 const renderWeb = process.env.RENDER === 'true' && process.env.RENDER_SERVICE_TYPE === 'web';
 const production = process.env.NODE_ENV === 'production' || renderWeb;
 const origin = process.env.VANO_PUBLIC_ORIGIN || '';
+const additionalOrigins = [...new Set((process.env.VANO_ADDITIONAL_ORIGINS || '').split(',').map(value => value.trim()).filter(Boolean))];
+for (const value of additionalOrigins) {
+  const url = new URL(value);
+  if (url.protocol !== 'https:' || url.origin !== value || url.username || url.password) throw Error('VANO_ADDITIONAL_ORIGINS exige origens HTTPS exatas, separadas por vírgula.');
+}
 // Email delivery is an optional subsystem: map, OAuth and routing stay available.
  // Password signup still requires a verified sender and a real email provider.
 const mailReady = Boolean(process.env.RESEND_API_KEY?.trim() &&
@@ -450,7 +455,7 @@ function verifyRouteProof(raw, ownId, destination) {
   return p;
 }
 function protectedWrite(req, res) {
-  if (!correctOrigin(req, production ? origin : '')) { err(res,403,'Origem não autorizada.'); return false; }
+  if (!correctOrigin(req, production ? origin : '', production ? additionalOrigins : [])) { err(res,403,'Origem não autorizada.'); return false; }
   if (!guestToken(req) && !userSession(req)) { err(res,403,'Atualize a página para iniciar uma sessão válida.'); return false; }
   if (!safeEqual(String(req.headers['x-vano-csrf'] || ''), csrfFor(req))) { err(res,403,'Sessão de segurança expirada. Atualize a página.'); return false; }
   return true;
@@ -795,7 +800,7 @@ async function route(req, res) {
     const user=uid&&db.users.find(x=>x.id===uid);
     if(!user)return err(res,401,'Retorno de login inválido ou expirado.');
     const raw=createSession(user.id);await persist();
-    return json(res,200,{ok:true,cookieName:'vano_session',sessionToken:raw,maxAge:SESSION_MAX_AGE,next:prefFor(user.id).onboardingComplete?'/mapa':'/personalizar'});
+    return json(res,200,{ok:true,cookieName:'vano_session',sessionToken:raw,maxAge:SESSION_MAX_AGE,next:'/mapa'});
   }
   if (req.method !== 'GET' && !protectedWrite(req,res)) return;
   if(!production && !secured && /^\/api\/(auth\/(login|signup|forgot|reset|resend-verification)|profile)/.test(pathname)){

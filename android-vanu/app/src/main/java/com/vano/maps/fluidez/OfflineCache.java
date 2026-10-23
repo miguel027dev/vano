@@ -1,6 +1,9 @@
 package com.vano.maps.fluidez;
 import android.content.Context;
 import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import org.json.*;
@@ -19,6 +22,7 @@ public final class OfflineCache {
     public interface PreparationListener { void accept(int tiles); }
     private static final Set<String> SHELL_PATHS=new HashSet<>(Arrays.asList("/mapa","/inicio","/perfil","/conta","/rotas","/favoritos","/configuracoes","/rotinas","/atividade","/relatar","/ajuda","/entrar","/cadastro","/personalizar","/termos","/privacidade","/sobre"));
     private static final long LIMIT=256L*1024*1024;
+    private final Context context;
     private final File dir;
     private final String host;
     private final Set<String> pinned=Collections.newSetFromMap(new ConcurrentHashMap<String,Boolean>());
@@ -28,7 +32,7 @@ public final class OfflineCache {
     private final ExecutorService coordinator=Executors.newSingleThreadExecutor();
     private final ExecutorService downloads=Executors.newFixedThreadPool(4);
     private static final Pattern TILE=Pattern.compile("/(\\d+)/(\\d+)/(\\d+)([^/]*\\.(?:pbf|webp|png|jpg[^/?]*))(?:\\?|$)");
-    public OfflineCache(Context context,String host){this.host=host;dir=new File(context.getFilesDir(),"map-resources-v1");dir.mkdirs();loadPins();}
+    public OfflineCache(Context context,String host){this.context=context;this.host=host;dir=new File(context.getFilesDir(),"map-resources-v1");dir.mkdirs();loadPins();}
     static String canonical(String raw){
         URI uri=URI.create(raw);
         if("api.mapbox.com".equals(uri.getHost())){
@@ -46,8 +50,20 @@ public final class OfflineCache {
         if("fonts.googleapis.com".equals(h)||"fonts.gstatic.com".equals(h))return true;
         return "api.mapbox.com".equals(h)&&!p.startsWith("/events")&&(p.startsWith("/v4/")||p.startsWith("/styles/v1/")||p.startsWith("/fonts/v1/"));
     }
+    private boolean isDisconnected(){
+        try{ConnectivityManager cm=(ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);if(cm==null)return false;Network network=cm.getActiveNetwork();NetworkCapabilities caps=network==null?null:cm.getNetworkCapabilities(network);return caps==null||!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);}catch(Exception e){return false;}
+    }
+    private WebResourceResponse savedShell(Uri uri){
+        String path;if(!host.equals(uri.getHost())||!"https".equalsIgnoreCase(uri.getScheme())||(path=uri.getPath())==null||(!path.equals("/")&&!SHELL_PATHS.contains(path)))return null;
+        try{for(String candidate:new String[]{uri.toString(),"https://"+host+"/","https://"+host+"/mapa"}){String id=key(candidate);JSONObject m=metadata(id);if(m!=null&&"text/html".equalsIgnoreCase(m.optString("mime")))return read(id,m);}}catch(Exception ignored){}return null;
+    }
+    public void primeShell(){
+        coordinator.execute(()->{for(String page:new String[]{"/","/mapa"}){WebResourceResponse response=load("https://"+host+page,Collections.emptyMap(),false);if(response!=null)try{response.getData().close();}catch(Exception ignored){}}});
+    }
     public WebResourceResponse intercept(WebResourceRequest request){
-        if(!"GET".equals(request.getMethod())||!eligible(request.getUrl()))return null;
+        if(!"GET".equals(request.getMethod()))return null;
+        if(request.isForMainFrame())return isDisconnected()?savedShell(request.getUrl()):null;
+        if(!eligible(request.getUrl()))return null;
         return load(request.getUrl().toString(),request.getRequestHeaders(),false);
     }
     private WebResourceResponse load(String url,Map<String,String> requestHeaders,boolean preparation){
