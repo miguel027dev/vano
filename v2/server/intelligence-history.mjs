@@ -70,8 +70,9 @@ export function historicalIntelligence(data={},runtime={}, {period='all',now=Dat
   ...raw.history.map(x=>goodDate(x?.createdAt)),
   ...raw.reports.map(x=>goodDate(x?.createdAt))
  ].filter(v=>v!==null&&v<=now);
- const earliest=allDates.length?new Date(Math.min(...allDates)).toISOString().slice(0,10):null;
- const newest=allDates.length?new Date(Math.max(...allDates)).toISOString().slice(0,10):null;
+ const bounds=allDates.reduce((acc,t)=>({min:Math.min(acc.min,t),max:Math.max(acc.max,t)}),{min:Infinity,max:-Infinity});
+ const earliest=allDates.length?new Date(bounds.min).toISOString().slice(0,10):null;
+ const newest=allDates.length?new Date(bounds.max).toISOString().slice(0,10):null;
  const routeDuration=routes.map(x=>x.duration).filter(x=>typeof x==='number'&&Number.isFinite(x)&&x>0&&x<=1440);
  const routeDistance=routes.map(x=>x.distance).filter(x=>typeof x==='number'&&Number.isFinite(x)&&x>0&&x<3000);
  const activeUsers=raw.users.map(u=>userActivity(u,now));
