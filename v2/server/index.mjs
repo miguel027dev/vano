@@ -58,6 +58,7 @@ import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './globa
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
 import {isAdminAccount,adminMetrics,adminUsers,recordOperationalEvent} from './admin.mjs';
+import {INTELLIGENCE_TOOLS,recordRouteDecision,recordNavigationOutcome,intelligenceSnapshot,askIntelligence} from './intelligence.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
@@ -139,6 +140,16 @@ if(process.env.VANO_REQUIRE_POSTGRES==='1' && !process.env.DATABASE_URL)throw Er
 const store = process.env.DATABASE_URL ? await openPostgresStore(process.env.DATABASE_URL) : openStore(file);
 console.info('VANO V2 storage:',store.kind||'json-ephemeral');
 const db = store.data;
+let intelligenceSaveTimer=null;
+function scheduleIntelligenceSave(){
+ if(intelligenceSaveTimer!==null)return;
+ intelligenceSaveTimer=setTimeout(()=>{
+  intelligenceSaveTimer=null;
+  void persist().catch(()=>console.warn('VANO Intelligence: métrica não persistida.'));
+ },3500);
+ intelligenceSaveTimer.unref?.();
+}
+
 const persist = async opts => {
   const time=Date.now();
   db.sessions=db.sessions.filter(x=>x.expires>time);
@@ -684,6 +695,44 @@ async function route(req, res) {
       return json(res,200,{...evidence,infrastructure,provider:result.source,routes:result.routes.map(r=>({id:r.id,duration:r.duration,distance:r.distance})),requestedAt:stamp()});
     }catch{return err(res,503,'Não foi possível comparar este trecho agora. Tente um trajeto curto dentro de São Paulo.');}
     finally{safeComparisonBusy=false;}
+  }
+  // VANO Intelligence V2: admin-authenticated, aggregate data only.
+  if(pathname==='/api/admin/intelligence/overview' && req.method==='GET'){
+    const s=userSession(req);
+    if(!s)return err(res,401,'Autenticação obrigatória.');
+    if(!isAdminAccount(s.user))return err(res,403,'Área exclusiva da administração.');
+    if(!limits(req,res,'intelligence-view',18,60000))return;
+    const snapshot=intelligenceSnapshot(db,runtimeMetrics,{days:u.searchParams.get('days')});
+    return json(res,200,{ok:true,...snapshot,availableTools:INTELLIGENCE_TOOLS,aiConfigured:Boolean((process.env.VANO_INTELLIGENCE_API_KEY||process.env.NVIDIA_API_KEY||'').trim())});
+  }
+  if(pathname==='/api/admin/intelligence/ask' && req.method==='POST'){
+    const s=userSession(req);
+    if(!s)return err(res,401,'Autenticação obrigatória.');
+    if(!isAdminAccount(s.user))return err(res,403,'Área exclusiva da administração.');
+    if(!protectedWrite(req,res)||!limits(req,res,'intelligence-ask',4,60000)||
+      !limitAccount(res,'intelligence-ask',String(s.user.id),8,3600000))return;
+    const body=await getBody(req);
+    if(!body||typeof body!=='object'||Array.isArray(body))return err(res,400,'Corpo inválido.');
+    if(body.tools!==undefined&&(!Array.isArray(body.tools)||body.tools.some(x=>!Object.hasOwn(INTELLIGENCE_TOOLS,x))||body.tools.length>7))
+      return err(res,400,'Fontes inválidas.');
+    const snapshot=intelligenceSnapshot(db,runtimeMetrics,{days:body.days});
+    try{
+      return json(res,200,{ok:true,...await askIntelligence(body.question,snapshot,{tools:body.tools})});
+    }catch(e){
+      console.warn('VANO Intelligence NVIDIA:',e?.status||'error');
+      return err(res,e?.status===400?400:e?.status===503?503:502,
+        e?.status===503?'NVIDIA não configurada no Render.':e?.status===400?'Pergunta inválida.':'Análise temporariamente indisponível. Consulte os indicadores do painel.');
+    }
+  }
+  if(pathname==='/api/intelligence/navigation-outcome' && req.method==='POST'){
+    if(process.env.VANO_INTELLIGENCE_NAV_EVENTS!=='1')return err(res,404,'Recurso não ativado.');
+    const user=requireAccount(req);
+    if(!user)return;
+    if(!protectedWrite(req,res)||!limits(req,res,'intelligence-outcome',15,60000))return;
+    const event=await getBody(req);
+    if(!event||typeof event!=='object'||!recordNavigationOutcome(db,event))return err(res,400,'Evento inválido ou consentimento ausente.');
+    try{await persist();}catch{return err(res,503,'Não foi possível registrar o evento.');}
+    return json(res,200,{ok:true});
   }
   if ((pathname === '/api/admin' || pathname === '/api/admin/users' || pathname === '/api/admin/safe-routing/storage') && req.method === 'GET') {
     const session=userSession(req);
@@ -1420,7 +1469,7 @@ async function route(req, res) {
     const routeStarted=performance.now();
     let result;
     try {result=await directions(body.origin,body.destination,body.vehicle||'carro',telemetry,language,routeOptions);}
-    catch(e){runtimeMetrics.routeErrors+=1;throw e;}
+    catch(e){runtimeMetrics.routeErrors+=1;try{recordRouteDecision(db,null,{vehicle:body.vehicle||'carro',reroute:routeOptions.reroute,elapsedMs:performance.now()-routeStarted,failed:true});scheduleIntelligenceSave();}catch{}throw e;}
     finally {
       const elapsed=Math.max(0,performance.now()-routeStarted);
       runtimeMetrics.routeLatencyMs+=elapsed;
@@ -1454,6 +1503,12 @@ async function route(req, res) {
      }
     }
     if (result.source!=='demonstracao') for(const r of result.routes||[]) r.proof=signedRouteProof(r,body.destination,id);
+    // Instrument decisions after route generation; no identity, location or geometry saved.
+    // Never block navigation for analytics.
+    try{
+      recordRouteDecision(db,result,{vehicle:body.vehicle||'carro',reroute:routeOptions.reroute,elapsedMs:performance.now()-routeStarted});
+      scheduleIntelligenceSave();
+    }catch{console.warn('VANO Intelligence: route observation failed.');}
     return json(res,200,result);
   }
   if (pathname === '/api/auth/signup' && req.method === 'POST') {
