@@ -39,6 +39,7 @@ import { directionsFromV1 } from './v1-bridge.mjs';
 import {createRouteFailover} from './route-failover.mjs';
 import {mayUseNavigationVoiceProof,renewedNavigationProofPayload} from './navigation-voice-proof.mjs';
 import { calculateMapboxV1Candidates } from './mapbox-v1-fallback.mjs';
+import { chooseV2FastCorridor } from './v2-fast-route-selector.mjs';
 import { calculateWalkingRoute } from './walking-route.mjs';
 import {findWalkingCrossings} from './walking-crossings.mjs';
 import {transitRegions,transitCapabilities,planTransitTrip,TransitError} from './transit-engine.mjs';
@@ -416,6 +417,17 @@ async function directions(originPoint, destination, vehicle = 'carro', telemetry
     catch{throw new HttpError(503,'Não foi possível calcular uma rota a pé. Tente novamente.');}
   }
   const access = process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+  // Initial, admin-only V2 car routes run corridor exploration even while the
+  // Python engine is healthy. Python remains the source for the Safe route.
+  if (access&&vehicle==='carro'&&options.v2FastCorridor===true&&
+      options.bottleneckRouting===true&&process.env.VANO_V1_API_URL?.trim()){
+    return chooseV2FastCorridor({
+      original:()=>directionsFromV1(process.env.VANO_V1_API_URL.trim(),
+        originPoint,destination,vehicle,telemetry,options),
+      mapbox:()=>calculateMapboxV1Candidates(originPoint,destination,vehicle,telemetry,
+        LANGUAGES.has(language)?language:'pt-BR',options,access)
+    });
+  }
   if (process.env.VANO_V1_API_URL?.trim()) {
     return resilientOriginalRouting({
       // 2 independent requests are issued by the V1 bridge. If its service
@@ -1392,9 +1404,11 @@ async function route(req, res) {
       adaptive:provided.reroute===true?false:provided.adaptive!==false,includeAdvanced:provided.reroute===true?false:provided.includeAdvanced===true,
       safeComparison:provided.reroute!==true, // don't enumerate internal candidates while recovering from a deviation
       skipCandidateProbes:provided.reroute===true,
-      // V2 car fast-route candidate exploration. Disabled for live reroutes,
-      // walking, motorcycles and environments explicitly rolling back the feature.
-      bottleneckRouting:provided.reroute!==true&&(body.vehicle||'carro')==='carro'&&
+      // V2 admin-only car traffic corridor. V1, reroutes and motorcycles stay
+      // on their existing engines; the environment flag remains a kill switch.
+      v2FastCorridor:provided.v2FastCorridor===true&&currentUser(req)?.isAdmin===true,
+      bottleneckRouting:provided.v2FastCorridor===true&&currentUser(req)?.isAdmin===true&&
+        provided.reroute!==true&&(body.vehicle||'carro')==='carro'&&
         process.env.VANO_V2_BOTTLENECK_ROUTING!=='off',
       variantBudget:Number.isInteger(provided.variantBudget)?Math.max(2,Math.min(8,provided.variantBudget)):4,
       localHour:Number.isInteger(provided.localHour)&&provided.localHour>=0&&provided.localHour<=23?provided.localHour:undefined,
