@@ -146,6 +146,41 @@ def _feedback(db, days):
     """, (_cutoff(days),))
 
 
+def _saved_route_history(db, days):
+    """Existing route plans (not confirmed completed journeys)."""
+    return _fetchall(db, """
+        SELECT mode,COUNT(*) AS saved_plans,
+          COALESCE(ROUND(AVG(duration_s)::numeric,1),0) AS avg_planned_duration_s,
+          COALESCE(ROUND(AVG(distance_m)::numeric,1),0) AS avg_planned_distance_m
+        FROM route_history WHERE created_at >= ?
+        GROUP BY mode ORDER BY saved_plans DESC LIMIT 15
+    """, (_cutoff(days),))
+
+
+def _client_journey_signals(db, days):
+    """Old browser telemetry, restricted to known route event patterns."""
+    return _fetchone(db, """
+        SELECT COUNT(*) AS route_events,
+          COUNT(*) FILTER (WHERE metadata LIKE '%navigation-start%') AS navigation_starts,
+          COUNT(*) FILTER (WHERE metadata LIKE '%navigation-complete:%') AS navigation_completions,
+          COUNT(*) FILTER (WHERE metadata LIKE '%reroute-%') AS reroutes
+        FROM request_activity_logs WHERE created_at >= ?
+          AND event_type='route' AND path NOT LIKE '/admin%'
+    """, (_cutoff(days),))
+
+
+def _observed_eta(db, days):
+    """Aggregate only completed opted-in trips with both duration values."""
+    return _fetchone(db, """
+        SELECT COUNT(*) AS completed_samples,
+          COALESCE(ROUND(AVG(ABS(duration_s-predicted_duration_s))::numeric,1),0) AS mean_abs_error_s,
+          COALESCE(ROUND(AVG(duration_s-predicted_duration_s)::numeric,1),0) AS mean_signed_error_s
+        FROM intelligence_navigation_events
+        WHERE created_at >= ? AND event_type='navigation_completed'
+          AND duration_s>0 AND predicted_duration_s>0
+    """, (_cutoff(days),))
+
+
 def _navigation(db, days):
     return _fetchall(db, """
         SELECT event_type,COUNT(*) AS occurrences
@@ -164,6 +199,9 @@ READ_TOOLS = {
     "incident_categories": _incidents,
     "route_feedback": _feedback,
     "navigation_events": _navigation,
+    "saved_route_history": _saved_route_history,
+    "client_journey_signals": _client_journey_signals,
+    "observed_eta": _observed_eta,
 }
 TOOL_DESCRIPTIONS = {
     "overview": "Volume de cálculos, ETAs previstos e falhas HTTP da API de rotas.",
@@ -174,6 +212,9 @@ TOOL_DESCRIPTIONS = {
     "incident_categories": "Alertas de usuários agregados por categoria e situação.",
     "route_feedback": "Avaliações agregadas das rotas, por perfil e modo.",
     "navigation_events": "Contagens de eventos explícitos de navegação, sem coordenadas.",
+    "saved_route_history": "Planos históricos salvos agregados por modo, não viagens concluídas.",
+    "client_journey_signals": "Inícios, conclusões e recálculos da telemetria legada agregada.",
+    "observed_eta": "Erro de ETA das viagens concluídas com telemetria opt-in.",
 }
 
 
@@ -298,6 +339,8 @@ def register_intelligence(app, *, get_db, admin_required, validate_csrf, rate_li
                 "incidents": _incidents(db, days),
                 "feedback": _feedback(db, days),
                 "navigation": _navigation(db, days),
+                "eta_observed": _observed_eta(db, days),
+                "journey": _client_journey_signals(db, days),
                 "available_tools": TOOL_DESCRIPTIONS,
             })
         except Exception:
