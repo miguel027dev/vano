@@ -2,6 +2,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {RouteTrafficBubble} from '../components/RouteTraffic.jsx';
 import {upcomingTrafficEvents,trafficColorAt,trafficPointAt} from './routeTraffic.mjs';
+import {v2RouteStrokePixels} from './v2RouteStroke.mjs';
 
 export function clearRouteTrafficMarkers(map){
  for(const item of map._vanoRouteTrafficMarkers?.values()||[]){item.root.unmount();item.marker.remove();}
@@ -51,11 +52,21 @@ export function syncRouteTrafficMarkers(map,backend,engine,data){
 /** Leaflet fallback draws the same bounded stops and actual intervening vertices. */
 export function syncLeafletRouteTraffic(map,L,data){
  const traffic=data.v2Experience?data.routeTraffic:null;
+ if(!map._vanoLeafletTrafficZoomHook){
+  map._vanoLeafletTrafficZoomHook=()=>{
+   const group=map._vanoLeafletTrafficLayer;
+   if(!group||!map._vanoLeafletTrafficEnabled)return;
+   const width=v2RouteStrokePixels(map.getZoom(),true).core;
+   group.eachLayer(layer=>layer.setStyle?.({weight:width}));
+  };
+  map.on('zoomend',map._vanoLeafletTrafficZoomHook);
+ }
  if(map._vanoLeafletTraffic===traffic?.stops&&map._vanoLeafletTrafficEnabled===data.v2Experience)return;
  map._vanoLeafletTrafficLayer?.remove();map._vanoLeafletTrafficLayer=null;
  map._vanoLeafletTraffic=traffic?.stops;map._vanoLeafletTrafficEnabled=data.v2Experience;
  if(!traffic?.index)return;
  const {index,stops}=traffic,group=L.layerGroup().addTo(map);
+ const trafficStrokeWidth=v2RouteStrokePixels(map.getZoom(),true).core;
  const fractionAt=i=>index.units[i]/index.totalUnits;
  for(let i=1;i<stops.length;i++){
   const [start]=stops[i-1],[end]=stops[i];
@@ -66,7 +77,7 @@ export function syncLeafletRouteTraffic(map,L,data){
   for(let k=0;k<pieces;k++){
    const a=start+(end-start)*k/pieces,b=start+(end-start)*(k+1)/pieces;
    const points=[trafficPointAt(index,meterAt(a)),...index.points.filter((_,j)=>fractionAt(j)>a&&fractionAt(j)<b),trafficPointAt(index,meterAt(b))];
-   L.polyline(points.map(p=>[p[1],p[0]]),{color:trafficColorAt(stops,(a+b)/2),weight:8,opacity:1,interactive:false,lineCap:'round'}).addTo(group);
+   L.polyline(points.map(p=>[p[1],p[0]]),{color:trafficColorAt(stops,(a+b)/2),weight:trafficStrokeWidth,opacity:1,interactive:false,lineCap:'round'}).addTo(group);
   }
  }
  map._vanoLeafletTrafficLayer=group;
