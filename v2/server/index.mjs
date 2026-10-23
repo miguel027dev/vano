@@ -59,6 +59,8 @@ import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
 import {isAdminAccount,adminMetrics,adminUsers,recordOperationalEvent} from './admin.mjs';
 import {INTELLIGENCE_TOOLS,recordRouteDecision,recordNavigationOutcome,intelligenceSnapshot,askIntelligence} from './intelligence.mjs';
+import {historicalIntelligence,HISTORICAL_SOURCES} from './intelligence-history.mjs';
+import {askIntelligenceConversational} from './intelligence-conversation.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
 import {PUBLIC_PATHS} from '../seo/catalog.mjs';
@@ -703,21 +705,23 @@ async function route(req, res) {
     if(!isAdminAccount(s.user))return err(res,403,'Área exclusiva da administração.');
     if(!limits(req,res,'intelligence-view',18,60000))return;
     const snapshot=intelligenceSnapshot(db,runtimeMetrics,{days:u.searchParams.get('days')});
-    return json(res,200,{ok:true,...snapshot,availableTools:INTELLIGENCE_TOOLS,aiConfigured:Boolean((process.env.VANO_INTELLIGENCE_API_KEY||process.env.NVIDIA_API_KEY||'').trim())});
+    return json(res,200,{ok:true,...snapshot,availableTools:{...INTELLIGENCE_TOOLS,...HISTORICAL_SOURCES},historical:historicalIntelligence(db,runtimeMetrics,{period:'all'}),aiConfigured:Boolean((process.env.VANO_INTELLIGENCE_API_KEY||process.env.NVIDIA_API_KEY||'').trim())});
   }
   if(pathname==='/api/admin/intelligence/ask' && req.method==='POST'){
     const s=userSession(req);
     if(!s)return err(res,401,'Autenticação obrigatória.');
     if(!isAdminAccount(s.user))return err(res,403,'Área exclusiva da administração.');
     if(!protectedWrite(req,res)||!limits(req,res,'intelligence-ask',4,60000)||
-      !limitAccount(res,'intelligence-ask',String(s.user.id),8,3600000))return;
+      !limitAccount(res,'intelligence-ask',String(s.user.id),30,3600000))return;
     const body=await getBody(req);
     if(!body||typeof body!=='object'||Array.isArray(body))return err(res,400,'Corpo inválido.');
     if(body.tools!==undefined&&(!Array.isArray(body.tools)||body.tools.some(x=>!Object.hasOwn(INTELLIGENCE_TOOLS,x))||body.tools.length>7))
       return err(res,400,'Fontes inválidas.');
     const snapshot=intelligenceSnapshot(db,runtimeMetrics,{days:body.days});
     try{
-      return json(res,200,{ok:true,...await askIntelligence(body.question,snapshot,{tools:body.tools})});
+      return json(res,200,{ok:true,...await askIntelligenceConversational(body.question,db,runtimeMetrics,{
+        days:body.days,historyPeriod:body.historyPeriod||'all',history:body.history
+      })});
     }catch(e){
       console.warn('VANO Intelligence NVIDIA:',e?.status||'error');
       return err(res,e?.status===400?400:e?.status===503?503:502,
