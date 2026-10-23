@@ -15,7 +15,7 @@ import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2Bui
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
-import {v2RouteStrokePaint,v2RouteStrokePixels,V2_ROUTE_CASING_COLOR} from '../lib/v2RouteStroke.mjs';
+import {v2RouteStrokePaint,v2RouteStrokePixels,V2_ROUTE_CASING_COLOR,shouldHighlightSelectedRoute} from '../lib/v2RouteStroke.mjs';
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE,MAPBOX_STYLES} from '../lib/mapLayers';
 import {vectorStartupDecision,MAPBOX_VECTOR_PROBE_MS,WEBGL_CONTEXT_RESTORE_MS} from '../lib/mapRecovery.mjs';
@@ -462,7 +462,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -486,7 +486,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   }
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,simulationPreview,droneSimulation,v2Experience,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false;const initial=coord(latest.current.userCoords);
@@ -1073,7 +1073,7 @@ function paintLeaflet(map,data){
   if(!map._vanoLayer)return;
   const ordered=[...(data.routes||[]).filter(x=>x.id!==data.selectedRoute),...(data.routes||[]).filter(x=>x.id===data.selectedRoute)];
   const geometries=ordered.map(r=>r.geometry);
-  const strokeV2=Boolean(data.v2Experience);
+  const strokeV2=shouldHighlightSelectedRoute(data);
   if(map._vanoLeafletSelection!==data.selectedRoute||
       map._vanoLeafletStrokeV2!==strokeV2||
       !sameRouteShapeReferences(map._vanoLeafletGeometries,geometries)){
@@ -1171,12 +1171,13 @@ function paintMapbox(map,data,selection){
   upsert('vano-mavi-route-preview',geo(maviCandidate?[maviCandidate]:[]));
   if(!map.getLayer('vano-v2-line')){map._vanoTrafficGradient=null;map._vanoTrafficV2=null;}
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
-  const strokeV2=Boolean(data.v2Experience);
+  const strokeV2=shouldHighlightSelectedRoute(data);
   const stroke=v2RouteStrokePaint(strokeV2);
   if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:stroke.halo});
   if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900',...stroke.line,'line-opacity':1,'line-opacity-transition':{duration:250}}});
-  // V1 and V2 share the renderer, not the stroke policy. Update on a genuine
-  // mode change only; don't restart the existing route-flow animation every fix.
+  // /mapa and /v2 share the approved thicker stroke while leaving camera,
+  // GPS and privileged V2 behaviors separate. Update only on a true mode
+  // change, never per frame, so route-flow animations stay untouched.
   if(map._vanoRouteStrokeV2!==strokeV2){
     map.setPaintProperty('vano-v2-halo','line-color',stroke.halo['line-color']);
     map.setPaintProperty('vano-v2-halo','line-width',stroke.halo['line-width']);
