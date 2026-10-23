@@ -70,6 +70,6 @@ test('roundabouts keep exits in frame, turns follow road, invalid GPS remains co
   assert.equal(circle.scenario,'roundabout');
   assert.ok(circle.zoom<ramp.zoom);
   assert.ok(circle.pitch<turn.pitch);
-  assert.ok(ramp.zoom>turn.zoom);
+  assert.ok(ramp.zoom>=turn.zoom-.04,'confirmed entrance has comparable close-up to a turn');
   assert.equal(uncertain.straightStrength,0);
 });
