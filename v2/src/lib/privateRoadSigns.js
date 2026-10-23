@@ -63,7 +63,7 @@ export function syncPrivateRoadSignMarkers(map,mapboxgl,data){
  const route=(data.routes||[]).find(x=>x?.id===data.selectedRoute)||data.routes?.[0];
  const signals=typeof map._vanoTrafficSignals==='function'?map._vanoTrafficSignals():[];
  const candidates=privateRoadSignCandidates(route,data.guidance,signals,point=>map.project(point));
- const signature=JSON.stringify([data.appearance,candidates.map(x=>[x.stepIndex,x.street,x.coords,x.signalNearby,x.priority])]);
+ const signature=JSON.stringify([data.appearance,Boolean(data.v2Experience),candidates.map(x=>[x.stepIndex,x.street,x.coords,x.signalNearby,x.priority])]);
  if(cache.signature===signature)return;
  clear();
  cache.signature=signature;
@@ -76,7 +76,7 @@ export function syncPrivateRoadSignMarkers(map,mapboxgl,data){
   label.className='vano-private-road-sign-name';
   label.textContent=item.street; // Never inject provider names as HTML.
   element.appendChild(label);
-  if(item.signalNearby){
+  if(item.signalNearby&&!data.v2Experience){ // V2 intentionally omits floating semaphore chips.
    const signal=document.createElement('small');
    signal.className='vano-private-road-sign-signal';
    signal.textContent='● Semáforo mapeado'; // NOT a claim about phase/direction.
