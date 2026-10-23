@@ -107,6 +107,14 @@ _vano_install(globals(), "vano.routes.admin")
 _vano_install(globals(), "vano.routes.api")
 _vano_install(globals(), "vano.routes.routing")
 
+# Read-only intelligence: independent of route selection and optional cloud AI.
+from vano.services.intelligence import register_intelligence as _register_intelligence
+_register_intelligence(
+    app, get_db=get_db, admin_required=admin_required,
+    validate_csrf=validate_csrf, rate_limit=rate_limit,
+)
+
+
 # Optional offline-first voice companion; cloud providers are disabled by default.
 from vano.services.voice_assistant import register_voice_assistant as _register_voice_assistant
 _register_voice_assistant(app, rate_limit=rate_limit, validate_csrf=validate_csrf)
