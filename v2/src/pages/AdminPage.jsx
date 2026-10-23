@@ -87,7 +87,7 @@ export default function AdminPage(){
    <div><span className="v3-admin-overline"><ShieldCheck size={16}/> ADMINISTRAÇÃO · VANO MAPS</span>
     <h1>Painel de controle<span className="v44-head-dot">.</span></h1>
     <p>Contas, operação e atividade da plataforma — dados essenciais, sem localização individual.</p></div>
-   <div className="v44-admin-header-actions"><Link to="/v2" className="v44-admin-back"><Route size={17}/> Entrar no mapa de administrador</Link><Link to="/perfil" className="v44-admin-back"><ArrowLeft size={17}/> Perfil</Link>
+   <div className="v44-admin-header-actions"><Link to="/admin/intelligence" className="v44-admin-back"><Activity size={17}/> VANO Intelligence</Link><Link to="/v2" className="v44-admin-back"><Route size={17}/> Entrar no mapa de administrador</Link><Link to="/perfil" className="v44-admin-back"><ArrowLeft size={17}/> Perfil</Link>
     <button onClick={()=>refresh(0)} type="button" disabled={busy}><RefreshCcw size={17} className={busy?'v44-refreshing':''}/>{busy?'Atualizando…':'Atualizar'}</button></div>
   </header>
   {failure&&<p className="v3-admin-error" role="alert">Não foi possível carregar o console: {failure}</p>}
