@@ -61,6 +61,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    stopRecognition();stopRecording();
    clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
+   if(speechRef.current&&window.VanoNativeSpeechSynthesis)window.VanoNativeSpeechSynthesis.cancel();
    speechRef.current=null;
    if(mountedRef.current)setOfferReady(false);
    // Do not cancel global speechSynthesis: it also belongs to navigation maneuvers.
@@ -82,12 +83,13 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
  }
  function speak(message,onComplete,voiceTicket=null){
    const turn=++voiceTurnRef.current;
-   const synth=window.speechSynthesis,Utterance=window.SpeechSynthesisUtterance;
+   const synth=window.VanoNativeSpeechSynthesis||window.speechSynthesis,Utterance=window.VanoNativeUtterance||window.SpeechSynthesisUtterance;
    busyRef.current=true;
    let finished=false,attempts=0;
    const finish=()=>{
      if(finished||voiceTurnRef.current!==turn)return;
      finished=true;
+     if(window.VanoNativeSpeechSynthesis?.current?.utterance===speechRef.current)window.VanoNativeSpeechSynthesis.cancel();
      clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
      speechRef.current=null;
      elevenAbortRef.current=null;
@@ -237,6 +239,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    recognition.lang='pt-BR';recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=1;
    if(mode==='local'&&'processLocally' in recognition)recognition.processLocally=true;
    recognitionRef.current=recognition;recognitionError.current='';recognitionGotSpeech.current=false;
+   recognition.onstart=()=>{if(enabledRef.current&&recognitionRef.current===recognition)setStatus('listening');};
    recognition.onresult=event=>{
      if(!enabledRef.current||recognitionRef.current!==recognition)return;
      const phrase=Array.from(event.results||[]).filter(row=>row?.isFinal!==false).map(row=>row?.[0]?.transcript||'').join(' ').trim();
@@ -255,7 +258,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      }
      recognitionError.current=code;
      setDiagnostic('Reconhecimento '+(mode==='local'?'local':'do navegador')+': '+code);
-     setReply(microphoneMessage(code));
+     setReply(microphoneMessage(code,{native:!!window.VanoNativeSpeechSynthesis}));
      setStatus('typed');
    };
    recognition.onend=()=>{
@@ -275,7 +278,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    try{
      // Invoked synchronously from button presses, preserving user gesture.
      recognition.start();
-     recognitionActive.current=true;setStatus('listening');setDiagnostic('Reconhecimento '+(mode==='local'?'local':'do navegador')+' iniciado.');
+     recognitionActive.current=true;setStatus(window.VanoNativeSpeechSynthesis?'ready':'listening');setDiagnostic('Reconhecimento '+(mode==='local'?'local':'do navegador')+' iniciado.');
      return true;
    }catch(error){
      recognitionRef.current=null;
@@ -394,7 +397,7 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
    // Old async playback must not re-arm the mic after a navigation cue.
    voiceTurnRef.current++;
    elevenAbortRef.current?.abort();elevenAbortRef.current=null;
-   if(speechRef.current){try{window.speechSynthesis?.cancel?.()}catch{}}
+   if(speechRef.current){try{(window.VanoNativeSpeechSynthesis||window.speechSynthesis)?.cancel?.()}catch{}}
    speechRef.current=null;clearTimeout(speechTimerRef.current);speechTimerRef.current=null;
    // A maneuver preempts assistant audio without disabling hands-free listening.
    busyRef.current=false;setStatus('ready');scheduleNextListen(1200);
