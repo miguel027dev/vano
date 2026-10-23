@@ -42,7 +42,7 @@ test('fractional zoom interpolates continuously and clamps outside bounds',()=>{
 
 test('route source, Mapbox casing, orange core and traffic gradient retain original contracts',()=>{
  const src=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
- assert.match(src,/const strokeV2=Boolean\(data\.v2Experience\)/);
+ assert.match(src,/const strokeV2=shouldHighlightSelectedRoute\(data\)/);
  assert.match(src,/const stroke=v2RouteStrokePaint\(strokeV2\)/);
  assert.match(src,/source:'vano-v2-selected'.*paint:stroke\.halo/);
  assert.match(src,/source:'vano-v2-selected'.*paint:\{'line-color':'#ff7900',\.\.\.stroke\.line/);
