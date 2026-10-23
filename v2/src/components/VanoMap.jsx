@@ -15,6 +15,7 @@ import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2Bui
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
+import {v2RouteStrokePaint,v2RouteStrokePixels,V2_ROUTE_CASING_COLOR} from '../lib/v2RouteStroke.mjs';
 import {notifyNative} from '../lib/nativeShell';
 import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,VANO_ATLAS_STYLE,MAPBOX_STYLES} from '../lib/mapLayers';
 import {vectorStartupDecision,MAPBOX_VECTOR_PROBE_MS,WEBGL_CONTEXT_RESTORE_MS} from '../lib/mapRecovery.mjs';
@@ -1072,10 +1073,45 @@ function paintLeaflet(map,data){
   if(!map._vanoLayer)return;
   const ordered=[...(data.routes||[]).filter(x=>x.id!==data.selectedRoute),...(data.routes||[]).filter(x=>x.id===data.selectedRoute)];
   const geometries=ordered.map(r=>r.geometry);
-  if(map._vanoLeafletSelection!==data.selectedRoute||!sameRouteShapeReferences(map._vanoLeafletGeometries,geometries)){
+  const strokeV2=Boolean(data.v2Experience);
+  if(map._vanoLeafletSelection!==data.selectedRoute||
+      map._vanoLeafletStrokeV2!==strokeV2||
+      !sameRouteShapeReferences(map._vanoLeafletGeometries,geometries)){
     map._vanoLayer.clearLayers();
-    ordered.forEach(r=>{const points=r.geometry?.coordinates?.filter(validPoint).map(ll);if(points?.length>1)L.polyline(points,{color:r.id===data.selectedRoute?'#ff7900':'#8a9ba9',weight:r.id===data.selectedRoute?8:5,opacity:r.id===data.selectedRoute?1:.65}).addTo(map._vanoLayer);});
-    map._vanoLeafletSelection=data.selectedRoute;map._vanoLeafletGeometries=geometries;
+    map._vanoV2SelectedLine=null;map._vanoV2SelectedHalo=null;
+    const sizes=v2RouteStrokePixels(map.getZoom(),strokeV2);
+    ordered.forEach(r=>{
+      const points=r.geometry?.coordinates?.filter(validPoint).map(ll);
+      if(!points||points.length<2)return;
+      if(r.id===data.selectedRoute&&strokeV2){
+        // Border is BELOW the brand stroke, never beside a parallel road.
+        map._vanoV2SelectedHalo=L.polyline(points,{
+          color:V2_ROUTE_CASING_COLOR,weight:sizes.halo,opacity:.91,
+          lineJoin:'round',lineCap:'round',interactive:false
+        }).addTo(map._vanoLayer);
+        map._vanoV2SelectedLine=L.polyline(points,{
+          color:'#ff7900',weight:sizes.core,opacity:1,
+          lineJoin:'round',lineCap:'round',interactive:false
+        }).addTo(map._vanoLayer);
+      }else L.polyline(points,{
+        color:r.id===data.selectedRoute?'#ff7900':'#8a9ba9',
+        weight:r.id===data.selectedRoute?8:5,
+        opacity:r.id===data.selectedRoute?1:.65
+      }).addTo(map._vanoLayer);
+    });
+    map._vanoLeafletSelection=data.selectedRoute;
+    map._vanoLeafletStrokeV2=strokeV2;
+    map._vanoLeafletGeometries=geometries;
+  }
+  if(!map._vanoV2StrokeZoomHook){
+    // Keep the fallback as responsive as Mapbox; never modify the camera.
+    map._vanoV2StrokeZoomHook=()=>{
+      if(!map._vanoLeafletStrokeV2)return;
+      const sizes=v2RouteStrokePixels(map.getZoom(),true);
+      map._vanoV2SelectedHalo?.setStyle({weight:sizes.halo});
+      map._vanoV2SelectedLine?.setStyle({weight:sizes.core});
+    };
+    map.on('zoomend',map._vanoV2StrokeZoomHook);
   }
   // Keep the SVG flow overlay across GPS updates so its motion never restarts.
   const flowRoute=(data.routes||[]).find(r=>r.id===data.selectedRoute);
@@ -1135,8 +1171,19 @@ function paintMapbox(map,data,selection){
   upsert('vano-mavi-route-preview',geo(maviCandidate?[maviCandidate]:[]));
   if(!map.getLayer('vano-v2-line')){map._vanoTrafficGradient=null;map._vanoTrafficV2=null;}
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
-  if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ffffff','line-width':13,'line-opacity':.94}});
-  if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900','line-width':8,'line-opacity':1,'line-opacity-transition':{duration:250}}});
+  const strokeV2=Boolean(data.v2Experience);
+  const stroke=v2RouteStrokePaint(strokeV2);
+  if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:stroke.halo});
+  if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900',...stroke.line,'line-opacity':1,'line-opacity-transition':{duration:250}}});
+  // V1 and V2 share the renderer, not the stroke policy. Update on a genuine
+  // mode change only; don't restart the existing route-flow animation every fix.
+  if(map._vanoRouteStrokeV2!==strokeV2){
+    map.setPaintProperty('vano-v2-halo','line-color',stroke.halo['line-color']);
+    map.setPaintProperty('vano-v2-halo','line-width',stroke.halo['line-width']);
+    map.setPaintProperty('vano-v2-halo','line-opacity',stroke.halo['line-opacity']);
+    map.setPaintProperty('vano-v2-line','line-width',stroke.line['line-width']);
+    map._vanoRouteStrokeV2=strokeV2;
+  }
   if(!map.getLayer('vano-mavi-preview-halo'))map.addLayer({
     id:'vano-mavi-preview-halo',type:'line',source:'vano-mavi-route-preview',
     layout:{'line-join':'round','line-cap':'round'},
