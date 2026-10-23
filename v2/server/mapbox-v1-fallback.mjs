@@ -5,7 +5,7 @@ import {pointOK} from './routing.mjs';
 import {adaptiveSpecs,denseSpecs,overlap,traffic,uniqueCandidates,signature} from './v1-candidates.mjs';
 import {mapboxEtaEvidence} from './route-eta-diagnostics.mjs';
 import {blockExploreSpecs,validExploredVariant,chooseStableFastRoute,hasProviderRouteViolation} from './urban-route-exploration.mjs';
-import {bottleneckDetourSpecs} from './congestion-bottlenecks.mjs';
+import {bottleneckDetourSpecs,candidateUsesForbiddenCorridor,trafficCorridors,hasTrafficEvidence} from './congestion-bottlenecks.mjs';
 
 const cache=new Map(), CACHE_TTL=15000,MAX_CACHE=48;
 // Per-instance budget is intentionally below Mapbox's provider-wide ceiling.
@@ -120,12 +120,21 @@ async function probeGroup(origin,destination,access,language,vehicle,telemetry,o
         if(!r||r.duration>baseline.duration*(kind==='adaptive'?1.70:1.48)||
            hasProviderRouteViolation(r))return null;
         if(kind==='bottleneck'){
-          // Only provider-returned, faster and materially distinct whole routes can win.
+          // Provider point exclusions are best effort. Independently reject
+          // any route that still intersects the full guarded 500m corridor.
+          if(!spec.forbiddenCorridor||candidateUsesForbiddenCorridor(r,spec.forbiddenCorridor))return null;
+          // Unknown traffic readings cannot be described as traffic-free.
+          if(!hasTrafficEvidence(r)||trafficCorridors(r,{marginMeters:0}).length)return null;
           const gain=baseline.duration-r.duration;
           if(gain<Math.max(20,baseline.duration*.015)||overlap(r,baseline)>=.985||
              [...existingRoutes,...results].some(existing=>signature(existing)===signature(r)))return null;
           r._bottleneckVariant=true;r._microRoute=true;
-          r._microStrategy='bottleneck-early-escape';r._etaGainSeconds=Math.round(gain*10)/10;
+          r._microStrategy='bottleneck-corridor-500m';r._etaGainSeconds=Math.round(gain*10)/10;
+          return r;
+        }
+        if(kind==='seed'){
+          if(overlap(r,baseline)>=.985||[...existingRoutes,...results].some(x=>overlap(x,r)>=.96))return null;
+          r._seedVariant=true;
           return r;
         }
         if(kind==='urban'){
@@ -171,7 +180,7 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       initial=await request(fallback,fetcher,options.reroute===true?5500:12500);
     }
     let pool=uniqueCandidates(initial,24),probeCount=0,probeSuccess=0,urbanProbes=0,urbanAccepted=0;
-    let bottleneckProbes=0,bottleneckAccepted=0,bottleneckImproved=false;
+    let bottleneckProbes=0,bottleneckAccepted=0,bottleneckImproved=false,seedRequests=0;
     const probeAudit={sent:0,urbanSent:0,throttled:0};
     const originalBest=chooseStableFastRoute(initial,initial[0]);
     const baseline=pool[0];
@@ -182,10 +191,25 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
       const maxQueries=options.adaptive===false?Math.min(4,explorationBudget):
         (explorationBudget||((traffic(baseline).score>=34||traffic(baseline).severe>0)?
           Math.min(4,options.variantBudget||4):0));
-      // Focus on verified jams first; search 300m-1km upstream before trying
-      // general block exclusions. This path is opt-in from V2 /api/route only.
-      if(options.bottleneckRouting===true&&options.adaptive!==false&&maxQueries>0){
-        const focused=bottleneckDetourSpecs(pool,Math.min(4,maxQueries));
+      // Ask the provider for up to FIVE distinct initial A->B candidates,
+      // including its initial alternatives. Leave capacity for corridor evasion.
+      if(options.bottleneckRouting===true&&options.adaptive!==false&&
+          vehicle==='carro'&&maxQueries>4&&pool.length<5){
+        const allowance=Math.min(5-pool.length,maxQueries-4);
+        const seeds=blockExploreSpecs(pool,allowance,{phase:1});
+        if(seeds.length){
+          seedRequests=seeds.length;probeCount+=seeds.length;
+          const found=await probeGroup(origin,destination,token,language,vehicle,telemetry,
+            options,seeds,fetcher,baseline,'seed',pool,probeAudit);
+          const old=pool.length;pool=uniqueCandidates([...pool,...found],24);
+          probeSuccess+=Math.max(0,pool.length-old);
+        }
+      }
+      // Mark the ENTIRE congested corridor, 500m before and after, before
+      // exploratory neighborhood probes. This path is car/V2/initial-only.
+      if(options.bottleneckRouting===true&&options.adaptive!==false&&
+          vehicle==='carro'&&maxQueries-probeCount>0){
+        const focused=bottleneckDetourSpecs(pool,Math.min(4,maxQueries-probeCount));
         if(focused.length){
           probeCount+=focused.length;
           const extra=await probeGroup(origin,destination,token,language,vehicle,telemetry,
@@ -195,7 +219,8 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
           probeSuccess+=Math.max(0,pool.length-before);
           // If a focused search found a meaningful speedup, spare provider quota
           // and avoid delaying the navigation UI with exploratory probes.
-          bottleneckImproved=pool[0].duration<=baseline.duration-Math.max(25,Math.min(90,baseline.duration*.025));
+          bottleneckImproved=pool.some(r=>r._bottleneckVariant===true&&
+            r.duration<=baseline.duration-Math.max(25,Math.min(90,baseline.duration*.025)));
         }
       }
       const firstSpecs=bottleneckImproved||options.adaptive===false?[]:
@@ -279,13 +304,15 @@ export async function calculateMapboxV1Candidates(origin,destination,vehicle,tel
         fastestPolicy:'provider-traffic-ETA; reject provider-flagged violations; no unverified CEM speed penalty',
         initialCandidates:initial.length,candidateCount:pool.length,additionalRequests:probeAudit.sent,plannedExtraRequests:probeCount,throttledRequests:probeAudit.throttled,
         acceptedProbes:probeSuccess,urbanProbes:probeAudit.urbanSent,urbanAccepted,
-        bottleneckProbes,bottleneckAccepted,bottleneckImproved,
+        bottleneckProbes,bottleneckAccepted,bottleneckImproved,seedRequests,
+        corridorMarginBeforeMeters:500,corridorMarginAfterMeters:500,
+        verifiedCorridorAvoidance:fastest._bottleneckVariant===true,
         rejectedProviderViolations:restrictedRejected,
         searchZones:['inicio','meio','fim'],searchLimit:20,providerRouteCount:pool.length,
         technicalEtaTieSeconds:5,minimumSwitchSavingsSeconds:5,
         stableChoiceDurationSeconds:fastest.duration,originalChoiceDurationSeconds:originalBest.duration,
         trafficScore:Math.round(traffic(baseline).score),candidates,
-        pipeline:['traffic-alternatives',...(options.bottleneckRouting===true?['priority-bottleneck-detours']:[]),'beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','provider-eta-first-5s-technical-tie']}};
+        pipeline:['traffic-alternatives',...(options.bottleneckRouting===true?['five-initial-provider-candidates','priority-bottleneck-detours','500m-before-after-corridor-validation']:[]),'beginning-middle-end-blocks','traffic-aware-probes','lateral-branches-and-paired-blocks','geometric-deduplication','provider-eta-first-5s-technical-tie']}};
   }
   const work=compute();
   cache.set(key,{expires:Date.now()+CACHE_TTL,work});
