@@ -3,7 +3,7 @@
  */
 import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
-import {iconSvg,selectPublicPins,mapFeatureBBox,mapRadarBBox} from './mapPublicIcons.js';
+import {iconSvg,selectPublicPins,mapFeatureBBox,mapRadarBBox,filterV2TrafficSignalPins} from './mapPublicIcons.js';
 import {radarDisplayAllowed} from './radarPolicy.js';
 import {readMapboxPoiFeatures} from './mapboxPoiFallback.js';
 import {rememberMapFeatures,cachedMapFeatures} from './mapFeaturePersistence.js';
@@ -146,9 +146,9 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   // Small, display-aware budget: the selector enforces further category and spacing limits.
   const markerBudget=Math.max(20,Math.min(90,Math.round(node.clientWidth*node.clientHeight/10500)));
   // /v2 keeps mapped signal evidence internally, but never paints semaphore blocks over the route.
-   const allowed=selectPublicPins(items,project,zoom,markerBudget,{width:node.clientWidth,height:node.clientHeight},{navigation:Boolean(getNavigation())})
-     .filter(item=>!map._vanoRouteTrafficHiddenIds?.has(item.id))
-     .filter(item=>!(getHideSignals()&&item.type==='semaforo'));
+   const allowed=filterV2TrafficSignalPins(
+     selectPublicPins(items,project,zoom,markerBudget,{width:node.clientWidth,height:node.clientHeight},{navigation:Boolean(getNavigation())}),
+     {v2Experience:Boolean(getHideSignals()),hiddenIds:map._vanoRouteTrafficHiddenIds});
   const current=new Set(allowed.map(x=>x.id));
   for(const [id,entry] of markers)if(!current.has(id)){entry.marker.remove();markers.delete(id);}
   for(const item of allowed){
