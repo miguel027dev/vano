@@ -106,6 +106,8 @@ function motionController(map,latest,status){
   let realRouteGeometry=null,realLastRoadAt=0,realStraightMeters=0;
   let realZoom=0,realZoomGoal=0,realLastZoomAt=0;
   let droneZoom=null,droneZoomGoal=null,lastDroneZoomAt=0;
+  // Padding affects the projected puck as much as center/zoom: ease it too.
+  let chasePaddingTop=null,chasePaddingGoal=null;
   function realCameraDistance(d,route,base,now){
     if(!base||!d.navigation||d.simulationPreview||
       !['carro','moto'].includes(d.vehicle)||!route?.geometry){
@@ -366,12 +368,22 @@ function motionController(map,latest,status){
       (pose.bearing+clamp(yawDelta,-maxYawStep,maxYawStep)+360)%360:softenedBearing;
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
     pose={center:nextCenter,zoom:nextZoom,pitch:nextPitch,bearing:nextBearing};
-    try{map.jumpTo({...pose,padding:t.cameraPadding||latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20}});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
+    const defaultPadding=latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20};
+    const targetPadding=t.cameraPadding||defaultPadding;
+    if(chasePaddingTop===null){
+      const previousPadding=map.getPadding?.();
+      chasePaddingTop=Number.isFinite(previousPadding?.top)?previousPadding.top:defaultPadding.top;
+    }
+    chasePaddingGoal=targetPadding.top;
+    chasePaddingTop=damp(chasePaddingTop,chasePaddingGoal,dt,reduced?85:290);
+    const smoothPadding={...targetPadding,top:Math.round(chasePaddingTop)};
+    try{map.jumpTo({...pose,padding:smoothPadding});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
     // The internal microzoom easing must finish even if the outer map
     // camera already reached an intermediate frame's target.
     const easingPending=Math.abs(realZoomGoal-realZoom)>.008||
       (droneZoom!==null&&droneZoomGoal!==null&&
-        Math.abs(droneZoomGoal-droneZoom)>.008);
+        Math.abs(droneZoomGoal-droneZoom)>.008)||
+      (chasePaddingGoal!==null&&Math.abs(chasePaddingGoal-chasePaddingTop)>1);
     if(error>.005||now<completeAt||easingPending){
       frame=requestAnimationFrame(draw);
     }else{active=false;status.current=t.state;}
