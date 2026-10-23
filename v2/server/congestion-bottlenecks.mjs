@@ -49,7 +49,9 @@ export function hasTrafficEvidence(route){
   const geo=lineGeometry(route),traffic=trafficSegments(route);
   if(!geo||!traffic||traffic.total<1100)return false;
   const ratio=traffic.total/geo.total;
-  return ratio>=.75&&ratio<=1.35&&traffic.segments.some(x=>x.score!==null);
+  const knownMeters=traffic.segments.reduce((n,x)=>n+(x.score!==null?x.end-x.start:0),0);
+  // Refuse to call a road traffic-free if most segments are unknown.
+  return ratio>=.75&&ratio<=1.35&&knownMeters/traffic.total>=.8;
 }
 /** Strong contiguous jams only; unknown readings are NOT zero-congestion evidence. */
 export function trafficCorridors(route,{marginMeters=MARGIN_METERS,maxHotspots=3}={}){
@@ -73,7 +75,7 @@ export function trafficCorridors(route,{marginMeters=MARGIN_METERS,maxHotspots=3
   const ratio=geo.total/info.total;
   return runs.filter(x=>x.end-x.start>=220&&x.evidence>=200&&x.weight/x.evidence>=73&&
       // Never block the start or destination of a valid trip.
-      x.start>=m+70&&info.total-x.end>=m+70)
+      x.start>=(m===0?0:m+70)&&info.total-x.end>=(m===0?0:m+70))
     .sort((a,b)=>((b.weight/b.evidence)-65)*Math.sqrt(b.evidence)-
                  ((a.weight/a.evidence)-65)*Math.sqrt(a.evidence))
     .slice(0,Math.max(0,Math.min(4,maxHotspots)))
