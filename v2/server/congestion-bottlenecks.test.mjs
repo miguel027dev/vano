@@ -50,6 +50,15 @@ test('missing traffic evidence, weak jams and terminal-only jams cannot assert a
  unknown.legs[0].annotation={distance:Array(69).fill(70)};
  assert.equal(hasTrafficEvidence(unknown),false);
  assert.deepEqual(trafficCorridors(unknown),[]);
+ const partiallyKnown=route(2000,{traffic:false});
+ partiallyKnown.legs[0].annotation.congestion_numeric=partiallyKnown.legs[0].annotation.congestion_numeric
+  .map((score,i)=>i<15?score:null);
+ assert.equal(hasTrafficEvidence(partiallyKnown),false,'sparse samples cannot be called traffic-free');
+ const terminalHeavy=route(2000,{traffic:false});
+ terminalHeavy.legs[0].annotation.congestion_numeric=terminalHeavy.legs[0].annotation.congestion_numeric
+  .map((v,i)=>i<8?94:8);
+ assert.ok(trafficCorridors(terminalHeavy,{marginMeters:0}).length>0,
+  'candidate validation also checks jams near origin');
  const weak=route(2000);
  weak.legs[0].annotation.congestion_numeric=weak.legs[0].annotation.congestion_numeric
   .map((v,i)=>i===30?95:5);
