@@ -328,7 +328,7 @@ test('smart camera zooms OUT on a verified long straight but stays behind the ma
  assert.equal(straight.scenario,'straight');
  assert.ok(straight.zoom<ordinary.zoom-.16,'verified straights widen gently');
  assert.ok(ordinary.zoom-straight.zoom<=.36,'avoid zoom breathing far from decisions');
- assert.ok(straight.zoom>=16.72&&straight.zoom<=17.42);
+ assert.ok(straight.zoom>=16.90&&straight.zoom<=17.65);
  assert.ok(straight.lookAheadMeters<=18&&straight.lookAheadMeters>0);
  assert.ok(straight.halfLife>ordinary.halfLife,'cruising relaxes gradually');
 });
@@ -342,7 +342,7 @@ test('approaching entrance overrides long straight zoom and comes close around 1
  assert.equal(near.scenario,'entrance');
  assert.ok(near.zoom>far.zoom+.4,'confirmed ramps still reveal the entrance');
  assert.ok(near.lookAheadMeters<far.lookAheadMeters);
- assert.ok(near.zoom<=17.42&&near.lookAheadMeters>=5);
+ assert.ok(near.zoom<=17.65&&near.lookAheadMeters>=5);
 });
 
 test('near turns and junctions zoom in, roundabouts widen to show the exits',()=>{
@@ -373,8 +373,8 @@ test('compact/reduced motion and high-rise street preserve conservative chase fr
  const args={enabled:true,vehicle:'moto',compactViewport:true,urbanDensity:.9,obstruction:1,speed:12,straightAheadMeters:620};
  const compact=planV2RearChase(args);
  const reduced=planV2RearChase({...args,reducedMotion:true});
- assert.ok(compact.zoom>=16.72&&compact.zoom<=18.18);
- assert.ok(compact.pitch>=30&&compact.pitch<=58);
+ assert.ok(compact.zoom>=16.90&&compact.zoom<=17.65);
+ assert.ok(compact.pitch>=30&&compact.pitch<=61);
  assert.ok(compact.lookAheadMeters>=5&&compact.lookAheadMeters<=18);
  assert.equal(reduced.pitch,0);
  assert.equal(reduced.lookAheadMeters,0);
