@@ -7,15 +7,6 @@ import '../intelligence-console.css';
 
 const fmt=v=>v===null||v===undefined||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('pt-BR',{maximumFractionDigits:1});
 const day=v=>String(v||'').slice(5);
-const tools=[
- {key:'route_decisions',name:'Decisões de rota'},
- {key:'route_quality',name:'Qualidade'},
- {key:'incidents',name:'Relatos'},
- {key:'history',name:'Histórico'},
- {key:'infrastructure',name:'Infraestrutura'},
- {key:'navigation',name:'Viagens concluídas'},
- {key:'findings',name:'Diagnósticos'},
-];
 function Stat({title,value,subtitle,icon:Icon}){return <article className="vint-stat">
  <div className="vint-stat-title"><span>{title}</span><Icon size={17}/></div>
  <strong>{fmt(value)}</strong><small>{subtitle}</small>
@@ -37,8 +28,9 @@ function Rows({rows=[],title='Sem dados no período.'}){
 export default function IntelligencePage(){
  const {user,loading}=useVano();
  const [days,setDays]=useState(7),[snapshot,setSnapshot]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
- const [question,setQuestion]=useState(''),[answer,setAnswer]=useState(''),[asking,setAsking]=useState(false);
- const [selected,setSelected]=useState(tools.map(x=>x.key));
+ const [question,setQuestion]=useState(''),[asking,setAsking]=useState(false);
+ const [historyPeriod,setHistoryPeriod]=useState('all');
+ const [conversation,setConversation]=useState([]);
  const [view,setView]=useState('routes');
  async function refresh(){
   setBusy(true);setError('');
@@ -56,13 +48,19 @@ export default function IntelligencePage(){
  ],[]);
  async function submit(e){
   e.preventDefault();
-  if(asking||question.trim().length<5)return;
-  setAsking(true);setAnswer('');
+  const userQuestion=question.trim();
+  if(asking||userQuestion.length<2)return;
+  const prior=conversation.slice(-12);
+  setConversation([...prior,{role:'user',content:userQuestion}]);
+  setQuestion('');setAsking(true);
   try{
-   const result=await post('/admin/intelligence/ask',{question:question.trim(),days,tools:selected});
-   setAnswer(result.answer||'A resposta não trouxe diagnóstico.');
-  }catch(e){setAnswer('A análise não foi concluída: '+(e.message||'serviço indisponível')+'. Os gráficos continuam disponíveis.');}
-  finally{setAsking(false);}
+   const result=await post('/admin/intelligence/ask',{
+    question:userQuestion,days,historyPeriod,history:prior
+   });
+   setConversation([...prior,{role:'user',content:userQuestion},{role:'assistant',content:result.answer||'Não encontrei uma resposta com os dados disponíveis.'}]);
+  }catch(err){
+   setConversation([...prior,{role:'user',content:userQuestion},{role:'assistant',content:'Não consegui responder agora: '+(err.message||'Serviço indisponível')+'. Seu histórico da conversa continua nesta página.'}]);
+  }finally{setAsking(false);}
  }
  if(loading)return <main className="vint-wrap">Verificando acesso…</main>;
  if(!user?.isAdmin)return <main className="vint-wrap vint-restricted"><LockKeyhole size={35}/><h1>Área administrativa</h1><p>Somente administradores autenticados podem acessar os diagnósticos.</p><Link to="/admin">Voltar ao painel</Link></main>;
@@ -73,7 +71,9 @@ export default function IntelligencePage(){
    <p>Decisões auditáveis, sinais operacionais e investigação por IA — sem expor localização pessoal.</p>
   </div><div className="vint-toolbar">
    <Link to="/admin" className="vint-back"><ArrowLeft size={16}/> Administração</Link>
-   <select aria-label="Intervalo de análise" value={days} onChange={e=>setDays(Number(e.target.value))}><option value={1}>24 horas</option><option value={7}>7 dias</option><option value={30}>30 dias</option></select>
+   <select aria-label="Intervalo de análise" value={days} onChange={e=>setDays(Number(e.target.value))}><option value={1}>24 horas</option><option value={7}>7 dias</option><option value={30}>30 dias</option></select><select aria-label="Período do acervo histórico" value={historyPeriod} onChange={e=>setHistoryPeriod(e.target.value)}>
+    <option value="all">Histórico completo</option><option value="30">Histórico · 30 dias</option><option value="90">Histórico · 90 dias</option><option value="365">Histórico · 1 ano</option>
+   </select>
    <button disabled={busy} onClick={refresh} type="button"><RefreshCcw size={16}/>{busy?'Consultando…':'Atualizar'}</button>
   </div></header>
   {error&&<div className="vint-alert" role="alert">{error}</div>}
@@ -83,6 +83,16 @@ export default function IntelligencePage(){
    <Stat title="Cálculos degradados" value={route.degradedCount} subtitle="Contingências registradas" icon={TriangleAlert}/>
    <Stat title="Falhas de cálculo" value={route.failed} subtitle="Janela selecionada" icon={Activity}/>
   </div>
+  <section className="vint-panel vint-archive" aria-label="Base histórica existente">
+   <div className="vint-panel-title"><div><small>ACERVO JÁ EXISTENTE</small><h2>Fontes históricas conectadas</h2></div><span className="vint-neutral"><Database size={13}/> V2 · leitura segura</span></div>
+   <div className="vint-archive-stats">
+    <div><strong>{fmt(snapshot?.historical?.inventory?.existingCollections?.accounts)}</strong><span>Contas</span></div>
+    <div><strong>{fmt(snapshot?.historical?.inventory?.existingCollections?.savedRoutes)}</strong><span>Rotas salvas</span></div>
+    <div><strong>{fmt(snapshot?.historical?.inventory?.existingCollections?.reports)}</strong><span>Relatos</span></div>
+    <div><strong>{fmt(snapshot?.historical?.inventory?.existingCollections?.routines)}</strong><span>Rotinas</span></div>
+   </div>
+   <p className="vint-foot">Disponível desde {snapshot?.historical?.inventory?.firstKnownRecordDate||'o primeiro registro encontrado'}. O assistente consulta essas coleções agregadas em cada pergunta; não possui acesso ao banco V1 remoto nem a dados pessoais.</p>
+  </section>
   <div className="vint-columns"><section className="vint-left">
    <div className="vint-panel"><div className="vint-panel-title"><div><small>OBSERVABILIDADE</small><h2>Atividade do roteador</h2></div><span className="vint-neutral">Dados reais</span></div>
     <Bars daily={route.daily}/><p className="vint-foot">Contagens de cálculo não representam necessariamente viagens concluídas.</p></div>
@@ -105,16 +115,21 @@ export default function IntelligencePage(){
   </section>
   <aside className="vint-panel vint-ai">
    <div className="vint-panel-title"><div><small>ANALISTA ADMINISTRATIVO</small><h2><BrainCircuit size={20}/> VAI · GPT-OSS-120B</h2></div><span className="vint-neutral"><ShieldCheck size={13}/> Leitura</span></div>
-   <p>Investigue evidências operacionais sem enviar trajetos, endereços ou dados pessoais para a NVIDIA.</p>
+   <p>Converse livremente. O VAI interpreta suas perguntas usando o acervo existente, novos indicadores e o contexto das respostas anteriores — sem compartilhar localização de usuários.</p>
    <div className="vint-suggestions">{suggestions.map(x=><button type="button" key={x} onClick={()=>setQuestion(x)}>{x}<ArrowUpRight size={14}/></button>)}</div>
    <form onSubmit={submit}><label htmlFor="vint-prompt">Pergunta para a inteligência</label>
-    <textarea id="vint-prompt" value={question} maxLength={1500} rows={4} required minLength={5} onChange={e=>setQuestion(e.target.value)} placeholder="Analise os dados e me diga como melhorar o roteamento…"/>
-    <fieldset><legend>Fontes autorizadas para esta investigação</legend>
-     <div className="vint-sources">{tools.map(x=><label key={x.key}><input type="checkbox" checked={selected.includes(x.key)} onChange={e=>setSelected(current=>e.target.checked?[...current,x.key]:current.filter(k=>k!==x.key))}/>{x.name}</label>)}</div>
-    </fieldset>
-    <button className="vint-submit" type="submit" disabled={asking||question.trim().length<5||selected.length===0}><Send size={16}/>{asking?'Consultando NVIDIA…':'Investigar'}</button>
+    <textarea id="vint-prompt" value={question} maxLength={1500} rows={4} required minLength={2} onChange={e=>setQuestion(e.target.value)} placeholder="Analise os dados e me diga como melhorar o roteamento…"/>
+    <div className="vint-chat-controls"><span><Database size={14}/> Todas as fontes agregadas são consultadas automaticamente.</span>
+      <button type="button" onClick={()=>setConversation([])} disabled={!conversation.length||asking}>Limpar conversa</button>
+    </div>
+    <button className="vint-submit" type="submit" disabled={asking||question.trim().length<2}><Send size={16}/>{asking?'Consultando NVIDIA…':'Enviar pergunta'}</button>
    </form>
-   <div className="vint-response" aria-live="polite" role="status">{asking?'Analisando as métricas disponíveis…':answer||'Escolha uma investigação. A resposta identificará hipóteses, limitações e próximos testes, com base apenas nos dados que o servidor realmente possui.'}</div>
+   <div className="vint-response vint-chat" aria-live="polite" role="log" aria-label="Conversa com o VAI">
+    {conversation.length?conversation.map((turn,index)=><div key={index} className={'vint-chat-turn '+(turn.role==='user'?'vint-chat-user':'vint-chat-ai')}>
+      <strong>{turn.role==='user'?'Você':'VANO Intelligence'}</strong><p>{turn.content}</p></div>):
+      <p className="vint-empty">Pergunte sobre as rotas, cadastros anteriores, uso do VANO, problemas de infraestrutura ou qualquer outro assunto.</p>}
+    {asking&&<p className="vint-chat-loading">Analisando evidências históricas e atuais…</p>}
+   </div>
    <p className="vint-foot"><Database size={13}/> {snapshot?.aiConfigured?'Conector NVIDIA configurado.':'A chave administrativa NVIDIA ainda não foi detectada.'} Nenhuma proposta executa alterações automaticamente.</p>
   </aside></div>
  </main>;

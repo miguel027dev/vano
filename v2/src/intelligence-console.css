@@ -35,3 +35,25 @@
 .vint-alert{border-radius:12px;padding:12px;background:#fff5ef;color:#bd4c12;margin:0 0 15px}.vint-restricted{text-align:center;display:grid;justify-items:center;gap:10px}
 @media(max-width:1080px){.vint-columns{grid-template-columns:1fr}}
 @media(max-width:650px){.vint-wrap{padding:20px 12px 70px}.vint-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.vint-panel{padding:16px}.vint-stat{padding:14px}.vint-stat strong{font-size:25px}.vint-sources{grid-template-columns:1fr}}
+
+
+/* Legacy source index and conversational view. */
+.vint-archive{margin-bottom:16px}
+.vint-archive-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.vint-archive-stats>div{border:1px solid #f1ece7;background:#fffaf7;padding:12px;border-radius:11px;display:flex;flex-direction:column;gap:3px}
+.vint-archive-stats strong{font-size:22px;letter-spacing:-.04em;color:#ba5010}
+.vint-archive-stats span{font-size:11px;color:#758191}
+.vint-chat-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:13px 0;flex-wrap:wrap}
+.vint-chat-controls span{font-size:11px;color:#768292;display:flex;gap:5px;align-items:center;line-height:1.5}
+.vint-chat-controls button{background:transparent;border:0;text-decoration:underline;color:#bf5f19;font-size:11px;cursor:pointer}
+.vint-chat-controls button:disabled{opacity:.35;cursor:default}
+.vint-chat{max-height:640px;min-height:170px;display:flex;flex-direction:column;gap:11px;padding:11px;background:#f7f9fb}
+.vint-chat-turn{max-width:95%;padding:12px 13px;border-radius:12px;background:#fff;border:1px solid #e9edf2;overflow-wrap:anywhere}
+.vint-chat-user{align-self:flex-end;background:#fff0e4;border-color:#ffd7bc}
+.vint-chat-ai{align-self:flex-start}
+.vint-chat-turn strong{display:block;font-size:10px;letter-spacing:.04em;color:#ba5c12;text-transform:uppercase}
+.vint-chat-ai strong{color:#667586}
+.vint-chat-turn p{font-size:12px;line-height:1.65;margin:7px 0 0;white-space:pre-wrap}
+.vint-chat-loading{font-size:12px;color:#a66e41;animation:vint-pulse 1.4s ease-in-out infinite}
+@keyframes vint-pulse{50%{opacity:.45}}
+@media(max-width:650px){.vint-archive-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.vint-chat-turn{max-width:100%}}
