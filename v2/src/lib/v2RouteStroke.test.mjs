@@ -59,7 +59,7 @@ test('alternatives and traveled section retain subordinate emphasis',()=>{
  const src=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(src,/id:'vano-v2-other'.*'line-width':5,'line-opacity':\.66/);
  assert.match(src,/id:'vano-v2-progress'.*'line-width':7,'line-opacity':\.85/);
- assert.match(src,/id:'vano-v2-flow'.*'line-width':2\.1,'line-opacity':\.62/);
+ assert.match(src,/paint:\{'line-color':'#fff2df','line-width':2\.1,'line-opacity':\.62/);
  assert.match(src,/STATIC_ROUTE_DASH_PATTERN/);
  assert.match(src,/if\(map\._vanoRouteStrokeV2!==strokeV2\)/);
  // Do not add new per-frame line paint writes or new animation clocks.
