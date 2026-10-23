@@ -152,4 +152,7 @@ test('single motion writer eases safe camera padding and yaw across mode changes
   assert.match(src,/const maxYawStep=\(latest\.current\.droneSimulation\|\|latest\.current\.v2Experience&&latest\.current\.simulationPreview\?82:72\)\*dt\/1000/);
   assert.match(src,/playSceneRoute=null;lastPlaySceneSample=0/);
   assert.match(src,/if\(d\.v2Experience&&!standardPlay\)/);
+  assert.match(src,/if\(!simulationPreview&&!droneSimulation\)/);
+  assert.match(src,/\[v2Experience,simulationPreview,droneSimulation,appearance,layer\]/);
+  assert.match(src,/if\(navigation&&backend\.current==='mapbox'\)motion\.current\?\.start\(\)/);
 });
