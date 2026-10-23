@@ -421,6 +421,7 @@ export default function MapPage({active=true}){
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
     if(!validPoint(departure)||!validPoint(place?.coords)){
       // Origin is not an API failure: do not open a stale "retry route" panel.
+      routeEpoch.current++;
       routeRequest.current?.abort();
       setLoadingRoute(false);setRouteData(null);setRouteError('');
       if(!validPoint(departure)){setPickOriginMode(true);setSheetOpen(false);}
@@ -1288,7 +1289,7 @@ export default function MapPage({active=true}){
       <button title={simActive?'Centralizar na simulação':'Minha localização'} aria-label={simActive?'Centralizar no ponto simulado':'Minha localização'} className="circle-btn" onClick={()=>simActive?mapControl.current?.center?.():validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
       {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
     </div>}
-    {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
+    {!navMode&&dest&&sheetOpen&&!pickOriginMode&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
         <div className={`v47-route-vehicle-switch ${import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
