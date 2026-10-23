@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}VANO Intelligence · Admin{% endblock %}
+{% block content %}
+<style>
+.vai{--accent:#f97316;--ink:#17202c;--muted:#758092;max-width:1260px;margin:0 auto;padding:28px 18px 72px;color:var(--ink)}
+.vai a{color:inherit;text-decoration:none}.vai-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.vai-brand{display:flex;align-items:center;gap:12px}.vai-mark{display:grid;place-items:center;width:48px;height:48px;border-radius:15px;background:#fff1e7;color:var(--accent);font-size:25px;font-weight:900}
+.vai-eyebrow{text-transform:uppercase;letter-spacing:.14em;color:var(--accent);font-size:11px;font-weight:800}
+.vai h1{font-size:27px;margin:1px 0;letter-spacing:-.05em}.vai-sub{color:var(--muted);font-size:13px;margin-top:5px}
+.vai-actions{display:flex;gap:10px;align-items:center}.vai-btn,.vai select{border:1px solid #e5e8ee;border-radius:12px;background:white;padding:10px 14px;color:#283343;font-weight:650;font:inherit}
+.vai-btn{cursor:pointer}.vai-btn:focus-visible,.vai textarea:focus-visible,.vai select:focus-visible{outline:3px solid #fdba74}
+.vai-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}.vai-card{border:1px solid #e8ebef;border-radius:18px;background:#fff;box-shadow:0 3px 14px rgba(27,34,48,.035);padding:19px}
+.vai-kpi-label{font-size:12px;color:#7b8594;font-weight:650}.vai-kpi strong{display:block;font-size:32px;font-weight:800;letter-spacing:-.05em;margin:10px 0 3px;font-variant-numeric:tabular-nums}
+.vai-kpi small{font-size:11px;color:#9099a8}.vai-main{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,1fr);gap:18px;align-items:start}
+.vai-main h2{font-size:17px;letter-spacing:-.03em;margin:0}.vai-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.vai-card-head span{font-size:11px;color:#9099a8}
+.vai-chart{width:100%;height:206px;background:linear-gradient(180deg,#fff 70%,#fffaf6);border-radius:12px;display:block}
+.vai-section{margin-top:17px}.vai-list{display:flex;flex-direction:column;gap:10px;max-height:340px;overflow:auto}.vai-row{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid #f0f2f5}
+.vai-row:last-child{border:0}.vai-row b{font-size:12px}.vai-row small{display:block;margin-top:4px;color:#9099a8;font-size:11px}.vai-count{white-space:nowrap;font-size:12px;font-weight:800;color:#e56a0b}
+.vai-chat-heading{display:flex;align-items:center;gap:9px}.vai-spark{display:grid;place-items:center;width:35px;height:35px;border-radius:11px;background:#fff0e3;color:#f97316;font-size:18px}
+.vai-answer{white-space:pre-wrap;overflow-wrap:anywhere;min-height:180px;max-height:460px;overflow:auto;color:#404c5b;font-size:13px;line-height:1.7;border-radius:14px;background:#f8f9fb;padding:16px}
+.vai-form{margin-top:14px}.vai-form textarea{width:100%;box-sizing:border-box;resize:vertical;min-height:94px;border:1px solid #e3e8ee;border-radius:13px;padding:12px;font:inherit;font-size:13px;color:#283343;background:#fff}
+.vai-send{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:11px}.vai-send small{font-size:11px;color:#9099a8}.vai-primary{background:#f97316;color:#fff;border:0;border-radius:11px;font-weight:700;padding:11px 19px;cursor:pointer}
+.vai-primary:disabled{opacity:.5;cursor:not-allowed}.vai-alert{display:none;margin-bottom:16px;background:#fff4e7;color:#8f520e;border:1px solid #fed7aa;padding:12px 14px;border-radius:12px;font-size:12px}
+.vai-pill{font-size:11px;border-radius:999px;padding:5px 9px;color:#667080;background:#f1f2f5}
+@media(max-width:1050px){.vai-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.vai-main{grid-template-columns:1fr}}
+@media(max-width:560px){.vai{padding:17px 12px 50px}.vai h1{font-size:23px}.vai-top{align-items:flex-start}.vai-grid{gap:9px}.vai-card{padding:14px}.vai-kpi strong{font-size:27px}}
+</style>
+<main class="vai" id="vai-root">
+  <header class="vai-top">
+    <div class="vai-brand">
+      <span class="vai-mark" aria-hidden="true">V</span>
+      <div><div class="vai-eyebrow">VANO · ADMINISTRATIVO</div><h1>Intelligence</h1>
+        <div class="vai-sub">Auditoria operacional, qualidade de rotas e análise com IA</div></div>
+    </div>
+    <div class="vai-actions">
+      <a class="vai-btn" href="{{ url_for('admin_dashboard') }}">← Painel</a>
+      <label for="vai-days" class="sr-only">Período</label>
+      <select id="vai-days" aria-label="Período"><option value="1">24 horas</option><option value="7" selected>7 dias</option><option value="30">30 dias</option></select>
+    </div>
+  </header>
+  <div id="vai-alert" class="vai-alert" role="alert"></div>
+  <section class="vai-grid" aria-label="Indicadores da operação">
+    <article class="vai-card vai-kpi"><div class="vai-kpi-label">Rotas calculadas</div><strong id="vai-routes">—</strong><small>Decisões registradas</small></article>
+    <article class="vai-card vai-kpi"><div class="vai-kpi-label">Alternativas / cálculo</div><strong id="vai-candidates">—</strong><small>Média de candidatos</small></article>
+    <article class="vai-card vai-kpi"><div class="vai-kpi-label">Falhas HTTP de rota</div><strong id="vai-errors">—</strong><small>Solicitações não concluídas</small></article>
+    <article class="vai-card vai-kpi"><div class="vai-kpi-label">Cálculos degradados</div><strong id="vai-degraded">—</strong><small>Modo de contingência</small></article>
+  </section>
+  <section class="vai-main">
+    <div>
+      <article class="vai-card">
+        <div class="vai-card-head"><h2>Atividade de roteamento</h2><span id="vai-chart-caption">Solicitações por dia</span></div>
+        <svg class="vai-chart" id="vai-chart" viewBox="0 0 500 206" preserveAspectRatio="none" role="img" aria-label="Gráfico de rotas calculadas por dia"></svg>
+        <div class="vai-sub">Este indicador mede cálculos, não viagens concluídas.</div>
+      </article>
+      <article class="vai-card vai-section">
+        <div class="vai-card-head"><h2>Modos de roteamento</h2><span>Distribuição</span></div>
+        <div id="vai-modes" class="vai-list" aria-live="polite"></div>
+      </article>
+      <article class="vai-card vai-section">
+        <div class="vai-card-head"><h2>Erros e relatórios</h2><span>Priorização inicial</span></div>
+        <div id="vai-incidents" class="vai-list" aria-live="polite"></div>
+      </article>
+    </div>
+    <aside class="vai-card">
+      <div class="vai-card-head">
+        <div class="vai-chat-heading"><span class="vai-spark">✦</span><div><h2>Assistente VAI</h2><div class="vai-sub">NVIDIA · GPT-OSS-120B</div></div></div>
+        <span class="vai-pill">Somente leitura</span>
+      </div>
+      <div class="vai-answer" id="vai-answer" role="status" aria-live="polite">Pergunte sobre gargalos, erros HTTP, diferenças entre versões e sinais dos relatos. A IA utiliza dados agregados reais, sem receber coordenadas ou identificadores pessoais.</div>
+      <form id="vai-form" class="vai-form">
+        <label for="vai-question" class="vai-kpi-label">O que você quer investigar?</label>
+        <textarea id="vai-question" maxlength="1500" minlength="5" required placeholder="Quais problemas de roteamento devemos priorizar nesta semana?"></textarea>
+        <div class="vai-send"><small>Respostas são hipóteses que exigem validação.</small><button type="submit" class="vai-primary" id="vai-submit">Analisar →</button></div>
+      </form>
+    </aside>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static', filename='vano-intelligence.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
