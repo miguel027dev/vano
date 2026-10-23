@@ -420,7 +420,8 @@ export default function MapPage({active=true}){
     const epoch=++routeEpoch.current;
     setLoadingRoute(true);setSheetOpen(true);setRouteData(null);setRouteError('');
     try{
-      const data=await api('/route',{method:'POST',signal:controller.signal,body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null}})});
+      const data=await api('/route',{method:'POST',signal:controller.signal,body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null},
+        routeOptions:{v2FastCorridor:location.pathname==='/v2'}})});
       if(!Array.isArray(data?.routes)||data.routes.length===0)throw new Error('Nenhuma rota disponível para este trajeto. Tente outra origem ou destino.');
       if(epoch===routeEpoch.current&&!controller.signal.aborted){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
     }catch(e){
