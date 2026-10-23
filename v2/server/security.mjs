@@ -47,12 +47,13 @@ export function openSignedToken(secret, token) {
   try { return JSON.parse(Buffer.from(body, 'base64url').toString('utf8')); } catch { return null; }
 }
 export function csrfToken(secret, subject) { return sign(secret, `csrf:${subject}`); }
-export function correctOrigin(req, configuredOrigin = '') {
+export function correctOrigin(req, configuredOrigin = '', additionalOrigins = []) {
   const origin = req.headers.origin;
   if (!origin) return req.headers['sec-fetch-site'] !== 'cross-site';
   try {
     const expected = configuredOrigin ? new URL(configuredOrigin).origin : `http://${req.headers.host}`;
-    const allowed = origin === expected || (!configuredOrigin && origin === `https://${req.headers.host}`);
+    // Aliases are explicitly configured; never trust Host, forwarded headers or a wildcard in production.
+    const allowed = origin === expected || (configuredOrigin && additionalOrigins.includes(origin)) || (!configuredOrigin && origin === `https://${req.headers.host}`);
     return allowed && req.headers['sec-fetch-site'] !== 'cross-site';
   } catch { return false; }
 }

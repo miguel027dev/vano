@@ -48,9 +48,10 @@ public final class MainActivity extends Activity {
     private FrameLayout root;
     private LinearLayout loadingPanel;
     private TextView loadingText;
-    private boolean navigationActive=false,firstFrameSeen=false;
+    private LinearLayout loadingActions;
+    private boolean navigationActive=false,firstFrameSeen=false,shellPrefetchQueued=false;
     private long loadGeneration=0,launchAt;
-    private final Runnable slowLoading=()->{if(loadingText!=null)loadingText.setText("A conexão está levando mais tempo. Você pode tentar novamente.");};
+    private final Runnable slowLoading=()->{if(loadingText!=null)loadingText.setText("A conexão está demorando mais que o esperado. Tente novamente ou confira sua internet.");if(loadingActions!=null)loadingActions.setVisibility(View.VISIBLE);};
     private LinearLayout errorPanel;
     private String currentUrl=ENTRY, geoOrigin;
     private GeolocationPermissions.Callback geoCallback;
@@ -86,7 +87,7 @@ public final class MainActivity extends Activity {
         createWebView();
         showLoading();
         Bundle saved=state==null?null:state.getBundle("web");
-        if(saved==null||web.restoreState(saved)==null||!trusted(web.getUrl()))web.loadUrl(ENTRY);
+        if(saved==null||web.restoreState(saved)==null||!trusted(web.getUrl())||"/".equals(Uri.parse(web.getUrl()).getPath())||"/inicio".equals(Uri.parse(web.getUrl()).getPath()))web.loadUrl(ENTRY);
         if(Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,this::handleBack);
         handleAuthReturn(getIntent());
     }
@@ -100,7 +101,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false); // Spoken navigation follows the explicit start-trip action.
-        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.0-offline");
+        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.3");
         settings.setSupportMultipleWindows(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
@@ -131,6 +132,12 @@ public final class MainActivity extends Activity {
                 if(!trusted(url)||pageFailed)return;
                 recovering=false;hideError();CookieManager.getInstance().flush();
                 injectRuntime();
+                // Reveal the landing and login screens once their content is available.
+                // The map keeps its first rendered frame handshake.
+                String pagePath=Uri.parse(url).getPath();
+                if(!"/mapa".equals(pagePath)){
+                    view.evaluateJavascript("!!document.querySelector('.v5-landing,.v3-auth-page,.app-shell.shell-auth')",result->{if("true".equals(result))revealReady(view);});
+                }
             }
             @Override public void onReceivedError(WebView view,WebResourceRequest req,WebResourceError err){
                 if(req.isForMainFrame()){pageFailed=true;showError("Não foi possível conectar ao VANO. Confira sua conexão e tente novamente.");}
@@ -246,22 +253,25 @@ public final class MainActivity extends Activity {
         view.postVisualStateCallback(generation,new WebView.VisualStateCallback(){@Override public void onComplete(long id){
             if(!destroyed&&generation==loadGeneration&&view==web&&!pageFailed){
                 handler.removeCallbacks(slowLoading);hideError();
-                if(loadingPanel!=null){final LinearLayout panel=loadingPanel;loadingPanel=null;loadingText=null;
+                if(!shellPrefetchQueued){shellPrefetchQueued=true;handler.postDelayed(()->{if(!destroyed&&offlineCache!=null)offlineCache.primeShell();},4000);}
+                if(loadingPanel!=null){final LinearLayout panel=loadingPanel;loadingPanel=null;loadingText=null;loadingActions=null;
                     float scale=android.provider.Settings.Global.getFloat(getContentResolver(),android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,1);
                     panel.animate().alpha(0).setDuration(scale==0?0:160).withEndAction(()->root.removeView(panel)).start();}
             }
         }});
     }
+    private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private void showLoading(){
         if(destroyed)return;
         if(loadingPanel!=null){loadingPanel.setAlpha(1);loadingPanel.bringToFront();return;}
-        loadingPanel=new LinearLayout(this);loadingPanel.setOrientation(LinearLayout.VERTICAL);loadingPanel.setGravity(Gravity.CENTER);loadingPanel.setPadding(48,48,48,48);loadingPanel.setBackgroundColor(Color.rgb(249,247,244));
-        ImageView logo=new ImageView(this);logo.setImageResource(com.vano.maps.fluidez.R.drawable.ic_vano);loadingPanel.addView(logo,new LinearLayout.LayoutParams(96,96));
+        loadingPanel=new LinearLayout(this);loadingPanel.setOrientation(LinearLayout.VERTICAL);loadingPanel.setGravity(Gravity.CENTER);loadingPanel.setPadding(dp(28),dp(28),dp(28),dp(28));loadingPanel.setBackgroundColor(Color.rgb(249,247,244));
+        ImageView logo=new ImageView(this);logo.setImageResource(com.vano.maps.fluidez.R.drawable.ic_vano);loadingPanel.addView(logo,new LinearLayout.LayoutParams(dp(80),dp(80)));
         TextView name=new TextView(this);name.setText("VANO");name.setTextSize(36);name.setTypeface(null,android.graphics.Typeface.BOLD);name.setTextColor(Color.rgb(32,35,40));name.setGravity(Gravity.CENTER);loadingPanel.addView(name);
-        loadingText=new TextView(this);loadingText.setText("Preparando seu mapa");loadingText.setTextSize(16);loadingText.setGravity(Gravity.CENTER);loadingText.setTextColor(Color.rgb(104,107,114));loadingText.setPadding(0,28,0,28);loadingPanel.addView(loadingText);
-        ProgressBar progress=new ProgressBar(this);loadingPanel.addView(progress,new LinearLayout.LayoutParams(48,48));
-        Button retry=new Button(this);retry.setText("Tentar novamente");retry.setOnClickListener(v->{hideError();if(web!=null)web.reload();});loadingPanel.addView(retry);
-        Button continueButton=new Button(this);continueButton.setText("Abrir interface");continueButton.setOnClickListener(v->{if(loadingPanel!=null){root.removeView(loadingPanel);loadingPanel=null;loadingText=null;}});loadingPanel.addView(continueButton);
+        loadingText=new TextView(this);loadingText.setText("Preparando seu mapa");loadingText.setTextSize(16);loadingText.setGravity(Gravity.CENTER);loadingText.setTextColor(Color.rgb(104,107,114));loadingText.setPadding(0,dp(16),0,dp(24));loadingPanel.addView(loadingText);
+        ProgressBar progress=new ProgressBar(this);progress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Color.rgb(233,91,34)));loadingPanel.addView(progress,new LinearLayout.LayoutParams(dp(32),dp(32)));
+        loadingActions=new LinearLayout(this);loadingActions.setOrientation(LinearLayout.VERTICAL);loadingActions.setGravity(Gravity.CENTER);loadingActions.setPadding(0,dp(24),0,0);loadingActions.setVisibility(View.GONE);loadingPanel.addView(loadingActions);
+        Button retry=new Button(this);retry.setText("Tentar novamente");retry.setOnClickListener(v->{hideError();if(web!=null)web.reload();});retry.setMinHeight(dp(48));loadingActions.addView(retry);
+        Button continueButton=new Button(this);continueButton.setText("Ver mapa enquanto carrega");continueButton.setOnClickListener(v->{if(loadingPanel!=null){root.removeView(loadingPanel);loadingPanel=null;loadingText=null;loadingActions=null;}});continueButton.setMinHeight(dp(48));loadingActions.addView(continueButton);
         root.addView(loadingPanel,new FrameLayout.LayoutParams(-1,-1));
         handler.removeCallbacks(slowLoading);handler.postDelayed(slowLoading,12000);
     }
@@ -323,7 +333,7 @@ public final class MainActivity extends Activity {
                 String name=response.getString("cookieName"),token=response.getString("sessionToken");
                 if(!name.matches("[A-Za-z0-9_-]+")||!token.matches("[A-Za-z0-9_.-]+"))throw new java.io.IOException();
                 final String cookie=name+"="+token+"; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age="+Math.max(0,response.optLong("maxAge"));
-                runOnUiThread(()->{if(destroyed||web==null)return;CookieManager.getInstance().setCookie(BASE,cookie,ok->{if(ok){CookieManager.getInstance().flush();String next=response.optString("next","/mapa");web.loadUrl(BASE+("/personalizar".equals(next)?next:"/mapa"));}else showError("Não foi possível concluir o login.");});});
+                runOnUiThread(()->{if(destroyed||web==null)return;CookieManager.getInstance().setCookie(BASE,cookie,ok->{if(ok){CookieManager.getInstance().flush();web.loadUrl(ENTRY);}else showError("Não foi possível concluir o login.");});});
             }catch(Exception e){runOnUiThread(()->{if(!destroyed)showError("Não foi possível concluir o login. Tente novamente.");});}
             finally{if(connection!=null)connection.disconnect();}
         });

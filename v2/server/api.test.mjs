@@ -18,7 +18,7 @@ async function start(extraEnv={},initialData=null){
  const child=spawn(process.execPath,['server/index.mjs'],{cwd:root,env:{...process.env,NODE_ENV:'development',API_PORT:String(port),VANO_DATA_FILE:path.join(tmp,'store.json'),VANO_SECURITY_SECRET:'security-test-secret-only-keep-local-123456789',...extraEnv},stdio:['ignore','pipe','pipe']});
  let logs='';child.stderr.on('data',b=>logs+=String(b));
  const origin=`http://127.0.0.1:${port}`;
- for(let i=0;i<90;i++){if(child.exitCode!==null)throw Error('Server stopped: '+logs);try{const r=await fetch(origin+'/api/health');if(r.ok)break;}catch{}await sleep(80);if(i===89)throw Error('Server timeout: '+logs);}
+ for(let i=0;i<90;i++){if(child.exitCode!==null)throw Error('Server stopped: '+logs);try{const r=await fetch(origin+'/api/health',{headers:extraEnv.NODE_ENV==='production'?{'X-Forwarded-Proto':'https'}:{}});if(r.ok)break;}catch{}await sleep(80);if(i===89)throw Error('Server timeout: '+logs);}
  return {origin,tmp,child,async stop(){child.kill();await Promise.race([new Promise(r=>child.once('exit',r)),sleep(1000)]);await fs.rm(tmp,{recursive:true,force:true})}};
 }
 function client(origin){
@@ -337,3 +337,18 @@ test('Logout revokes both account and guest cookies',async()=>{
     assert.ok(cookies.some(c=>c.startsWith('vano_guest=')&&c.includes('Max-Age=0')),JSON.stringify(cookies));
   } finally { await s.stop(); }
 },{timeout:15000});
+
+test('production Android alias supports login and route validation while retaining CSRF',async()=>{
+ const alias='https://vanu-73xu.onrender.com';
+ const s=await start({NODE_ENV:'production',VANO_PUBLIC_ORIGIN:'https://vanomaps.online',VANO_ADDITIONAL_ORIGINS:alias,VANO_ALLOW_SINGLE_INSTANCE_JSON:'1',VITE_MAPBOX_PUBLIC_TOKEN:'pk.test',VITE_DEMO_MODE:'false'}),a=client(s.origin);
+ const headers={'X-Forwarded-Proto':'https',Origin:alias,'Sec-Fetch-Site':'same-origin'};
+ try{
+  assert.equal((await a.call('/api/bootstrap','GET',undefined,headers)).status,200);
+  const login=await a.call('/api/auth/login','POST',{email:'',password:''},headers);
+  assert.notEqual(login.status,403,'valid Android origin must reach login validation');
+  assert.equal((await a.call('/api/route','POST',{},headers)).status,400);
+  assert.equal((await a.call('/api/route','POST',{}, {...headers,'X-VANO-CSRF':''})).status,403);
+  assert.equal((await a.call('/api/route','POST',{}, {...headers,Origin:'https://evil.example'})).status,403);
+  assert.equal((await a.call('/api/route','POST',{}, {...headers,'Sec-Fetch-Site':'cross-site'})).status,403);
+ }finally{await s.stop();}
+});

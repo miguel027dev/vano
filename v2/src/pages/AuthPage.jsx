@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Check, CheckCircle2, Eye, EyeOff, 
 import { Brand } from '../components/Brand';
 import { useVano } from '../context';
 import { post } from '../lib/api';
+import {isNativeShell} from '../lib/nativeShell';
 import {LANGUAGES,translate} from '../lib/i18n';
 
 function EntryField({label,type='text',value,onChange,placeholder,autoComplete,required=true,minLength,translator}){
@@ -25,6 +26,7 @@ function EntryField({label,type='text',value,onChange,placeholder,autoComplete,r
 
 export function AuthPage({mode='login'}){
   const register=mode==='register';
+  const backTo=isNativeShell()?'/mapa':'/inicio';
   const {login,language,googleReady}=useVano();
   const navigate=useNavigate();
   const location=useLocation();
@@ -52,13 +54,13 @@ export function AuthPage({mode='login'}){
       const result=await login(register?'signup':'login',form);
       if(result?.verificationRequired){setError(t('Enviamos um link de confirmação para seu e-mail. Confira sua caixa de entrada antes de entrar.'));return;}
       try{localStorage.setItem('vano-v2-intro-seen','1')}catch{}
-      navigate(register||!result?.onboardingComplete?'/personalizar':'/mapa',{replace:true});
+      navigate(isNativeShell()?'/mapa':register||!result?.onboardingComplete?'/personalizar':'/mapa',{replace:true});
     }catch(ex){setError(t(ex.message||'Não foi possível continuar. Tente novamente.'));}
     finally{setBusy(false);}
   }
   return <main className="v3-auth-page">
     <div className="v3-auth-main">
-      <header className="v3-auth-header"><Brand to="/inicio"/><Link to="/inicio" className="v3-auth-back"><ArrowLeft size={17}/> {t('Voltar')}</Link></header>
+      <header className="v3-auth-header"><Brand to={backTo}/><Link to={backTo} className="v3-auth-back"><ArrowLeft size={17}/> {t('Voltar')}</Link></header>
       <section className="v3-auth-center" aria-label={register?t('Criar conta VANO'):t('Entrar na VANO')}>
         <div className="v3-auth-copy">
           <span className="v3-auth-eyebrow"><span className="v3-orange-dash"/> {t('CONTA VANO')}</span>
