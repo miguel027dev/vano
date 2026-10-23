@@ -223,7 +223,7 @@ test('V2 Sim entry close-up anchors to the animated user icon in open and dense 
  const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  assert.match(map,/const ramp=planV2RampApproach\(/);
  assert.match(map,/const userPuck=validPoint\(d\.motionCoords\)\?d\.motionCoords:d\.gpsCoords/);
- assert.match(map,/v2UserCenteredRampView\(\s*userPuck,markerHeading,chase\.lookAheadMeters\s*\)/);
+ assert.match(map,/v2UserCenteredRampView\(\s*userPuck,markerHeading,0\s*\)/);
  assert.match(map,/if\(ramp\.active&&urbanBlend<\.001\)return rampCloseup\(base\)/);
  assert.match(map,/return rampCloseup\(\{\.\.\.base/);
  assert.match(map,/if\(urbanBlend<\.001\)return rampCloseup\(base\)/);
@@ -285,7 +285,7 @@ test('V2 simulated follow uses user pointer and keeps marker visible when terrai
  const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  assert.match(map,/const chase=planV2RearChase\(/);
- assert.match(map,/v2UserCenteredRampView\(\s*userPuck,markerHeading,chase\.lookAheadMeters\s*\)/);
+ assert.match(map,/v2UserCenteredRampView\(\s*userPuck,markerHeading,0\s*\)/);
  assert.match(map,/if\(urbanBlend<\.001\)return rampCloseup\(base\)/);
  assert.match(map,/return rampCloseup\(\{\.\.\.base/);
  assert.match(map,/getOccludedOpacity\?\.\(\)/);
@@ -326,8 +326,9 @@ test('smart camera zooms OUT on a verified long straight but stays behind the ma
  const straight=planV2RearChase({...base,maneuver:{kind:'continue',distance:800}});
  const ordinary=planV2RearChase({...base,straightAheadMeters:0,maneuver:{kind:'continue',distance:800}});
  assert.equal(straight.scenario,'straight');
- assert.ok(straight.zoom<ordinary.zoom-.5);
- assert.ok(straight.zoom>=16.72&&straight.zoom<=18.18);
+ assert.ok(straight.zoom<ordinary.zoom-.16,'verified straights widen gently');
+ assert.ok(ordinary.zoom-straight.zoom<=.36,'avoid zoom breathing far from decisions');
+ assert.ok(straight.zoom>=16.72&&straight.zoom<=17.42);
  assert.ok(straight.lookAheadMeters<=18&&straight.lookAheadMeters>0);
  assert.ok(straight.halfLife>ordinary.halfLife,'cruising relaxes gradually');
 });
@@ -339,9 +340,9 @@ test('approaching entrance overrides long straight zoom and comes close around 1
  const near=planV2RearChase({...base,rampStrength:entrance.strength});
  const far=planV2RearChase({...base,maneuver:{kind:'continue',distance:800},rampStrength:0});
  assert.equal(near.scenario,'entrance');
- assert.ok(near.zoom>far.zoom+.5);
+ assert.ok(near.zoom>far.zoom+.4,'confirmed ramps still reveal the entrance');
  assert.ok(near.lookAheadMeters<far.lookAheadMeters);
- assert.ok(near.zoom<=18.18&&near.lookAheadMeters>=5);
+ assert.ok(near.zoom<=17.42&&near.lookAheadMeters>=5);
 });
 
 test('near turns and junctions zoom in, roundabouts widen to show the exits',()=>{

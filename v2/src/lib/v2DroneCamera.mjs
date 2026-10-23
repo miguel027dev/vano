@@ -1,5 +1,6 @@
 /** Adaptive V2 Sim camera. Presentation only: never mutates GPS, routing or trips. */
 import {maneuverCategory} from './navigationCameraPlanner.js';
+import {v2SimulationCameraLimits} from './v2SimulationChase.mjs';
 import {planAdaptiveRoadDistance} from './adaptiveRoadCamera.mjs';
 import {nearestOnRoute,validPoint,metersBetween,bearingBetween,shortestAngle} from './navigationMotion.js';
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number.isFinite(v)?v:min));
@@ -254,16 +255,18 @@ export function planV2RearChase({
     focus==='arrival'?smooth((90-distance)/80):
     focus==='bend'?smooth((curve-20)/55):0;
   // Third-person camera stays BEHIND the puck. Never use a road line as anchor.
-  let zoom=(compactViewport?17.61:17.79)+urban*.23-
-    Math.min(.15,velocity*.005)-walls*.07;
-  let pitch=(compactViewport?46:55)-urban*9-walls*10;
+  // Screenshot-reference cruise: stable ~17.0 zoom / ~53° pitch.
+  // Avoid large mode-to-mode jumps as urban observation enters or exits.
+  let zoom=(compactViewport?16.91:17.07)+urban*.09-
+    Math.min(.08,velocity*.003)-walls*.045;
+  let pitch=(compactViewport?50:53)-urban*5-walls*8;
   if(focus==='straight'){
-    zoom-=straightStrength*(.55+Math.min(.20,velocity*.006))+
-      roadDistance.microZoom;
-    pitch-=straightStrength*3;
+    // Gentle pullback rather than a dramatic long-straight zoom-out.
+    zoom-=straightStrength*.22+roadDistance.microZoom*.35;
+    pitch-=straightStrength*2;
   }else if(focus==='entrance'){
     zoom+=entrance*.27;
-    pitch-=entrance*2;
+    pitch+=entrance*2;
   }else if(focus==='roundabout'){
     zoom-=decisionStrength*.17; // reveal exits instead of cropping the circle
     pitch-=decisionStrength*7;
@@ -280,8 +283,7 @@ export function planV2RearChase({
     zoom+=decisionStrength*.09;
     pitch-=decisionStrength*4;
   }
-  zoom=clamp(zoom,16.72,18.18);
-  pitch=reducedMotion?0:clamp(pitch,30,58);
+  ({zoom,pitch}=v2SimulationCameraLimits(zoom,pitch,{reducedMotion}));
   const lookAheadMeters=reducedMotion?0:clamp((compactViewport?8:12)+
     Math.min(5,velocity*.24)-urban*2-entrance*3-walls*2+
     straightStrength*2.5,5,18);
