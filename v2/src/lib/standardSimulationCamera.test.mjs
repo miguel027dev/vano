@@ -174,7 +174,7 @@ test('Play-only integration limits camera yaw independently of fast marker headi
  const code=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(code,/position:d\.motionCoords\|\|d\.gpsCoords,markerBearing:d\.motionBearing/);
  assert.match(code,/const nextBearing=t\.cameraFollowMarker&&!reduced\?/);
- assert.match(code,/const maxYawStep=72\*dt\/1000/);
+ assert.match(code,/const maxYawStep=\(latest\.current\.droneSimulation\?82:72\)\*dt\/1000/);
  assert.match(code,/const framedManeuver=standardPlay\?/);
  assert.match(code,/if\(!d\.droneSimulation\|\|!base\)return realCameraDistance/);
 });
