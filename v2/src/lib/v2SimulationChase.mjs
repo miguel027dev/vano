@@ -5,8 +5,8 @@
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
 
 export const V2_SIM_REFERENCE=Object.freeze({
-  zoom:17.0,
-  pitch:53,
+  zoom:17.25,
+  pitch:56,
   markerFraction:0.73,
 });
 
@@ -33,11 +33,11 @@ export function v2SimulationChasePadding(viewport){
   return {...original,top:Math.round(top+shift)};
 }
 
-/** Restrict only the V2 SIM zoom/pitch envelope; remaining adjustments for
+/** Closer, more diagonal V2 simulation framing (approx. 0.2 zoom nearer).\n * Restrict only the V2 SIM zoom/pitch envelope; remaining adjustments for
  * confirmed entrances and structural occlusion stay in its scenario planner. */
 export function v2SimulationCameraLimits(zoom,pitch,{reducedMotion=false}={}){
   return {
-    zoom:clamp(Number.isFinite(zoom)?zoom:V2_SIM_REFERENCE.zoom,16.72,17.42),
-    pitch:reducedMotion?0:clamp(Number.isFinite(pitch)?pitch:V2_SIM_REFERENCE.pitch,30,58)
+    zoom:clamp(Number.isFinite(zoom)?zoom:V2_SIM_REFERENCE.zoom,16.90,17.65),
+    pitch:reducedMotion?0:clamp(Number.isFinite(pitch)?pitch:V2_SIM_REFERENCE.pitch,30,61)
   };
 }
