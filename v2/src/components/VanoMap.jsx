@@ -694,7 +694,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     map._vanoSyncPrivateRoadSigns=()=>{
       if(backend.current==='mapbox')syncPrivateRoadSignMarkers(map,mapboxgl,latest.current);
     };
-    const detachPublicPins=attachPublicMapOverlay(map,backend.current,()=>latest.current.navigation,place=>latest.current.onPublicPlaceSelect?.(place));
+    const detachPublicPins=attachPublicMapOverlay(map,backend.current,()=>latest.current.navigation,place=>latest.current.onPublicPlaceSelect?.(place),()=>latest.current.v2Experience);
     const detachCommunityPins=attachCommunityReportOverlay(map,backend.current,()=>latest.current.simulationPreview?null:latest.current.gpsCoords,()=>latest.current.active&&!latest.current.simulationPreview);
     municipalFeed.current=backend.current==='mapbox'?attachMunicipalTrafficOverlay(map,{enabled:latest.current.trafficEnabled}):null;
     if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation||shouldFollowLocation({navigation:false,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.recenter();
@@ -732,7 +732,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   },[token,forceRaster]);
   // Navigation switches should change POI categories immediately, without
   // remounting the map, touching GPS or triggering any provider request.
-  useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[navigation]);
+  useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[navigation,v2Experience]);
   // Update proximity markers from live GPS without recreating the renderer or touching route layers.
   useEffect(()=>{mapRef.current?._vanoSyncCommunityReports?.();},[gpsCoords?.[0],gpsCoords?.[1],active,simulationPreview]);
   useEffect(()=>{

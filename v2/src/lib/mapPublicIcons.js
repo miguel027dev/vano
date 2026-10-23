@@ -220,3 +220,13 @@ export function mapRadarBBox(map){
  if(left>=right||bottom>=top)return null;
  return [left,bottom,right,top].map(x=>+x.toFixed(5));
 }
+
+
+/** V2 admin visual-only filter: retain semaphore observations for route evidence
+ * without putting floating signal chips over the simulation or map.
+ * Public /mapa keeps its existing POIs and the road graph remains unchanged.
+ */
+export function filterV2TrafficSignalPins(pins=[],{v2Experience=false,hiddenIds=null}={}){
+ return (Array.isArray(pins)?pins:[]).filter(item=>
+  !hiddenIds?.has(item.id)&&!(v2Experience&&item.type==='semaforo'));
+}

@@ -255,11 +255,12 @@ export function planV2RearChase({
     focus==='arrival'?smooth((90-distance)/80):
     focus==='bend'?smooth((curve-20)/55):0;
   // Third-person camera stays BEHIND the puck. Never use a road line as anchor.
-  // Screenshot-reference cruise: stable ~17.0 zoom / ~53° pitch.
+  // Slightly closer, diagonal Waze-like *simulation-only* rear chase.
+  // Keep the marker anchored low on screen; retain the existing easing and turn follow.
   // Avoid large mode-to-mode jumps as urban observation enters or exits.
-  let zoom=(compactViewport?16.91:17.07)+urban*.09-
+  let zoom=(compactViewport?17.14:17.30)+urban*.09-
     Math.min(.08,velocity*.003)-walls*.045;
-  let pitch=(compactViewport?50:53)-urban*5-walls*8;
+  let pitch=(compactViewport?53:56)-urban*5-walls*8;
   if(focus==='straight'){
     // Gentle pullback rather than a dramatic long-straight zoom-out.
     zoom-=straightStrength*.22+roadDistance.microZoom*.35;

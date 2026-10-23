@@ -5,8 +5,8 @@ import {v2SimulationChasePadding,v2SimulationCameraLimits,V2_SIM_REFERENCE} from
 import {planV2RearChase} from './v2DroneCamera.mjs';
 
 test('reference screenshot framing anchors vehicle at 73% of the SAFE map area',()=>{
-  assert.equal(V2_SIM_REFERENCE.pitch,53);
-  assert.equal(V2_SIM_REFERENCE.zoom,17);
+  assert.equal(V2_SIM_REFERENCE.pitch,56);
+  assert.equal(V2_SIM_REFERENCE.zoom,17.25);
   const vp={padding:{top:148,bottom:180,left:22,right:22},visibleHeight:420,markerRadius:48};
   const pad=v2SimulationChasePadding(vp);
   const height=vp.padding.top+vp.visibleHeight+vp.padding.bottom;
@@ -35,13 +35,13 @@ test('V2-only reference limits produce a stable cruise and protect high-rise occ
   const cruise=planV2RearChase({enabled:true,speed:11,urbanDensity:0});
   const dense=planV2RearChase({enabled:true,speed:11,urbanDensity:1,obstruction:1});
   const entrance=planV2RearChase({enabled:true,speed:11,rampStrength:1});
-  assert.ok(Math.abs(cruise.pitch-53)<=1);
-  assert.ok(Math.abs(cruise.zoom-17)<.2);
+  assert.ok(Math.abs(cruise.pitch-V2_SIM_REFERENCE.pitch)<=1);
+  assert.ok(Math.abs(cruise.zoom-V2_SIM_REFERENCE.zoom)<.2);
   assert.ok(dense.pitch<cruise.pitch);
   assert.ok(entrance.zoom>cruise.zoom);
-  assert.ok(entrance.pitch<=58);
-  assert.deepEqual(v2SimulationCameraLimits(99,99),{zoom:17.42,pitch:58});
-  assert.deepEqual(v2SimulationCameraLimits(-99,-99),{zoom:16.72,pitch:30});
+  assert.ok(entrance.pitch<=61);
+  assert.deepEqual(v2SimulationCameraLimits(99,99),{zoom:17.65,pitch:61});
+  assert.deepEqual(v2SimulationCameraLimits(-99,-99),{zoom:16.90,pitch:30});
   assert.equal(v2SimulationCameraLimits(18,40,{reducedMotion:true}).pitch,0);
 });
 
