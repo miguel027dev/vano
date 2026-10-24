@@ -349,7 +349,7 @@ async function jevTranscribe(audio,mime,provider){
 function ownRecords(name, id) { return db[name].filter(x => x.owner === id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || '')); }
 function prefFor(id, suggestedLanguage='pt-BR') {
   const saved=db.preferences.find(x=>x.owner===id)||{};
-  return {vehicle:'carro',preferredRoute:'safe',theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
+  return {vehicle:'carro',preferredRoute:'safe',avoidTolls:false,theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
 }
 function bootstrap(req) {
   const id = owner(req);
@@ -1090,6 +1090,29 @@ async function route(req, res) {
       type:ticketType,user:id,text:txt,expires:now()+MAVI_VOICE_TICKET_MS
     })});
   }
+  // Fixed, server-authored MAVI onboarding phrases. Same voice provider/model
+  // as the map, never a public arbitrary-text TTS proxy. Playback is opt-in.
+  if(pathname==='/api/v2/onboarding/voice-ticket'&&req.method==='POST'){
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'mavi-onboarding-voice',6,60000))return;
+    const body=await getBody(req),id=owner(req);
+    const phrases={
+      welcome:'Bem-vindo ao VANO! Eu sou a MAVI. Quero saber o que importa mais: chegar mais rápido ou comparar indicadores de segurança?',
+      route:'O que importa mais na escolha de uma rota? Chegar mais rápido ou comparar indicadores de segurança?',
+      tolls:'Posso incluir caminhos com pedágio? Você prefere evitar ou permite utilizar quando fizer sentido?',
+      alerts:'Quer receber avisos de ocorrências durante suas viagens?',
+      done:'Pronto! Suas preferências foram escolhidas. Você pode mudar tudo depois nas configurações.'
+    };
+    const stage=typeof body.stage==='string'?body.stage:'';
+    if(!Object.hasOwn(phrases,stage)||!id)return err(res,400,'Mensagem da MAVI inválida.');
+    const cartesia=maviCartesiaConfig(),eleven=maviElevenConfig();
+    const ticketType=eleven.enabled?'mavi-eleven-tts':cartesia.enabled?'mavi-cartesia-tts':null;
+    if(!ticketType)return err(res,503,'Voz da MAVI indisponível.');
+    const txt=maviSpeechText(phrases[stage]);
+    if(!txt)return err(res,503,'Voz da MAVI indisponível.');
+    return json(res,200,{voiceTicket:signedToken(secret,{type:ticketType,user:id,
+      text:txt,expires:now()+MAVI_VOICE_TICKET_MS})});
+  }
   // V2-only voice cues require a fresh signed route. No arbitrary TTS text:
   // short plausible guidance forms and explicit navigation-start messages only.
   if(pathname==='/api/v2/navigation/voice-ticket'&&req.method==='POST'){
@@ -1599,6 +1622,7 @@ async function route(req, res) {
     const id=owner(req),p=await getBody(req),next={...prefFor(id),owner:id};
     if(p.vehicle!==undefined){if(!['carro','moto'].includes(p.vehicle))return err(res,400,'Veículo inválido.');next.vehicle=p.vehicle;}
     if(p.preferredRoute!==undefined){if(!['safe','fast'].includes(p.preferredRoute))return err(res,400,'Rota inválida.');next.preferredRoute=p.preferredRoute;}
+    if(p.avoidTolls!==undefined){if(typeof p.avoidTolls!=='boolean')return err(res,400,'Preferência de pedágios inválida.');next.avoidTolls=p.avoidTolls;}
     if(p.theme!==undefined){if(!['light','dark','system'].includes(p.theme))return err(res,400,'Tema inválido.');next.theme=p.theme;}
     if(p.language!==undefined){if(!LANGUAGES.has(p.language))return err(res,400,'Idioma indisponível.');next.language=p.language;next.languageConfirmed=true;}
     if(p.alerts!==undefined){if(typeof p.alerts!=='boolean')return err(res,400,'Alertas inválidos.');next.alerts=p.alerts;}
