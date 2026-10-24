@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 510" role="img" aria-labelledby="title desc">
+<title id="title">Moto VANO</title><desc id="desc">Motocicleta esportiva cinza grafite com detalhes laranja, sem fundo</desc>
+<defs><linearGradient id="metal" x1="0" x2="1" y2="1"><stop stop-color="#6c7881"/><stop offset=".27" stop-color="#1e282e"/><stop offset=".67" stop-color="#343e46"/><stop offset="1" stop-color="#0e161c"/></linearGradient><linearGradient id="body" x1="0" x2="1" y2="1"><stop stop-color="#384651"/><stop offset=".45" stop-color="#161f26"/><stop offset="1" stop-color="#54616a"/></linearGradient><linearGradient id="orange" x1="0" x2="1"><stop stop-color="#ffab4f"/><stop offset=".5" stop-color="#ff6b19"/><stop offset="1" stop-color="#d74c0a"/></linearGradient><radialGradient id="tire"><stop offset=".36" stop-color="#30383c"/><stop offset=".72" stop-color="#12181c"/><stop offset="1" stop-color="#030708"/></radialGradient><filter id="shadow" x="-20%" y="-25%" width="140%" height="180%"><feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#1c252f" flood-opacity=".28"/></filter></defs>
+<g filter="url(#shadow)">
+<g stroke="#11191f" stroke-width="4">
+<circle cx="210" cy="368" r="126" fill="url(#tire)"/><circle cx="210" cy="368" r="106" fill="none" stroke="#ff771b" stroke-width="8"/><circle cx="210" cy="368" r="89" fill="#202a30" stroke="#88939b" stroke-width="7"/>
+<circle cx="683" cy="368" r="126" fill="url(#tire)"/><circle cx="683" cy="368" r="106" fill="none" stroke="#ff771b" stroke-width="8"/><circle cx="683" cy="368" r="89" fill="#202a30" stroke="#88939b" stroke-width="7"/>
+</g>
+<g stroke="#9da4ac" stroke-width="8" stroke-linecap="round" opacity=".78">
+<path d="M210 277v181M120 368h180M146 304l128 128M146 432l128-128M683 279v178M595 368h176M620 304l126 128M620 432l126-128"/>
+</g><circle cx="210" cy="368" r="28" fill="#5f6b73" stroke="#c8cbd0" stroke-width="8"/><circle cx="683" cy="368" r="32" fill="#535f65" stroke="#c9d1d3" stroke-width="8"/>
+<path d="M204 360L306 227 477 231 680 365" fill="none" stroke="#1d262c" stroke-width="28" stroke-linejoin="round"/><path d="M217 363L315 245 475 244 677 366" fill="none" stroke="#7b888f" stroke-width="9" stroke-linejoin="round"/>
+<path d="M294 246L378 355 500 268" fill="none" stroke="#263139" stroke-width="29" stroke-linejoin="round"/><path d="M302 250L382 351 490 266" fill="none" stroke="#a1abb1" stroke-width="7" stroke-linejoin="round"/>
+<path d="M240 220L289 193 389 193 418 229 335 244 268 238Z" fill="url(#body)" stroke="#111b21" stroke-width="7"/>
+<path d="M267 194L300 174 372 181 397 205 287 213Z" fill="#161e25"/><path d="M310 177h75l-17-20h-91Z" fill="#232e36"/>
+<path d="M351 201Q410 147 501 167L560 220 491 280 392 252 366 228Z" fill="url(#body)" stroke="#101a21" stroke-width="8"/>
+<path d="M396 211L491 191 541 219 489 246Z" fill="url(#orange)" opacity=".95"/>
+<path d="M391 223L484 252 444 276 388 250Z" fill="#d2dadc" opacity=".6"/>
+<path d="M498 179L554 159 632 167 659 208 579 246 539 228Z" fill="url(#metal)" stroke="#151e24" stroke-width="8"/>
+<path d="M559 179L626 174 640 197 582 215Z" fill="url(#orange)"/>
+<path d="M602 152L631 98 678 90" fill="none" stroke="#1e262d" stroke-width="13" stroke-linecap="round"/>
+<path d="M616 110l75-15 24 3" fill="none" stroke="#89969f" stroke-width="10" stroke-linecap="round"/>
+<path d="M625 105L618 75 637 48" fill="none" stroke="#2a3339" stroke-width="7"/><path d="M643 53l46-20 16 9-16 22-39 1Z" fill="#1b252b" stroke="#86929a" stroke-width="5"/>
+<path d="M507 161L489 116 454 104" fill="none" stroke="#1c252c" stroke-width="7"/><path d="M457 102L418 93 401 105 418 122 459 119Z" fill="#27343a" stroke="#829098" stroke-width="5"/>
+<path d="M645 196L704 237 733 279 699 291 624 246Z" fill="#151e24" stroke="#66737b" stroke-width="7"/>
+<path d="M686 232L739 257 728 282 688 273Z" fill="#f9f7ee" stroke="#ff9b34" stroke-width="7"/>
+<path d="M607 235L690 361" stroke="#a3acb4" stroke-width="17" stroke-linecap="round"/><path d="M630 248L691 344" stroke="#354249" stroke-width="17" stroke-linecap="round"/>
+<path d="M359 271L434 287 481 350 417 406 340 385 319 320Z" fill="#172128" stroke="#70808a" stroke-width="9"/>
+<circle cx="399" cy="341" r="43" fill="#47535e" stroke="#0d171e" stroke-width="12"/><circle cx="399" cy="341" r="24" fill="#202c33" stroke="#929da4" stroke-width="7"/>
+<path d="M364 395l-76 11-55-32" stroke="#c2ccd2" stroke-width="15" fill="none" stroke-linecap="round"/>
+<path d="M247 383L337 397 276 422 195 413Z" fill="#222d34" stroke="#7c878d" stroke-width="6"/>
+<path d="M448 352L572 354 603 377 577 402 438 403Z" fill="#141d23" stroke="#74828b" stroke-width="6"/>
+<path d="M522 359l101 21-6 20-96-13Z" fill="url(#metal)" stroke="#aab4b9" stroke-width="5"/>
+<path d="M235 223L204 207 175 209 147 247" fill="none" stroke="#272f34" stroke-width="13"/><path d="M141 243L102 269 117 286 180 253Z" fill="#343e44" stroke="#111a1f" stroke-width="5"/>
+</g></svg>

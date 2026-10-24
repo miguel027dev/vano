@@ -27,5 +27,6 @@ import './v80-dynamic-guidance.css';
 import './home-motion.css';
 import './v81-desktop-tablet.css';
 import './v82-pc-provider-credits.css';
+import './v92-profile-mavi.css';
 import './v50-night-system.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);

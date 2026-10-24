@@ -32,7 +32,7 @@ test('vehicle picker changes real API route parameter and never leaves stale alt
  assert.match(page,/setRouteData\(null\);setLoadingRoute\(true\);setSheetOpen\(true\)/);
  assert.match(page,/calculateRoute\(dest,origin,vehicle\)/);
  assert.match(page,/vehicle:routeVehicle,language,\s*telemetry:/,'reroute must keep selected vehicle');
- assert.match(page,/routeOptions:\{reroute:true,adaptive:false,variantBudget:2\}/);
+  assert.match(page,/routeOptions:\{reroute:true,adaptive:false,variantBudget:2,avoidTolls:preferences\?\.avoidTolls===true\}/);
  assert.match(page,/telemetry=\{simTelemetry\|\|telemetry\} vehicle=\{routeVehicle\}/,'map receives real telemetry except during private V2 playback');
  assert.match(page,/const simTelemetry=simFrame\?/);
 });

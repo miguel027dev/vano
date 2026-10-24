@@ -437,7 +437,7 @@ export default function MapPage({active=true}){
     setLoadingRoute(true);setSheetOpen(true);setRouteData(null);setRouteError('');
     try{
       const data=await api('/route',{method:'POST',signal:controller.signal,body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null},
-        routeOptions:{v2FastCorridor:location.pathname==='/v2'}})});
+        routeOptions:{v2FastCorridor:location.pathname==='/v2',avoidTolls:preferences?.avoidTolls===true}})});
       if(!Array.isArray(data?.routes)||data.routes.length===0)throw new Error('Nenhuma rota disponível para este trajeto. Tente outra origem ou destino.');
       if(epoch===routeEpoch.current&&!controller.signal.aborted){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
     }catch(e){
@@ -909,7 +909,7 @@ export default function MapPage({active=true}){
       try{
         const data=await api('/route',{method:'POST',signal:request.signal,body:JSON.stringify({
           origin:position,destination:dest.coords,vehicle:routeVehicle,language,
-          routeOptions:{reroute:true,adaptive:false,variantBudget:2}
+          routeOptions:{reroute:true,adaptive:false,variantBudget:2,avoidTolls:preferences?.avoidTolls===true}
         })});
         if(disposed||!data?.routes?.length||data.source==='demonstracao')return;
         const updated=data.routes.find(candidate=>candidate.id===choice);
@@ -1110,7 +1110,7 @@ export default function MapPage({active=true}){
       const next=await api('/route',{method:'POST',body:JSON.stringify({
         origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,
         telemetry:{bearing:telemetry.heading,speed:telemetry.speed},
-        routeOptions:{reroute:true,adaptive:false,variantBudget:2}
+        routeOptions:{reroute:true,adaptive:false,variantBudget:2,avoidTolls:preferences?.avoidTolls===true}
       })});
       if(epoch===routeEpoch.current){
         spoken.current.clear();cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};

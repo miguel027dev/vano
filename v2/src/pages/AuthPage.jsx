@@ -6,6 +6,7 @@ import { useVano } from '../context';
 import { post } from '../lib/api';
 import {isNativeShell} from '../lib/nativeShell';
 import {LANGUAGES,translate} from '../lib/i18n';
+import MaviSetupChat from '../components/MaviSetupChat.jsx';
 
 function EntryField({label,type='text',value,onChange,placeholder,autoComplete,required=true,minLength,translator}){
   const {t:contextT}=useVano();
@@ -103,23 +104,38 @@ export function AuthPage({mode='login'}){
     </aside>
   </main>;
 }
-const vehicleChoices=[{id:'carro',name:'Carro',detail:'Viagens urbanas e rodovias',image:'/vehicle-car-cutout.png',icon:CarFront},{id:'moto',name:'Moto',detail:'Mobilidade em duas rodas',image:'/vehicle-moto.webp',icon:Bike}];
-const routines=[{id:'Casa',name:'Casa',icon:House},{id:'Trabalho',name:'Trabalho',icon:BriefcaseBusiness},{id:'Faculdade',name:'Estudos',icon:GraduationCap},{id:'Academia',name:'Academia',icon:Dumbbell},{id:'Mercado',name:'Mercado',icon:ShoppingBasket}];
-export function OnboardingPage(){const navigate=useNavigate(),{preferences,savePreference,user,setToast,t}=useVano();const [vehicle,setVehicle]=useState(preferences?.vehicle||'carro'),[route,setRoute]=useState(preferences?.preferredRoute||'safe'),[tags,setTags]=useState(preferences?.routineTags||[]),[step,setStep]=useState(1),[busy,setBusy]=useState(false),[error,setError]=useState('');const total=3;
- async function finish(){setBusy(true);setError('');try{await savePreference({vehicle,preferredRoute:route,routineTags:tags,onboardingComplete:true});try{localStorage.setItem('vano-v2-intro-seen','1')}catch{}navigate('/mapa',{replace:true});}catch(e){setError(e.message||t('Falha ao salvar preferências.'))}finally{setBusy(false)}}
- const back=()=>step===1?navigate(user?'/perfil':'/inicio'):setStep(s=>s-1);
- return <main className="setup-page"><div className="setup-frame"><header className="setup-header"><Brand/><div className="setup-progress-info"><span>{t('PERSONALIZE SEU VANO')}</span><strong>{String(step).padStart(2,'0')} <i>/</i> 0{total}</strong></div></header><div className="setup-progress-bars" aria-label={`Etapa ${step} de ${total}`}>{Array.from({length:total},(_,i)=><div key={i} className={i<step?'active':''}/>)}</div><div className="setup-head"><span className="access-overline">{t(step===1?'01 / SEU VEÍCULO':step===2?'02 / SUAS ROTAS':'03 / SUA ROTINA')}</span><h1>{t(step===1?'Como você se move?':step===2?'Qual caminho combina com você?':'O que faz parte do seu dia?')}</h1><p>{t(step===1?'Escolha seu veículo principal. Assim o VANO adapta a experiência ao seu trajeto.':step===2?'Você poderá alternar entre as rotas a qualquer momento.': 'Selecione lugares frequentes para personalizar os atalhos. Nenhum endereço será coletado agora.')}</p></div>
- {step===1&&<div className="setup-vehicle-grid">{vehicleChoices.map(v=><button key={v.id} className={`setup-vehicle ${vehicle===v.id?'selected':''}`} aria-pressed={vehicle===v.id} onClick={()=>setVehicle(v.id)}><span className="setup-vehicle-check">{vehicle===v.id?<Check size={19} strokeWidth={3}/>:null}</span><div className={`setup-vehicle-figure ${v.id==='carro'?'v5-vehicle-cutout':''}`}><img src={v.image} alt={t(v.name)}/></div><div className="setup-vehicle-meta"><v.icon size={21}/><div><strong>{t(v.name)}</strong><small>{t(v.detail)}</small></div><ArrowRight size={19}/></div></button>)}</div>}
- {step===2&&<div className="v27-route-choices" role="group" aria-label={t('Seu tipo de rota')}>
-   {[{id:'safe',icon:ShieldCheck,title:'Mais segura',detail:'Prioriza os indicadores de segurança quando houver dados suficientes.'},{id:'fast',icon:Zap,title:'Mais rápida',detail:'Busca a melhor previsão de chegada, inclusive com desvios vantajosos.'}].map(item=><button type="button" key={item.id} aria-pressed={route===item.id} className={`v27-route-row ${route===item.id?'selected':''}`} onClick={()=>setRoute(item.id)}>
-      <span className="v27-route-symbol"><item.icon size={22} strokeWidth={1.8}/></span>
-      <span className="v27-route-copy"><strong>{t(item.title)}</strong><small>{t(item.detail)}</small></span>
-      <span className="v27-route-check" aria-hidden="true">{route===item.id&&<Check size={15} strokeWidth={3}/>}</span>
-   </button>)}
-   <p className="v27-route-footnote"><ShieldCheck size={15}/>{t('Altere quando quiser nas configurações.')}</p>
- </div>}
- {step===3&&<><div className="setup-tags">{routines.map(tag=><button className={tags.includes(tag.id)?'selected':''} aria-pressed={tags.includes(tag.id)} key={tag.id} onClick={()=>setTags(prev=>prev.includes(tag.id)?prev.filter(x=>x!==tag.id):[...prev,tag.id])}><tag.icon size={21}/>{t(tag.name)}{tags.includes(tag.id)&&<Check size={17}/>}</button>)}</div><div className="setup-privacy-note"><MapPin size={20}/><p><strong>{t('Seus endereços continuam privados.')}</strong> {t('O VANO só solicitará localização ao abrir o mapa. Se você preferir, poderá selecionar uma origem manualmente.')}</p></div></>}
- {error&&<div className="access-error" role="alert">{error}</div>}<div className="setup-actions"><button onClick={back} className="setup-back"><ArrowLeft size={17}/> {t('Voltar')}</button><button className="setup-next" disabled={busy} onClick={step===total?finish:()=>setStep(s=>s+1)}>{t(busy?'Salvando…':step===total?'Abrir meu mapa':'Continuar')}<ArrowRight size={19}/></button></div><div className="setup-note"><Sparkles size={16}/> {t('Você pode mudar tudo depois em Configurações.')}</div></div></main>
+const vehicleChoices=[{id:'carro',name:'Carro',detail:'Cidade e estrada',image:'/vehicle-car-cutout.png',icon:CarFront},
+  {id:'moto',name:'Moto',detail:'Mobilidade em duas rodas',image:'/vehicle-moto-cutout.svg',icon:Bike}];
+export function OnboardingPage(){
+ const navigate=useNavigate(),{preferences,savePreference,user,t}=useVano();
+ const [vehicle,setVehicle]=useState(preferences?.vehicle||'carro');
+ const [settings,setSettings]=useState({route:preferences?.preferredRoute||'fast',tolls:preferences?.avoidTolls===true,alerts:preferences?.alerts!==false});
+ const [step,setStep]=useState(1),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const total=2;
+ async function finish(){setBusy(true);setError('');try{
+   await savePreference({vehicle,preferredRoute:settings.route,avoidTolls:settings.tolls,alerts:settings.alerts,onboardingComplete:true});
+   try{localStorage.setItem('vano-v2-intro-seen','1')}catch{}
+   navigate('/mapa',{replace:true});
+ }catch(e){setError(e.message||t('Falha ao salvar preferências.'))}finally{setBusy(false)}}
+ const back=()=>step===1?navigate(user?'/perfil':'/inicio'):setStep(1);
+ return <main className="setup-page v92-setup">
+  <div className="setup-frame">
+   <header className="setup-header"><Brand/><div className="setup-progress-info"><span>SEU VANO, DO SEU JEITO</span><strong>0{step} <i>/</i> 0{total}</strong></div></header>
+   <div className="setup-progress-bars" aria-label={`Etapa ${step} de ${total}`}>{Array.from({length:total},(_,i)=><div key={i} className={i<step?'active':''}/>)}</div>
+   <div className="setup-head"><span className="access-overline">{step===1?'01 / MOBILIDADE':'02 / CONVERSA COM A MAVI'}</span><h1>{step===1?'Como você se move?':'A MAVI cuida dos detalhes.'}</h1>
+    <p>{step===1?'Escolha seu veículo. Sua experiência começa com um trajeto do seu jeito.':'Três escolhas rápidas para melhorar seu planejamento. Nada de formulários longos.'}</p></div>
+   {step===1&&<div className="setup-vehicle-grid">{vehicleChoices.map(v=><button type="button" key={v.id} className={`setup-vehicle v92-vehicle ${vehicle===v.id?'selected':''}`} aria-pressed={vehicle===v.id} onClick={()=>setVehicle(v.id)}>
+     <span className="setup-vehicle-check">{vehicle===v.id?<Check size={19} strokeWidth={3}/>:null}</span>
+     <div className="setup-vehicle-figure"><img src={v.image} alt={`Ilustração sem fundo de ${v.name.toLowerCase()}`}/></div>
+     <div className="setup-vehicle-meta"><v.icon size={21}/><div><strong>{v.name}</strong><small>{v.detail}</small></div><ArrowRight size={19}/></div>
+   </button>)}</div>}
+   {step===2&&<MaviSetupChat firstName={user?.name?.trim().split(/\s+/)[0]||'você'} settings={settings} onChange={(id,value)=>setSettings(old=>({...old,[id]:value}))}/>}
+   {error&&<div className="access-error" role="alert">{error}</div>}
+   <div className="setup-actions"><button type="button" onClick={back} className="setup-back"><ArrowLeft size={17}/> Voltar</button>
+   <button type="button" className="setup-next" disabled={busy} onClick={step===1?()=>setStep(2):finish}>{busy?'Salvando…':step===2?'Abrir meu mapa':'Continuar'} <ArrowRight size={19}/></button></div>
+   <div className="setup-note"><Sparkles size={16}/> Você pode mudar essas escolhas nas configurações.</div>
+  </div>
+ </main>;
 }
 
 export function PasswordRecoveryPage(){

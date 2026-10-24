@@ -55,7 +55,7 @@ test('both providers failing returns error instead of fictional route',async()=>
 test('V2 UI opts in; backend protects opt-in and preserves reroutes and V1',()=>{
  const page=readFileSync(new URL('../src/pages/MapPage.jsx',import.meta.url),'utf8');
  const index=readFileSync(new URL('./index.mjs',import.meta.url),'utf8');
- assert.match(page,/routeOptions:\{v2FastCorridor:location\.pathname==='\/v2'\}/);
+  assert.match(page,/routeOptions:\{v2FastCorridor:location\.pathname==='\/v2',avoidTolls:preferences\?\.avoidTolls===true\}/);
  assert.match(index,/provided\.v2FastCorridor===true&&currentUser\(req\)\?\.isAdmin===true/);
  assert.match(index,/options\.v2FastCorridor===true/);
  assert.match(index,/return chooseV2FastCorridor\(\{/);
