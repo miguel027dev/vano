@@ -419,7 +419,14 @@ export default function MapPage({active=true}){
   async function calculateRoute(place,departure,vehicle=routeVehicle){
     // Any new route request supersedes a pending vehicle-change debounce.
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
-    if(!validPoint(departure)||!validPoint(place?.coords))return;
+    if(!validPoint(departure)||!validPoint(place?.coords)){
+      // Origin is not an API failure: do not open a stale "retry route" panel.
+      routeEpoch.current++;
+      routeRequest.current?.abort();
+      setLoadingRoute(false);setRouteData(null);setRouteError('');
+      if(!validPoint(departure)){setPickOriginMode(true);setSheetOpen(false);}
+      return;
+    }
     // Superseded calculations must stop consuming the provider connection.
     routeRequest.current?.abort();
     const controller=new AbortController();
@@ -454,7 +461,11 @@ export default function MapPage({active=true}){
     routeEpoch.current++;
     routeRequest.current?.abort();
     if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}
-    if(!dest||!validPoint(origin)){setRouteData(null);return;}
+    if(!dest||!validPoint(origin)){
+      setRouteData(null);setRouteError('');setLoadingRoute(false);
+      if(dest){setSheetOpen(false);setPickOriginMode(true);}
+      return;
+    }
     setRouteData(null);setLoadingRoute(true);setSheetOpen(true);
     // Combine fast successive taps into one provider request (API quota).
     routeVehicleTimer.current=setTimeout(()=>{
@@ -469,7 +480,7 @@ export default function MapPage({active=true}){
       awaitingGpsDestination.current=true;
       routeEpoch.current++;
       routeRequest.current?.abort();
-      setSheetOpen(false);setPickOriginMode(true);
+      setSheetOpen(false);setLoadingRoute(false);setRouteError('');setPickOriginMode(true);
       setToast('Selecione no mapa de onde você quer sair. Não precisa permitir o GPS.');
       return;
     }
@@ -1278,7 +1289,7 @@ export default function MapPage({active=true}){
       <button title={simActive?'Centralizar na simulação':'Minha localização'} aria-label={simActive?'Centralizar no ponto simulado':'Minha localização'} className="circle-btn" onClick={()=>simActive?mapControl.current?.center?.():validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
       {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
     </div>}
-    {!navMode&&dest&&sheetOpen&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
+    {!navMode&&dest&&sheetOpen&&!pickOriginMode&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
         <div className={`v47-route-vehicle-switch ${import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
@@ -1312,7 +1323,13 @@ export default function MapPage({active=true}){
            <small className="v70-route-source">Fonte das travessias: OpenStreetMap (dados colaborativos). {crossingSafetyNote(language)}</small>
          </div>}
        </section>}
-       <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:<div className="notice" role="alert"><p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p><button type="button" onClick={()=>calculateRoute(dest,origin,routeVehicle)} disabled={!validPoint(origin)}>Tentar novamente</button></div>}
+       <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:!validPoint(origin)?<div className="notice" role="status">
+          <p>Para calcular a rota até {dest?.name||'o destino'}, escolha primeiro seu ponto de partida. O GPS é opcional.</p>
+          <button type="button" onClick={()=>{setSheetOpen(false);setPickOriginMode(true);}}>Escolher origem no mapa</button>
+          <button type="button" onClick={()=>requestGPS(true)}>Tentar GPS</button>
+        </div>:<div className="notice" role="alert"><p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p>
+          <button type="button" onClick={()=>calculateRoute(dest,origin,routeVehicle)}>Tentar novamente</button>
+        </div>}
     </div>}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
     {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
