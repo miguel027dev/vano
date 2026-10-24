@@ -81,9 +81,9 @@ test('scene occlusion and compact viewport share the same V2 safety bounds',()=>
   assert.ok(dense.pitch<open.pitch);
   const mobile=plan({kind:'on ramp',stepIndex:0,distance:20},{
     compactViewport:true,viewport:{...viewport,compact:true}});
-  assert.ok(mobile.zoom>=16.90&&mobile.zoom<=17.65);
-  assert.ok(mobile.pitch>=30&&mobile.pitch<=61);
-  assert.ok(dense.zoom>=16.90&&dense.zoom<=17.65);
+  assert.ok(mobile.zoom>=17.35&&mobile.zoom<=18.30);
+  assert.ok(mobile.pitch>=34&&mobile.pitch<=59);
+  assert.ok(dense.zoom>=17.35&&dense.zoom<=18.30);
 });
 
 test('poor GPS, unknown provider, rewind and accessibility are conservative',()=>{
