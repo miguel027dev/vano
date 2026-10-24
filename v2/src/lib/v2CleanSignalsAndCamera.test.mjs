@@ -31,8 +31,8 @@ test('signal observations stay readable internally even though V2 labels are hid
 test('V2 simulation camera is closer and diagonally tilted, without shifting the actual puck',()=>{
  const puck=[-46.69,-23.59];
  const chase=planV2RearChase({enabled:true,vehicle:'carro',speed:10,accuracy:8});
- assert.ok(chase.zoom>17.20&&chase.zoom<17.50,'a moderate increase, not excessive zoom');
- assert.ok(chase.pitch>=55&&chase.pitch<=61,'diagonal rear view');
+ assert.ok(chase.zoom>17.72&&chase.zoom<18.10,'close ground framing without excessive zoom');
+ assert.ok(chase.pitch>=50&&chase.pitch<=56,'ground-facing diagonal rear view');
  const view=planStandardSimulationCamera({
   enabled:true,base:{center:[-46.68,-23.58],zoom:16,pitch:35,bearing:10},
   position:puck,markerBearing:110,vehicle:'carro',speed:10,accuracy:8,
