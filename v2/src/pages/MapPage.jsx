@@ -1327,8 +1327,7 @@ export default function MapPage({active=true}){
           <p>Para calcular a rota até {dest?.name||'o destino'}, escolha primeiro seu ponto de partida. O GPS é opcional.</p>
           <button type="button" onClick={()=>{setSheetOpen(false);setPickOriginMode(true);}}>Escolher origem no mapa</button>
           <button type="button" onClick={()=>requestGPS(true)}>Tentar GPS</button>
-        </div>:<div className="notice" role="alert">
-          <p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p>
+        </div>:<div className="notice" role="alert"><p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p>
           <button type="button" onClick={()=>calculateRoute(dest,origin,routeVehicle)}>Tentar novamente</button>
         </div>}
     </div>}
