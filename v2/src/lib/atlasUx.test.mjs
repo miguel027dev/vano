@@ -57,7 +57,7 @@ test('imagem do perfil removeu fundo sem alterar as imagens aprovadas do onboard
   assert.equal(existsSync(resolve(root,'public/vehicle-car-cutout.png')),true);
   assert.match(source('src/pages/ProfilePage.jsx'),/vehicle-car-cutout\.png/);
   assert.match(source('src/pages/AuthPage.jsx'),/vehicle-car-cutout\.png/);
-  assert.match(source('src/pages/AuthPage.jsx'),/vehicle-moto\.webp/);
+  assert.match(source('src/pages/AuthPage.jsx'),/vehicle-moto-cutout\.svg/);
 });
 
 
