@@ -68,7 +68,7 @@ test('same shared straight heuristic gates simulation zoom while using gentler r
  assert.equal(sim.zoomDelta,0,'simulation drone has its own bounded full zoom policy');
  const drone=planV2RearChase({...opts,straightAheadMeters:650});
  const noStraight=planV2RearChase({...opts,straightAheadMeters:0});
- assert.ok(drone.zoom<noStraight.zoom-.16);
+ assert.ok(drone.zoom<noStraight.zoom-.08,'a slight widening on straight roads keeps the simulated car close');
  assert.ok(noStraight.zoom-drone.zoom<=.36,'reference framing reduces wide-straight zoom pumping');
 });
 
