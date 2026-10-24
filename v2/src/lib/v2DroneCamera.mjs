@@ -255,27 +255,28 @@ export function planV2RearChase({
     focus==='arrival'?smooth((90-distance)/80):
     focus==='bend'?smooth((curve-20)/55):0;
   // Third-person camera stays BEHIND the puck. Never use a road line as anchor.
-  // Slightly closer, diagonal Waze-like *simulation-only* rear chase.
-  // Keep the marker anchored low on screen; retain the existing easing and turn follow.
-  // Avoid large mode-to-mode jumps as urban observation enters or exits.
-  let zoom=(compactViewport?17.14:17.30)+urban*.09-
-    Math.min(.08,velocity*.003)-walls*.045;
-  let pitch=(compactViewport?53:56)-urban*5-walls*8;
+  // Close-to-road Waze-like framing ONLY during admin Play / V2 SIM.
+  // Higher zoom makes the real puck and route stroke larger, while a modest
+  // pitch (rather than a near-horizon view) keeps nearby asphalt in frame.
+  // Dense buildings still lower the tilt to avoid occluding intersections.
+  let zoom=(compactViewport?17.68:17.91)+urban*.06-
+    Math.min(.06,velocity*.0024)-walls*.035;
+  let pitch=(compactViewport?52:54)-urban*4-walls*7;
   if(focus==='straight'){
-    // Gentle pullback rather than a dramatic long-straight zoom-out.
-    zoom-=straightStrength*.22+roadDistance.microZoom*.35;
-    pitch-=straightStrength*2;
+    // Stay close even on verified long straights; do not retreat from the car.
+    zoom-=straightStrength*.12+roadDistance.microZoom*.12;
+    pitch-=straightStrength*1.5;
   }else if(focus==='entrance'){
-    zoom+=entrance*.27;
+    zoom+=entrance*.24;
     pitch+=entrance*2;
   }else if(focus==='roundabout'){
-    zoom-=decisionStrength*.17; // reveal exits instead of cropping the circle
+    zoom-=decisionStrength*.21; // keep roundabout exits legible
     pitch-=decisionStrength*7;
   }else if(focus==='junction'){
     zoom+=decisionStrength*.14;
     pitch-=decisionStrength*5;
   }else if(focus==='turn'||focus==='uturn'){
-    zoom+=decisionStrength*.27;
+    zoom+=decisionStrength*.23;
     pitch-=decisionStrength*5;
   }else if(focus==='arrival'){
     zoom+=decisionStrength*.16;
