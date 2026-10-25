@@ -13,17 +13,17 @@ const admin=read('../pages/IntelligencePage.jsx');
 
 test('prominent interface icons describe actions, not generic AI decoration',()=>{
  assert.doesNotMatch(profile,/<Sparkles\b/);
- assert.match(profile,/v92-mavi-profile-mark"><Route size={24}/);
+ assert.ok(profile.includes('v92-mavi-profile-mark"><Route size={24}'));
  assert.doesNotMatch(admin,/<Sparkles\b/);
- assert.match(admin,/<Clock3 size={15}\/> Rápido/);
- assert.match(account,/<SunMoon size={21}\/>/);
- assert.match(account,/<Route size={21}\/>/);
- assert.match(account,/<Ticket size={21}\/>/);
+ assert.ok(admin.includes('<Clock3 size={15}/> Rápido'));
+ assert.ok(account.includes('<SunMoon size={21}/>'));
+ assert.ok(account.includes('<Route size={21}/>'));
+ assert.ok(account.includes('<Ticket size={21}/>'));
 });
 
 test('theme control has one meaningful glyph without affecting map POI sources',()=>{
- assert.match(mapPage,/selectedAppearance==='dark'\?<Sun size={21}/);
- assert.match(mapPage,/:<Moon size={21}/);
+ assert.ok(mapPage.includes("selectedAppearance==='dark'?<Sun size={21}"));
+ assert.ok(mapPage.includes(':<Moon size={21}'));
  assert.doesNotMatch(mapPage,/v49-glyph-sun|v49-glyph-moon/);
  assert.match(themeStyle,/\.v49-theme-glyph svg\{position:static/);
  assert.doesNotMatch(themeStyle,/rotate\(-55deg\)|rotate\(60deg\)/);
@@ -43,7 +43,7 @@ test('legal pages retain the four destinations and display selected state',()=>{
 test('privacy and account removal remain functional and have quiet surfaces',()=>{
  assert.match(account,/remove\('\/profile',\{password\}\)/);
  assert.match(account,/aria-label="Confirmar exclusão de conta"/);
- assert.match(account,/<Trash2 size={20}\/>/);
+ assert.ok(account.includes('<Trash2 size={20}/>'));
  assert.match(account,/onClick=\{\(\)=>\{setDeleteOpen\(true\);setError\(''\);\}\}/);
  assert.match(accountStyle,/\.v92-account-danger\{border-color:var\(--border\);background:var\(--panel\)\}/);
  assert.doesNotMatch(accountStyle,/\.v92-mavi-profile\{[^\n]*linear-gradient/);
