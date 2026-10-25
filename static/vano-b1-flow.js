@@ -180,6 +180,17 @@
     syncButton();
     new MutationObserver(syncButton).observe(action, {subtree:true,childList:true});
 
+    const syncReady = () => {
+      const ready = routeState.style.display !== 'none' &&
+        !$('planSheet')?.classList.contains('hidden') &&
+        !document.body.classList.contains('body-nav');
+      document.body.classList.toggle('vano-b1-route-ready', ready);
+    };
+    new MutationObserver(syncReady).observe(routeState, {attributes:true,attributeFilter:['style']});
+    new MutationObserver(syncReady).observe(document.body, {attributes:true,attributeFilter:['class']});
+    new MutationObserver(syncReady).observe($('planSheet'), {attributes:true,attributeFilter:['class']});
+    syncReady();
+
     // When users cancel/reselect a destination, an old camera transition must
     // never resume over the new state.
     new MutationObserver(() => {
