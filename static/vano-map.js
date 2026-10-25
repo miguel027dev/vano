@@ -1,16 +1,9 @@
 (() => {
 const BOOT=window.VANO_BOOT||{};
 const TOKEN=BOOT.token||'', STYLE=BOOT.style||'', STYLE_SET=BOOT.styleSet||{}, MAP_STYLE_MODE=BOOT.mapStyleMode||'standard', MAP_ACCENT=BOOT.mapAccent||{}, NAV_PREFS=BOOT.navPrefs||{}, VANO_BLACK_THEME=document.documentElement.dataset.vanoTheme==='black', REACTIVE_BLACK_ALLOWED=MAP_STYLE_MODE==='auto', LOGGED_IN=!!BOOT.loggedIn, IS_ADMIN=!!BOOT.isAdmin, PRO_DRIVER=!!BOOT.professionalDriver, CSRF=BOOT.csrf||'', SHARED_TOKEN=new URLSearchParams(location.search).get('shared'), DISTANCE_UNIT=BOOT.distanceUnit||'km', HOME_LABEL=BOOT.homeLabel||'', WORK_LABEL=BOOT.workLabel||'', PRESENCE_ACTIVE=!!BOOT.presenceActive, LOGIN_URL=BOOT.loginUrl||'/login?next=/';
-// The same VANO visual rules JSON backs both Mapbox styles and route overlays.
-const MAP_VISUAL_RULES=BOOT.mapVisualRules||{};
-const MAP_ROUTE_RULES=MAP_VISUAL_RULES.route||{};
-const mapRuleColor=(value,fallback)=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:fallback;
-function vanoRouteWidth(key,fallback){
-  const rule=MAP_ROUTE_RULES[key];
-  if(!Array.isArray(rule)||rule.length!==15||rule[0]!=='interpolate'||rule[1]?.[0]!=='linear'||rule[2]?.[0]!=='zoom')return fallback;
-  for(let i=3;i<rule.length;i++)if(typeof rule[i]!=='number'||!Number.isFinite(rule[i]))return fallback;
-  return rule;
-}
+const MAP_VISUAL_RULES=BOOT.mapVisualRules||{},MAP_ROUTE_RULES=MAP_VISUAL_RULES.route||{};
+const mapRuleColor=(v,f)=>/^#[\da-f]{6}$/i.test(v)?v:f;
+function vanoRouteWidth(k,f){const v=MAP_ROUTE_RULES[k];return v?.length===15&&v[0]==='interpolate'&&v[2]?.[0]==='zoom'&&v.slice(3).every(Number.isFinite)?v:f}
 const VANO_ROUTE=mapRuleColor(MAP_ROUTE_RULES.primaryColor,'#F59A62'),VANO_ROUTE_LIGHT=mapRuleColor(MAP_ROUTE_RULES.secondaryColor,'#FFC6A5'),VANO_ROUTE_DARK=VANO_ROUTE;
 let guestRoutesRemaining=Number(BOOT.guestRoutesRemaining??10); const GUEST_ROUTE_LIMIT=Number(BOOT.guestRouteLimit??10);
 const VANO_ANDROID_WEBVIEW=/VANOAndroid\//.test(navigator.userAgent);
@@ -203,7 +196,7 @@ function rememberLocalDestination(x){if(!x||!Number.isFinite(+x.lat)||!Number.is
 function localSmartDestinations(){const now=Date.now(),hour=new Date().getHours();return readLocalRecentDestinations().map(x=>{const ageH=Math.max(0,(now-(+x.last_used_at||now))/36e5),useBoost=Math.min(38,Math.log2(Math.max(1,+x.uses||1)+1)*11),recency=Math.max(0,42-ageH*.55),savedHour=new Date(+x.last_used_at||now).getHours(),hourDiff=Math.min(Math.abs(savedHour-hour),24-Math.abs(savedHour-hour)),hourBoost=Math.max(0,20-hourDiff*4);return{...x,smart_score:Math.round(useBoost+recency+hourBoost)}}).sort((a,b)=>(+b.smart_score||0)-(+a.smart_score||0)).slice(0,6)}
 let mapThemeOverride=null;try{const saved=localStorage.getItem('vano.map.theme.override.v173');if(saved==='night'||saved==='day')mapThemeOverride=saved}catch{}
 let currentMapMood=VANO_BLACK_THEME?'black':'day';
-function mapStyleForMood(mood){const key=String(mood||'day').toLowerCase();const isNight=key==='night'||key==='black';return isNight?(STYLE_SET?.black||STYLE_SET?.night||STYLE_SET?.day||STYLE):(STYLE_SET?.day||STYLE)}
+function mapStyleForMood(m){return m==='black'||m==='night'?(STYLE_SET?.black||STYLE_SET?.night||STYLE_SET?.day||STYLE):(STYLE_SET?.day||STYLE)}
 function applyVanoLightBasemapConfig(){
   if(!map||document.body.dataset.mood==='night'||currentMapMood==='night'||currentMapMood==='black')return;
   const cfg={lightPreset:'day',theme:'faded',font:'Inter',showPlaceLabels:true,showRoadLabels:true,showPointOfInterestLabels:false,showTransitLabels:false,showLandmarkIcons:false,showLandmarkIconLabels:false,showAdminBoundaries:false,showIndoor:false,showIndoorLabels:false,show3dObjects:true,show3dBuildings:true,show3dTrees:false,show3dLandmarks:true,show3dFacades:false};
@@ -881,7 +874,7 @@ function searchResultParts(x){
 function searchResultMeta(x){const t={poi:x.category||'Lugar',address:'Endereço',street:'Rua',postcode:'CEP',neighborhood:'Bairro',locality:'Localidade',place:'Cidade',district:'Região'}[x.type]||x.category||'Local',bits=[t];if(x.source==='osm-photon'||x.source==='osm-nominatim')bits.push('OpenStreetMap');if(x.source==='fr-geopf')bits.push('IGN/BAN');if(x.precision_label&&x.precision_label!==t)bits.push(x.precision_label);if(Number.isFinite(+x.distance_m)&&+x.distance_m>0)bits.push(+x.distance_m<1000?`${Math.round(+x.distance_m)} m de você`:`${(+x.distance_m/1000).toFixed(+x.distance_m<10000?1:0)} km de você`);if(x.postcode&&!String(x.address||x.label||'').includes(x.postcode))bits.push(x.postcode);return bits.filter(Boolean).join(' · ')}
 function searchResultBadge(x){if(x.match_kind==='primary')return'MELHOR';if(x.match_kind==='related')return'RELACIONADO';if(x.address_number_match==='matched'&&x.postcode_match==='matched')return'EXATO';if(x.match_confidence==='exact')return'EXATO';if(x.accuracy==='rooftop')return'PRECISO';if(x.accuracy==='interpolated')return'APROX.';if(x.source==='cep-authoritative')return'CEP';if(x.source==='cep-fallback')return'APROX.';if(x.type==='address')return'ENDEREÇO';if(x.type==='poi')return'LOCAL';return''}
 function searchResultIcon(x){if(x.type==='street')return'signpost';if(x.type==='postcode')return'mail';if(x.type==='address')return'map-pin-check';const k=x.category_key||'';return({school:'school',bank:'landmark',hospital:'hospital',pharmacy:'pill',fuel:'fuel',food:'utensils',mall:'shopping-bag',shop:'shopping-basket',hotel:'hotel',park:'trees',public:'building-2',business:'building-2',building:'building'})[k]||'map-pin'}
-function mapboxStaticStyleId(){const uri=currentStyleUri||STYLE_SET?.day||STYLE||'';return typeof uri==='string'&&uri.startsWith('mapbox://styles/')?uri.slice('mapbox://styles/'.length):'mapbox/streets-v12'}
+function mapboxStaticStyleId(){const s=currentStyleUri||STYLE_SET?.day||STYLE||'';return s.startsWith('mapbox://styles/')?s.slice(16):'mapbox/streets-v12'}
 function placeThumbUrl(x){const raw=x?.image_url||x?.photo_url||x?.photo||x?.thumbnail_url||'';return typeof raw==='string'&&/^https?:\/\//i.test(raw)?raw:''}
 function placeStars(x){const rating=Number.isFinite(+x.rating)?+x.rating:Number.isFinite(+x.google_rating)?+x.google_rating:null;const reviews=Number.isFinite(+x.reviews_count)?Math.round(+x.reviews_count):null;if(rating==null)return'';return `<span>${'★'.repeat(Math.max(1,Math.min(5,Math.round(rating))))}</span><b>${rating.toFixed(1)}</b>${reviews?`<em>${reviews} avaliações</em>`:''}`}
 function resultHtml(list,title='Melhores resultados'){
