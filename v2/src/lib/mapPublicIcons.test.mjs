@@ -270,3 +270,26 @@ test('public POI cards use a theme-aware named place and real route destination 
  assert.ok(!overlay.includes('title.innerHTML=item.name'),
   'provider names must always use textContent, never HTML');
 });
+
+
+test('White and Black maps hide requested POIs but preserve bank and safety icons',()=>{
+ const coords=[-46.68,-23.58],project=()=>({x:100,y:100});
+ const hidden=['farmacia','hotel','mercado','supermercado','cafeteria','escola','petshop'];
+ for(const type of hidden){
+  const points=selectPublicPins([{id:type,type,coords}],project,17,10,{width:300,height:300});
+  assert.equal(points.length,0,`POI ${type} should be hidden`);
+  assert.ok(ICON_THEME[type],`Original icon for ${type} remains available`);
+ }
+ for(const type of ['banco','radar','hospital','estacionamento']){
+  assert.ok(ICON_THEME[type],`Preserve ${type} icon`);
+ }
+ const styles=['light','black'];
+ for(const mode of styles){
+  const doc=JSON.parse(readFileSync(new URL(`../../public/mapbox/vano-atlas-${mode==='light'?'light':'black'}.json`,import.meta.url)));
+  const essentials=doc.layers.find(layer=>layer.id==='vano-essentials');
+  assert.ok(essentials);
+  const allowed=essentials.filter[2][1];
+  for(const cls of ['school','supermarket','grocery','pharmacy'])assert.ok(!allowed.includes(cls));
+  for(const cls of ['hospital','clinic','park'])assert.ok(allowed.includes(cls));
+ }
+});
