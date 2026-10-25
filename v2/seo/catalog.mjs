@@ -1,18 +1,130 @@
 /** VANO's public, human-readable content catalog. Consumed by React and by HTML pre-render. */
 export const PUBLIC_PAGES = [
   {
-    path:'/sobre',aliases:['/about'],category:'Institucional',title:'Sobre o VANO Maps',description:'Conheça o VANO Maps, um aplicativo para comparar rotas, planejar trajetos e navegar com mais contexto.',lead:'Uma experiência de navegação feita para colocar o caminho em primeiro lugar.',
-    sections:[['Um mapa para decidir melhor','O VANO reúne busca por lugares, comparação de trajetos, navegação e lugares favoritos em uma interface direta. A proposta é oferecer opções claras, sem esconder diferenças de duração e distância.'],['Como a tecnologia funciona','Quando há provedores configurados, as rotas são calculadas com dados externos. O projeto também desenvolve um motor próprio de rotas, ainda sujeito à cobertura, aos testes e à disponibilidade das integrações.'],['Segurança e transparência','Condições de trânsito e risco mudam rapidamente. Uma rota apresentada como alternativa não garante ausência de acidentes, incidentes, crimes ou outras situações. A sinalização e a atenção do condutor sempre prevalecem.']],
-    cta:'Explorar o mapa',ctaHref:'/mapa'
+    "path": "/sobre",
+    "aliases": [
+      "/about",
+      "/o-que-e-vano-maps"
+    ],
+    "category": "Institucional",
+    "title": "Conheça o VANO Maps",
+    "description": "Descubra o VANO Maps: um aplicativo brasileiro para pesquisar destinos, visualizar trajetos e comparar opções de caminho com clareza.",
+    "lead": "Um mapa simples de entender, para escolher seu caminho com mais informação.",
+    "sections": [
+      [
+        "O que é o VANO?",
+        "O VANO é um aplicativo brasileiro de mapas e navegação. Pesquise lugares, confira trajetos e, quando houver alternativas disponíveis, compare distância e tempo previsto."
+      ],
+      [
+        "Como usar",
+        "Abra o mapa, escolha seu destino e confira as informações antes de sair. As opções dependem da conexão, da localização e dos serviços de mapas disponíveis."
+      ],
+      [
+        "O que é importante saber",
+        "O trânsito muda e os mapas podem conter erros. Nenhum caminho é garantia de segurança. Respeite a sinalização e consulte o aplicativo com o veículo parado."
+      ]
+    ],
+    "cta": "Abrir o mapa",
+    "ctaHref": "/mapa"
   },
   {
-    path:'/ajuda',aliases:['/help'],category:'Suporte',title:'Central de ajuda VANO',description:'Dúvidas sobre busca, rotas, localização, conta, histórico e recursos do VANO Maps.',lead:'Tudo o que você precisa para começar a usar o mapa.',
-    sections:[['Comece pelo destino','Abra o mapa, informe um endereço ou ponto de interesse e compare as opções disponíveis para o seu trajeto.'],['GPS e permissões','A localização em tempo real depende da permissão do navegador, da precisão do aparelho e de uma conexão segura. Você também pode selecionar um ponto de origem manualmente.'],['Sua conta e seus lugares','Use o perfil para gerenciar informações de conta, preferências, favoritos e histórico quando esses recursos estiverem ativos no seu ambiente.']],
-    faq:[['O VANO substitui o Waze?','O VANO é uma alternativa de navegação em desenvolvimento, com recursos e fontes de dados próprios. Não é afiliado ao Waze.'],['Por que duas rotas podem parecer iguais?','Se o provedor devolver um único trajeto, as alternativas podem coincidir. Isso não comprova uma diferença de segurança.'],['O que fazer se o GPS falhar?','Confira as permissões de localização, a conexão HTTPS e selecione uma origem manual se necessário.'],['Como excluir minha conta?','Acesse Minha conta e use o fluxo de exclusão. Há também uma página específica explicando essa solicitação.']],cta:'Abrir mapa',ctaHref:'/mapa'
+    "path": "/ajuda",
+    "aliases": [
+      "/help"
+    ],
+    "category": "Suporte",
+    "title": "Central de ajuda do VANO",
+    "description": "Encontre respostas claras para dúvidas sobre GPS, pesquisa de destinos, rotas, conta, privacidade e problemas no VANO Maps.",
+    "lead": "Tudo o que você precisa saber, sem complicação.",
+    "sections": [
+      [
+        "Encontre seu destino",
+        "Abra o mapa e pesquise um endereço ou lugar. Confira se o destino está certo antes de começar."
+      ],
+      [
+        "Confira o caminho",
+        "Veja o tempo previsto e a distância. Quando houver alternativas, compare as opções com o veículo parado."
+      ],
+      [
+        "Localização e conta",
+        "Para ver sua posição, autorize o acesso à localização no aparelho. Informações sobre conta e dados pessoais estão nas páginas de privacidade e exclusão de conta."
+      ]
+    ],
+    "faq": [
+      [
+        "Como procuro um lugar?",
+        "Abra o mapa, digite o endereço ou nome do lugar e escolha o resultado correto."
+      ],
+      [
+        "Por que só aparece uma rota?",
+        "Às vezes o serviço de mapas encontra apenas um caminho viável. Isso não quer dizer que outras opções foram escondidas."
+      ],
+      [
+        "Por que o tempo de viagem mudou?",
+        "É uma previsão. Trânsito, obras e atualizações do mapa podem alterar o tempo informado."
+      ],
+      [
+        "Meu GPS não funciona. O que faço?",
+        "Ative a localização, confira a permissão no navegador ou aplicativo e tente novamente em um local com sinal melhor. Se necessário, informe a origem manualmente."
+      ],
+      [
+        "Posso usar o VANO sem internet?",
+        "O GPS pode identificar a posição sem rede, mas carregar mapas, buscar lugares e calcular rotas normalmente exige internet."
+      ],
+      [
+        "O VANO garante que uma rota é segura?",
+        "Não. Nenhum mapa elimina todos os riscos. Respeite a sinalização e as condições reais da via."
+      ],
+      [
+        "Posso planejar viagens de moto?",
+        "O aplicativo pode apresentar a opção de moto, mas trajetos específicos dependem do serviço de roteamento disponível. Respeite as restrições da via."
+      ],
+      [
+        "E se a indicação do mapa estiver errada?",
+        "Pare em um local seguro para conferir o destino. A sinalização e as leis de trânsito têm prioridade."
+      ],
+      [
+        "Como acesso minha conta?",
+        "Use a opção de entrar no aplicativo e escolha o método associado ao seu cadastro."
+      ],
+      [
+        "Como excluo minha conta?",
+        "Consulte a página Excluir conta para encontrar as orientações e conhecer as condições de remoção dos dados."
+      ],
+      [
+        "Como meus dados são usados?",
+        "A Política de privacidade explica quais informações podem ser tratadas, por quê e quais direitos você tem."
+      ],
+      [
+        "Como relato um erro?",
+        "Descreva a tela afetada e o que aconteceu nos canais oficiais disponíveis. Não compartilhe senhas nem dados pessoais de outras pessoas."
+      ]
+    ],
+    "cta": "Abrir o mapa",
+    "ctaHref": "/mapa"
   },
   {
-    path:'/contato',category:'Institucional',title:'Contato com o VANO',description:'Como entrar em contato com a equipe do VANO Maps sobre suporte, privacidade ou parcerias.',lead:'Escolha o assunto e use apenas os canais oficiais divulgados pelo VANO.',
-    sections:[['Suporte ao aplicativo','Antes de enviar uma mensagem, consulte a Central de ajuda e identifique a tela ou o recurso em que encontrou o problema. Evite compartilhar senhas ou dados de localização sensíveis.'],['Privacidade e dados','Para solicitações relacionadas a dados pessoais, consulte a Política de privacidade e o fluxo de exclusão de conta.'],['Parcerias e imprensa','Informações comerciais e de imprensa devem ser confirmadas pelos canais oficiais da marca. Não divulgamos um endereço de suporte que ainda não esteja configurado e verificado.']],cta:'Consultar ajuda',ctaHref:'/ajuda'
+    "path": "/contato",
+    "category": "Institucional",
+    "title": "Contato e orientações",
+    "description": "Encontre os caminhos oficiais para tirar dúvidas sobre o VANO Maps, consultar a privacidade e entender a exclusão de conta.",
+    "lead": "A informação certa para cada assunto, sem inventar canais de atendimento.",
+    "sections": [
+      [
+        "Dúvidas sobre o aplicativo",
+        "Consulte a Central de ajuda para orientações sobre GPS, busca de endereços, rotas e conta."
+      ],
+      [
+        "Dados pessoais e exclusão",
+        "Veja a Política de privacidade para entender o uso de dados. A página Excluir conta explica as orientações disponíveis."
+      ],
+      [
+        "Outros assuntos",
+        "Informações para imprensa, parcerias e canais de atendimento serão publicadas aqui quando forem confirmadas. Não compartilhe senhas ou códigos com perfis não oficiais."
+      ]
+    ],
+    "cta": "Consultar a ajuda",
+    "ctaHref": "/ajuda"
   },
   {
     path:'/imprensa',category:'Institucional',title:'VANO para imprensa',description:'Visão geral do VANO Maps, suas funcionalidades e informações relevantes para comunicação e imprensa.',lead:'O que estamos construindo — sem prometer funcionalidades que ainda dependem de validação.',
@@ -33,10 +145,6 @@ export const PUBLIC_PAGES = [
   {
     path:'/excluir-conta',category:'Legal',title:'Como excluir sua conta VANO',description:'Entenda como solicitar a exclusão da conta e dos dados associados no VANO Maps.',lead:'Você mantém o controle sobre a sua conta.',
     sections:[['Dentro do aplicativo','Entre em Minha conta e procure a opção de excluir conta. Dependendo do método de login, uma confirmação de identidade poderá ser necessária.'],['Se não conseguir entrar','Consulte o suporte pelo canal oficial para verificar as alternativas disponíveis. Não compartilhe sua senha.'],['Dados e retenção','Alguns registros podem exigir conservação legal, antifraude ou de segurança. O tratamento deve seguir a Política de privacidade e a legislação aplicável.']],cta:'Abrir Minha conta',ctaHref:'/conta'
-  },
-  {
-    path:'/o-que-e-vano-maps',category:'Rotas e tecnologia',title:'O que é o VANO Maps?',description:'Entenda como funciona o VANO Maps e sua proposta de navegação com rotas alternativas.',lead:'Um app de navegação para quem quer enxergar mais de uma possibilidade.',
-    sections:[['Encontre seu destino','Pesquise endereços e pontos de interesse para calcular um trajeto com os provedores conectados.'],['Compare alternativas','A interface reúne opções de percurso e destaca duração e distância. A qualidade depende do mapa, do tráfego e dos serviços disponíveis.'],['Acompanhe o caminho','O mapa acompanha a localização quando o dispositivo fornece GPS. Animações demonstrativas são identificadas como prévia, nunca como localização real.']],faq:[['O VANO é grátis?','Recursos e planos estão sujeitos às condições apresentadas no próprio aplicativo.'],['A opção mais segura é garantia?','Não. Nenhum cálculo de rota elimina completamente os riscos do trajeto.']],cta:'Experimentar o VANO',ctaHref:'/mapa'
   },
   {
     path:'/rotas-para-evitar-transito',category:'Rotas e tecnologia',title:'Rotas para evitar trânsito',description:'Como comparar trajetos para tentar reduzir atrasos e congestionamentos usando dados de trânsito.',lead:'O melhor trajeto muda conforme a hora, a localização e os acontecimentos na via.',
