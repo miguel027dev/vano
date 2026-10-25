@@ -16,27 +16,8 @@
   outline:3px solid #ffab70;outline-offset:3px
 }
 .map-page .v49-appearance-toggle:disabled{opacity:1;cursor:default}
-.map-page .v49-theme-glyph{
-  position:relative;display:grid;place-items:center;width:25px;height:25px
-}
-.map-page .v49-theme-glyph svg{
-  position:absolute;inset:2px;
-  transition:transform .32s cubic-bezier(.2,.75,.25,1),
-    opacity .20s ease;
-  will-change:transform,opacity
-}
-.map-page .v49-appearance-toggle.is-light .v49-glyph-sun{
-  opacity:1;transform:rotate(0deg) scale(1)
-}
-.map-page .v49-appearance-toggle.is-light .v49-glyph-moon{
-  opacity:0;transform:rotate(-55deg) scale(.55)
-}
-.map-page .v49-appearance-toggle.is-dark .v49-glyph-sun{
-  opacity:0;transform:rotate(60deg) scale(.55)
-}
-.map-page .v49-appearance-toggle.is-dark .v49-glyph-moon{
-  opacity:1;transform:rotate(0deg) scale(1)
-}
+.map-page .v49-theme-glyph{display:grid;place-items:center;width:25px;height:25px}
+.map-page .v49-theme-glyph svg{position:static;display:block;flex:none;stroke-width:1.85;transition:none;animation:none;will-change:auto}
 .map-page[data-map-appearance="dark"]{
   --panel:#1e292e;--ink:#e9f1f4;--muted:#a8b8c0;--border:#39474b;
   color:#edf4f5;background:#121a20;
