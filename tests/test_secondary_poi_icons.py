@@ -37,5 +37,6 @@ def test_layers_use_mapbox_streets_and_preference_whitelist():
 
 
 def test_transit_stations_are_filtered_not_all_stops():
-    assert "['get','stop_type'],'station'" in JS
+    assert "VANO_POI_SELECTED.has('train_station')" in JS
+    assert "['rail','rail-light','rail-metro']" in JS
     assert "transit_stop_label" in JS and "airport_label" in JS
