@@ -70,13 +70,13 @@ export function buildV2ManeuverArrows(route){
     if(length<.5)continue;
     const ux=dx/length,uy=dy/length;
     const wing=side=>[
-      tip[0]+(-ux*7.5-uy*side)/metersPerLongitude,
-      tip[1]+(-uy*7.5+ux*side)/metersPerLatitude
+      tip[0]+(-ux*8.5-uy*side)/metersPerLongitude,
+      tip[1]+(-uy*8.5+ux*side)/metersPerLatitude
     ];
     shaft.push(tip);
     features.push(line(shaft,index,'shaft'));
-    features.push(line([wing(4.2),tip],index,'wing-left'));
-    features.push(line([wing(-4.2),tip],index,'wing-right'));
+    features.push(line([wing(5.8),tip],index,'wing-left'));
+    features.push(line([wing(-5.8),tip],index,'wing-right'));
     previousAt=at;
     if(features.length>=90)break;
   }
