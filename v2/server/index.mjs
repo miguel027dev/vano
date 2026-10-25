@@ -1751,6 +1751,11 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
       await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
+    // Opening the public domain should take every visitor straight to navigation.
+    if(requestPath==='/'){
+      res.writeHead(302,{...headers,'Location':`/mapa${parsedRequestUrl.search}`,'Cache-Control':'no-store'});
+      return res.end();
+    }
     const dist=path.join(root,'dist');
     let name;
     try { name=decodeURIComponent(requestPath); }
