@@ -1279,8 +1279,7 @@ export default function MapPage({active=true}){
          aria-pressed={selectedAppearance==='dark'} title={selectedAppearance==='dark'?'Modo claro':'Modo escuro'}
          onClick={toggleMapAppearance} disabled={savingMapTheme}>
          <span className="v49-theme-glyph" aria-hidden="true">
-           <Sun className="v49-glyph-sun" size={21} strokeWidth={1.9}/>
-           <Moon className="v49-glyph-moon" size={21} strokeWidth={1.9}/>
+           {selectedAppearance==='dark'?<Sun size={21} strokeWidth={1.85}/>:<Moon size={21} strokeWidth={1.85}/>}
          </span>
        </button>
        {!simActive&&<>{jevMode&&navMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}</>}
