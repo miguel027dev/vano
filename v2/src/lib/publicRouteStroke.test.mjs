@@ -18,14 +18,14 @@ test('public /mapa enables the exact V2 route stroke for every user, without adm
   assert.deepEqual(v2RouteStrokePixels(17,false),{core:8,halo:13});
 });
 
-test('Mapbox /mapa and /v2 use identical orange-core and contrast-casing paint, alternatives unchanged',()=>{
+test('Mapbox preserves /mapa route paint and widens only private /v2 route, alternatives unchanged',()=>{
   assert.equal((map.match(/const strokeV2=shouldHighlightSelectedRoute\(data\);/g)||[]).length,2);
   assert.match(map,/const stroke=v2RouteStrokePaint\(strokeV2\)/);
-  assert.match(map,/source:'vano-v2-selected'.*paint:stroke\.halo/);
-  assert.match(map,/source:'vano-v2-selected'.*paint:\{'line-color':'#ff7900',\.\.\.stroke\.line/);
+  assert.match(map,/source:'vano-v2-selected'.*paint:\{\.\.\.stroke\.halo,'line-width':privateHaloWidth\}/);
+  assert.match(map,/source:'vano-v2-selected'.*paint:\{'line-color':'#ff7900',\.\.\.stroke\.line,'line-width':privateLineWidth/);
   assert.match(map,/id:'vano-v2-other'.*'line-width':5,'line-opacity':\.66/);
   assert.match(map,/source:'vano-v2-traveled'.*'line-width':7,'line-opacity':\.85/);
-  assert.match(map,/if\(map\._vanoRouteStrokeV2!==strokeV2\)/);
+  assert.match(map,/if\(map\._vanoRouteStrokeV2!==strokeV2\|\|map\._vanoPrivateV2Stroke!==privateV2\)/);
 });
 
 test('Leaflet fallback uses identical outline, unmodified route geometry and no extra redraw per GPS fix',()=>{
