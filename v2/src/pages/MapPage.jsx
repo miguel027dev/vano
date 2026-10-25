@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, Minimize2, Maximize2, SlidersHorizontal, CalendarDays } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, ChevronRight, ChevronLeft, SlidersHorizontal, CalendarDays } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import B1RouteSheet from '../components/B1RouteSheet.jsx';
 import RoadAuditPanel from '../components/RoadAuditPanel.jsx';
@@ -1325,7 +1325,7 @@ export default function MapPage({active=true}){
        {adminV2RoadSigns&&navMode&&<button type="button" className={`circle-btn v94-focus-toggle ${immersiveV2?'is-active':''}`}
          aria-label={immersiveV2?'Restaurar controles do mapa V2':'Recolher controles e focar na rota V2'}
          title={immersiveV2?'Mostrar controles':'Focar na rota'} aria-pressed={immersiveV2} onClick={toggleV2FocusMode}>
-         {immersiveV2?<Maximize2 size={20} aria-hidden="true"/>:<Minimize2 size={20} aria-hidden="true"/>}
+         {immersiveV2?<ChevronLeft size={22} strokeWidth={2.3} aria-hidden="true"/>:<ChevronRight size={22} strokeWidth={2.3} aria-hidden="true"/>}
        </button>}
        {!immersiveV2&&<button type="button" className={`circle-btn v49-appearance-toggle ${selectedAppearance==='dark'?'is-dark':'is-light'}`}
          aria-label={selectedAppearance==='dark'?'Ativar mapa claro':'Ativar mapa escuro'}
