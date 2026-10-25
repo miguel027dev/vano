@@ -1132,6 +1132,8 @@ function paintLeaflet(map,data){
       const sizes=v2RouteStrokePixels(map.getZoom(),true);
       map._vanoV2SelectedHalo?.setStyle({weight:sizes.halo});
       map._vanoV2SelectedLine?.setStyle({weight:sizes.core});
+      const arrowWidth=Math.min(9.3,Math.max(3.9,sizes.core*.68));
+      map._vanoArrowLineGroup?.eachLayer(layer=>layer.setStyle?.({weight:arrowWidth}));
     };
     map.on('zoomend',map._vanoV2StrokeZoomHook);
   }
@@ -1143,6 +1145,30 @@ function paintLeaflet(map,data){
     map._vanoFlowGeometry=flowRoute?.geometry;
     const flowPoints=flowRoute?.geometry?.coordinates?.filter(validPoint).map(ll);
     if(flowPoints?.length>1)map._vanoFlowLine=L.polyline(flowPoints,{color:'#fff2df',weight:2,opacity:.62,dashArray:STATIC_LEAFLET_DASH,lineCap:'butt',interactive:false,className:'vano-v35-flow-leaflet'}).addTo(map);
+  }
+  // Confirmed maneuvers remain visible in the Leaflet fallback, including /mapa.
+  const arrowRoute=(data.routes||[]).find(r=>r.id===data.selectedRoute)||null;
+  const showArrows=Boolean(data.readableRouteStroke||data.v2Experience);
+  if(map._vanoLeafletDirectionArrowRoute!==arrowRoute||
+      map._vanoLeafletDirectionArrowsVisible!==showArrows){
+    map._vanoArrowLineGroup?.remove();
+    map._vanoArrowLineGroup=null;
+    map._vanoLeafletDirectionArrowRoute=arrowRoute;
+    map._vanoLeafletDirectionArrowsVisible=showArrows;
+    if(showArrows&&arrowRoute){
+      const arrows=buildV2ManeuverArrows(arrowRoute);
+      const group=L.layerGroup();
+      const width=Math.min(9.3,Math.max(3.9,v2RouteStrokePixels(map.getZoom(),true).core*.68));
+      arrows.features.forEach(f=>{
+        const coordinates=f.geometry?.coordinates;
+        if(coordinates?.length>1)L.polyline(coordinates.map(ll),{
+          color:'#ffffff',weight:width,opacity:.98,
+          lineJoin:'round',lineCap:'round',interactive:false
+        }).addTo(group);
+      });
+      group.addTo(map);
+      map._vanoArrowLineGroup=group;
+    }
   }
   const maviPoints=data.previewRoute?.geometry?.coordinates?.filter(validPoint);
   if(map._vanoMaviPreviewGeometry!==data.previewRoute?.geometry){
@@ -1156,6 +1182,7 @@ function paintLeaflet(map,data){
   syncLeafletRouteTraffic(map,L,{...data,routeTraffic:data.vehicle==='a-pe'?null:data.routeTraffic});
   syncRouteTrafficMarkers(map,'leaflet',L,data);
   map._vanoFlowLine?.bringToFront();map._vanoMaviPreviewLine?.bringToFront();
+  map._vanoArrowLineGroup?.eachLayer(layer=>layer.bringToFront?.());
   if(validPoint(data.destination?.coords)){
     if(!map._vanoDestMarker){
       map._vanoDestMarker=L.marker(ll(data.destination.coords),{interactive:false,icon:L.divIcon({
