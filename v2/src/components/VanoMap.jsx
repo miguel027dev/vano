@@ -300,7 +300,7 @@ function motionController(map,latest,status){
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan:framedManeuver,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),preferLiveHeading:Boolean(d.navigation&&!d.simulationPreview&&!d.droneSimulation),reducedMotion:reduced,maneuverPlan:framedManeuver,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
     if(!d.droneSimulation){
       droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};lastSceneSample=0;
       droneSceneRoute=null;
