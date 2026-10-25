@@ -139,7 +139,8 @@ export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,v
  if(!Array.isArray(features)||!Number.isFinite(zoom))return [];
  const navigation=options?.navigation===true;
  const rules=publicPinDensity(viewport,zoom,max,{navigation});
- const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]&&(!navigation||navigationPinAllowed(f.type)));
+ const hidden=new Set(['farmacia','hotel','mercado','supermercado','cafeteria','escola','petshop']);
+ const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]&&!hidden.has(f.type)&&(!navigation||navigationPinAllowed(f.type)));
  const urgent=diversePinOrder(candidates.filter(f=>PIN_URGENT.has(f.type)));
  const services=diversePinOrder(candidates.filter(f=>PIN_SERVICES.has(f.type)&&!PIN_URGENT.has(f.type)));
  const businesses=diversePinOrder(candidates.filter(f=>!PIN_SERVICES.has(f.type)&&!PIN_ROAD.has(f.type)&&!PIN_URGENT.has(f.type)));
