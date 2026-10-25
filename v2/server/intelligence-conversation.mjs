@@ -110,7 +110,7 @@ export async function askIntelligenceConversational(question,data,runtime,{
  if(!Object.hasOwn(INTELLIGENCE_MODES,mode))
   throw Object.assign(new Error('Modo de análise inválido.'),{status:400});
  const cleanHistory=validatedConversation(history);
- const key=String(env.VANO_INTELLIGENCE_API_KEY||env.NVIDIA_API_KEY||'').trim();
+ const key=String(env.NVIDIA_API_KEY||env.VANO_INTELLIGENCE_API_KEY||'').trim();
  if(key.length<12)throw Object.assign(new Error('Chave NVIDIA não configurada no Render.'),{status:503,diagnostic:'missing_key'});
  const modelOverride=mode==='deep'?env.VANO_INTELLIGENCE_MODEL:env.VANO_INTELLIGENCE_FAST_MODEL;
  const config=INTELLIGENCE_MODES[mode];
@@ -135,7 +135,7 @@ export async function askIntelligenceConversational(question,data,runtime,{
  }catch(error){
   // A model may be unavailable on the same NVIDIA key even if another model works.
   // Never retry authentication failures, account-wide rate limits or custom models.
-  const canFallback=mode==='deep'&&!modelOverride&&
+  const canFallback=mode==='deep'&&model==='openai/gpt-oss-120b'&&
    ['timeout','network','http','invalid_json','empty_answer'].includes(error?.diagnostic)&&
    ![401,429].includes(error?.providerStatus);
   if(!canFallback)throw error;
