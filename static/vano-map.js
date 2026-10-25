@@ -986,14 +986,12 @@ function secondaryRoadControlIconExpr(){return ['match',['get','type'],'railway_
 
 /* VANO secondary map POIs: Mapbox Streets v8 categories, with explicit subtype gates
    for classes that share a generic Maki icon. No location sampling or HTML overlays. */
-const VANO_POI_MAKI=['bank','parking','parking-garage','grocery','convenience','charging-station','restaurant','restaurant-noodle','restaurant-pizza','restaurant-seafood','fast-food','cafe','school','pharmacy','post','fitness-centre','park','lodging'];
+const VANO_POI_MAKI=['bank','parking','parking-garage','charging-station','restaurant','restaurant-noodle','restaurant-pizza','restaurant-seafood','fast-food','post','fitness-centre','park'];
 const VANO_POI_DETAILS=['downcase',['concat',['to-string',['coalesce',['get','type'],'']],' ',['to-string',['coalesce',['get','category_en'],'']]]];
 function vanoPoiDetailsMatch(words){return ['any',...words.map(w=>['in',w,VANO_POI_DETAILS])]}
 const VANO_POI_SPECIAL=[
-  [vanoPoiDetailsMatch(['pet shop','pet store','pet supplies','petshop']),'vano-petShop'],
   [vanoPoiDetailsMatch(['car wash','carwash','lava-rápido','lava rapido','lavagem automotiva']),'vano-carwash'],
   [['any',vanoPoiDetailsMatch(['shopping mall','shopping centre','shopping center']),['==',['downcase',['to-string',['coalesce',['get','type'],'']]],'mall']],'vano-mall'],
-  [['all',['==',['get','maki'],'grocery'],vanoPoiDetailsMatch(['supermarket','hypermarket','supermercado'])],'vano-supermarket'],
   [['all',['==',['get','maki'],'charging-station'],vanoPoiDetailsMatch(['charging point','electric charger','carregador'])],'vano-evCharge']
 ];
 function vanoPoiIconExpr(){
@@ -1002,13 +1000,11 @@ function vanoPoiIconExpr(){
   return ['case',...values,
     ['match',['get','maki'],
       'bank','vano-bank','parking','vano-parking','parking-garage','vano-parking',
-      'grocery','vano-market','convenience','vano-market',
       'charging-station','vano-evStation',
       'restaurant','vano-restaurant','restaurant-noodle','vano-restaurant','restaurant-pizza','vano-restaurant','restaurant-seafood','vano-restaurant',
-      'fast-food','vano-fastFood','cafe','vano-cafe',
-      'school','vano-school','pharmacy','vano-pharmacy','post','vano-post',
-      'fitness-centre','vano-fitness','park','vano-park','lodging','vano-hotel',
-      'vano-market']];
+      'fast-food','vano-fastFood','post','vano-post',
+      'fitness-centre','vano-fitness','park','vano-park',
+      '']];
 }
 function vanoPoiFilterExpr(){
   return ['any',['in',['get','maki'],['literal',VANO_POI_MAKI]],...VANO_POI_SPECIAL.map(item=>item[0])];
@@ -1133,7 +1129,7 @@ async function installRuntimeLayers(){
         'icon-size':['interpolate',['linear'],['zoom'],14.8,.52,16,.67,18,.77],
         'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',
         'icon-allow-overlap':false,'icon-ignore-placement':false,'icon-padding':5,
-        'symbol-sort-key':['match',['get','maki'],'pharmacy',1,'school',2,'bank',3,'parking',3,'parking-garage',3,'charging-station',4,'grocery',5,'restaurant',7,6]
+        'symbol-sort-key':['match',['get','maki'],'bank',1,'parking',2,'parking-garage',2,'charging-station',3,'restaurant',4,5]
       }
     },'route-shadow');
     // A terminal is a station, not every local bus stop.
