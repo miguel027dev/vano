@@ -14,6 +14,14 @@ const machine=fs.readFileSync(path.join(dist,'llms.txt'),'utf8');
 assert.equal(new Set(PUBLIC_PATHS).size,PUBLIC_PATHS.length,'duplicate public routes');
 assert.equal(new Set(PUBLIC_PAGES.map(p=>p.title)).size,PUBLIC_PAGES.length,'duplicate titles');
 assert.ok(robots.includes('Sitemap:'));assert.ok(machine.includes('# VANO Maps'));
+for(const [route,canonical,heading] of [['','/','Escolha seu caminho com mais contexto'],['inicio','/','Escolha seu caminho com mais contexto'],['mapa','/mapa','Mapa e rotas VANO']]){
+ const content=fs.readFileSync(path.join(dist,route,'index.html'),'utf8');
+ assert.ok(content.includes('<h1>'+heading+'</h1>'),'Missing crawlable entry: '+route);
+ assert.ok(content.includes('rel="canonical" href="'+site+canonical+'"'),'Bad entry canonical: '+route);
+ assert.ok(content.includes(prod?'content="index, follow"':'content="noindex, follow"'),'Bad entry robots: '+route);
+}
+assert.ok(sitemap.includes('<loc>'+site+'/</loc>'),'Missing home in sitemap');
+assert.ok(sitemap.includes('<loc>'+site+'/mapa</loc>'),'Missing map in sitemap');
 for(const page of PUBLIC_PAGES){
  assert.ok(page.title.length>=12&&page.title.length<=70,'Poor title: '+page.path);
  assert.ok(page.description.length>=60&&page.description.length<=170,'Poor description: '+page.path);
