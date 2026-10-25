@@ -5,14 +5,16 @@ import {readFileSync} from 'node:fs';
 const server=readFileSync(new URL('../../server/index.mjs',import.meta.url),'utf8');
 const app=readFileSync(new URL('../App.jsx',import.meta.url),'utf8');
 
-test('public root and former welcome URL redirect permanently to the real map',()=>{
-  assert.match(server,/requestPath==='\\/'\\|\\|requestPath==='\\/inicio'/);
-  assert.match(server,/requestPath==='\\/inicio\\/'/);
-  assert.match(server,/res\\.writeHead\\(301,\\{\\.\\.\\.headers,'Location':`\\/mapa\\$\\{parsedRequestUrl\\.search\\}`/);
+test('public root and legacy welcome URLs permanently redirect to /mapa',()=>{
+  for(const path of ["requestPath==='/'","requestPath==='/inicio'","requestPath==='/inicio/'","requestPath==='/index.html'"]){
+    assert.ok(server.includes(path),path);
+  }
+  assert.ok(server.includes('res.writeHead(301,'));
+  assert.ok(server.includes("'Location':`/mapa${parsedRequestUrl.search}`"));
 });
 
-test('legacy client-side entry routes never show the welcome screen',()=>{
-  assert.match(app,/function InitialRoute\\(\\)\\{return <Navigate to="\\/mapa" replace\\/>\\}/);
-  assert.match(app,/<Route path="\\/inicio" element=\\{<Navigate to="\\/mapa" replace\\/>\\}\\/>/);
-  assert.doesNotMatch(app,/<EntryPage\\s*\\/>/);
+test('React navigation never displays the welcome page for entry URLs',()=>{
+  assert.ok(app.includes('function InitialRoute(){return <Navigate to="/mapa" replace/>}'));
+  assert.ok(app.includes('<Route path="/inicio" element={<Navigate to="/mapa" replace/>}/>'));
+  assert.ok(!app.includes('<EntryPage/>'));
 });
