@@ -10,7 +10,7 @@ const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;
 const xml=esc;
 const site=(process.env.VANO_SEO_ORIGIN||'https://vanomaps.online').replace(/\/$/,'');
 if (!/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(site))throw Error('VANO_SEO_ORIGIN must be an HTTPS origin');
-const indexing=process.env.NODE_ENV==='production' && process.env.VANO_SEO_INDEXABLE==='1';
+const indexing=process.env.VANO_SEO_INDEXABLE==='1';
 function body(page){
  const cat=esc(page.category);
  const related=PUBLIC_PAGES.filter(p=>p.path!==page.path&&p.category===page.category).slice(0,3);

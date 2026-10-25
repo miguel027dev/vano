@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {PUBLIC_PAGES,PUBLIC_PATHS,pageForPath} from '../seo/catalog.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dist=path.join(root,'dist');
-const prod=process.env.NODE_ENV==='production'&&process.env.VANO_SEO_INDEXABLE==='1';
+const prod=process.env.VANO_SEO_INDEXABLE==='1';
 const site=(process.env.VANO_SEO_ORIGIN||'https://vanomaps.online').replace(/\/$/,'');
 const sitemap=fs.readFileSync(path.join(dist,'sitemap.xml'),'utf8');
 const robots=fs.readFileSync(path.join(dist,'robots.txt'),'utf8');
