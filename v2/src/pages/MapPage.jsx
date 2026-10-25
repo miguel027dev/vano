@@ -1272,6 +1272,8 @@ export default function MapPage({active=true}){
         title={simFrame?.finished?'Reiniciar':simPaused?'Retomar':'Pausar'}>{simFrame?.finished?<RotateCcw size={17}/>:simPaused?<Play size={17}/>:<Pause size={17}/>}</button>
     </div>}
     {!searchOpen&&<div className="map-controls">
+       <div className={`v95-tools-panel ${v2ToolsOpen?'is-open':''}`} id="v95-v2-tools" role="group" aria-label="Ferramentas de teste">
+         {adminV2RoadSigns&&<div className="v95-tools-title">FERRAMENTAS V2</div>}
        {adminV2RoadSigns&&<button type="button" className="circle-btn v2-admin-road-audit-toggle" title="Auditoria das 7.500 ruas de São Paulo" aria-label="Abrir auditoria das ruas de São Paulo" aria-haspopup="dialog" aria-expanded={roadAuditOpen} onClick={()=>setRoadAuditOpen(v=>!v)}><MapPinned size={19}/></button>}
        {adminV2RoadSigns&&<button type="button"
          className={`circle-btn v81-drone-sim-toggle ${simActive&&simCameraMode==='drone'?'is-playing':''}`}
@@ -1291,6 +1293,14 @@ export default function MapPage({active=true}){
          aria-expanded={simConfirmOpen}
          onClick={simActive?stopRouteSimulation:startRouteSimulation}>
          {simActive?<Square size={19}/>:<Play size={20}/>}
+       </button>}
+       </div>
+       {adminV2RoadSigns&&!immersiveV2&&<button type="button" className={`circle-btn v95-tools-trigger ${v2ToolsOpen?'is-active':''}`}
+         aria-label={v2ToolsOpen?'Fechar ferramentas V2':'Abrir ferramentas de teste V2'}
+         title={v2ToolsOpen?'Fechar ferramentas':'Ferramentas'}
+         aria-expanded={v2ToolsOpen} aria-controls="v95-v2-tools"
+         onClick={()=>setV2ToolsOpen(value=>!value)}>
+         {v2ToolsOpen?<X size={20} aria-hidden="true"/>:<SlidersHorizontal size={20} aria-hidden="true"/>}
        </button>}
        {adminV2RoadSigns&&navMode&&<button type="button" className={`circle-btn v94-focus-toggle ${immersiveV2?'is-active':''}`}
          aria-label={immersiveV2?'Restaurar controles do mapa V2':'Recolher controles e focar na rota V2'}
