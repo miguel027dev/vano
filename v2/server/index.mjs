@@ -1751,9 +1751,9 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
       await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
-    // Opening the public domain should take every visitor straight to navigation.
-    if(requestPath==='/'){
-      res.writeHead(302,{...headers,'Location':`/mapa${parsedRequestUrl.search}`,'Cache-Control':'no-store'});
+    // Permanent entry redirects: direct and legacy Google links open navigation.
+    if(requestPath==='/'||requestPath==='/inicio'||requestPath==='/inicio/'||requestPath==='/index.html'){
+      res.writeHead(301,{...headers,'Location':`/mapa${parsedRequestUrl.search}`,'Cache-Control':'no-store'});
       return res.end();
     }
     const dist=path.join(root,'dist');
