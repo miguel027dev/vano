@@ -34,7 +34,6 @@ export function LegalDocumentPage({page}){
       <span><CheckCircle2 size={15}/> Informação transparente</span>
      </div>
     </div>
-    <div className="v51-legal-hero-mark" aria-hidden="true"><ShieldCheck size={94} strokeWidth={1}/><span>V</span></div>
    </div>
    <nav className="v51-legal-document-tabs" aria-label="Documentos e orientações">
     {DOCUMENTS.map(({path,title,label,icon:Icon})=><Link key={path} to={path} className={'v51-legal-tab'+(page.path===path?' is-current':'')} aria-current={page.path===path?'page':undefined}>
@@ -58,7 +57,7 @@ export function LegalDocumentPage({page}){
      </div>
      <div className="v51-legal-note" role="note"><ShieldCheck size={21} aria-hidden="true"/><p>{isSafety?
       'Planeje sua rota com o veículo parado. Os alertas complementam sua atenção, mas não garantem um trajeto sem riscos.':
-      'Estas informações explicam os recursos e limites atuais do VANO. Os documentos jurídicos ainda exigem revisão formal e identificação completa do responsável pelo tratamento de dados.'}</p></div>
+      'As informações apresentadas aqui descrevem as condições atuais do VANO. Dados legais pendentes, como a identificação completa do responsável, precisam ser validados antes do uso comercial definitivo.'}</p></div>
      {page.sections.map(([title,body],i)=><section className="v51-legal-section" id={'capitulo-'+(i+1)} key={i} aria-labelledby={'capitulo-titulo-'+(i+1)}>
       <span className="v51-legal-index">{String(i+1).padStart(2,'0')}</span>
       <div><h3 id={'capitulo-titulo-'+(i+1)}>{safeTitle(title)}</h3><p>{body}</p></div>
