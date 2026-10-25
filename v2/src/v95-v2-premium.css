@@ -1,0 +1,461 @@
+/* VANO V2 visual system.
+ * Entirely role-scoped; the public /mapa map and camera pipeline are untouched.
+ * Hierarchy: next maneuver > arrival > distance/time > optional utilities.
+ */
+.map-page.v95-premium-v2{
+  --v95-ink:#202831;
+  --v95-sub:#667078;
+  --v95-line:#e8e3dd;
+  --v95-surface:#fffdf9;
+  --v95-elevated:#f6f3ee;
+  --v95-orange:#e96d35;
+  --v95-shadow:0 14px 45px rgba(31,35,40,.13),0 2px 8px rgba(31,35,40,.05);
+  font-family:Manrope,'DM Sans',system-ui,sans-serif;
+}
+
+/* Main map search, shortcut ribbon, and route composer */
+.map-page.v95-premium-v2 .map-search.v31-search{
+  background:var(--v95-surface);border:1px solid var(--v95-line);
+  box-shadow:var(--v95-shadow);border-radius:22px;
+  min-height:58px;
+}
+.map-page.v95-premium-v2 .v31-search input{
+  font-size:clamp(14px,3.4vw,17px);font-weight:600;
+  letter-spacing:-.015em;
+}
+.map-page.v95-premium-v2 .quick-scroll.v31-shortcuts{
+  gap:8px;padding-block:8px 4px;
+}
+.map-page.v95-premium-v2 .quick-scroll .quick-chip{
+  min-height:43px;border:1px solid #e8e4de;
+  background:#fffdf9;border-radius:999px;
+  box-shadow:0 3px 12px #3a30221c;
+  font-weight:700;white-space:nowrap;
+}
+.map-page.v95-premium-v2 .quick-scroll .quick-chip svg{color:#e7753d}
+.map-page.v95-premium-v2 .v5-route-box{
+  background:var(--v95-surface);border:1px solid var(--v95-line);
+  border-radius:20px;box-shadow:var(--v95-shadow);
+}
+.map-page.v95-premium-v2 .v32-route-actions .circle-btn{
+  background:var(--v95-surface);border:1px solid var(--v95-line);
+  box-shadow:0 5px 18px #27372c1b;
+}
+.map-page.v95-premium-v2 .route-sheet{
+  color:var(--v95-ink);background:var(--v95-surface);
+  border:1px solid var(--v95-line);
+  box-shadow:0 -12px 48px #26262622;
+  border-radius:26px 26px 0 0;
+}
+.map-page.v95-premium-v2 .route-sheet .sheet-title{
+  align-items:flex-start;gap:10px;
+}
+.map-page.v95-premium-v2 .route-sheet .sheet-title h2{
+  color:var(--v95-ink);font-weight:850;
+  font-size:clamp(19px,4.3vw,25px);line-height:1.16;
+  letter-spacing:-.04em;
+}
+.map-page.v95-premium-v2 .route-sheet .sheet-title .eyebrow{
+  color:#ae542f;letter-spacing:.12em;font-size:10px;font-weight:850;
+}
+.map-page.v95-premium-v2 .v95-route-destination{
+  display:block;max-width:260px;margin-top:5px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  color:var(--v95-sub);font-size:12px;font-weight:600;
+}
+.map-page.v95-premium-v2 .route-sheet .sheet-close{
+  display:grid;place-items:center;flex:none;
+  width:43px;height:43px;min-width:43px;border-radius:15px;
+  background:#f4f1ed;color:#27313c;border:1px solid #e8e2dc;
+}
+.map-page.v95-premium-v2 .v47-route-vehicle-switch{
+  border-radius:17px;background:#eeeae4;border-color:#e8e3dc;
+}
+.map-page.v95-premium-v2 .v47-route-vehicle-switch button{
+  min-height:43px;font-weight:760;
+}
+.map-page.v95-premium-v2 .route-sheet .route-options{gap:10px}
+.map-page.v95-premium-v2 .route-sheet .route-option{
+  min-height:109px;padding:14px 12px;border-radius:17px;
+  border:1px solid #e4e2dc;background:#fff;
+  box-shadow:0 3px 12px #1424180b;
+  transition:border-color 160ms ease-out,background-color 160ms ease-out,
+    box-shadow 160ms ease-out,transform 120ms ease-out;
+}
+.map-page.v95-premium-v2 .route-sheet .route-option.selected{
+  border-color:#e68e5d;background:#fff9f3;
+  box-shadow:inset 0 0 0 1px #e68e5d,0 5px 16px #e6683420;
+}
+.map-page.v95-premium-v2 .route-sheet .route-option-title{
+  font-weight:850;letter-spacing:-.025em;
+}
+.map-page.v95-premium-v2 .route-sheet .route-option-main>small{
+  color:var(--v95-sub);font-size:clamp(10px,2.8vw,12px);line-height:1.35;
+}
+.map-page.v95-premium-v2 .route-sheet .route-stats strong{
+  font-size:clamp(18px,4.2vw,22px);letter-spacing:-.045em;
+}
+.map-page.v95-premium-v2 .route-sheet .btn.start-btn{
+  min-height:55px;margin-top:14px;border-radius:17px;
+  background:#e66d35;color:#fff;
+  box-shadow:0 8px 19px #b8562a37;
+  font-size:15px;font-weight:850;letter-spacing:-.015em;
+}
+.map-page.v95-premium-v2 .collapsed-route{
+  border-radius:19px;background:var(--v95-surface);
+  border:1px solid var(--v95-line);box-shadow:var(--v95-shadow);
+}
+
+/* Maneuver island: large readable directions without developer chrome */
+.map-page.v95-premium-v2.in-navigation .nav-instruction.v28-nav-instruction{
+  width:min(560px,calc(100% - 20px));max-width:560px;
+  padding:13px 15px;gap:12px;
+  background:rgba(255,253,249,.97);
+  border:1px solid #e8e1d8;border-radius:21px;
+  color:var(--v95-ink);
+  box-shadow:var(--v95-shadow);
+  backdrop-filter:blur(16px);
+}
+.map-page.v95-premium-v2.in-navigation .v80-dynamic-island.is-compact{
+  width:min(440px,calc(100% - 20px));max-width:440px;
+  padding:10px 13px;
+}
+.map-page.v95-premium-v2.in-navigation .nav-instruction .v28-turn-icon{
+  border-radius:16px;color:#a94c24;background:#fff0e4;
+  width:53px;height:53px;flex-basis:53px;
+}
+.map-page.v95-premium-v2.in-navigation .nav-instruction .v28-nav-copy{
+  min-width:0;animation:none;
+}
+.map-page.v95-premium-v2.in-navigation .nav-instruction .v28-nav-copy strong.v46-nav-distance{
+  font:850 clamp(23px,6.4vw,32px)/1.08 Manrope,'DM Sans',sans-serif;
+  letter-spacing:-.055em;color:var(--v95-ink);
+}
+.map-page.v95-premium-v2.in-navigation .nav-instruction .v28-nav-copy .v46-nav-instruction-text{
+  margin-top:4px;font-size:clamp(12px,3.2vw,15px);
+  font-weight:760;line-height:1.27;letter-spacing:-.01em;
+  color:var(--v95-ink);
+}
+.map-page.v95-premium-v2.in-navigation .nav-instruction .circle-btn{
+  background:#f6f3ee;border:1px solid #e8e3dd;color:#3b454b;
+  width:44px;height:44px;min-width:44px;flex-basis:44px;
+  border-radius:14px;
+}
+.map-page.v95-premium-v2.in-navigation .v28-lane-guidance{
+  margin-top:7px;
+}
+
+/* Arrival dock: time is the visual anchor, date is always visible. */
+.map-page.v95-premium-v2.in-navigation .nav-bottom.v37-nav-bottom{
+  width:min(560px,calc(100% - 20px));max-width:560px;
+  border-radius:24px 24px 0 0;
+  border:1px solid var(--v95-line);border-bottom:0;
+  background:rgba(255,253,249,.98);
+  color:var(--v95-ink);
+  padding:12px clamp(12px,3vw,22px) calc(env(safe-area-inset-bottom,0px) + 15px);
+  box-shadow:0 -15px 45px #1d242625,0 -2px 6px #1d24260a;
+  backdrop-filter:blur(18px);
+}
+.map-page.v95-premium-v2.in-navigation .nav-bottom .v37-nav-handle{
+  background:#d6cfc6;width:38px;height:4px;margin-bottom:9px;
+}
+.map-page.v95-premium-v2.in-navigation .nav-summary.v37-nav-summary{
+  grid-template-columns:44px minmax(0,1fr) 44px;
+  gap:clamp(7px,2vw,16px);min-height:132px;align-items:center;
+}
+.map-page.v95-premium-v2.in-navigation .v37-nav-center{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:0;min-width:0;
+}
+.map-page.v95-premium-v2.in-navigation .v95-arrival-heading{
+  display:flex;align-items:center;gap:6px;
+  font:850 10px/1.1 'DM Sans',system-ui,sans-serif;
+  letter-spacing:.12em;color:#ae542f;
+  margin-bottom:4px;white-space:nowrap;
+}
+.map-page.v95-premium-v2.in-navigation .v95-arrival-live{
+  flex:none;width:7px;height:7px;border-radius:50%;
+  background:#e87940;box-shadow:0 0 0 3px #f8e5d8;
+}
+.map-page.v95-premium-v2.in-navigation .v37-nav-arrival{
+  display:block;color:#202831;
+  font:850 clamp(44px,11vw,64px)/.98 Manrope,'DM Sans',sans-serif;
+  font-variant-numeric:tabular-nums;letter-spacing:-.07em;
+  text-align:center;
+}
+.map-page.v95-premium-v2.in-navigation .v95-arrival-date{
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  max-width:100%;margin-top:7px;margin-bottom:10px;
+  color:var(--v95-sub);
+  font-size:clamp(10px,2.9vw,12px);font-weight:700;
+  line-height:1.3;text-align:center;text-transform:capitalize;
+  white-space:normal;
+}
+.map-page.v95-premium-v2.in-navigation .v95-arrival-date svg{
+  color:#b8754d;flex:none;
+}
+.map-page.v95-premium-v2.in-navigation .v37-nav-meta{
+  display:grid;grid-template-columns:1fr 1fr;
+  justify-content:stretch;align-items:center;
+  gap:0;width:100%;padding-top:11px;
+  border-top:1px solid #eae4dc;
+  font:850 clamp(16px,4.1vw,22px)/1.1 Manrope,'DM Sans',sans-serif;
+  letter-spacing:-.035em;color:var(--v95-ink);
+}
+.map-page.v95-premium-v2.in-navigation .v37-nav-meta>span:not(.v37-nav-bullet){
+  display:block;text-align:center;min-width:0;
+}
+.map-page.v95-premium-v2.in-navigation .v37-nav-meta .v37-nav-bullet{display:none}
+.map-page.v95-premium-v2.in-navigation .v37-nav-meta>span:first-child{
+  border-right:1px solid #eae4dc;
+}
+.map-page.v95-premium-v2.in-navigation .v95-metric-labels{
+  width:100%;display:grid;grid-template-columns:1fr 1fr;
+  gap:0;text-align:center;margin-top:4px;
+  font-size:10px;font-weight:700;line-height:1.25;
+  color:var(--v95-sub);
+}
+.map-page.v95-premium-v2.in-navigation .v37-nav-end,
+.map-page.v95-premium-v2.in-navigation .v36-nav-report{
+  width:44px;height:44px;min-width:44px;
+  border-radius:15px;border:1px solid #e9e3dc;
+  background:#f7f2ec;color:#34424b;box-shadow:none;
+}
+.map-page.v95-premium-v2.in-navigation .v37-nav-end{
+  color:#a84132;background:#fff4f0;border-color:#f2d8ce;
+}
+.map-page.v95-premium-v2.in-navigation .v37-eta-source-note{
+  color:#8d6a4d;font-size:10px!important;margin:0 0 7px!important;
+  line-height:1.25;
+}
+.map-page.v95-premium-v2.in-navigation .nav-bottom .nav-demo{
+  border-radius:10px;background:#fff3e8;color:#7b4a2b;
+  padding:6px 9px;margin:8px 0 0;font-size:11px;line-height:1.3;
+}
+
+/* Current-road / speed tools with cohesive surfaces */
+.map-page.v95-premium-v2.in-navigation .v36-nav-road-pill{
+  background:rgba(255,253,249,.96);color:var(--v95-ink);
+  border:1px solid #e9e2db;
+  border-radius:17px;box-shadow:0 7px 22px #20282221;
+}
+.map-page.v95-premium-v2.in-navigation .v36-nav-road-pill strong{
+  font-size:clamp(13px,3.7vw,17px);font-weight:780;
+  letter-spacing:-.02em;
+}
+.map-page.v95-premium-v2.in-navigation .v43-speedometer{
+  border:1px solid #e8dfd6;
+  background:rgba(255,253,249,.97);
+  box-shadow:0 8px 22px #272c302b;
+}
+
+/* One professional 'Tools' drawer instead of a wall of developer buttons */
+.map-page.v95-premium-v2 .map-controls{
+  gap:9px;align-items:center;
+}
+.map-page.v95-premium-v2 .map-controls>button.circle-btn{
+  width:46px;height:46px;min-width:46px;
+  border-radius:15px;
+  border:1px solid #e9e3da;
+  background:rgba(255,253,249,.97);
+  color:#263742;
+  box-shadow:0 5px 18px #111d2b25;
+}
+.map-page.v95-premium-v2 .map-controls .v95-tools-trigger.is-active{
+  background:#2c3941;color:#fff;border-color:#2c3941;
+}
+.map-page.v95-premium-v2 .map-controls .v95-tools-panel{
+  display:none;
+  position:absolute;bottom:0;right:calc(100% + 13px);
+  width:219px;max-width:calc(100vw - 88px);
+  padding:11px;
+  border-radius:21px;
+  border:1px solid #e7dfd5;
+  background:#fffdf9;
+  box-shadow:0 16px 38px #12212c35;
+  z-index:3;
+  flex-direction:column;align-items:stretch;gap:8px;
+}
+.map-page.v95-premium-v2 .map-controls .v95-tools-panel.is-open{
+  display:flex;
+}
+.map-page.v95-premium-v2 .v95-tools-title{
+  margin:3px 4px 6px;
+  font-size:10px;font-weight:850;letter-spacing:.12em;
+  color:#877565;
+}
+.map-page.v95-premium-v2 .map-controls .v95-tools-panel button.circle-btn{
+  width:100%;height:45px;min-width:0;min-height:45px;
+  position:relative;flex:none;
+  display:flex;align-items:center;justify-content:flex-start;
+  padding:7px 11px;gap:12px;
+  background:#f7f3ed;
+  border:1px solid #eee5db;border-radius:13px;
+  color:#2d3b43;box-shadow:none!important;
+  font-size:12px;font-weight:800;text-align:left;
+}
+.map-page.v95-premium-v2 .v95-tools-panel .v2-admin-road-audit-toggle::after{
+  content:"Dados das vias";
+}
+.map-page.v95-premium-v2 .v95-tools-panel .v76-sim-toggle::after{
+  content:"Simular trajeto";
+}
+.map-page.v95-premium-v2 .map-controls .v95-tools-panel .v81-drone-sim-toggle{
+  background:#fff4ea!important;color:#7f401e!important;
+  border:1px solid #f2ddc9!important;
+}
+.map-page.v95-premium-v2 .v95-tools-panel .v81-drone-sim-toggle>span{
+  flex-direction:row;gap:3px;min-width:38px;
+}
+.map-page.v95-premium-v2 .v95-tools-panel .v81-drone-sim-toggle>span b{
+  font-size:13px;
+}
+.map-page.v95-premium-v2 .v95-tools-panel .v81-drone-sim-toggle>span small{
+  font-size:8px;letter-spacing:0;
+}
+.map-page.v95-premium-v2 .v95-tools-panel .v81-drone-sim-toggle::after{
+  content:"Prévia 3D";
+  font:800 12px/1.2 'DM Sans',sans-serif;letter-spacing:0;
+}
+.map-page.v95-premium-v2 .v76-sim-badge{
+  border-radius:15px;border:1px solid #e8dfd5;
+  background:#fffdf9;color:#33414a;
+  box-shadow:0 8px 23px #17212a26;
+}
+.map-page.v95-premium-v2 .v76-sim-badge strong{color:#bc5e35}
+.map-page.v95-premium-v2 .v76-sim-badge button{
+  border-radius:11px;
+}
+
+/* Focus remains unmistakably a different state; retain reversibility. */
+.map-page.v95-premium-v2.in-navigation .map-controls .v94-focus-toggle{
+  background:#28343d;color:#fff;border-color:#28343d;
+  box-shadow:0 5px 15px #131a2040;
+}
+.map-page.v95-premium-v2.in-navigation.v94-v2-focus .map-controls .v94-focus-toggle{
+  background:#e56933;color:#fff;border-color:#e56933;
+}
+.map-page.v95-premium-v2.in-navigation.v94-v2-focus .nav-bottom.v37-nav-bottom{
+  width:min(560px,calc(100% - 16px));max-width:560px;
+  padding:12px clamp(11px,3vw,18px) calc(env(safe-area-inset-bottom,0px) + 15px);
+  border-radius:24px 24px 0 0;
+}
+.map-page.v95-premium-v2.in-navigation.v94-v2-focus .nav-summary.v37-nav-summary{
+  grid-template-columns:44px minmax(0,1fr);
+  gap:9px;
+}
+.map-page.v95-premium-v2.in-navigation.v94-v2-focus .v37-nav-arrival{
+  font-size:clamp(46px,12vw,65px);
+}
+.map-page.v95-premium-v2.in-navigation.v94-v2-focus .nav-instruction.v28-nav-instruction{
+  width:min(500px,calc(100% - 16px));max-width:500px;
+}
+.map-page.v95-premium-v2.in-navigation.v94-v2-focus .v95-tools-panel{
+  display:none;
+}
+
+/* Night: neutral graphite instead of developer-terminal black. */
+.map-page.v95-premium-v2[data-map-appearance="dark"]{
+  --v95-ink:#eef1f0;
+  --v95-sub:#abb7bd;
+  --v95-line:#3b4950;
+  --v95-surface:#1d2a30;
+  --v95-elevated:#29383f;
+  --v95-shadow:0 13px 38px #030b1266;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"] .map-search.v31-search,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .v5-route-box,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .route-sheet,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .collapsed-route,
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .nav-instruction.v28-nav-instruction,
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .nav-bottom.v37-nav-bottom,
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .v36-nav-road-pill,
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .v43-speedometer{
+  color:var(--v95-ink);background:rgba(29,42,48,.97);
+  border-color:#3d4e56;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"] .quick-scroll .quick-chip,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .route-sheet .route-option,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .route-sheet .sheet-close,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .map-controls>button.circle-btn,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .v95-tools-panel,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .map-controls .v95-tools-panel button.circle-btn{
+  background:#29383f;color:#edf1f2;border-color:#3d4e56;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"] .route-sheet .route-option.selected{
+  background:#4a3129;color:#fff0e6;border-color:#d77b4e;
+  box-shadow:inset 0 0 0 1px #a96545;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"] .route-sheet .sheet-title h2,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .v37-nav-arrival,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .nav-instruction .v28-nav-copy strong.v46-nav-distance,
+.map-page.v95-premium-v2[data-map-appearance="dark"] .nav-instruction .v28-nav-copy .v46-nav-instruction-text{
+  color:#f3f5f3;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .v37-nav-meta{
+  color:#f3f5f3;border-top-color:#405057;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .v37-nav-meta>span:first-child{
+  border-right-color:#405057;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .v95-arrival-date,
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .v95-metric-labels{
+  color:#b8c5ca;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .v95-arrival-heading{
+  color:#f4ab82;
+}
+.map-page.v95-premium-v2[data-map-appearance="dark"].in-navigation .nav-instruction .v28-turn-icon{
+  background:#47362e;color:#f4b085;
+}
+
+/* Responsive touch targets + cramped landscape: never cover the turn arrow. */
+@media(max-width:410px){
+  .map-page.v95-premium-v2.in-navigation .nav-summary.v37-nav-summary{
+    grid-template-columns:40px minmax(0,1fr) 40px;
+    gap:5px;
+  }
+  .map-page.v95-premium-v2.in-navigation .v37-nav-arrival{
+    font-size:clamp(42px,10.8vw,50px);
+  }
+  .map-page.v95-premium-v2.in-navigation .v95-arrival-date{
+    font-size:10px;
+  }
+  .map-page.v95-premium-v2.in-navigation .v95-metric-labels{
+    font-size:9px;
+  }
+  .map-page.v95-premium-v2.in-navigation.v94-v2-focus .nav-summary.v37-nav-summary{
+    grid-template-columns:40px minmax(0,1fr);
+  }
+  .map-page.v95-premium-v2 .map-controls .v95-tools-panel{
+    width:200px;max-width:calc(100vw - 85px);
+  }
+}
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.v95-premium-v2.in-navigation .nav-bottom.v37-nav-bottom{
+    width:min(485px,calc(100% - 12px));
+    padding-top:7px;
+    padding-bottom:calc(env(safe-area-inset-bottom,0px) + 7px);
+  }
+  .map-page.v95-premium-v2.in-navigation .nav-summary.v37-nav-summary{min-height:82px}
+  .map-page.v95-premium-v2.in-navigation .v37-nav-arrival{font-size:38px}
+  .map-page.v95-premium-v2.in-navigation .v95-arrival-date{margin:2px 0 4px;font-size:10px}
+  .map-page.v95-premium-v2.in-navigation .v37-nav-meta{padding-top:4px;font-size:14px}
+  .map-page.v95-premium-v2.in-navigation .v95-metric-labels{font-size:9px}
+  .map-page.v95-premium-v2.in-navigation .nav-instruction.v28-nav-instruction{padding:8px 10px}
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page.v95-premium-v2 .route-sheet .route-option,
+  .map-page.v95-premium-v2 .map-controls>button.circle-btn{
+    transition:none!important;
+  }
+}
+@media(hover:hover) and (pointer:fine){
+  .map-page.v95-premium-v2 .route-sheet .route-option:hover{
+    transform:translateY(-1px);
+    box-shadow:0 6px 19px #29251f1a;
+  }
+  .map-page.v95-premium-v2 .map-controls>button.circle-btn:hover{
+    transform:translateY(-2px);
+  }
+}
