@@ -127,7 +127,8 @@ test('React integration uses only one animation writer, motorbike marker and rea
  assert.match(map,/map\.jumpTo\(\{\.\.\.pose,padding:/);
  assert.match(map,/motorcycle:vehicle==='moto'/);
  assert.match(map,/map\._vanoVehicleKind!==d\.vehicle/);
- assert.match(map,/\?null:nextRouteBearing/);
+ assert.match(map,/const realDriving=d\.navigation&&!d\.simulationPreview&&!d\.droneSimulation/);
+ assert.match(map,/preferLiveHeading:Boolean\(d\.navigation&&!d\.simulationPreview&&!d\.droneSimulation\)/);
  assert.match(page,/is-moto-navigation/);
  assert.match(page,/vehicle:routeVehicle,language/);
  assert.match(page,/vehicle:routeVehicle,layer,muted/);

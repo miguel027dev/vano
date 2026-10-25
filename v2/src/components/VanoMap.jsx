@@ -5,6 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver,sampleRoute} from '../lib/routeAnimation';
 import {simulationPointerBearing} from '../lib/adminRouteSimulator.mjs';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
+import {matchLiveRoadPosition,bearingAtDrivenProgress} from '../lib/liveRoadPuck.mjs';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
 import {planAdaptiveRoadDistance} from '../lib/adaptiveRoadCamera.mjs';
@@ -299,7 +300,7 @@ function motionController(map,latest,status){
       destination:d.navigation?d.destination?.coords:null,
       route,
       telemetry:{...d.telemetry,heading:d.navigation?d.motionBearing:userHeading},
-      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),reducedMotion:reduced,maneuverPlan:framedManeuver,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
+      vehicle:d.vehicle,navigation:following(),experimentalCameraV2:Boolean(d.navigation),immersiveDark:Boolean(d.navigation)&&night3dEnabled(d.appearance,d.layer),preferLiveHeading:Boolean(d.navigation&&!d.simulationPreview&&!d.droneSimulation),reducedMotion:reduced,maneuverPlan:framedManeuver,compactViewport:viewport.compact,viewportClearancePx:viewport.maxBehindPx});
     if(!d.droneSimulation){
       droneScene={density:0,sideBias:0,bendDegrees:0,obstruction:0,straightAheadMeters:0};lastSceneSample=0;
       droneSceneRoute=null;
@@ -445,8 +446,10 @@ function motionController(map,latest,status){
     });
     if(!t)return;const motorcycle=d.vehicle==='moto';
     const drone=t.droneCamera;
-    const cameraHalfLife=reduced?85:drone?.halfLife??(motorcycle?350:300);
-    const pointHalfLife=reduced?90:drone?.pointHalfLife??(motorcycle?390:360);
+    // Real GPS tracking responds promptly; keep cinematic smoothing isolated to playback.
+    const liveFollow=!d.simulationPreview&&!d.droneSimulation;
+    const cameraHalfLife=reduced?85:liveFollow?(motorcycle?155:145):drone?.halfLife??(motorcycle?350:300);
+    const pointHalfLife=reduced?90:liveFollow?(motorcycle?165:145):drone?.pointHalfLife??(motorcycle?390:360);
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
     const nextZoom=reduced?t.zoom:damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=reduced?t.pitch:damp(pose.pitch,t.pitch,dt,cameraHalfLife);
     const softenedBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(drone?.bearingHalfLife??(motorcycle?420:320))));
@@ -1029,7 +1032,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     let raf=0,stopped=false;
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
-    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0};
+    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,
+      gpsMatchRaw:null,gpsMatchGeometry:null,roadMatch:null,roadMeters:null};
     // Reduced-motion still controls GPS/camera smoothing, not static markings.
     function preferenceChanged(){reduced=Boolean(preference?.matches);}
     preference?.addEventListener?.('change',preferenceChanged);
@@ -1077,15 +1081,47 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       }else{
         state.playMeters=null;
         state.droneMeters=null;
-        point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
+        const geometry=route?.geometry||null;
+        if(state.gpsMatchRaw!==target||state.gpsMatchGeometry!==geometry){
+          const sameGeometry=state.gpsMatchGeometry===geometry;
+          state.roadMatch=matchLiveRoadPosition({
+            position:target,route,accuracy:d.telemetry?.accuracy,
+            speed:d.telemetry?.speed,heading:d.telemetry?.heading,
+            vehicle:d.vehicle,navigation:d.navigation,
+            simulation:d.simulationPreview||d.droneSimulation,
+            timeline,previous:sameGeometry?state.roadMatch:null
+          });
+          state.gpsMatchRaw=target;
+          state.gpsMatchGeometry=geometry;
+          if(!state.roadMatch||!sameGeometry)state.roadMeters=null;
+        }
+        if(state.roadMatch&&timeline.total>0){
+          const desired=state.roadMatch.meters;
+          if(!Number.isFinite(state.roadMeters)||Math.abs(desired-state.roadMeters)>170)
+            state.roadMeters=desired;
+          else{
+            // Animate ALONG the route, not diagonally across a block on turns.
+            state.roadMeters=damp(state.roadMeters,desired,dt,reduced?50:
+              d.telemetry?.speed>5?85:d.telemetry?.speed>1.5?110:175);
+          }
+          point=sampleRoute(timeline,state.roadMeters)?.point;
+        }else{
+          state.roadMeters=null;
+          point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
+        }
       }
       if(!validPoint(point))return;
       state.point=point;
+      const realDriving=d.navigation&&!d.simulationPreview&&!d.droneSimulation;
+      const matchedRoadHeading=realDriving&&state.roadMatch&&d.telemetry?.speed>1.5?
+        bearingAtDrivenProgress(timeline,state.roadMeters):null;
+      const sensorHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&
+        d.telemetry?.speed>1.5?d.telemetry.heading:null;
       const heading=playPointer&&Number.isFinite(playPointer.bearing)?playPointer.bearing:
         d.droneSimulation&&Number.isFinite(state.droneMeters)
         ?simulationPointerBearing(timeline,state.droneMeters)
-        :(d.vehicle!=='moto'||(d.telemetry?.accuracy<=65&&d.telemetry?.speed>2.2))&&Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&d.telemetry.speed>1.5
-          ?d.telemetry.heading:d.vehicle==='moto'&&(d.telemetry?.accuracy>65||d.telemetry?.speed<=2.2)?null:nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
+        :realDriving?(Number.isFinite(matchedRoadHeading)?matchedRoadHeading:sensorHeading)
+        :sensorHeading??nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
       if(d.droneSimulation&&Number.isFinite(heading)){
         // Do not pre-rotate at upcoming intersections. Even a 90° ramp turn
         // begins after the animated marker crosses its route vertex.
@@ -1129,7 +1165,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           const near=nearestOnRoute(point,route?.geometry);
           const maxOffset=Math.max(45,Math.min(100,Number(d.telemetry?.accuracy||15)*2));
           if(near.distance<=maxOffset){
-            const meters=distanceOnRoute(timeline,point);
+            const meters=state.roadMatch&&Number.isFinite(state.roadMeters)?state.roadMeters:distanceOnRoute(timeline,point);
             state.progress=Math.max(state.progress-8,meters);
             const points=routeTrace(timeline,state.progress);
             if(points.length>1)map.getSource('vano-v2-traveled')?.setData(geo([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]));
