@@ -44,11 +44,11 @@ test('route source, Mapbox casing, orange core and traffic gradient retain origi
  const src=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(src,/const strokeV2=shouldHighlightSelectedRoute\(data\)/);
  assert.match(src,/const stroke=v2RouteStrokePaint\(strokeV2\)/);
- assert.match(src,/source:'vano-v2-selected'.*paint:stroke\.halo/);
- assert.match(src,/source:'vano-v2-selected'.*paint:\{'line-color':'#ff7900',\.\.\.stroke\.line/);
- assert.match(src,/if\(map\._vanoRouteStrokeV2!==strokeV2\)/);
- assert.match(src,/map\.setPaintProperty\('vano-v2-halo','line-width',stroke\.halo\['line-width'\]\)/);
- assert.match(src,/map\.setPaintProperty\('vano-v2-line','line-width',stroke\.line\['line-width'\]\)/);
+ assert.match(src,/source:'vano-v2-selected'.*paint:\{\.\.\.stroke\.halo,'line-width':privateHaloWidth\}/);
+ assert.match(src,/source:'vano-v2-selected'.*paint:\{'line-color':'#ff7900',\.\.\.stroke\.line,'line-width':privateLineWidth/);
+ assert.match(src,/if\(map\._vanoRouteStrokeV2!==strokeV2\|\|map\._vanoPrivateV2Stroke!==privateV2\)/);
+ assert.match(src,/map\.setPaintProperty\('vano-v2-halo','line-width',privateHaloWidth\)/);
+ assert.match(src,/map\.setPaintProperty\('vano-v2-line','line-width',privateLineWidth\)/);
  assert.match(src,/map\.setPaintProperty\('vano-v2-line','line-gradient',traffic\.gradient\)/);
  assert.match(src,/map\.setPaintProperty\('vano-v2-line','line-color',TRAFFIC_COLORS\.unknown\)/);
  assert.match(src,/map\.setPaintProperty\('vano-v2-line','line-gradient',null\)/);
@@ -61,7 +61,7 @@ test('alternatives and traveled section retain subordinate emphasis',()=>{
  assert.match(src,/id:'vano-v2-progress'.*'line-width':7,'line-opacity':\.85/);
  assert.match(src,/paint:\{'line-color':'#fff2df','line-width':2\.1,'line-opacity':\.62/);
  assert.match(src,/STATIC_ROUTE_DASH_PATTERN/);
- assert.match(src,/if\(map\._vanoRouteStrokeV2!==strokeV2\)/);
+ assert.match(src,/if\(map\._vanoRouteStrokeV2!==strokeV2\|\|map\._vanoPrivateV2Stroke!==privateV2\)/);
  // Do not add new per-frame line paint writes or new animation clocks.
  const helper=readFileSync(new URL('./v2RouteStroke.mjs',import.meta.url),'utf8');
  assert.doesNotMatch(helper,/requestAnimationFrame|setInterval|setTimeout|easeTo|jumpTo/);
