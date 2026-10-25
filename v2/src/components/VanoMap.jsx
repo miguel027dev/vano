@@ -1257,28 +1257,13 @@ function paintMapbox(map,data,selection){
     layout:{'line-join':'round','line-cap':'butt'},
     paint:{'line-color':'#fff2df','line-width':2.1,'line-opacity':.62,'line-dasharray':STATIC_ROUTE_DASH_PATTERN}
   },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
-  // Provider-confirmed guidance arrows on both /mapa and /v2.
-  // Preserve the GeoJSON across GPS frames; never restart line animations.
+  // Route geometry is stable; a GPS update must never rebuild these arrows.
   const arrowsEnabled=Boolean(data.v2Experience||data.readableRouteStroke);
-  if(arrowsEnabled){
-    const arrowsSource='vano-v2-maneuver-arrows';
-    const arrowRoute=selected||null;
-    if(!map.getSource(arrowsSource)||map._vanoDirectionArrowRoute!==arrowRoute){
-      upsert(arrowsSource,buildV2ManeuverArrows(arrowRoute));
-      map._vanoDirectionArrowRoute=arrowRoute;
-    }
-    if(!map.getLayer('vano-v2-maneuver-arrows-line'))map.addLayer({
-      id:'vano-v2-maneuver-arrows-line',type:'line',source:arrowsSource,minzoom:14.2,
-      layout:{'line-join':'round','line-cap':'round'},
-      paint:{'line-color':'#ffffff','line-opacity':.97,
-        'line-width':['interpolate',['linear'],['zoom'],14,3.9,15,4.8,16,5.8,17,7.1,18,8.3,19,9.3]}
-    });
-    // Keep arrows over the progress line so the white glyph is never hidden.
-    if(map.getLayoutProperty('vano-v2-maneuver-arrows-line','visibility')!=='visible')
-      map.setLayoutProperty('vano-v2-maneuver-arrows-line','visibility','visible');
-  }else if(map.getLayer('vano-v2-maneuver-arrows-line')&&
-      map.getLayoutProperty('vano-v2-maneuver-arrows-line','visibility')!=='none'){
-    map.setLayoutProperty('vano-v2-maneuver-arrows-line','visibility','none');
+  const arrowsSource='vano-v2-maneuver-arrows';
+  if(arrowsEnabled&&(!map.getSource(arrowsSource)||
+      map._vanoDirectionArrowRoute!==(selected||null))){
+    upsert(arrowsSource,buildV2ManeuverArrows(selected||null));
+    map._vanoDirectionArrowRoute=selected||null;
   }
   const traffic=data.v2Experience&&data.vehicle!=='a-pe'?data.routeTraffic:null;
   if(map._vanoTrafficGradient!==traffic?.gradient||map._vanoTrafficV2!==Boolean(traffic)){
@@ -1302,6 +1287,53 @@ function paintMapbox(map,data,selection){
     map._vanoTraveledCleared=true;
   }
   if(!map.getLayer('vano-v2-progress'))map.addLayer({id:'vano-v2-progress',type:'line',source:'vano-v2-traveled',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#1e293b','line-width':7,'line-opacity':.85}});
+  if(arrowsEnabled){
+    const imageId='vano-route-arrowhead-white';
+    if(!map.hasImage(imageId)){
+      // A rounded filled chevron, not meter-wide line wings: 100% inside
+      // the orange stroke at every supported zoom and screen inclination.
+      const canvas=document.createElement('canvas');
+      canvas.width=32;canvas.height=32;
+      const ctx=canvas.getContext('2d');
+      if(ctx){
+        ctx.fillStyle='#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(16,1);ctx.lineTo(28,27);
+        ctx.quadraticCurveTo(16,22,4,27);
+        ctx.closePath();ctx.fill();
+        map.addImage(imageId,ctx.getImageData(0,0,32,32),{pixelRatio:1});
+      }
+    }
+    if(!map.getLayer('vano-v2-maneuver-arrows-line'))map.addLayer({
+      id:'vano-v2-maneuver-arrows-line',type:'line',source:arrowsSource,minzoom:14.2,
+      filter:['==',['geometry-type'],'LineString'],
+      layout:{'line-join':'round','line-cap':'round'},
+      paint:{'line-color':'#ffffff','line-opacity':.98,
+        'line-width':['interpolate',['linear'],['zoom'],
+          14,3,15,3.8,16,4.7,17,5.8,18,7,19,8]}
+    });
+    if(map.hasImage(imageId)&&!map.getLayer('vano-v2-maneuver-arrows-head'))map.addLayer({
+      id:'vano-v2-maneuver-arrows-head',type:'symbol',source:arrowsSource,minzoom:14.2,
+      filter:['==',['geometry-type'],'Point'],
+      layout:{'symbol-placement':'point','icon-image':imageId,
+        'icon-allow-overlap':true,'icon-ignore-placement':true,
+        'icon-anchor':'top','icon-rotation-alignment':'map',
+        'icon-pitch-alignment':'map','icon-rotate':['get','bearing'],
+        'icon-size':['interpolate',['linear'],['zoom'],
+          14,.16,15,.2,16,.26,17,.33,18,.37,19,.4]},
+      paint:{'icon-opacity':.98}
+    });
+    for(const layerId of ['vano-v2-maneuver-arrows-line','vano-v2-maneuver-arrows-head']){
+      if(map.getLayer(layerId)&&map.getLayoutProperty(layerId,'visibility')!=='visible')
+        map.setLayoutProperty(layerId,'visibility','visible');
+    }
+  }else{
+    for(const layerId of ['vano-v2-maneuver-arrows-line','vano-v2-maneuver-arrows-head']){
+      if(map.getLayer(layerId)&&map.getLayoutProperty(layerId,'visibility')!=='none')
+        map.setLayoutProperty(layerId,'visibility','none');
+    }
+  }
+
   const marker=(key,point)=>{if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:type==='vehicle'&&!data.droneSimulation?'map':'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:type==='vehicle'&&data.droneSimulation?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){const desiredPitch=data.droneSimulation?'viewport':'map';if(map._vanoMarker[key]._vanoV2PitchAlignment!==desiredPitch){map._vanoMarker[key].setPitchAlignment?.(desiredPitch);map._vanoMarker[key]._vanoV2PitchAlignment=desiredPitch;}const visibility=data.droneSimulation?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
