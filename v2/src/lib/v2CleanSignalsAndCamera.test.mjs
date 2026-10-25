@@ -23,7 +23,7 @@ test('signal observations stay readable internally even though V2 labels are hid
  const signs=readFileSync(new URL('./privateRoadSigns.js',import.meta.url),'utf8');
  assert.match(overlay,/map\._vanoTrafficSignals=\(\)=>items\.filter/);
  assert.match(overlay,/filterV2TrafficSignalPins\(/);
- assert.match(component,/,\(\)=>latest\.current\.v2Experience\)/);
+ assert.match(component,/,\(\)=>latest\.current\.v2Experience,\(\)=>latest\.current\.poiVisible\)/);
  assert.match(component,/\[navigation,v2Experience\]/);
  assert.match(signs,/if\(item\.signalNearby&&!data\.v2Experience\)/);
  assert.match(signs,/data\.v2Experience/);
