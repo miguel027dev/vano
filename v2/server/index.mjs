@@ -63,7 +63,7 @@ import {historicalIntelligence,HISTORICAL_SOURCES} from './intelligence-history.
 import {askIntelligenceConversational} from './intelligence-conversation.mjs';
 import {visitAccount} from './engagement.mjs';
 import {applySafeVerifiedReportRanking} from './safe-routing/live-verified.mjs';
-import {PUBLIC_PATHS} from '../seo/catalog.mjs';
+import {PUBLIC_PATHS,pageForPath} from '../seo/catalog.mjs';
 import { LANGUAGES, getLocaleSuggestion, normalizeLocale } from './locale.mjs';
 const routeTrafficGateway=createRouteTrafficGateway({incidentSnapshot:tomtomSnapshot});
 // Opt-in V2-only, asynchronous snapshot reader; empty on first request or missing data.
@@ -1751,6 +1751,12 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
       await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
     if(!['GET','HEAD'].includes(method))return err(res,405,'Método não permitido.');
+    // One public address per document. Keep every legacy URL working with a permanent redirect.
+    const publicPage=pageForPath(requestPath);
+    if(publicPage && requestPath!==publicPage.path){
+      res.writeHead(301,{...headers,Location:publicPage.path,'Cache-Control':'public, max-age=3600'});
+      return res.end();
+    }
     const dist=path.join(root,'dist');
     let name;
     try { name=decodeURIComponent(requestPath); }
