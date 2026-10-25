@@ -10,6 +10,7 @@ import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera
 import {planAdaptiveRoadDistance} from '../lib/adaptiveRoadCamera.mjs';
 import {planStandardSimulationCamera} from '../lib/standardSimulationCamera.mjs';
 import {planV1CloseChase} from '../lib/v1CloseChase.mjs';
+import {planV2FocusCamera} from '../lib/v2FocusCamera.mjs';
 import {v2SimulationChasePadding} from '../lib/v2SimulationChase.mjs';
 import {planStandardPlayPointer} from '../lib/standardPlayPointer.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
@@ -435,7 +436,14 @@ function motionController(map,latest,status){
       droneCamera:drone});
 
   }
-  function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;const t=target(now);if(!t)return;const motorcycle=latest.current.vehicle==='moto';
+  function draw(now){frame=0;if(!active||suspended||!following()||freeLook)return;const dt=previous?Math.min(90,now-previous):16;previous=now;
+    const d=latest.current;
+    const t=planV2FocusCamera({
+      enabled:d.v2Experience&&d.focusMode&&d.navigation,
+      base:target(now),vehicle:d.vehicle,speed:d.telemetry?.speed,
+      maneuver:d.guidance,reducedMotion:reduced
+    });
+    if(!t)return;const motorcycle=d.vehicle==='moto';
     const drone=t.droneCamera;
     const cameraHalfLife=reduced?85:drone?.halfLife??(motorcycle?350:300);
     const pointHalfLife=reduced?90:drone?.pointHalfLife??(motorcycle?390:360);
@@ -483,7 +491,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null,poiVisible=null}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,focusMode=false,readableRouteStroke=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null,poiVisible=null}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -508,7 +516,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
   useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[poiVisible]);
-  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,poiVisible,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,focusMode,readableRouteStroke,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,poiVisible,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false,styleRecoveryAt=0;const initial=coord(latest.current.userCoords);
@@ -812,7 +820,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     window.addEventListener('resize',measure,{passive:true});
     window.addEventListener('orientationchange',measure,{passive:true});
     return()=>{observer?.disconnect();window.removeEventListener('resize',measure);window.removeEventListener('orientationchange',measure);};
-  },[navigation,Boolean(destination),Boolean(manualOrigin),pickingOrigin,vehicle]);
+  },[navigation,Boolean(destination),Boolean(manualOrigin),pickingOrigin,vehicle,focusMode]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='mapbox')return;
@@ -915,7 +923,11 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   // transition. The existing single motion writer owns all Mapbox properties.
   useEffect(()=>{
     if(navigation&&backend.current==='mapbox')motion.current?.start();
-  },[simulationPreview,droneSimulation,navigation]);
+  },[simulationPreview,droneSimulation,navigation,focusMode]);
+  useEffect(()=>{
+    // Reclaim a manually moved camera when the user chooses V2 immersive follow.
+    if(focusMode&&navigation&&backend.current==='mapbox')motion.current?.recenter();
+  },[focusMode,navigation]);
   useEffect(()=>{
     const map=mapRef.current;
     if(!map||backend.current!=='leaflet')return;
