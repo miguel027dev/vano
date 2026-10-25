@@ -1,0 +1,35 @@
+{
+  "format": "vano.mapbox.appearance-manifest/v1",
+  "name": "VANO White & Black",
+  "defaultMode": "light",
+  "themes": {
+    "light": {
+      "label": "White",
+      "mapboxStyleUrl": "/mapbox/vano-atlas-light.json",
+      "surface": "#FFFFFF",
+      "background": "#FFF8F2",
+      "text": "#27231F",
+      "route": "#FF7900"
+    },
+    "black": {
+      "label": "Black",
+      "mapboxStyleUrl": "/mapbox/vano-atlas-black.json",
+      "surface": "#18181B",
+      "background": "#0A0A0B",
+      "text": "#F7F7F8",
+      "route": "#FF7900"
+    }
+  },
+  "preservation": {
+    "base": "v2/public/mapbox/vano-atlas-light.json",
+    "streetsSource": "mapbox://mapbox.mapbox-streets-v8",
+    "sourceAndLayerIdsUnchanged": true,
+    "keepExistingPOIAndRadarLayers": true,
+    "keepExistingAlertAndCommunityMarkers": true,
+    "rehydrateOnMapboxStyleLoad": true,
+    "retainMapboxAttribution": true,
+    "keepExistingRouteAnimationAndCamera": true,
+    "keepSatelliteStyleUnchanged": true,
+    "fallbackToExistingLicensedTiles": true
+  }
+}

@@ -2,8 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mapboxStyleFor,leafletTilesFor,leafletBackupTilesFor,normalizedMapLayer} from './mapLayers.js';
 
-test('Mapa/Satélite use the existing Mapbox style IDs',()=>{
- assert.ok(mapboxStyleFor('streets').endsWith('streets-v12'));
+test('Mapa White e Satélite usam estilos Mapbox existentes',()=>{
+ assert.equal(mapboxStyleFor('streets'),'/mapbox/vano-atlas-light.json');
  assert.ok(mapboxStyleFor('satellite').endsWith('satellite-streets-v12'));
  assert.notEqual(mapboxStyleFor('streets'),mapboxStyleFor('satellite'));
 });
@@ -35,9 +35,9 @@ test('optional local Atlas only alters streets style',()=>{
  assert.ok(mapboxStyleFor('satellite','/mapbox/vano-atlas-light.json').endsWith('satellite-streets-v12'));
 });
 
-test('night mode uses real dark Mapbox styles without changing the satellite provider',()=>{
+test('night mode uses VANO Atlas Black without changing the satellite provider',()=>{
  assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json','dark'),
-  'mapbox://styles/mapbox/dark-v11');
+  '/mapbox/vano-atlas-black.json');
  assert.equal(mapboxStyleFor('streets','/mapbox/vano-atlas-light.json','light'),
   '/mapbox/vano-atlas-light.json');
  assert.equal(mapboxStyleFor('satellite','/mapbox/vano-atlas-light.json','dark'),

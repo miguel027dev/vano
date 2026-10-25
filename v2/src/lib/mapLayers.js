@@ -1,3 +1,4 @@
+import appearance from '../config/vano-mapbox-white-black.json' with {type:'json'};
 /** Map layers. Never use volunteer-run OpenStreetMap tile servers for production imagery.
  * OSM data and OSM's tile hosting are separate products. Mapbox serves the
  * licensed static raster tiles if GL/WebGL cannot render; Esri is an emergency
@@ -16,10 +17,11 @@ export const LEAFLET_TILES=Object.freeze({
 });
 export const normalizedMapLayer=layer=>layer==='satellite'?'satellite':'streets';
 // A local copy works before publication in Mapbox Studio.
-export const VANO_ATLAS_STYLE='/mapbox/vano-atlas-light.json';
-export const mapboxStyleFor=(layer,customStreetsStyle='',appearance='light')=>normalizedMapLayer(layer)==='satellite'
+export const VANO_ATLAS_STYLE=appearance.themes.light.mapboxStyleUrl;
+export const VANO_ATLAS_BLACK_STYLE=appearance.themes.black.mapboxStyleUrl;
+export const mapboxStyleFor=(layer,customStreetsStyle='',mode='light')=>normalizedMapLayer(layer)==='satellite'
   ? MAPBOX_STYLES.satellite
-  : appearance==='dark'?MAPBOX_STYLES.dark:customStreetsStyle || MAPBOX_STYLES.streets;
+  : mode==='dark'||mode==='black'?VANO_ATLAS_BLACK_STYLE:customStreetsStyle || VANO_ATLAS_STYLE;
 export const leafletBackupTilesFor=layer=>LEAFLET_TILES[normalizedMapLayer(layer)];
 // 512px raster tiles require zoomOffset -1 in Leaflet's 256px coordinate scheme.
 // Never expose anything except the existing public (pk.) token in the browser.

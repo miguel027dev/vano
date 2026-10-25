@@ -507,11 +507,12 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
    // Mapbox street style works. Recover within WebGL BEFORE choosing raster.
    // Errors from optional resources after a loaded style must not blank the map.
    if((authFailed||styleFailed)&&!isLoaded(map)){
-     if(!styleRecoveryAttempted&&map?._vanoStyle!==MAPBOX_STYLES.streets){
+     const fallbackStyle=latest.current.appearance==='dark'?MAPBOX_STYLES.dark:MAPBOX_STYLES.streets;
+     if(!styleRecoveryAttempted&&map?._vanoStyle!==fallbackStyle){
        styleRecoveryAttempted=true;
        try{
-         map._vanoStyle=MAPBOX_STYLES.streets;
-         map.setStyle(MAPBOX_STYLES.streets,{diff:false});
+         map._vanoStyle=fallbackStyle;
+         map.setStyle(fallbackStyle,{diff:false});
          console.warn('VANO custom map style unavailable; retrying default vector map.');
          return;
        }catch{/* Vector style recovery failed; continue to stable raster. */}
@@ -604,7 +605,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         const vectorStartedAt=Date.now();
         const checkVectorStartup=()=>{
           if(deleted||backend.current!=='mapbox')return;
-          const standard=MAPBOX_STYLES.streets;
+          const standard=latest.current.appearance==='dark'?MAPBOX_STYLES.dark:MAPBOX_STYLES.streets;
           const decision=vectorStartupDecision({
             elapsedMs:Date.now()-vectorStartedAt,
             loaded:isLoaded(map),
