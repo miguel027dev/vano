@@ -511,7 +511,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,poiVisible,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
-    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false;const initial=coord(latest.current.userCoords);
+    let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false,styleRecoveryAt=0;const initial=coord(latest.current.userCoords);
     const report=e=>{if(!deleted){
    const message=e?.error?.message||e?.message||'';
    const source=e?.sourceId||e?.source?.id||'';
@@ -525,21 +525,27 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
    const code=Number(e?.error?.status||e?.error?.statusCode||e?.status||0);
    const authFailed=code===401||code===403||/\b(?:401|403)\b|Unauthorized|Unauthorised|Forbidden|Invalid Token|access token is invalid|Not Authorized/i.test(message);
    const styleFailed=/Style not found|Failed to load style/i.test(message);
-   // A custom Mapbox Studio style may fail authorization while the public
-   // Mapbox street style works. Recover within WebGL BEFORE choosing raster.
-   // Errors from optional resources after a loaded style must not blank the map.
+   // Do not replace the configured style because an optional vector asset
+   // fails or a provider responds slowly. Retry the SAME chosen style.
    if((authFailed||styleFailed)&&!isLoaded(map)){
-     const fallbackStyle=latest.current.appearance==='dark'?MAPBOX_STYLES.dark:MAPBOX_STYLES.streets;
-     if(!styleRecoveryAttempted&&map?._vanoStyle!==fallbackStyle){
-       styleRecoveryAttempted=true;
-       try{
-         map._vanoStyle=fallbackStyle;
-         map.setStyle(fallbackStyle,{diff:false});
-         console.warn('VANO custom map style unavailable; retrying default vector map.');
-         return;
-       }catch{/* Vector style recovery failed; continue to stable raster. */}
+     if(source&&source!=='composite'){
+       console.warn('VANO optional vector source unavailable; keeping selected style.');
+       return;
      }
-     console.warn('VANO vector map unavailable; switching to licensed raster fallback.',code||'style-error');
+     if(!styleRecoveryAttempted){
+       styleRecoveryAttempted=true;styleRecoveryAt=Date.now();
+       try{
+         const original=styleFor(latest.current.layer,latest.current.appearance);
+         map._vanoStyle=original;
+         map.setStyle(original,{diff:false});
+         console.warn('VANO selected vector style: retrying original after provider error.');
+         return;
+       }catch{/* A permanent style/auth failure may require licensed raster. */}
+     }
+     // The retry may produce duplicate tile errors. Do not fall back on
+     // every 401/403 burst before the original style has another chance.
+     if(Date.now()-styleRecoveryAt<20000)return;
+     console.warn('VANO configured vector style could not load; using raster last resort.',code||'style-error');
      setForceRaster(true);return;
    }
    // The provider message can contain access_token URLs. Never log it raw.
@@ -602,7 +608,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         // after vector tiles finish. getLayer makes this idempotent.
         map.on('idle',ensureNight3d);
          map.on('moveend',ensureNight3d);
-        map.on('load',()=>{attachOpenRouterMark();update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
+        map.on('load',()=>{map._vanoSeenVectorFrame=true;attachOpenRouterMark();update();map.once('render',()=>{requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!deleted)notifyNative({action:'firstFrame',backend:'mapbox'});}));});map.triggerRepaint();});
         map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.(e.lngLat.toArray());});
         map.on('dragstart',e=>{if(e.originalEvent&&!latest.current.pickingOrigin)motion.current?.setFree();});
         map.on('rotatestart',e=>{if(e.originalEvent)motion.current?.setFree();});
@@ -627,23 +633,26 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         const vectorStartedAt=Date.now();
         const checkVectorStartup=()=>{
           if(deleted||backend.current!=='mapbox')return;
-          const standard=latest.current.appearance==='dark'?MAPBOX_STYLES.dark:MAPBOX_STYLES.streets;
+          const selectedStyle=styleFor(latest.current.layer,latest.current.appearance);
           const decision=vectorStartupDecision({
             elapsedMs:Date.now()-vectorStartedAt,
-            loaded:isLoaded(map),
-            usingCustomStyle:map._vanoStyle!==standard,
-            retriedDefaultStyle:styleRecoveryAttempted
+            loaded:isLoaded(map)||Boolean(map._vanoSeenVectorFrame),
+            usingCustomStyle:true,
+            retriedOriginalStyle:styleRecoveryAttempted
           });
           if(decision==='ready')return;
-          if(decision==='raster'){setForceRaster(true);return;}
-          if(decision==='retry-default-vector'){
-            styleRecoveryAttempted=true;
+          if(decision==='raster'){
+            console.warn('VANO selected vector style exceeded recovery deadline; using raster last resort.');
+            setForceRaster(true);return;
+          }
+          if(decision==='retry-original-vector'){
+            styleRecoveryAttempted=true;styleRecoveryAt=Date.now();
             try{
-              map._vanoStyle=standard;
-              map.setStyle(standard,{diff:false});
-              console.warn('VANO custom map slow: recovering with standard Mapbox vector style.');
+              map._vanoStyle=selectedStyle;
+              map.setStyle(selectedStyle,{diff:false});
+              console.warn('VANO custom map slow: retrying configured style, not the default.');
             }catch{
-              console.warn('VANO vector style recovery pending.');
+              console.warn('VANO configured style retry deferred.');
             }
           }
           styleWatchdog=setTimeout(checkVectorStartup,8000);
