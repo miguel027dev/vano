@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {ArrowRight,Check,Headphones,LoaderCircle,RotateCcw,ShieldCheck,Sparkles,Volume2,VolumeX,Zap} from 'lucide-react';
+import {ArrowRight,Check,Headphones,LoaderCircle,RotateCcw,ShieldCheck,Route,Volume2,VolumeX,Zap} from 'lucide-react';
 import {api} from '../lib/api';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 
@@ -39,7 +39,7 @@ export default function MaviSetupChat({settings,onChange,firstName='você',compa
  function answer(value){if(!current)return;voiceRequest.current?.abort();setSpeaking(false);onChange(current.id,value);setStep(s=>Math.min(s+1,MAVI_STEPS.length));setVoiceError('');}
  return <section className={`mavi-setup ${compact?'mavi-setup-compact':''}`} aria-label="Converse com a MAVI para personalizar suas rotas">
   <header className="mavi-setup-top">
-    <div className="mavi-setup-avatar" aria-hidden="true"><Sparkles size={22}/></div>
+    <div className="mavi-setup-avatar" aria-hidden="true"><Route size={22} strokeWidth={1.85}/></div>
     <div><span className="mavi-setup-brand">MAVI <span>·</span> ASSISTENTE VANO</span><strong>Sua próxima rota começa aqui.</strong></div>
     <button type="button" className="mavi-setup-audio" onClick={speaking?()=>{voiceRequest.current?.abort();setSpeaking(false);}:speak} aria-label={speaking?'Parar áudio da MAVI':'Ouvir MAVI'} aria-pressed={speaking} title="A mesma voz usada pela MAVI no mapa">{speaking?<VolumeX size={19}/>:<Volume2 size={19}/>}</button>
   </header>
