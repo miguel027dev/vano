@@ -40,6 +40,7 @@ test('Navigation overlays and current icons are preserved by style reload',()=>{
   assert.ok(src.includes("map.on('style.load',update)"));
   assert.ok(src.includes('paintMapbox(map,latest.current,lastSelection)'));
   assert.ok(src.includes('setStyle(style,{diff:false})'));
-  assert.ok(src.includes("map._vanoStyle=fallbackStyle"));
-  assert.ok(src.includes("const standard=latest.current.appearance==='dark'?MAPBOX_STYLES.dark:MAPBOX_STYLES.streets;"));
+  assert.ok(src.includes("map._vanoStyle=original"));
+  assert.ok(src.includes("map._vanoStyle=selectedStyle"));
+  assert.ok(!src.includes("map._vanoStyle=fallbackStyle"));
 });
