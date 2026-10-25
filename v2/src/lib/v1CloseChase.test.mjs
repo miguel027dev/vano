@@ -46,7 +46,9 @@ test('both route screens display stronger, provider-only direction arrows',()=>{
   assert.match(source,/planV1CloseChase\(\{/);
   assert.match(source,/v1Close&&base/);
   assert.match(source,/minzoom:14\.2/);
-  assert.match(source,/17,7\.1,18,8\.3,19,9\.3/);
+  assert.match(source,/17,5\.8,18,7,19,8/);
+  assert.match(source,/icon-size':\['interpolate'/);
+  assert.match(source,/map\.hasImage\(imageId\)/);
   assert.match(source,/map\._vanoArrowLineGroup\?\.eachLayer/);
   assert.match(source,/const smoothChaseYaw=t\.cameraFollowMarker\?82\*dt\/1000:maxYawStep/);
 });
