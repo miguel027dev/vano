@@ -34,7 +34,7 @@ export default function B1RouteSheet({step,vehicle,routeData,choice,loading,erro
       <div className="b1-sheet-heading"><div><h2>Escolha sua prioridade</h2><p>{vehicle==='a-pe'?'Trajeto para caminhada':'Como prefere chegar?'}</p></div>
         <button className="b1-back" type="button" onClick={onBack} aria-label="Escolher outro transporte"><ArrowLeft size={20}/></button>
       </div>
-      {loading?<div className="b1-route-wait" role="status"><span className="b1-spinner"/>Preparando seu trajeto…</div>:error&&!selected?<div className="b1-route-error" role="alert">{error}<button type="button" onClick={onRetry}>Tentar novamente</button></div>:selected?<div className="b1-preview-details">
+      {loading?<div className="b1-route-wait" role="status"><span className="b1-spinner"/>Preparando seu trajeto…</div>:error&&!selected?<div className="b1-route-error" role="status" aria-label="Trajeto ainda não disponível"><button type="button" onClick={onRetry}>Tentar novamente</button></div>:selected?<div className="b1-preview-details">
         <div className="b1-priority-grid" role="group" aria-label="Prioridade de rota">
           <button type="button" className={choice===fastest?.id?'is-active':''} onClick={()=>fastest&&onChoice(fastest.id)} disabled={!fastest}
             aria-pressed={choice===fastest?.id}><Zap size={19} strokeWidth={2.2}/><span>{vehicle==='a-pe'?'Caminhada':'Mais rápida'}</span></button>

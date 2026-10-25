@@ -464,8 +464,8 @@ export default function MapPage({active=true}){
     }catch(e){
       if(epoch===routeEpoch.current){
         const message=timedOut?'A rota demorou a responder. Tente novamente.':controller.signal.aborted?'Cálculo interrompido. Tente novamente.':e?.message||'Não foi possível calcular esta rota.';
-        setRouteError(message);
-        setToast(message);
+        if(b1User){console.warn('[VANO V1:route-calculation]',e);setRouteError('retry');}
+        else{setRouteError(message);setToast(message);}
       }
     }finally{
       clearTimeout(timeout);
@@ -1148,7 +1148,8 @@ export default function MapPage({active=true}){
         setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');
       }
     }catch(e){
-      if(epoch===routeEpoch.current)setToast(`Rota atual mantida: ${e.message}`);
+      console.warn('[VANO:navigation-reroute]',e);
+      if(epoch===routeEpoch.current&&!b1User)setToast('Rota atual mantida.');
     }finally{
       if(rerouteRequest.current===epoch){rerouteRequest.current=null;setRecalculating(false);}
     }
@@ -1234,10 +1235,10 @@ export default function MapPage({active=true}){
         <strong className="v46-nav-distance" aria-live="off">{displayManeuverDistance(shownGuidance?.distance,language)}</strong>
         <span className="v46-nav-instruction-text" aria-live="polite" title={nextTurnText.instruction}>{compactIsland?islandPresentation.instruction:nextTurnText.instruction}</span>
         {nextTurnText.street&&!compactIsland&&<span className="v46-nav-street">{nextTurnText.street}</span>}
-         {!compactIsland&&mappedCrossing?<span className="v70-nav-context" aria-live="off">
+         {!b1User&&!compactIsland&&mappedCrossing?<span className="v70-nav-context" aria-live="off">
            {crossingLabel(mappedCrossing,language)} · {mappedCrossing.distance} m
            <small>{crossingSafetyNote(language)} · OpenStreetMap</small>
-         </span>:!compactIsland&&modeManeuverDetail(routeVehicle,guidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,guidance)}</span>}
+         </span>:!b1User&&!compactIsland&&modeManeuverDetail(routeVehicle,guidance)&&<span className="v70-nav-context">{modeManeuverDetail(routeVehicle,guidance)}</span>}
         {!compactIsland&&visualLanes.length>0&&<div className="v28-lane-guidance" role="group" aria-label="Orientação de faixas da rota">
           {visualLanes.map(lane=><span key={lane.index} className={`v46-lane ${lane.valid?'suggested':''}`}
             title={lane.valid?'Faixa indicada pela rota':'Outra faixa'}
@@ -1246,7 +1247,8 @@ export default function MapPage({active=true}){
           </span>)}
         </div>}
       </div>
-      <button className="circle-btn" onClick={toggleVoice} aria-label={muted?'Ativar som':'Silenciar'} title="Preferência de áudio">{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
+      {b1User&&!hasLiveGPS&&!simActive&&<span className="v1-gps-status" role="status" aria-label="Sinal de GPS indisponível. A última posição pode estar desatualizada." title="GPS sem sinal confiável"><AlertTriangle size={13} aria-hidden="true"/>GPS</span>}
+      <button className="circle-btn" onClick={toggleVoice} aria-label={b1User&&voiceProblem?'Orientação por voz temporariamente indisponível':muted?'Ativar som':'Silenciar'} title={b1User&&voiceProblem?'Áudio de navegação indisponível':'Preferência de áudio'}>{muted?<VolumeX size={21}/>:<Volume2 size={21}/>}</button>
       {jevMode&&<div id="mavi-offer-host" className="mavi-offer-host"/>}
     </div>}
     {!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking" role="status">
@@ -1421,9 +1423,9 @@ export default function MapPage({active=true}){
         </div>
         {!simActive&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
       </div>
-      {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Não foi possível reproduzir a orientação por voz.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakDeviceManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
-      {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
-      {!hasLiveGPS&&!simActive&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
+      {!b1User&&voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Não foi possível reproduzir a orientação por voz.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakDeviceManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{!b1User&&storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
+      {!b1User&&recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
+      {!b1User&&!hasLiveGPS&&!simActive&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
       {simActive&&<p className="nav-demo" role="status">{immersiveV2?'Teste V2 · sem GPS real.':'Simulação administrativa · sem GPS real. Nenhuma viagem é registrada.'}</p>}
       {demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}
     </div>}
