@@ -22,6 +22,13 @@
   }
   .map-page.in-navigation .v94-focus-toggle.is-active:hover{background:#cf602d}
 }
+/* Keep admin actions mounted for /v2 but collapse them when focused. */
+.map-page.in-navigation.v94-v2-focus .map-controls .v2-admin-road-audit-toggle,
+.map-page.in-navigation.v94-v2-focus .map-controls .v81-drone-sim-toggle,
+.map-page.in-navigation.v94-v2-focus .map-controls .v76-sim-toggle,
+.map-page.in-navigation.v94-v2-focus .nav-bottom .v36-nav-report{
+  display:none;
+}
 .map-page.in-navigation.v94-v2-focus .map-controls{
   right:calc(env(safe-area-inset-right,0px) + 15px);
   bottom:calc(var(--v36-nav-dock-height,145px) + env(safe-area-inset-bottom,0px) + 24px);
