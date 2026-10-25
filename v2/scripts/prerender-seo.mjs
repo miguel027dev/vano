@@ -28,6 +28,19 @@ function htmlFor(page,route){
  const metas=`<meta name="robots" content="${indexing?'index, follow':'noindex, follow'}"/><meta property="og:type" content="article"/><meta property="og:locale" content="pt_BR"/><meta name="twitter:card" content="summary"/><meta property="og:title" content="${esc(page.title)} | VANO Maps"/><meta property="og:description" content="${esc(page.description)}"/><meta property="og:url" content="${esc(canonical)}"/><link rel="canonical" href="${esc(canonical)}"/><script type="application/ld+json">${safeJson}</script>`;
  return template.replace(/<title>[^<]*<\/title>/,`<title>${esc(page.title)} | VANO Maps</title>`).replace(/<meta name="description"[^>]*\/>/,`<meta name="description" content="${esc(page.description)}"/>`).replace('</head>',metas+'</head>').replace(/<div id="root">(?:<main class="v42-preboot"[\s\S]*?<\/main>)?<\/div>/,`<div id="root">${body(page)}</div>`);
 }
+function entryHtml({title,description,canonicalPath,heading,bodyText,ctaHref,ctaText}){
+ const canonical=site+canonicalPath;
+ const metas=`<meta name="robots" content="${indexing?'index, follow':'noindex, follow'}"/><link rel="canonical" href="${esc(canonical)}"/><meta property="og:type" content="website"/><meta property="og:title" content="${esc(title)}"/><meta property="og:description" content="${esc(description)}"/><meta property="og:url" content="${esc(canonical)}"/>`;
+ const visible=`<main id="conteudo" class="v3-public"><div class="v3-public-wrap"><header class="v3-public-hero"><span class="v3-public-eyebrow">VANO Maps · navegação</span><h1>${esc(heading)}</h1><p>${esc(bodyText)}</p><div class="v3-public-hero-actions"><a class="v3-public-cta" href="${esc(ctaHref)}">${esc(ctaText)} →</a><a class="v3-public-secondary" href="/sobre">Conheça o VANO</a></div></header><nav aria-label="Conheça o VANO"><a href="/o-que-e-vano-maps">Como funciona</a> · <a href="/rotas-para-evitar-transito">Evitar trânsito</a> · <a href="/ajuda">Ajuda</a></nav></div></main>`;
+ return template.replace(/<title>[^<]*<\\/title>/,`<title>${esc(title)}</title>`).replace(/<meta name="description"[^>]*\\/>/,`<meta name="description" content="${esc(description)}"/>`).replace('</head>',metas+'</head>').replace(/<div id="root">(?:<main class="v42-preboot"[\\s\\S]*?<\\/main>)?<\\/div>/,`<div id="root">${visible}</div>`);
+}
+const home=entryHtml({title:'VANO Maps — mapas e rotas para seu caminho',description:'Explore o VANO Maps para buscar lugares, comparar rotas, acompanhar o trajeto e conhecer opções para evitar trânsito.',canonicalPath:'/',heading:'Escolha seu caminho com mais contexto',bodyText:'Busque destinos, compare duração e distância das rotas disponíveis e abra o mapa para planejar seu próximo trajeto.',ctaHref:'/mapa',ctaText:'Abrir mapa'});
+fs.writeFileSync(path.join(dist,'index.html'),home);
+fs.mkdirSync(path.join(dist,'inicio'),{recursive:true});
+fs.writeFileSync(path.join(dist,'inicio','index.html'),home);
+const mapHtml=entryHtml({title:'Mapa VANO — planeje e compare rotas',description:'Abra o mapa VANO para pesquisar endereços, comparar caminhos e planejar sua navegação de carro ou moto.',canonicalPath:'/mapa',heading:'Mapa e rotas VANO',bodyText:'Pesquise um destino, confira trajetos alternativos e compare tempo e distância antes de iniciar a navegação.',ctaHref:'/o-que-e-vano-maps',ctaText:'Entenda como funciona'});
+fs.mkdirSync(path.join(dist,'mapa'),{recursive:true});
+fs.writeFileSync(path.join(dist,'mapa','index.html'),mapHtml);
 for(const route of PUBLIC_PATHS){
  const page=pageForPath(route);
  if(!/^\/[a-z0-9-]+$/.test(route))throw Error(`Invalid public path: ${route}`);
