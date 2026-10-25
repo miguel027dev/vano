@@ -1,0 +1,25 @@
+{
+  "name": "VANO Maps",
+  "short_name": "VANO",
+  "description": "Mapas e planejamento de trajetos.",
+  "lang": "pt-BR",
+  "start_url": "/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f9f8",
+  "theme_color": "#e95b22",
+  "icons": [
+    {
+      "src": "/vano-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
