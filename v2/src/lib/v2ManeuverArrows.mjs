@@ -6,17 +6,26 @@ const line=(coordinates,index,part)=>({
   type:'Feature',properties:{maneuver:index,part},
   geometry:{type:'LineString',coordinates}
 });
-const maneuverType=step=>String(step?.type||'').toLowerCase();
-const isTurn=step=>{
-  const type=maneuverType(step),modifier=String(step?.modifier||'').toLowerCase();
-  return /turn|fork|merge|ramp|roundabout|rotary|exit/.test(type) ||
-    /right|left|u.turn/.test(modifier);
+const normalized=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const maneuverType=step=>normalized(step?.type);
+const isRoundabout=step=>/roundabout|rotary|rotatoria/.test(maneuverType(step));
+const isExitOfRoundabout=step=>/exit.*(roundabout|rotary)|(roundabout|rotary).*exit|saida.*rotatoria/.test(maneuverType(step));
+const isRampLike=step=>{
+  const type=maneuverType(step),instruction=normalized(step?.instruction);
+  return /ramp|fork|merge|exit|bifurcat/.test(type)||
+    /alca|rampa|acesso|viaduto|ponte|elevad|bifurcac|saida|mantenha.se a/.test(instruction);
 };
-const isRoundabout=step=>/roundabout|rotary/.test(maneuverType(step));
+const isDirectionalManeuver=step=>{
+  const type=maneuverType(step);
+  const modifier=normalized(step?.modifier);
+  const instruction=normalized(step?.instruction);
+  return /turn|fork|merge|ramp|roundabout|rotary|exit|bifurcat/.test(type)||
+    /left|right|u.turn|direita|esquerda/.test(modifier)||
+    /(?:pegue|entre|acesse|suba|vire|converja|mantenha|utilize|saia|pegue a saida).{0,65}(?:ponte|viaduto|elevad|alca|rampa|acesso|bifurcac|saida)|(?:acesso|rampa|alca|saida).{0,35}(?:a direita|a esquerda)/.test(instruction);
+};
 
-/** White, geometry-following turn cues for /v2 only.
- * Only provider maneuvers with locations are drawn: road bends alone never
- * create instructions. Returned geometry is static for a selected route.
+/** /v2-only white arrows on provider-confirmed maneuvers. A bridge or
+ * overpass is never invented from the 2D road shape alone.
  */
 export function buildV2ManeuverArrows(route){
   const steps=Array.isArray(route?.steps)?route.steps:[];
@@ -29,39 +38,45 @@ export function buildV2ManeuverArrows(route){
   let previousAt=-Infinity;
   for(let i=0;i<positioned.length;i++){
     const {step,index,at}=positioned[i];
-    if(!Number.isFinite(at)||!isTurn(step)||at<12||at>timeline.total-9)continue;
-    if(at-previousAt<29)continue; // Avoid a visually merged pair of arrows.
+    if(!Number.isFinite(at)||!isDirectionalManeuver(step)||at<10||at>timeline.total-7)continue;
+    if(isExitOfRoundabout(step)&&positioned.slice(0,i).some(previous=>
+      isRoundabout(previous.step)&&Number.isFinite(previous.at)&&at-previous.at<=130))continue;
+    if(at-previousAt<21)continue;
     const roundabout=isRoundabout(step);
-    const following=positioned.slice(i+1).find(item=>Number.isFinite(item.at)&&
-      item.at>at+8&&/exit.*(roundabout|rotary)|(roundabout|rotary).*exit/.test(maneuverType(item.step)));
-    const end=roundabout&&following&&following.at-at<=130
-      ?Math.min(timeline.total-3,following.at+8)
-      :Math.min(timeline.total-3,at+(roundabout?27:16));
-    const start=Math.max(3,at-(roundabout?19:24));
-    if(end-start<20)continue;
+    const ramp=isRampLike(step);
+    const followingExit=roundabout&&positioned.slice(i+1).find(item=>
+      Number.isFinite(item.at)&&item.at>at+8&&isExitOfRoundabout(item.step)&&item.at-at<=130);
+    const nextTurn=positioned.slice(i+1).find(item=>
+      Number.isFinite(item.at)&&item.at>at+8&&isDirectionalManeuver(item.step)&&
+      !(roundabout&&isExitOfRoundabout(item.step)));
+    let end=followingExit?followingExit.at+10:at+(roundabout?30:ramp?27:19);
+    if(nextTurn)end=Math.min(end,nextTurn.at-5);
+    end=Math.min(timeline.total-3,end);
+    const start=Math.max(3,at-(roundabout?24:ramp?43:30),previousAt+11);
+    if(end-start<18)continue;
     const shaft=[];
-    for(let distance=start;distance<end;distance+=5){
+    for(let distance=start;distance<end;distance+=4){
       const point=sampleRoute(timeline,distance)?.point;
       if(point)shaft.push(point);
     }
     const tip=sampleRoute(timeline,end)?.point;
-    const behind=sampleRoute(timeline,end-6)?.point;
+    const behind=sampleRoute(timeline,end-7)?.point;
     if(!tip||!behind)continue;
     const metersPerLatitude=111320;
     const metersPerLongitude=Math.max(1000,metersPerLatitude*Math.cos(tip[1]*Math.PI/180));
     const dx=(tip[0]-behind[0])*metersPerLongitude;
     const dy=(tip[1]-behind[1])*metersPerLatitude;
     const length=Math.hypot(dx,dy);
-    if(length<0.5)continue;
+    if(length<.5)continue;
     const ux=dx/length,uy=dy/length;
     const wing=side=>[
-      tip[0]+(-ux*5.5-uy*side)/metersPerLongitude,
-      tip[1]+(-uy*5.5+ux*side)/metersPerLatitude
+      tip[0]+(-ux*7.5-uy*side)/metersPerLongitude,
+      tip[1]+(-uy*7.5+ux*side)/metersPerLatitude
     ];
     shaft.push(tip);
     features.push(line(shaft,index,'shaft'));
-    features.push(line([wing(3),tip],index,'wing-left'));
-    features.push(line([wing(-3),tip],index,'wing-right'));
+    features.push(line([wing(4.2),tip],index,'wing-left'));
+    features.push(line([wing(-4.2),tip],index,'wing-right'));
     previousAt=at;
     if(features.length>=90)break;
   }
