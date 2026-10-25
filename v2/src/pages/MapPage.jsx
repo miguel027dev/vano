@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, Minimize2, Maximize2 } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, Minimize2, Maximize2, SlidersHorizontal, CalendarDays } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import RoadAuditPanel from '../components/RoadAuditPanel.jsx';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
@@ -114,8 +114,16 @@ export default function MapPage({active=true}){
   const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0),[simConfirmOpen,setSimConfirmOpen]=useState(false);
   const [simCameraMode,setSimCameraMode]=useState('standard');
   const [v2FocusMode,setV2FocusMode]=useState(false);
+  const [v2ToolsOpen,setV2ToolsOpen]=useState(false);
   const immersiveV2=adminV2RoadSigns&&navMode&&v2FocusMode;
   useEffect(()=>{if(!adminV2RoadSigns||!navMode||!active)setV2FocusMode(false);},[adminV2RoadSigns,navMode,active]);
+  useEffect(()=>{setV2ToolsOpen(false);},[navMode,adminV2RoadSigns,immersiveV2]);
+  useEffect(()=>{
+    if(!v2ToolsOpen)return;
+    const close=event=>{if(event.key==='Escape')setV2ToolsOpen(false);};
+    window.addEventListener('keydown',close);
+    return()=>window.removeEventListener('keydown',close);
+  },[v2ToolsOpen]);
   function toggleV2FocusMode(){
     if(!adminV2RoadSigns||!navMode||!active)return;
     if(!v2FocusMode){setRoadAuditOpen(false);setQuickReportOpen(false);setSearchOpen(false);}
@@ -883,6 +891,9 @@ export default function MapPage({active=true}){
   const navigationStats=confirmedEtaReview?
     navigationSummaryWithRefresh(baselineNavigationStats,confirmedEtaReview,etaNow):baselineNavigationStats;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
+  const v2ArrivalDate=navigationStats?.arrivalAt instanceof Date&&!Number.isNaN(navigationStats.arrivalAt.getTime())
+    ?new Intl.DateTimeFormat(language||'pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(navigationStats.arrivalAt)
+    :'Data indisponível';
   const trafficUpdateAt=confirmedEtaReview?.checkedAt??route?.etaUpdatedAt;
   const trafficDataStatus=confirmedEtaReview?'traffic-aware':route?.trafficDataStatus;
   const currentTraffic=trafficDataStatus==='traffic-aware'&&Number.isFinite(trafficUpdateAt)&&
@@ -1167,7 +1178,7 @@ export default function MapPage({active=true}){
     index,valid:lane?.valid===true,symbols:laneVariants(lane),
   })).filter(lane=>lane.symbols.length):[];
 
-  return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${immersiveV2?'v94-v2-focus':''} ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
+  return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${adminV2RoadSigns?'v95-premium-v2':''} ${immersiveV2?'v94-v2-focus':''} ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
     <VanoMap poiVisible={preferences?.poiVisible} routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} focusMode={immersiveV2} v2Experience={location.pathname==='/v2'} readableRouteStroke={location.pathname==='/mapa'||location.pathname==='/v2'} privateRoadSigns={visibleRoadSigns} roadCards={jevMode&&import.meta.env.VITE_VISIBLE_STREET_CARDS!=='0'} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
     {adminV2RoadSigns&&roadAuditOpen&&<RoadAuditPanel onClose={()=>setRoadAuditOpen(false)}/>}
     {adminV2RoadSigns&&routeVehicle!=='a-pe'&&route&&!navMode&&!sheetOpen&&!searchOpen&&<div className="v81-traffic-preview"><RouteTrafficCard traffic={routeTraffic}/></div>}
@@ -1300,7 +1311,7 @@ export default function MapPage({active=true}){
       <button title={simActive?'Centralizar na simulação':'Minha localização'} aria-label={simActive?'Centralizar no ponto simulado':'Minha localização'} className="circle-btn" onClick={()=>simActive?mapControl.current?.center?.():validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
       {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
     </div>}
-    {!navMode&&dest&&sheetOpen&&!pickOriginMode&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{t('DESTINO SELECIONADO')}</span><h2>{t('Escolha a sua rota')}</h2></div><button className="sheet-close" onClick={()=>setSheetOpen(false)}><ChevronDown size={23}/></button></div>
+    {!navMode&&dest&&sheetOpen&&!pickOriginMode&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{adminV2RoadSigns?'SEU TRAJETO':t('DESTINO SELECIONADO')}</span><h2>{adminV2RoadSigns?'Escolha seu caminho':t('Escolha a sua rota')}</h2>{adminV2RoadSigns&&<span className="v95-route-destination" title={dest?.name}>{dest?.name}</span>}</div><button type="button" className="sheet-close" aria-label="Recolher opções de rota" title="Recolher opções" onClick={()=>setSheetOpen(false)}>{adminV2RoadSigns?<X size={20}/>:<ChevronDown size={23}/>}</button></div>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
         <div className={`v47-route-vehicle-switch ${import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
@@ -1319,7 +1330,7 @@ export default function MapPage({active=true}){
           </button>
         </div>
       </div>
-      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}{r.trafficDataStatus==='degraded'?' · sem trânsito ao vivo':''}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
+      {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?(adminV2RoadSigns?'Alternativa por outras vias':'Micro-rota V1 • desvio anti-gargalo'):r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?(adminV2RoadSigns?'Dados disponíveis para esta rota':t('Avaliação V1')):t('Menor tempo estimado')}{r.trafficDataStatus==='degraded'?' · sem trânsito ao vivo':''}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
 
        {choice==='safe'&&routeVehicle!=='a-pe'&&<p className="route-safety-note" role="note">{routeData.safetyMessage||'Os dados de segurança podem ser limitados nesta região. Nenhuma rota garante segurança absoluta.'}</p>}
        <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:!validPoint(origin)?<div className="notice" role="status">
@@ -1349,14 +1360,17 @@ export default function MapPage({active=true}){
       <div className="nav-summary v37-nav-summary">
         <button type="button" className="circle-btn v37-nav-end" onClick={reset} aria-label="Encerrar navegação" title="Encerrar navegação"><X size={22} strokeWidth={2}/></button>
         <div className="v37-nav-center">
+          {adminV2RoadSigns&&<div className="v95-arrival-heading"><span className="v95-arrival-live" aria-hidden="true"/><span>CHEGADA PREVISTA</span></div>}
           <span className="sr-only">Previsão de chegada</span>
           <time className="v37-nav-arrival" dateTime={navigationStats?.arrivalAt?.toISOString()} title={etaTrafficNotice||'Previsão estimada — sujeito a alterações'}>{estimatedArrival}</time>
+          {adminV2RoadSigns&&<span className="v95-arrival-date"><CalendarDays size={14} aria-hidden="true"/>{v2ArrivalDate}</span>}
           {etaTrafficNotice&&<span className="v37-eta-source-note" role="status" style={{fontSize:10,opacity:.82,display:'block',textAlign:'center',marginTop:2}}>{etaTrafficNotice}</span>}
           <div className="v37-nav-meta" aria-label="Tempo e distância restantes">
             <span>{navigationStats?fmtTime(navigationStats.remainingMinutes):'-- min'}</span>
             <span className="v37-nav-bullet" aria-hidden="true"/>
             <span>{navigationStats?fmtKm(navigationStats.remainingKm,language):'-- km'}</span>
           </div>
+          {adminV2RoadSigns&&<div className="v95-metric-labels" aria-hidden="true"><span>Tempo restante</span><span>Distância restante</span></div>}
         </div>
         {!simActive&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
       </div>
