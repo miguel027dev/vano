@@ -26,7 +26,7 @@ def test_layers_use_mapbox_streets_and_preference_whitelist():
     for old in ("poi-bank.svg", "poi-parking.svg", "poi-pedestrian-crossing.svg", "poi-railway-crossing.svg"):
         assert old in JS
     import ast
-    whitelist = re.search(r"const VANO_POI_MAKI=(\\[[^;]+\\]);", JS)
+    whitelist = re.search(r"const VANO_POI_MAKI=(\[[^;]+\]);", JS)
     assert whitelist
     supported = set(ast.literal_eval(whitelist.group(1)))
     assert {"bank", "park", "parking", "charging-station", "restaurant", "fitness-centre", "school", "pharmacy", "cafe", "grocery"} <= supported
