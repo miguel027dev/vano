@@ -77,3 +77,13 @@ export function arrivalClock(date,locale='pt-BR'){
  try{return new Intl.DateTimeFormat(locale,{hour:'2-digit',minute:'2-digit',hour12:false}).format(date);}
  catch{return new Intl.DateTimeFormat('pt-BR',{hour:'2-digit',minute:'2-digit',hour12:false}).format(date);}
 }
+
+/** Human-readable arrival day for the V2 HUD and route preview.
+ * The date is calculated from the provider ETA, never simulated camera speed.
+ */
+export function arrivalCalendarDate(date,locale='pt-BR'){
+ if(!(date instanceof Date)||!Number.isFinite(date.getTime()))return 'Data indisponível';
+ const options={weekday:'long',day:'numeric',month:'long',year:'numeric'};
+ try{return new Intl.DateTimeFormat(locale,options).format(date);}
+ catch{return new Intl.DateTimeFormat('pt-BR',options).format(date);}
+}
