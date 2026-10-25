@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw } from 'lucide-react';
+import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, Minimize2, Maximize2 } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import RoadAuditPanel from '../components/RoadAuditPanel.jsx';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
@@ -113,6 +113,14 @@ export default function MapPage({active=true}){
     (location.pathname==='/v2'||import.meta.env.VITE_PUBLIC_ROAD_SIGNS!=='0');
   const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0),[simConfirmOpen,setSimConfirmOpen]=useState(false);
   const [simCameraMode,setSimCameraMode]=useState('standard');
+  const [v2FocusMode,setV2FocusMode]=useState(false);
+  const immersiveV2=adminV2RoadSigns&&navMode&&v2FocusMode;
+  useEffect(()=>{if(!adminV2RoadSigns||!navMode||!active)setV2FocusMode(false);},[adminV2RoadSigns,navMode,active]);
+  function toggleV2FocusMode(){
+    if(!adminV2RoadSigns||!navMode||!active)return;
+    if(!v2FocusMode){setRoadAuditOpen(false);setQuickReportOpen(false);setSearchOpen(false);}
+    setV2FocusMode(value=>!value);
+  }
   const simRequestedMode=useRef('standard');
   const [maviPreview,setMaviPreview]=useState(null); // Preview only: never changes the active route without confirmation.
   const [etaReview,setEtaReview]=useState(null),[etaPulse,setEtaPulse]=useState(Date.now());
@@ -1159,8 +1167,8 @@ export default function MapPage({active=true}){
     index,valid:lane?.valid===true,symbols:laneVariants(lane),
   })).filter(lane=>lane.symbols.length):[];
 
-  return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap poiVisible={preferences?.poiVisible} routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} v2Experience={location.pathname==='/v2'} readableRouteStroke={location.pathname==='/mapa'||location.pathname==='/v2'} privateRoadSigns={visibleRoadSigns} roadCards={jevMode&&import.meta.env.VITE_VISIBLE_STREET_CARDS!=='0'} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
+  return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${immersiveV2?'v94-v2-focus':''} ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
+    <VanoMap poiVisible={preferences?.poiVisible} routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} focusMode={immersiveV2} v2Experience={location.pathname==='/v2'} readableRouteStroke={location.pathname==='/mapa'||location.pathname==='/v2'} privateRoadSigns={visibleRoadSigns} roadCards={jevMode&&!immersiveV2&&import.meta.env.VITE_VISIBLE_STREET_CARDS!=='0'} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
     {adminV2RoadSigns&&roadAuditOpen&&<RoadAuditPanel onClose={()=>setRoadAuditOpen(false)}/>}
     {adminV2RoadSigns&&routeVehicle!=='a-pe'&&route&&!navMode&&!sheetOpen&&!searchOpen&&<div className="v81-traffic-preview"><RouteTrafficCard traffic={routeTraffic}/></div>}
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
@@ -1243,9 +1251,9 @@ export default function MapPage({active=true}){
         </div>
       </section>
     </div>}
-    {simActive&&<div className="v76-sim-badge" role="group" aria-label="Controles da simulação">
+    {simActive&&<div className={`v76-sim-badge ${immersiveV2?'v94-focus-sim-badge':''}`} role="group" aria-label="Controles da simulação">
       <span className="v76-sim-led" aria-hidden="true"/><strong>{simCameraMode==='drone'?'V2 SIM':'SIMULAÇÃO'}</strong>
-      <span>{Math.round((simFrame?.fraction||0)*100)}% · {shownSpeedKmh} km/h · {simCameraMode==='drone'?'2,5×':`${SIMULATION_PLAYBACK_RATE}×`}</span>
+      {!immersiveV2&&<span>{Math.round((simFrame?.fraction||0)*100)}% · {shownSpeedKmh} km/h · {simCameraMode==='drone'?'2,5×':`${SIMULATION_PLAYBACK_RATE}×`}</span>}
       <button type="button" onClick={()=>{
         if(simFrame?.finished){setSimMeters(0);setSimPaused(false);}
         else setSimPaused(value=>!value);
@@ -1253,8 +1261,8 @@ export default function MapPage({active=true}){
         title={simFrame?.finished?'Reiniciar':simPaused?'Retomar':'Pausar'}>{simFrame?.finished?<RotateCcw size={17}/>:simPaused?<Play size={17}/>:<Pause size={17}/>}</button>
     </div>}
     {!searchOpen&&<div className="map-controls">
-       {adminV2RoadSigns&&<button type="button" className="circle-btn v2-admin-road-audit-toggle" title="Auditoria das 7.500 ruas de São Paulo" aria-label="Abrir auditoria das ruas de São Paulo" aria-haspopup="dialog" aria-expanded={roadAuditOpen} onClick={()=>setRoadAuditOpen(v=>!v)}><MapPinned size={19}/></button>}
-       {adminV2RoadSigns&&<button type="button"
+       {adminV2RoadSigns&&!immersiveV2&&<button type="button" className="circle-btn v2-admin-road-audit-toggle" title="Auditoria das 7.500 ruas de São Paulo" aria-label="Abrir auditoria das ruas de São Paulo" aria-haspopup="dialog" aria-expanded={roadAuditOpen} onClick={()=>setRoadAuditOpen(v=>!v)}><MapPinned size={19}/></button>}
+       {adminV2RoadSigns&&!immersiveV2&&<button type="button"
          className={`circle-btn v81-drone-sim-toggle ${simActive&&simCameraMode==='drone'?'is-playing':''}`}
          title={simActive&&simCameraMode==='drone'?'Parar V2 Sim':'Iniciar V2 Sim · câmera drone'}
          aria-label={simActive&&simCameraMode==='drone'?'Parar V2 Sim':'Iniciar V2 Sim com câmera drone'}
@@ -1263,7 +1271,7 @@ export default function MapPage({active=true}){
          onClick={startV2DroneSimulation}>
          <span aria-hidden="true"><b>V2</b><small>SIM</small></span>
        </button>}
-       {adminV2RoadSigns&&<button type="button"
+       {adminV2RoadSigns&&!immersiveV2&&<button type="button"
          className={`circle-btn v76-sim-toggle ${simActive?'is-playing':''}`}
          title={simActive?'Parar simulação':'Simular trajeto na V2'}
          aria-label={simActive?'Parar simulação de trajeto':'Iniciar simulação de trajeto'}
@@ -1273,16 +1281,21 @@ export default function MapPage({active=true}){
          onClick={simActive?stopRouteSimulation:startRouteSimulation}>
          {simActive?<Square size={19}/>:<Play size={20}/>}
        </button>}
-       <button type="button" className={`circle-btn v49-appearance-toggle ${selectedAppearance==='dark'?'is-dark':'is-light'}`}
+       {adminV2RoadSigns&&navMode&&<button type="button" className={`circle-btn v94-focus-toggle ${immersiveV2?'is-active':''}`}
+         aria-label={immersiveV2?'Restaurar controles do mapa V2':'Recolher controles e focar na rota V2'}
+         title={immersiveV2?'Mostrar controles':'Focar na rota'} aria-pressed={immersiveV2} onClick={toggleV2FocusMode}>
+         {immersiveV2?<Maximize2 size={20} aria-hidden="true"/>:<Minimize2 size={20} aria-hidden="true"/>}
+       </button>}
+       {!immersiveV2&&<button type="button" className={`circle-btn v49-appearance-toggle ${selectedAppearance==='dark'?'is-dark':'is-light'}`}
          aria-label={selectedAppearance==='dark'?'Ativar mapa claro':'Ativar mapa escuro'}
          aria-pressed={selectedAppearance==='dark'} title={selectedAppearance==='dark'?'Modo claro':'Modo escuro'}
          onClick={toggleMapAppearance} disabled={savingMapTheme}>
          <span className="v49-theme-glyph" aria-hidden="true">
            {selectedAppearance==='dark'?<Sun size={21} strokeWidth={1.85}/>:<Moon size={21} strokeWidth={1.85}/>}
          </span>
-       </button>
-       {!simActive&&<>{jevMode&&navMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}</>}
-      <button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>
+       </button>}
+       {!immersiveV2&&!simActive&&<>{jevMode&&navMode&&<JevVoiceButton onCommand={askJev} onAccept={applyJev} onAction={handleMaviAction} onPreview={showMaviPreview} onDismissPreview={clearMaviPreview} routeContextKey={String(jevKey)+String(dest?.coords)} navigationActive={navMode} maneuverDistance={guidance?.distance} muted={muted}/>}</>}
+      {!immersiveV2&&<button type="button" title={layer==='streets'?'Mostrar imagem de satélite':'Mostrar mapa de ruas'} aria-label={layer==='streets'?'Ativar imagem de satélite':'Ativar mapa de ruas'} aria-pressed={layer==='satellite'} className={`circle-btn v29-layer-control v30-layer-control ${layer==='satellite'?'is-satellite':''}`} onClick={()=>setLayer(l=>l==='streets'?'satellite':'streets')}><Layers3 size={21} strokeWidth={2.1} aria-hidden="true"/></button>}
       {!navMode&&<button type="button" className={`circle-btn v45-traffic-toggle ${trafficEnabled?'is-active':''}`} aria-pressed={trafficEnabled} aria-label={trafficStatus==='unavailable'?'Dados de trânsito indisponíveis neste mapa':trafficEnabled?'Ocultar trânsito nas ruas':'Mostrar trânsito nas ruas'} title={trafficStatus==='unavailable'?'Trânsito indisponível sem dados Mapbox':trafficEnabled?'Ocultar trânsito · verde livre, amarelo lento, vermelho pesado':'Mostrar trânsito nas ruas'} onClick={()=>setTrafficEnabled(value=>!value)} disabled={trafficStatus==='unavailable'}><span className="v45-traffic-glyph" aria-hidden="true"><i/><i/><i/></span></button>}
       <button title={simActive?'Centralizar na simulação':'Minha localização'} aria-label={simActive?'Centralizar no ponto simulado':'Minha localização'} className="circle-btn" onClick={()=>simActive?mapControl.current?.center?.():validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
       {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
@@ -1332,7 +1345,7 @@ export default function MapPage({active=true}){
     </div>}
     {navMode&&<div className="nav-bottom v37-nav-bottom" aria-label="Resumo da navegação">
       <span className="v37-nav-handle" aria-hidden="true"/>
-      {adminV2RoadSigns&&routeVehicle!=='a-pe'&&<RouteTrafficCard traffic={routeTraffic} compact={Number.isFinite(shownGuidance?.distance)&&shownGuidance.distance<150} etaIncludesTraffic={currentTraffic}/>}
+      {adminV2RoadSigns&&!immersiveV2&&routeVehicle!=='a-pe'&&<RouteTrafficCard traffic={routeTraffic} compact={Number.isFinite(shownGuidance?.distance)&&shownGuidance.distance<150} etaIncludesTraffic={currentTraffic}/>}
       <div className="nav-summary v37-nav-summary">
         <button type="button" className="circle-btn v37-nav-end" onClick={reset} aria-label="Encerrar navegação" title="Encerrar navegação"><X size={22} strokeWidth={2}/></button>
         <div className="v37-nav-center">
@@ -1345,12 +1358,12 @@ export default function MapPage({active=true}){
             <span>{navigationStats?fmtKm(navigationStats.remainingKm,language):'-- km'}</span>
           </div>
         </div>
-        {!simActive&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
+        {!simActive&&!immersiveV2&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
       </div>
       {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Não foi possível reproduzir a orientação por voz.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakDeviceManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
       {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
       {!hasLiveGPS&&!simActive&&<p className="nav-demo" role="status">Aguardando sinal GPS confiável. Exibindo a última localização recebida; confirme sempre sua posição na via.</p>}
-      {simActive&&<p className="nav-demo" role="status">Simulação administrativa · sem GPS real. Nenhuma viagem é registrada.</p>}
+      {simActive&&<p className="nav-demo" role="status">{immersiveV2?'Teste V2 · sem GPS real.':'Simulação administrativa · sem GPS real. Nenhuma viagem é registrada.'}</p>}
       {demoRoute&&<p className="nav-demo">Simulação local. Não utilize estas instruções para dirigir.</p>}
     </div>}
     {quickReportOpen&&<QuickReportSheet onClose={()=>setQuickReportOpen(false)} onSubmit={report}
