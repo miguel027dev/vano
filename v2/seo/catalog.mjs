@@ -135,12 +135,106 @@ export const PUBLIC_PAGES = [
     sections:[['Comece com uma busca','Abra o mapa, escolha um destino conhecido e confira as opções de trajeto apresentadas.'],['Compare o resultado','Observe duração, distância, informações de trânsito e origem dos dados. Alguns recursos requerem integração externa e podem não estar habilitados.'],['Envie sugestões com responsabilidade','Use o suporte para relatar erros de interface, rotas incorretas e problemas de acessibilidade; não compartilhe informações pessoais de terceiros.']],cta:'Testar no mapa',ctaHref:'/mapa'
   },
   {
-    path:'/termos-de-uso',aliases:['/termos','/terms'],category:'Legal',title:'Termos de uso do VANO Maps',description:'Condições de uso, responsabilidades e limitações dos serviços de mapas, navegação e ocorrências do VANO.',lead:'Informações essenciais para utilizar a plataforma com consciência.',
-    sections:[['1. Finalidade do serviço','O VANO oferece visualização de mapas, pesquisa por endereços, planejamento de trajetos e recursos relacionados. Algumas funções podem estar em teste, indisponíveis ou dependentes de terceiros.'],['2. Navegação e trânsito','Tempos e trajetos são estimativas. Informações sobre trânsito, ocorrências e segurança podem estar desatualizadas ou incompletas. Siga sempre as leis de trânsito e jamais interaja com o aplicativo enquanto dirige.'],['3. Conta e conduta','Você é responsável pelas informações que envia, por proteger suas credenciais e por utilizar a plataforma de modo lícito. Não publique dados falsos, ameaças ou informações pessoais indevidas.'],['4. Serviços de terceiros','Mapas, geocodificação, tráfego e autenticação podem utilizar provedores externos. A disponibilidade e as condições desses serviços podem variar.'],['5. Disponibilidade e alterações','Os recursos podem ser atualizados ou suspensos por manutenção, segurança ou mudanças técnicas. Informações relevantes devem ser comunicadas nos canais do serviço.'],['6. Direitos e atendimento','As regras de privacidade, acesso e exclusão de dados são detalhadas na política correspondente. Este texto precisa de revisão jurídica e identificação completa do controlador antes da disponibilização comercial definitiva.']],cta:'Ver privacidade',ctaHref:'/politica-de-privacidade'
+    "path": "/termos-de-uso",
+    "aliases": [
+      "/termos",
+      "/terms"
+    ],
+    "category": "Legal",
+    "title": "Termos de uso do VANO Maps",
+    "description": "Conheça as regras de uso do VANO Maps, os limites das informações de navegação e suas responsabilidades ao utilizar o aplicativo.",
+    "lead": "As regras mais importantes para usar o VANO com consciência.",
+    "sections": [
+      [
+        "1. Sobre o serviço",
+        "O VANO oferece mapas, pesquisa por lugares e planejamento de trajetos. Alguns recursos podem estar em teste ou depender de serviços externos."
+      ],
+      [
+        "2. Informações de navegação",
+        "Rotas, previsões de chegada, trânsito e alertas podem mudar ou estar incompletos. Nenhuma orientação substitui a sinalização, as leis de trânsito ou as condições reais da via."
+      ],
+      [
+        "3. Uso responsável",
+        "Planeje seu percurso antes de dirigir. Não manuseie o aplicativo enquanto conduz. Não utilize os recursos para divulgar ameaças, relatos falsos ou dados pessoais de outras pessoas sem autorização."
+      ],
+      [
+        "4. Conta e acesso",
+        "Quem utiliza uma conta deve proteger suas credenciais e fornecer informações corretas. Alguns recursos exigem login e podem ficar indisponíveis durante manutenção."
+      ],
+      [
+        "5. Serviços de outras empresas",
+        "Mapas, busca de lugares, informações de trânsito e autenticação podem usar serviços de terceiros. A cobertura e a disponibilidade variam."
+      ],
+      [
+        "6. Atualizações",
+        "O VANO pode corrigir falhas, atualizar recursos e suspender funções por motivos técnicos ou de segurança."
+      ],
+      [
+        "7. Privacidade e exclusão",
+        "O tratamento de informações pessoais e as orientações de remoção de conta estão na Política de privacidade e na página Excluir conta."
+      ],
+      [
+        "8. Limites e revisão",
+        "As informações ajudam no planejamento, mas não garantem o resultado de uma viagem. Este documento ainda precisa de revisão jurídica e identificação completa do responsável antes da operação comercial definitiva."
+      ]
+    ],
+    "cta": "Ler a política de privacidade",
+    "ctaHref": "/politica-de-privacidade"
   },
   {
-    path:'/politica-de-privacidade',aliases:['/privacidade','/privacy'],category:'Legal',title:'Política de privacidade do VANO',description:'Saiba como o VANO Maps trata dados de conta, GPS, rotas, histórico e integrações externas.',lead:'Localização é um dado sensível na prática: explicamos quando ela é usada e o que ainda precisa ser validado.',
-    sections:[['1. Dados de conta','O sistema pode processar nome, e-mail, identificador de autenticação, credenciais protegidas e preferências para oferecer acesso e personalização.'],['2. Localização e rotas','Quando autorizado, coordenadas podem ser utilizadas para centralizar o mapa e calcular rotas. Origem e destino podem ser enviados a provedores de navegação para gerar resultados. Não presuma que a navegação funciona sem internet.'],['3. Histórico e ocorrências','Conforme as funcionalidades habilitadas, lugares salvos, trajetos, rotinas e relatos podem ser armazenados. Relatos não verificados não devem ser tratados como fatos confirmados.'],['4. Terceiros','Provedores de mapas, busca, e-mail e autenticação podem processar dados necessários para cada serviço conforme suas próprias políticas.'],['5. Direitos LGPD','Você pode solicitar informações sobre tratamento, correção e eliminação nos casos previstos pela legislação. O aplicativo oferece recursos de conta, e fluxos adicionais precisam ser verificados com o operador.'],['6. Retenção e segurança','A retenção e as medidas de segurança dependem da finalidade do tratamento e da configuração do serviço em produção. Antes da publicação comercial definitiva, é necessário validar e divulgar prazos de conservação, medidas de proteção e canais para solicitações relacionadas a dados.'],['7. Responsável e atualização','Antes de operar comercialmente, esta política exige identificação completa do controlador, canal de contato validado, prazos aplicáveis e revisão jurídica.']],cta:'Saiba como excluir conta',ctaHref:'/excluir-conta'
+    "path": "/politica-de-privacidade",
+    "aliases": [
+      "/privacidade",
+      "/privacy"
+    ],
+    "category": "Legal",
+    "title": "Política de privacidade do VANO",
+    "description": "Saiba quais informações o VANO Maps pode utilizar, como a localização ajuda a calcular rotas e quais direitos você tem sobre seus dados.",
+    "lead": "Seus dados merecem explicações simples e controles claros.",
+    "sections": [
+      [
+        "1. Quais dados podem ser utilizados",
+        "De acordo com a função utilizada, o VANO pode tratar dados de cadastro, preferências, informações do aparelho, registros de acesso e localização. Uma busca de rota pode envolver origem e destino."
+      ],
+      [
+        "2. Por que esses dados são necessários",
+        "Essas informações podem ser utilizadas para permitir o acesso à conta, pesquisar lugares, calcular rotas, exibir localização, proteger o serviço e identificar falhas."
+      ],
+      [
+        "3. Localização e trajetos",
+        "A localização é solicitada para funções que precisam dela. Você pode ajustar a permissão no aparelho. Para buscar um caminho, endereços e coordenadas podem ser enviados ao serviço responsável pelo mapa ou cálculo de rotas."
+      ],
+      [
+        "4. Serviços externos",
+        "Empresas de mapas, busca de lugares, autenticação e infraestrutura podem receber informações necessárias para oferecer seus serviços. Cada fornecedor também possui suas próprias práticas de privacidade."
+      ],
+      [
+        "5. Motivos previstos em lei",
+        "Conforme a finalidade, o tratamento de dados pode ocorrer para oferecer serviços solicitados, cumprir obrigações legais, proteger o sistema ou com consentimento quando a legislação exigir."
+      ],
+      [
+        "6. Tempo de conservação",
+        "As informações podem ser mantidas enquanto forem necessárias para oferecer o serviço ou cumprir obrigações aplicáveis. Os prazos específicos por tipo de registro ainda precisam de validação e divulgação. Nem todo dado é apagado imediatamente após a exclusão da conta."
+      ],
+      [
+        "7. Segurança e cuidados",
+        "O VANO precisa adotar medidas para reduzir falhas e acessos não autorizados. Nenhum sistema é totalmente livre de riscos. Não envie senhas ou documentos em mensagens de feedback."
+      ],
+      [
+        "8. Seus direitos",
+        "Pela Lei Geral de Proteção de Dados (LGPD), você pode solicitar informações sobre o tratamento, acesso, correção ou eliminação de dados quando aplicável, além de exercer outros direitos previstos em lei. Algumas solicitações exigem confirmação de identidade."
+      ],
+      [
+        "9. Solicitações e exclusão de conta",
+        "A página Excluir conta reúne as orientações disponíveis. O canal verificado para solicitações de privacidade e a identificação completa do responsável pelo tratamento precisam ser publicados antes da operação comercial definitiva."
+      ],
+      [
+        "10. Revisão e atualizações",
+        "Este documento deve acompanhar as funcionalidades e práticas reais do aplicativo. A versão jurídica, as informações do responsável e os prazos de conservação ainda precisam ser validados."
+      ]
+    ],
+    "cta": "Ver exclusão de conta",
+    "ctaHref": "/excluir-conta"
   },
   {
     path:'/excluir-conta',category:'Legal',title:'Como excluir sua conta VANO',description:'Entenda como solicitar a exclusão da conta e dos dados associados no VANO Maps.',lead:'Você mantém o controle sobre a sua conta.',
