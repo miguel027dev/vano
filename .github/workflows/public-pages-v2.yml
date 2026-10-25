@@ -1,0 +1,29 @@
+name: VANO Public Pages V2
+
+on:
+  pull_request:
+    paths:
+      - 'v2/**'
+      - '.github/workflows/public-pages-v2.yml'
+  workflow_dispatch:
+
+jobs:
+  public-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: v2/package-lock.json
+      - name: Install dependencies
+        working-directory: v2
+        run: npm ci --no-audit --no-fund
+      - name: Run VANO V2 tests
+        working-directory: v2
+        run: npm test
+      - name: Build and audit public pages
+        working-directory: v2
+        run: npm run build
