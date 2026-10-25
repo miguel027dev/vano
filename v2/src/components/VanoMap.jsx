@@ -9,6 +9,7 @@ import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
 import {planAdaptiveRoadDistance} from '../lib/adaptiveRoadCamera.mjs';
 import {planStandardSimulationCamera} from '../lib/standardSimulationCamera.mjs';
+import {planV1CloseChase} from '../lib/v1CloseChase.mjs';
 import {v2SimulationChasePadding} from '../lib/v2SimulationChase.mjs';
 import {planStandardPlayPointer} from '../lib/standardPlayPointer.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
@@ -270,7 +271,11 @@ function motionController(map,latest,status){
     // V2 SIM drone and normal live GPS navigation keep their existing policy.
     const standardPlay=d.v2Experience&&d.simulationPreview&&!d.droneSimulation&&
       d.navigation&&['carro','moto'].includes(d.vehicle);
-    if(!standardPlay){
+    const v1Close=d.readableRouteStroke&&!d.v2Experience&&!d.simulationPreview&&
+      !d.droneSimulation&&d.navigation&&['carro','moto'].includes(d.vehicle)&&
+      validPoint(d.gpsCoords)&&Number.isFinite(d.telemetry?.accuracy)&&
+      d.telemetry.accuracy<=50;
+    if(!standardPlay&&!v1Close){
       playScene={density:0,obstruction:0,straightAheadMeters:0,bendDegrees:0};
       playSceneRoute=null;lastPlaySceneSample=0;
     }
@@ -316,6 +321,20 @@ function motionController(map,latest,status){
         compactViewport:viewport.compact,reducedMotion:reduced,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
         viewport,
+        urbanDensity:scene.density,obstruction:scene.obstruction,
+        straightAheadMeters:scene.straightAheadMeters,bendDegrees:scene.bendDegrees
+      });
+    }
+    if(v1Close&&base){
+      // Same chase/padding/easing as the V2 Play simulation, closer on /mapa.
+      // Physical GPS and verified maneuver data remain the only inputs.
+      const scene=sampleStandardPlayScene(d,route,now);
+      const regular=realCameraDistance(d,route,base,now);
+      return planV1CloseChase({
+        enabled:true,base:regular,position:d.motionCoords||d.gpsCoords,
+        markerBearing:d.motionBearing,maneuver:d.guidance,route,vehicle:d.vehicle,
+        compactViewport:viewport.compact,reducedMotion:reduced,
+        speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,viewport,
         urbanDensity:scene.density,obstruction:scene.obstruction,
         straightAheadMeters:scene.straightAheadMeters,bendDegrees:scene.bendDegrees
       });
@@ -427,8 +446,9 @@ function motionController(map,latest,status){
     // corner. The physical car starts rotating first; the camera follows.
     const yawDelta=shortestAngle(pose.bearing,softenedBearing);
     const maxYawStep=(latest.current.droneSimulation||latest.current.v2Experience&&latest.current.simulationPreview?82:72)*dt/1000;
+    const smoothChaseYaw=t.cameraFollowMarker?82*dt/1000:maxYawStep;
     const nextBearing=t.cameraFollowMarker&&!reduced?
-      (pose.bearing+clamp(yawDelta,-maxYawStep,maxYawStep)+360)%360:softenedBearing;
+      (pose.bearing+clamp(yawDelta,-smoothChaseYaw,smoothChaseYaw)+360)%360:softenedBearing;
     const error=Math.abs(nextZoom-t.zoom)+Math.abs(nextPitch-t.pitch)*.01+(t.bearing===null?0:Math.abs(((nextBearing-t.bearing+540)%360)-180)*.002)+Math.abs(nextCenter[0]-t.center[0])*2000+Math.abs(nextCenter[1]-t.center[1])*2000;
     pose={center:nextCenter,zoom:nextZoom,pitch:nextPitch,bearing:nextBearing};
     const defaultPadding=latest.current.viewport?.padding||{top:135,bottom:225,left:20,right:20};
@@ -1209,9 +1229,10 @@ function paintMapbox(map,data,selection){
     layout:{'line-join':'round','line-cap':'butt'},
     paint:{'line-color':'#fff2df','line-width':2.1,'line-opacity':.62,'line-dasharray':STATIC_ROUTE_DASH_PATTERN}
   },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
-  // /v2-only maneuver cues follow the selected route's provider steps.
-  // The GeoJSON stays stable across GPS frames: no extra route-flow repaints.
-  if(data.v2Experience){
+  // Provider-confirmed guidance arrows on both /mapa and /v2.
+  // Preserve the GeoJSON across GPS frames; never restart line animations.
+  const arrowsEnabled=Boolean(data.v2Experience||data.readableRouteStroke);
+  if(arrowsEnabled){
     const arrowsSource='vano-v2-maneuver-arrows';
     const arrowRoute=selected||null;
     if(!map.getSource(arrowsSource)||map._vanoDirectionArrowRoute!==arrowRoute){
@@ -1222,11 +1243,13 @@ function paintMapbox(map,data,selection){
       id:'vano-v2-maneuver-arrows-line',type:'line',source:arrowsSource,minzoom:14.2,
       layout:{'line-join':'round','line-cap':'round'},
       paint:{'line-color':'#ffffff','line-opacity':.97,
-        'line-width':['interpolate',['linear'],['zoom'],14,3.2,15,4.1,16,4.6,17,5.0,18,5.3,19,5.6]}
-    },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
-    // In case React reuses the same map on /mapa, never leak V2 cues to users.
-    map.setLayoutProperty('vano-v2-maneuver-arrows-line','visibility','visible');
-  }else if(map.getLayer('vano-v2-maneuver-arrows-line')){
+        'line-width':['interpolate',['linear'],['zoom'],14,3.9,15,4.8,16,5.8,17,7.1,18,8.3,19,9.3]}
+    });
+    // Keep arrows over the progress line so the white glyph is never hidden.
+    if(map.getLayoutProperty('vano-v2-maneuver-arrows-line','visibility')!=='visible')
+      map.setLayoutProperty('vano-v2-maneuver-arrows-line','visibility','visible');
+  }else if(map.getLayer('vano-v2-maneuver-arrows-line')&&
+      map.getLayoutProperty('vano-v2-maneuver-arrows-line','visibility')!=='none'){
     map.setLayoutProperty('vano-v2-maneuver-arrows-line','visibility','none');
   }
   const traffic=data.v2Experience&&data.vehicle!=='a-pe'?data.routeTraffic:null;
