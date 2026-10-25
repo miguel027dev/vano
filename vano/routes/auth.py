@@ -6,7 +6,7 @@ business rules. Runtime dependencies are injected once during application startu
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
-from vano.services.personality import interpret_preference_text
+from vano.services.map_poi_preferences import POI_CHOICES, normalize_poi_choices, saved_poi_choices
 
 # Equalize the expensive password-verification path for unknown accounts so a
 # failed login does not trivially reveal whether an e-mail exists by timing.
@@ -363,30 +363,21 @@ def onboarding():
             age = 0
         sex = str(request.form.get("sex", "")).strip().lower()
         locale = _normalize_ui_locale(request.form.get("locale", ""))
-        style_skipped = request.form.get("route_style_skipped") == "1"
-        route_style_text = "" if style_skipped else str(request.form.get("route_style_text") or "").strip()
-        try:
-            style = interpret_preference_text(route_style_text)
-        except ValueError:
-            style = {"route_preference": "balanced", "avoid_tolls": False,
-                     "avoid_unpaved": False, "avoid_ferries": False}
-        route_preference = "balanced" if style_skipped else (
-            style["route_preference"] if route_style_text else str(request.form.get("route_preference", "balanced")).strip().lower()
-        )
+        route_preference = str(request.form.get("route_preference", "balanced")).strip().lower()
+        selected_pois = normalize_poi_choices(request.form.getlist("poi_visible"))
         map_style = str(request.form.get("map_style", "auto")).strip().lower()
         night_safety_mode = 1 if request.form.get("night_safety_mode") == "1" else 0
-        avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" or style.get("avoid_ferries") else 0
-        avoid_tolls = 1 if request.form.get("avoid_tolls") == "1" or style.get("avoid_tolls") else 0
-        avoid_unpaved = 1 if request.form.get("avoid_unpaved") == "1" or style.get("avoid_unpaved") else 0
+        avoid_ferries = 1 if request.form.get("avoid_ferries") == "1" else 0
+        avoid_tolls = 1 if request.form.get("avoid_tolls") == "1" else 0
+        avoid_unpaved = 1 if request.form.get("avoid_unpaved") == "1" else 0
+        style = {"route_preference": route_preference, "avoid_ferries": bool(avoid_ferries),
+                 "avoid_tolls": bool(avoid_tolls), "avoid_unpaved": bool(avoid_unpaved)}
+        route_style_text = ""
 
         allowed_sex = {"female", "male", "intersex_other", "prefer_not_say"}
         allowed_route_preferences = {"balanced", "safety_first", "fast_first"}
         allowed_map_styles = {"auto", "day", "afternoon", "night", "rain"}
         errors = []
-        if not style_skipped and not 8 <= len(route_style_text) <= 500:
-            errors.append("Descreva como gosta de navegar em até 500 caracteres, ou toque em Pular.")
-        if not style_skipped and request.form.get("route_style_confirmed") != "1":
-            errors.append("Confira a interpretação de suas preferências, ou toque em Pular.")
         if len(name) < 2 or len(name) > 80:
             errors.append("Informe um nome válido.")
         if age < 13 or age > 100:
@@ -406,26 +397,26 @@ def onboarding():
             form_user = dict(user)
             form_user.update({
                 "name": name, "age": age or "", "sex": sex, "locale": locale or active_ui_locale(),
-                "route_style_text": route_style_text,
+
                 "route_preference": route_preference if route_preference in allowed_route_preferences else "balanced",
                 "map_style": map_style if map_style in allowed_map_styles else "auto",
                 "night_safety_mode": night_safety_mode, "avoid_ferries": avoid_ferries,
                 "avoid_tolls": avoid_tolls, "avoid_unpaved": avoid_unpaved,
             })
-            return render_template("onboarding.html", user=form_user), 400
+            return render_template("onboarding.html", user=form_user, selected_pois=selected_pois), 400
 
         db = get_db()
         db.execute(
             """UPDATE users
                SET name=?, age=?, sex=?, locale=?,
                    route_preference=?, night_safety_mode=?, map_style=?,
-                   avoid_ferries=?, avoid_tolls=?, avoid_unpaved=?,
+                   avoid_ferries=?, avoid_tolls=?, avoid_unpaved=?, poi_visibility_json=?,
                    is_app_driver=COALESCE(is_app_driver, 0),
                    onboarding_completed_at=?, presence_visible=?
                WHERE id=?""",
             (
                 name, age, sex, locale, route_preference, night_safety_mode, map_style,
-                avoid_ferries, avoid_tolls, avoid_unpaved, utcnow_iso(), 0, user["id"],
+                avoid_ferries, avoid_tolls, avoid_unpaved, json.dumps(selected_pois), utcnow_iso(), 0, user["id"],
             ),
         )
         db.execute(
@@ -450,7 +441,7 @@ def onboarding():
         response.set_cookie("vano_locale_auto", locale, **cookie_kwargs)
         return response
 
-    return render_template("onboarding.html", user=user)
+    return render_template("onboarding.html", user=user, selected_pois=saved_poi_choices(user))
 
 
 @app.route("/logout", methods=["POST"])
