@@ -12,7 +12,7 @@ export function planV2FocusCamera({
   const nearTurn=meters>=0&&meters<130;
   const fast=Number.isFinite(speed)&&speed>23;
   const moving=Number.isFinite(speed)&&speed>14;
-  const bonus=nearTurn?.12:fast?.19:moving?.29:.42;
+  const bonus=nearTurn ? 0.12 : fast ? 0.19 : moving ? 0.29 : 0.42;
   const zoom=Math.max(base.zoom,Math.min(19.25,base.zoom+(reducedMotion?Math.min(bonus,.20):bonus)));
   // Pitch, real-world position, physical bearing, safe padding and easing
   // remain EXACTLY those of the currently selected V2 camera.
