@@ -483,7 +483,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false,userCoords,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null,poiVisible=null}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -507,7 +507,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   }
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
-  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[poiVisible]);
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,poiVisible,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false;const initial=coord(latest.current.userCoords);
@@ -716,7 +717,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     map._vanoSyncPrivateRoadSigns=()=>{
       if(backend.current==='mapbox')syncPrivateRoadSignMarkers(map,mapboxgl,latest.current);
     };
-    const detachPublicPins=attachPublicMapOverlay(map,backend.current,()=>latest.current.navigation,place=>latest.current.onPublicPlaceSelect?.(place),()=>latest.current.v2Experience);
+    const detachPublicPins=attachPublicMapOverlay(map,backend.current,()=>latest.current.navigation,place=>latest.current.onPublicPlaceSelect?.(place),()=>latest.current.v2Experience,()=>latest.current.poiVisible);
     const detachCommunityPins=attachCommunityReportOverlay(map,backend.current,()=>latest.current.simulationPreview?null:latest.current.gpsCoords,()=>latest.current.active&&!latest.current.simulationPreview);
     municipalFeed.current=backend.current==='mapbox'?attachMunicipalTrafficOverlay(map,{enabled:latest.current.trafficEnabled}):null;
     if(controller)controller.current={center:()=>{if(backend.current==='mapbox'){if(latest.current.navigation||shouldFollowLocation({navigation:false,destination:latest.current.destination,pickingOrigin:latest.current.pickingOrigin,manualOrigin:latest.current.manualOrigin,position:latest.current.gpsCoords}))motion.current?.recenter();
