@@ -1162,10 +1162,21 @@ function paintLeaflet(map,data){
       const width=Math.min(9.3,Math.max(3.9,v2RouteStrokePixels(map.getZoom(),true).core*.68));
       arrows.features.forEach(f=>{
         const coordinates=f.geometry?.coordinates;
-        if(coordinates?.length>1)L.polyline(coordinates.map(ll),{
-          color:'#ffffff',weight:width,opacity:.98,
-          lineJoin:'round',lineCap:'round',interactive:false
-        }).addTo(group);
+        if(f.geometry?.type==='Point'&&validPoint(coordinates)){
+          const size=Math.min(13,Math.max(5,v2RouteStrokePixels(map.getZoom(),true).core*.9));
+          const bearing=Number.isFinite(f.properties?.bearing)?f.properties.bearing:0;
+          const icon=L.divIcon({
+            className:'vano-route-turn-tip',
+            html:`<svg width="${size}" height="${size}" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="display:block;transform:rotate(${bearing}deg);transform-origin:50% 0"><path d="M16 1 L28 27 Q16 22 4 27 Z" fill="#fff"/></svg>`,
+            iconSize:[size,size],iconAnchor:[size/2,0]
+          });
+          L.marker(ll(coordinates),{icon,interactive:false,keyboard:false}).addTo(group);
+        }else if(f.geometry?.type==='LineString'&&coordinates?.length>1){
+          L.polyline(coordinates.map(ll),{
+            color:'#ffffff',weight:width,opacity:.98,
+            lineJoin:'round',lineCap:'round',interactive:false
+          }).addTo(group);
+        }
       });
       group.addTo(map);
       map._vanoArrowLineGroup=group;
