@@ -1,0 +1,91 @@
+/* Private V2 navigation: a reversible low-clutter view. Camera motion
+   stays in VanoMap's existing RAF. This stylesheet never affects /mapa. */
+.map-page.in-navigation .map-controls .v94-focus-toggle{
+  display:grid;place-items:center;
+  color:#f8fafc;background:#202c35;border:1px solid #40515b;
+  border-radius:16px;box-shadow:0 6px 18px #071b2c38;
+  touch-action:manipulation;
+  transition:background-color .16s cubic-bezier(.23,1,.32,1),
+    border-color .16s cubic-bezier(.23,1,.32,1),
+    transform .16s cubic-bezier(.23,1,.32,1);
+}
+.map-page.in-navigation .map-controls .v94-focus-toggle.is-active{
+  color:#fff;background:#e76e37;border-color:#f5a06e;
+}
+.map-page.in-navigation .v94-focus-toggle:focus-visible{
+  outline:3px solid #ffe0c5;outline-offset:3px;
+}
+@media(hover:hover) and (pointer:fine){
+  .map-page.in-navigation .v94-focus-toggle:hover{
+    transform:translateY(-2px);
+    background:#354550;
+  }
+  .map-page.in-navigation .v94-focus-toggle.is-active:hover{background:#cf602d}
+}
+.map-page.in-navigation.v94-v2-focus .map-controls{
+  right:calc(env(safe-area-inset-right,0px) + 15px);
+  bottom:calc(var(--v36-nav-dock-height,145px) + env(safe-area-inset-bottom,0px) + 24px);
+  gap:10px;
+}
+.map-page.in-navigation.v94-v2-focus .nav-instruction.v28-nav-instruction{
+  width:min(500px,calc(100% - 24px));
+  max-width:500px;
+  top:calc(env(safe-area-inset-top,0px) + 10px);
+  padding:9px 11px;
+  gap:9px;
+  border-radius:17px;
+}
+.map-page.in-navigation.v94-v2-focus .nav-instruction .v28-turn-icon{
+  width:43px;height:43px;flex-basis:43px;
+}
+.map-page.in-navigation.v94-v2-focus .nav-instruction .v28-nav-copy{
+  animation:none;min-width:0;
+}
+.map-page.in-navigation.v94-v2-focus .v36-nav-road-pill{display:none}
+.map-page.in-navigation.v94-v2-focus .nav-bottom.v37-nav-bottom{
+  width:min(440px,100%);
+  max-width:440px;
+  padding:10px 13px calc(env(safe-area-inset-bottom,0px) + 13px);
+  border-radius:19px 19px 0 0;
+}
+.map-page.in-navigation.v94-v2-focus .nav-bottom .v37-nav-handle{display:none}
+.map-page.in-navigation.v94-v2-focus .nav-bottom .v37-nav-summary{gap:9px}
+.map-page.in-navigation.v94-v2-focus .nav-bottom .v37-nav-arrival{
+  font-size:clamp(1.4rem,4.6vw,1.82rem);
+  line-height:1.08;
+}
+.map-page.in-navigation.v94-v2-focus .nav-bottom .v37-nav-meta{margin-top:3px}
+.map-page.in-navigation.v94-v2-focus .nav-bottom .nav-demo{
+  font-size:11px;line-height:1.3;margin-bottom:4px;
+}
+.map-page.in-navigation.v94-v2-focus .v76-sim-badge.v94-focus-sim-badge{
+  min-height:39px;padding:4px 5px 4px 9px;
+  gap:6px;right:calc(env(safe-area-inset-right,0px) + 83px);
+  bottom:calc(var(--v36-nav-dock-height,145px) + env(safe-area-inset-bottom,0px) + 20px);
+}
+.map-page.in-navigation.v94-v2-focus .v94-focus-sim-badge button{
+  width:30px;height:30px;
+}
+@media(max-width:390px){
+  .map-page.in-navigation.v94-v2-focus .nav-instruction.v28-nav-instruction{
+    width:calc(100% - 16px);padding:8px;gap:7px;
+  }
+  .map-page.in-navigation.v94-v2-focus .nav-bottom.v37-nav-bottom{
+    width:min(390px,100%);padding-inline:10px;
+  }
+}
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.in-navigation.v94-v2-focus .map-controls{
+    bottom:calc(var(--v36-nav-dock-height,80px) + 9px);gap:5px;
+  }
+  .map-page.in-navigation.v94-v2-focus .map-controls .circle-btn{
+    width:39px;height:39px;min-width:39px;
+  }
+  .map-page.in-navigation.v94-v2-focus .nav-instruction.v28-nav-instruction{
+    top:calc(env(safe-area-inset-top,0px) + 4px);
+    max-width:min(450px,calc(100% - 18px));
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  .map-page.in-navigation .v94-focus-toggle{transition:none!important}
+}
