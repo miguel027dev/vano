@@ -11,11 +11,12 @@ test('invalid/restricted Mapbox pk falls back to a token-free raster map',()=>{
  for(const layer of ['streets','satellite'])
   assert.deepEqual(leafletTilesFor(layer,''),leafletBackupTilesFor(layer));
 });
-test('a rejected custom style retries a real Mapbox vector style before raster and ignores optional loaded-map errors',()=>{
- assert.match(component,/styleRecoveryAttempted&&map\?\._vanoStyle!==fallbackStyle/);
- assert.match(component,/map\.setStyle\(fallbackStyle,\{diff:false\}\)/);
+test('a rejected or slow custom style retries the original Mapbox style before raster and ignores optional errors',()=>{
+ assert.match(component,/if\(!styleRecoveryAttempted\)/);
+ assert.match(component,/map\.setStyle\(original,\{diff:false\}\)/);
  assert.match(component,/\(authFailed\|\|styleFailed\)&&!isLoaded\(map\)/);
- assert.match(component,/const standard=latest\.current\.appearance==='dark'\?MAPBOX_STYLES\.dark:MAPBOX_STYLES\.streets/);
+ assert.match(component,/map\.setStyle\(selectedStyle,\{diff:false\}\)/);
+ assert.doesNotMatch(component,/map\.setStyle\(fallbackStyle,\{diff:false\}\)/);
 });
 test('radar or traffic overlay error cannot replace an already-loaded 3D basemap',()=>{
  assert.match(component,/VANO optional map overlays unavailable; vector basemap retained/);
