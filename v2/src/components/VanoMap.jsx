@@ -761,6 +761,64 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         }
         return true;
       }};
+    if(controller){
+      controller.current.cancelCinematic=()=>map._vanoB1Cancel?.();
+      controller.current.cinematicPreview=()=>{
+        const d=latest.current;
+        const selected=(d.routes||[]).find(r=>r.id===d.selectedRoute)||d.routes?.[0];
+        const points=selected?.geometry?.coordinates?.filter(validPoint);
+        if(d.navigation||!d.active||!d.destination||!points?.length||d.pickingOrigin)return false;
+        if(backend.current!=='mapbox'){controller.current?.overview?.();return true;}
+        if(!isLoaded(map))return false;
+        map._vanoB1Cancel?.();
+        const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches===true;
+        const bounds=new mapboxgl.LngLatBounds();
+        points.forEach(point=>bounds.extend(point));
+        if(bounds.isEmpty())return false;
+        const start=validPoint(d.manualOrigin)?d.manualOrigin:validPoint(d.gpsCoords)?d.gpsCoords:points[0];
+        const first=points[0],next=points.find(p=>Math.hypot(p[0]-first[0],p[1]-first[1])>.00002)||points[1];
+        const dx=(next[0]-first[0])*Math.cos(first[1]*Math.PI/180),dy=next[1]-first[1];
+        const bearing=Number.isFinite(dx+dy)&&Math.hypot(dx,dy)>0?Math.atan2(dx,dy)*180/Math.PI:0;
+        let phase=0,timeout=null;
+        const cleanup=()=>{
+          if(phase===3)return;
+          phase=3;clearTimeout(timeout);
+          map.off('moveend',descend);map.off('moveend',finish);
+          map.off('dragstart',cancel);
+          if(map._vanoB1Cancel===cancel)map._vanoB1Cancel=null;
+          motion.current?.resume();
+        };
+        const cancel=()=>{cleanup();try{map.stop();}catch{}};
+        const finish=()=>cleanup();
+        const descend=()=>{
+          if(phase!==0)return;
+          phase=1;clearTimeout(timeout);map.off('moveend',descend);
+          if(latest.current.navigation||latest.current.destination?.id!==d.destination.id){cleanup();return;}
+          const h=window.visualViewport?.height||window.innerHeight;
+          const w=window.visualViewport?.width||window.innerWidth;
+          const camera={center:start,zoom:16.3,pitch:34,bearing,
+            padding:{top:Math.round(Math.min(165,h*.2)),bottom:Math.round(Math.min(265,h*.31)),left:Math.max(22,Math.round(w*.05)),right:Math.max(22,Math.round(w*.05))},
+            retainPadding:false,duration:reduced?0:1050,essential:!reduced,
+            easing:t=>1-Math.pow(1-t,3)};
+          try{
+            if(reduced){map.jumpTo(camera);cleanup();}
+            else{map.once('moveend',finish);map.easeTo(camera);}
+          }catch{cleanup();}
+        };
+        map._vanoB1Cancel=cancel;
+        map.on('dragstart',cancel);
+        motion.current?.suspend();
+        try{
+          if(reduced){map.fitBounds(bounds,{padding:{top:125,bottom:Math.round(window.innerHeight*.31),left:42,right:42},maxZoom:15.25,duration:0,bearing:0,pitch:0});descend();}
+          else{
+            map.once('moveend',descend);
+            map.fitBounds(bounds,{padding:{top:125,bottom:Math.round(window.innerHeight*.31),left:42,right:42},maxZoom:15.25,duration:650,bearing:0,pitch:0});
+            timeout=setTimeout(descend,900);
+          }
+        }catch{cleanup();return false;}
+        return true;
+      };
+    }
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
     return()=>{deleted=true;clearTimeout(streetCardTimer);
@@ -876,6 +934,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   },[previewRoute,previewFocus,navigation]);
   // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
   useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy,v2Experience,routeTraffic]);
+  useEffect(()=>{if(navigation)controller?.current?.cancelCinematic?.();},[navigation]);
   // Changing the visual theme must never take control of a live GPS camera.
   // Away from navigation, the dark street style gains a useful 3D viewing angle.
   useEffect(()=>{

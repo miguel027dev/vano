@@ -1,0 +1,56 @@
+/* B1 user map: route selection. All rules are isolated from admin /v2. */
+.b1-route-sheet{
+  position:absolute;left:50%;bottom:0;transform:translateX(-50%);
+  z-index:46;width:min(100%,550px);box-sizing:border-box;
+  padding:13px 22px calc(20px + env(safe-area-inset-bottom,0px));
+  border-radius:29px 29px 0 0;background:#fff;color:#162331;
+  box-shadow:0 -9px 44px rgba(18,29,44,.13);
+  border:1px solid rgba(30,45,57,.06);border-bottom:0;
+  max-height:min(58dvh,470px);overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-width:none;
+}
+.b1-route-sheet::-webkit-scrollbar{display:none}
+.b1-route-sheet .b1-grab{width:43px;height:4px;border-radius:10px;background:#c9ced4;margin:0 auto 24px}
+.b1-route-sheet .b1-sheet-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:22px}
+.b1-route-sheet .b1-sheet-heading h2{font-size:25px;letter-spacing:-.8px;line-height:1.15;margin:0 0 5px;font-weight:770;color:#192633}
+.b1-route-sheet .b1-sheet-heading p{font-size:13px;line-height:1.4;margin:0;color:#78838e}
+.b1-route-sheet .b1-back{border:1px solid #e5e9ed;border-radius:50%;width:41px;height:41px;flex-shrink:0;display:grid;place-items:center;background:#f5f6f7;color:#263744;cursor:pointer}
+.b1-route-sheet .b1-transport-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.b1-route-sheet .b1-transport-grid button{height:124px;border:1.5px solid #e4e7eb;border-radius:20px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;font-size:15px;font-weight:670;color:#243342;cursor:pointer;transition:background .16s ease,border-color .16s ease,transform .16s ease;touch-action:manipulation}
+.b1-route-sheet .b1-transport-grid button:hover,.b1-route-sheet .b1-transport-grid button:focus-visible{background:#fff3e9;border-color:#fc7424;color:#df5c13}
+.b1-route-sheet .b1-transport-grid button:active{transform:scale(.98)}
+.b1-route-sheet .b1-priority-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.b1-route-sheet .b1-priority-grid button{min-height:61px;border:1px solid #e4e8ea;border-radius:17px;display:flex;gap:8px;align-items:center;justify-content:center;padding:10px;background:#f4f6f8;color:#23323f;font-size:14px;font-weight:680;cursor:pointer;touch-action:manipulation}
+.b1-route-sheet .b1-priority-grid button.is-active{color:#fff;background:#ff721c;border-color:#ff721c}
+.b1-route-sheet .b1-priority-grid button:disabled{opacity:.45;cursor:not-allowed}
+.b1-route-sheet .b1-trip-facts{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 0 15px;margin-top:17px;border-top:1px solid #ecf0f2}
+.b1-route-sheet .b1-trip-facts>div{display:flex;flex-direction:column;gap:5px}
+.b1-route-sheet .b1-trip-facts strong{font-size:36px;line-height:1;letter-spacing:-1.2px;color:#182634;font-weight:760;font-variant-numeric:tabular-nums}
+.b1-route-sheet .b1-trip-facts small{font-size:14px;color:#77848d}
+.b1-route-sheet .b1-trip-facts>span{font-size:13px;font-weight:550;color:#6c7a87;white-space:nowrap}
+.b1-route-sheet .b1-start-navigation{width:100%;min-height:59px;border:none;border-radius:18px;background:#ff721c;color:#fff;font-size:16px;font-weight:720;display:flex;gap:12px;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation}
+.b1-route-sheet .b1-start-navigation:active{filter:brightness(.96)}
+.b1-route-sheet .b1-route-wait{display:flex;align-items:center;gap:12px;justify-content:center;min-height:95px;color:#62717d;font-size:14px}
+.b1-route-sheet .b1-spinner{width:21px;height:21px;border:2px solid #f3d2be;border-top-color:#ff721c;border-radius:50%;animation:b1-spin .85s linear infinite}
+@keyframes b1-spin{to{transform:rotate(360deg)}}
+.b1-route-sheet .b1-route-error{display:flex;flex-direction:column;gap:10px;padding:12px;font-size:13px;color:#626d78}
+.b1-route-sheet .b1-route-error button{min-height:43px;border-radius:12px;border:1px solid #ffc29a;background:#fff5ee;color:#bc5316;cursor:pointer}
+.b1-route-sheet button:focus-visible{outline:3px solid rgba(255,114,28,.33);outline-offset:2px}
+@media(max-width:360px){
+  .b1-route-sheet{padding-left:13px;padding-right:13px}
+  .b1-route-sheet .b1-transport-grid{gap:7px}
+  .b1-route-sheet .b1-transport-grid button{height:102px;border-radius:15px;font-size:13px}
+  .b1-route-sheet .b1-priority-grid button{gap:5px;font-size:12px;padding:9px 5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .b1-route-sheet .b1-transport-grid button{transition:none}
+  .b1-route-sheet .b1-transport-grid button:active{transform:none}
+  .b1-route-sheet .b1-spinner{animation:none}
+}
+:root[data-theme="dark"] .b1-route-sheet{background:#20252b;color:#f6f7f9;border-color:#39414b}
+:root[data-theme="dark"] .b1-route-sheet .b1-sheet-heading h2,
+:root[data-theme="dark"] .b1-route-sheet .b1-trip-facts strong{color:#f7f8fa}
+:root[data-theme="dark"] .b1-route-sheet .b1-transport-grid button,
+:root[data-theme="dark"] .b1-route-sheet .b1-priority-grid button:not(.is-active),
+:root[data-theme="dark"] .b1-route-sheet .b1-back{background:#2a3138;color:#ecf0f2;border-color:#46505a}
+:root[data-theme="dark"] .b1-route-sheet .b1-priority-grid button.is-active{background:#ff721c;color:#fff}
