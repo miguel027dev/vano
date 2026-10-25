@@ -16,7 +16,7 @@ test('destination selected without accepted GPS or manual origin requests a map 
 
 test('origin picker and route choice sheet are mutually exclusive',()=>{
  assert.match(file,/b1User\?<B1RouteSheet/);
- assert.match(file,/\}:<div className="route-sheet">/);
+ assert.match(file,/\/>:<div className="route-sheet">/);
  assert.match(file,/\{!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking"/);
 });
 
