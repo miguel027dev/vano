@@ -444,6 +444,21 @@
   .map-page.v95-premium-v2.in-navigation .v95-metric-labels{font-size:9px}
   .map-page.v95-premium-v2.in-navigation .nav-instruction.v28-nav-instruction{padding:8px 10px}
 }
+/* Small landscape devices must keep the focus exit and control rail accessible. */
+@media(max-height:540px) and (orientation:landscape){
+  .map-page.v95-premium-v2.in-navigation .map-controls{
+    display:flex;
+    right:calc(env(safe-area-inset-right,0px) + 9px);
+    bottom:calc(var(--v36-nav-dock-height,100px) + 8px);
+    gap:5px;
+  }
+  .map-page.v95-premium-v2.in-navigation .map-controls>button.circle-btn{
+    width:39px;height:39px;min-width:39px;border-radius:12px;
+  }
+  .map-page.v95-premium-v2.in-navigation .map-controls .v95-tools-panel{
+    bottom:0;max-height:calc(100dvh - 95px);overflow-y:auto;
+  }
+}
 @media(prefers-reduced-motion:reduce){
   .map-page.v95-premium-v2 .route-sheet .route-option,
   .map-page.v95-premium-v2 .map-controls>button.circle-btn{
