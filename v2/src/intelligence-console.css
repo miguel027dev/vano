@@ -57,3 +57,42 @@
 .vint-chat-loading{font-size:12px;color:#a66e41;animation:vint-pulse 1.4s ease-in-out infinite}
 @keyframes vint-pulse{50%{opacity:.45}}
 @media(max-width:650px){.vint-archive-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.vint-chat-turn{max-width:100%}}
+
+
+/* Intelligence chat V3: focused admin workspace with premium responsive controls. */
+.vint-ai{position:relative;overflow:hidden;border:1px solid #283341;background:linear-gradient(155deg,#131c27 0%,#1c2632 65%,#242f3a 100%);color:#eff4fa;box-shadow:0 18px 46px rgba(13,22,32,.16)}
+.vint-ai:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#ff791d,#ffbc75,transparent)}
+.vint-ai .vint-panel-title h2,.vint-ai label{color:#f5f7fb}
+.vint-ai>p{color:#bac3cf}
+.vint-ai .vint-neutral{background:#2a3543;color:#dbe2eb}
+.vint-ai .vint-foot{color:#b2becc}
+.vint-ai .vint-suggestions{grid-template-columns:1fr;margin:18px 0}
+.vint-ai .vint-suggestions button{background:#23303d;border:1px solid #354353;color:#e8edf4;font-size:12px;line-height:1.5;transition:background .18s,border-color .18s,transform .18s}
+.vint-ai .vint-suggestions button:hover{background:#303f50;border-color:#f98a42;transform:translateY(-1px)}
+.vint-mode-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0}
+.vint-mode-row button{display:flex;align-items:center;gap:7px;flex-wrap:wrap;background:#1d2835;border:1px solid #344252;border-radius:12px;color:#dfe7ef;cursor:pointer;text-align:left;padding:12px;font-size:12px;font-weight:750;transition:background .18s,border-color .18s}
+.vint-mode-row button.selected{border-color:#ff9e57;background:#392c27;box-shadow:inset 0 0 0 1px #ff8b37}
+.vint-mode-row button small{display:block;flex-basis:100%;color:#aab7c6;font-size:10px;font-weight:500;padding-left:22px}
+.vint-mode-row button:disabled{cursor:wait;opacity:.65}
+.vint-ai textarea{background:#1b2633;color:#fff;border:1px solid #485567;min-height:82px;font-size:13px;line-height:1.55;resize:vertical}
+.vint-ai textarea:focus-visible{outline:2px solid #ff913f;outline-offset:1px}
+.vint-ai textarea::placeholder{color:#8695a6}
+.vint-ai .vint-chat-controls span{color:#aab7c6}
+.vint-ai .vint-chat-controls button{color:#ffb27c}
+.vint-ai .vint-submit{min-height:43px;font-size:13px;background:linear-gradient(90deg,#f26a16,#ff9038);box-shadow:0 5px 14px rgba(251,112,25,.19)}
+.vint-submit small{margin-left:auto;font-size:10px;font-weight:550;color:#fff1e5}
+.vint-ai .vint-chat{background:#15202c;border:1px solid #303e4d;border-radius:15px;min-height:210px;max-height:620px;padding:14px;scroll-behavior:smooth}
+.vint-chat-turn{max-width:94%;border-radius:14px;background:#293645;border:1px solid #3c4a59;color:#f5f8fc;padding:13px 14px}
+.vint-chat-user{background:#422e23;border-color:#7f4930}
+.vint-chat-error{border-color:#a45644;background:#452d2b}
+.vint-chat-meta{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.vint-chat-meta strong{color:#ffa365}
+.vint-chat-ai .vint-chat-meta strong{color:#cfe1f1}
+.vint-chat-meta span{font-size:10px;color:#a8b6c7}
+.vint-chat-meta button{margin-left:auto;display:inline-flex;align-items:center;gap:5px;border:1px solid #506073;background:transparent;color:#dae4ed;padding:5px 7px;border-radius:8px;font-size:10px;cursor:pointer}
+.vint-chat-turn p{font-size:12.5px;line-height:1.75}
+.vint-chat-loading{color:#ffbd87;padding:10px 4px;display:flex;align-items:center;gap:10px}
+.vint-chat-dots{width:8px;height:8px;border-radius:50%;background:#ff9d53;box-shadow:13px 0 #e6b58f,26px 0 #8c9cad;animation:vint-pulse 1.2s ease-in-out infinite;margin-right:28px}
+.vint-ai .vint-empty{color:#a5b3c4}
+@media(max-width:650px){.vint-ai{padding:16px}.vint-ai .vint-chat{max-height:55vh}.vint-mode-row button{padding:10px 9px}.vint-chat-turn{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.vint-ai .vint-suggestions button,.vint-mode-row button,.vint-chat-dots{transition:none;animation:none}}
