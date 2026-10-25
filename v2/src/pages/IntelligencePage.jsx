@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
-import {Activity,ArrowLeft,ArrowUpRight,BrainCircuit,CheckCircle2,Clock3,Database,RefreshCcw,Route,ShieldCheck,TriangleAlert,LockKeyhole,Send,Layers3,Copy,Sparkles,RotateCcw} from 'lucide-react';
+import {Activity,ArrowLeft,ArrowUpRight,BrainCircuit,CheckCircle2,Clock3,Database,RefreshCcw,Route,ShieldCheck,TriangleAlert,LockKeyhole,Send,Layers3,Copy,RotateCcw} from 'lucide-react';
 import {api,post} from '../lib/api';
 import {useVano} from '../context';
 import '../intelligence-console.css';
@@ -136,7 +136,7 @@ export default function IntelligencePage(){
    <p>Seu copiloto administrativo. Pergunte sobre rotas, falhas, uso do app e melhorias com dados reais, preservando a privacidade.</p>
    <div className="vint-suggestions">{suggestions.map(x=><button type="button" key={x} onClick={()=>setQuestion(x)}>{x}<ArrowUpRight size={14}/></button>)}</div>
    <div className="vint-mode-row" role="group" aria-label="Escolha o modo de inteligência">
-    <button type="button" aria-pressed={mode==='fast'} className={mode==='fast'?'selected':''} onClick={()=>setMode('fast')} disabled={asking}><Sparkles size={15}/> Rápido <small>20B · menos espera</small></button>
+    <button type="button" aria-pressed={mode==='fast'} className={mode==='fast'?'selected':''} onClick={()=>setMode('fast')} disabled={asking}><Clock3 size={15}/> Rápido <small>20B · menos espera</small></button>
     <button type="button" aria-pressed={mode==='deep'} className={mode==='deep'?'selected':''} onClick={()=>setMode('deep')} disabled={asking}><BrainCircuit size={15}/> Profundo <small>120B · com alternativa</small></button>
    </div>
    <form onSubmit={submit}><label htmlFor="vint-prompt">Pergunta para a inteligência</label>

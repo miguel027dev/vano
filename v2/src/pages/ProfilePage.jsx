@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link,useNavigate } from 'react-router-dom';
-import { UserRound,Settings2,Navigation,MapPin,Clock3,LogOut,ArrowUpRight,Route,LockKeyhole,CircleHelp,CarFront,Bike,Mail,SlidersHorizontal,ArrowRight,ShieldCheck,Plus,Compass,ChevronRight,History,Check,Sparkles,Headphones,Shield } from 'lucide-react';
+import { UserRound,Settings2,Navigation,MapPin,Clock3,LogOut,ArrowUpRight,Route,LockKeyhole,CircleHelp,CarFront,Bike,Mail,SlidersHorizontal,ArrowRight,ShieldCheck,Plus,Compass,ChevronRight,History,Check,Headphones,Shield } from 'lucide-react';
 import { useVano } from '../context';
 import { Brand } from '../components/Brand';
 import { BottomNav } from '../components/Navigation';
@@ -44,7 +44,7 @@ export default function ProfilePage(){
       <div><span>{t('LUGARES SALVOS')}</span><strong>{favorites.length}</strong><small>{t('seus atalhos')}</small></div>
     </section>
     {!user&&<section className="v4-signup-note"><span className="v4-note-mark"><UserRound size={24}/></span><div><strong>{t('Seu caminho merece um lugar.')}</strong><p>{t('Crie sua conta para guardar suas preferências.')}</p></div><Link to="/cadastro">{t('Criar conta')} <ArrowRight size={17}/></Link></section>}
-    <section className="v92-mavi-profile" aria-label="Personalização com MAVI"><div className="v92-mavi-profile-mark"><Sparkles size={24}/></div><div><span className="v4-overline">MAVI · SUA ASSISTENTE</span><h2>Rotas que combinam com você.</h2><p>Converse comigo sobre pedágios, prioridades e alertas. Três escolhas, sem complicação.</p></div><Link to="/personalizar" className="v92-mavi-profile-action">Personalizar <ArrowRight size={17}/></Link></section>
+    <section className="v92-mavi-profile" aria-label="Personalização com MAVI"><div className="v92-mavi-profile-mark"><Route size={24} strokeWidth={1.85}/></div><div><span className="v4-overline">MAVI · SUA ASSISTENTE</span><h2>Rotas que combinam com você.</h2><p>Converse comigo sobre pedágios, prioridades e alertas. Três escolhas, sem complicação.</p></div><Link to="/personalizar" className="v92-mavi-profile-action">Personalizar <ArrowRight size={17}/></Link></section>
     <section className="v4-route-feature">
       <div className="v4-route-feature-text"><span className="v4-overline"><span className="v4-small-dot"/> {t('PERSONALIZAÇÃO')}</span><h2>{t('Seu jeito')}<br/>{t('de navegar.')}</h2><p>{t(isMoto?'Moto':'Carro')} · {routeLabel} · {preferences.avoidTolls?'Sem pedágios, quando possível':'Pedágios permitidos'}</p><Link to="/personalizar" className="v4-feature-link">{t('Ajustar preferências')} <ArrowRight size={17}/></Link></div>
       <div className="v4-route-feature-image v92-route-cutout"><img src={isMoto?'/vehicle-moto-cutout.svg':'/vehicle-car-cutout.png'} alt={isMoto?'Motocicleta selecionada':'Carro selecionado'} loading="lazy"/></div>
