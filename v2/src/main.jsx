@@ -29,4 +29,5 @@ import './v81-desktop-tablet.css';
 import './v82-pc-provider-credits.css';
 import './v92-profile-mavi.css';
 import './v50-night-system.css';
+import './v94-v2-focus.css';
 createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><VanoProvider><App/></VanoProvider></BrowserRouter></React.StrictMode>);
