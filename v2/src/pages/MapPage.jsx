@@ -1261,8 +1261,8 @@ export default function MapPage({active=true}){
         title={simFrame?.finished?'Reiniciar':simPaused?'Retomar':'Pausar'}>{simFrame?.finished?<RotateCcw size={17}/>:simPaused?<Play size={17}/>:<Pause size={17}/>}</button>
     </div>}
     {!searchOpen&&<div className="map-controls">
-       {adminV2RoadSigns&&!immersiveV2&&<button type="button" className="circle-btn v2-admin-road-audit-toggle" title="Auditoria das 7.500 ruas de São Paulo" aria-label="Abrir auditoria das ruas de São Paulo" aria-haspopup="dialog" aria-expanded={roadAuditOpen} onClick={()=>setRoadAuditOpen(v=>!v)}><MapPinned size={19}/></button>}
-       {adminV2RoadSigns&&!immersiveV2&&<button type="button"
+       {adminV2RoadSigns&&<button type="button" className="circle-btn v2-admin-road-audit-toggle" title="Auditoria das 7.500 ruas de São Paulo" aria-label="Abrir auditoria das ruas de São Paulo" aria-haspopup="dialog" aria-expanded={roadAuditOpen} onClick={()=>setRoadAuditOpen(v=>!v)}><MapPinned size={19}/></button>}
+       {adminV2RoadSigns&&<button type="button"
          className={`circle-btn v81-drone-sim-toggle ${simActive&&simCameraMode==='drone'?'is-playing':''}`}
          title={simActive&&simCameraMode==='drone'?'Parar V2 Sim':'Iniciar V2 Sim · câmera drone'}
          aria-label={simActive&&simCameraMode==='drone'?'Parar V2 Sim':'Iniciar V2 Sim com câmera drone'}
@@ -1271,7 +1271,7 @@ export default function MapPage({active=true}){
          onClick={startV2DroneSimulation}>
          <span aria-hidden="true"><b>V2</b><small>SIM</small></span>
        </button>}
-       {adminV2RoadSigns&&!immersiveV2&&<button type="button"
+       {adminV2RoadSigns&&<button type="button"
          className={`circle-btn v76-sim-toggle ${simActive?'is-playing':''}`}
          title={simActive?'Parar simulação':'Simular trajeto na V2'}
          aria-label={simActive?'Parar simulação de trajeto':'Iniciar simulação de trajeto'}
@@ -1358,7 +1358,7 @@ export default function MapPage({active=true}){
             <span>{navigationStats?fmtKm(navigationStats.remainingKm,language):'-- km'}</span>
           </div>
         </div>
-        {!simActive&&!immersiveV2&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
+        {!simActive&&<button type="button" className="circle-btn v36-nav-report vano-quick-report-trigger" title="Registrar ocorrência" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={19} strokeWidth={1.9}/></button>}
       </div>
       {voiceProblem&&<p className="nav-demo" role="status">{isNativeShell()?'Não foi possível reproduzir a orientação por voz.':'O navegador não conseguiu reproduzir o áudio.'} <button type="button" onClick={()=>{setVoiceProblem(false);speakDeviceManeuver(language==='fr-FR'?'Test de la voix.':language==='en-US'?'Voice test.':'Teste de voz.');}}>Testar voz</button>{isNativeShell()&&<button type="button" onClick={()=>notifyNative({action:'voiceSettings'})}>Configurar voz</button>}</p>}{storageReady===false&&<p className="nav-demo" role="status">Não foi possível salvar o trajeto no celular. Libere espaço antes de fechar o aplicativo.</p>}
       {recalculating&&<p className="nav-demo" role="status">{t('Recalculando sua rota…')}</p>}
