@@ -6,6 +6,10 @@ const line=(coordinates,index,part)=>({
   type:'Feature',properties:{maneuver:index,part},
   geometry:{type:'LineString',coordinates}
 });
+const arrowhead=(point,bearing,index)=>({
+  type:'Feature',properties:{maneuver:index,part:'head',bearing},
+  geometry:{type:'Point',coordinates:point}
+});
 const normalized=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const maneuverType=step=>normalized(step?.type);
 const isRoundabout=step=>/roundabout|rotary|rotatoria/.test(maneuverType(step));
@@ -24,7 +28,7 @@ const isDirectionalManeuver=step=>{
     /(?:pegue|entre|acesse|suba|vire|converja|mantenha|utilize|saia|pegue a saida).{0,65}(?:ponte|viaduto|elevad|alca|rampa|acesso|bifurcac|saida)|(?:acesso|rampa|alca|saida).{0,35}(?:a direita|a esquerda)/.test(instruction);
 };
 
-/** /v2-only white arrows on provider-confirmed maneuvers. A bridge or
+/** Provider-confirmed, in-route white arrows for /mapa and /v2. A bridge or
  * overpass is never invented from the 2D road shape alone.
  */
 export function buildV2ManeuverArrows(route){
@@ -62,23 +66,20 @@ export function buildV2ManeuverArrows(route){
     const tip=sampleRoute(timeline,end)?.point;
     const behind=sampleRoute(timeline,end-7)?.point;
     if(!tip||!behind)continue;
+    // Keep the head centered on the route. Rendering systems scale its
+    // pixel-sized triangle with the orange core instead of converting
+    // geographic metres into oversized side wings.
     const metersPerLatitude=111320;
     const metersPerLongitude=Math.max(1000,metersPerLatitude*Math.cos(tip[1]*Math.PI/180));
     const dx=(tip[0]-behind[0])*metersPerLongitude;
     const dy=(tip[1]-behind[1])*metersPerLatitude;
-    const length=Math.hypot(dx,dy);
-    if(length<.5)continue;
-    const ux=dx/length,uy=dy/length;
-    const wing=side=>[
-      tip[0]+(-ux*8.5-uy*side)/metersPerLongitude,
-      tip[1]+(-uy*8.5+ux*side)/metersPerLatitude
-    ];
+    if(Math.hypot(dx,dy)<.5)continue;
+    const bearing=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
     shaft.push(tip);
     features.push(line(shaft,index,'shaft'));
-    features.push(line([wing(5.8),tip],index,'wing-left'));
-    features.push(line([wing(-5.8),tip],index,'wing-right'));
+    features.push(arrowhead(tip,bearing,index));
     previousAt=at;
-    if(features.length>=90)break;
+    if(features.length>=80)break;
   }
   return {type:'FeatureCollection',features};
 }
