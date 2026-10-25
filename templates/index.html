@@ -8,8 +8,6 @@
 {% if v2_preview|default(false) %}
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=v2-sim-20261017-r1">
-{% else %}
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-b1-flow.css') }}?v={{ vano_build_id }}">
 {% endif %}
 
 <script>
