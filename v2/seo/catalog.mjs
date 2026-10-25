@@ -241,16 +241,78 @@ export const PUBLIC_PAGES = [
     sections:[['Dentro do aplicativo','Entre em Minha conta e procure a opção de excluir conta. Dependendo do método de login, uma confirmação de identidade poderá ser necessária.'],['Se não conseguir entrar','Consulte o suporte pelo canal oficial para verificar as alternativas disponíveis. Não compartilhe sua senha.'],['Dados e retenção','Alguns registros podem exigir conservação legal, antifraude ou de segurança. O tratamento deve seguir a Política de privacidade e a legislação aplicável.']],cta:'Abrir Minha conta',ctaHref:'/conta'
   },
   {
-    path:'/rotas-para-evitar-transito',category:'Rotas e tecnologia',title:'Rotas para evitar trânsito',description:'Como comparar trajetos para tentar reduzir atrasos e congestionamentos usando dados de trânsito.',lead:'O melhor trajeto muda conforme a hora, a localização e os acontecimentos na via.',
-    sections:[['Compare além da distância','A rota mais curta nem sempre é a mais rápida: semáforos, obras e fluxo de veículos podem alterar o tempo estimado.'],['Tráfego atualizado','Quando a integração permite, a duração considera informações de trânsito. A atualização e a cobertura são determinadas pelo provedor.'],['Micro-rotas e desvios','O motor original VANO investiga alternativas e pequenos ajustes de percurso, mas esses recursos só ficam disponíveis na V2 quando o backend original estiver conectado e validado.']],faq:[["Como o VANO tenta evitar congestionamentos?","O aplicativo compara trajetos com duração e distância informadas pelo provedor conectado. Quando os dados de trânsito estão disponíveis, as estimativas podem refletir as condições recentes das vias."],["A rota mais curta sempre é a mais rápida?","Não. Um caminho mais longo pode exigir menos tempo quando outros acessos apresentam tráfego intenso, semáforos ou restrições."],["As informações de trânsito são em tempo real?","A atualização depende do provedor e da cobertura regional. O tempo mostrado é uma estimativa, não uma promessa de chegada."]],cta:'Comparar trajetos',ctaHref:'/mapa'
+    "path": "/rotas-para-evitar-transito",
+    "category": "Rotas e tecnologia",
+    "title": "Como escolher um caminho com menos trânsito",
+    "description": "Entenda como o trânsito afeta as rotas disponíveis e como comparar tempo previsto e distância antes de cada viagem.",
+    "lead": "O caminho mais curto nem sempre é o que leva menos tempo.",
+    "sections": [
+      [
+        "Confira o tempo, não só a distância",
+        "Um caminho menor pode ter mais semáforos, obras ou congestionamentos. Quando o mapa mostrar alternativas, compare distância e tempo previsto."
+      ],
+      [
+        "As condições mudam",
+        "As informações sobre o trânsito dependem da região, da conexão e do fornecedor de mapas. Elas podem demorar para atualizar ou não estar disponíveis."
+      ],
+      [
+        "Escolha com atenção",
+        "Uma alternativa pode economizar tempo, mas isso não é garantido. Confira a situação da via e respeite as restrições de circulação."
+      ]
+    ],
+    "faq": [
+      [
+        "O VANO sempre encontra um caminho sem trânsito?",
+        "Não. Em alguns trajetos não há alternativas viáveis ou faltam dados atualizados."
+      ],
+      [
+        "A rota mais curta é a mais rápida?",
+        "Não necessariamente. Obras, cruzamentos e fluxo de veículos também influenciam a viagem."
+      ],
+      [
+        "O tempo previsto pode mudar durante a viagem?",
+        "Sim. É uma estimativa, não uma garantia de chegada."
+      ]
+    ],
+    "cta": "Comparar caminhos",
+    "ctaHref": "/mapa"
   },
   {
     path:'/alternativa-ao-waze',category:'Alternativas',title:'VANO Maps: alternativa ao Waze',description:'Conheça o VANO Maps como alternativa de navegação ao Waze e entenda diferenças de proposta e disponibilidade.',lead:'Uma alternativa para planejar rotas e comparar caminhos com uma interface enxuta.',
     sections:[['Outra forma de navegar','O VANO aposta em uma experiência de mapa simples, busca rápida e comparação entre trajetos disponíveis.'],['Rotas e inteligência','O projeto trabalha na integração de rotas mais rápidas e análise contextual. A disponibilidade de micro-rotas depende de um serviço de roteamento conectado.'],['Escolha com informação','Compare os recursos, cobertura e limites de cada aplicativo. O VANO não é afiliado, patrocinado nem endossado pelo Waze ou pelo Google.']],faq:[['VANO é o mesmo que Waze?','Não. São produtos distintos, com tecnologias, cobertura e políticas próprias.'],['Posso usar durante a direção?','Configure o destino antes de sair e evite manusear o telefone enquanto dirige.']],cta:'Conhecer o mapa',ctaHref:'/mapa'
   },
   {
-    path:'/rota-mais-rapida',category:'Rotas e tecnologia',title:'Como encontrar a rota mais rápida',description:'Entenda as diferenças entre o caminho mais curto e o mais rápido ao calcular uma viagem.',lead:'Mais rápida não significa sempre menor distância.',
-    sections:[['Duração estimada','O tempo previsto usa dados do provedor escolhido e pode mudar durante o percurso.'],['Alternativas de rota','Compare duração, distância, manobras e condições de tráfego. Quando houver apenas uma alternativa, o aplicativo pode exibir trajetos equivalentes.'],['Mudanças no caminho','Recálculos e ajustes em cruzamentos dependem da posição, da qualidade do GPS e do roteador disponível.']],faq:[["O VANO calcula rotas de carro e moto?","É possível selecionar carro ou moto. A disponibilidade de trajetos específicos para cada veículo depende do serviço de roteamento ativo."],["Por que a duração da rota mudou?","Mudanças no trânsito, na qualidade do GPS ou na disponibilidade do provedor podem alterar a estimativa."],["Qual é a diferença entre rota rápida e rota segura?","A opção rápida prioriza a duração estimada. A avaliação de segurança exige dados específicos; quando eles não existem, o aplicativo não deve apresentar uma rota como comprovadamente mais segura."]],cta:'Calcular rota',ctaHref:'/mapa'
+    "path": "/rota-mais-rapida",
+    "category": "Rotas e tecnologia",
+    "title": "Como escolher a rota mais rápida",
+    "description": "Aprenda a comparar caminhos pelo tempo previsto e pela distância sem confundir uma estimativa com uma garantia.",
+    "lead": "O tempo previsto ajuda a escolher. Ele não é uma promessa de chegada.",
+    "sections": [
+      [
+        "Veja o tempo previsto",
+        "Confira quanto tempo o mapa estima para o trajeto. Esse cálculo depende das informações disponíveis no momento."
+      ],
+      [
+        "Compare os caminhos",
+        "Quando houver alternativas, observe tempo e distância de cada uma. Um trajeto mais curto nem sempre é mais rápido."
+      ],
+      [
+        "Conte com mudanças",
+        "Trânsito, obras, condições da rua e imprecisão do GPS podem alterar a viagem. Planeje com uma margem de tempo."
+      ]
+    ],
+    "faq": [
+      [
+        "Por que o tempo mudou?",
+        "Novos dados de trânsito e alterações de percurso podem mudar a previsão."
+      ],
+      [
+        "O VANO sempre mostra o melhor caminho?",
+        "Não. Os resultados dependem da cobertura e da qualidade dos serviços de mapas disponíveis."
+      ]
+    ],
+    "cta": "Abrir o mapa",
+    "ctaHref": "/mapa"
   },
   {
     path:'/alternativa-ao-google-maps',category:'Alternativas',title:'Alternativa ao Google Maps para rotas',description:'VANO Maps como opção para comparar trajetos, visualizar mapas e buscar endereços.',lead:'Outro jeito de pesquisar, selecionar um destino e seguir seu caminho.',
@@ -265,8 +327,31 @@ export const PUBLIC_PAGES = [
     sections:[['Comece por origem e destino','Digite endereços, selecione sugestões ou informe coordenadas. Escolha carro ou moto e um modo disponível de rota.'],['Resultados verificados','Ao executar, o laboratório chama o motor de rotas VANO e informa latência, ETA, distância e indicadores disponíveis. Dados ausentes não são fabricados.'],['API pública para agentes','O contrato JSON está disponível em /api/benchmark/v1/capabilities, com cenários e testes via /api/benchmark/v1/route. Não é necessário login.']],cta:'Executar benchmark',ctaHref:'/benchmark-de-rotas'
   },
   {
-    path:'/como-funciona',category:'Produto',title:'Como funciona o VANO Maps',description:'Passo a passo para pesquisar um lugar, escolher um caminho e acompanhar a navegação.',lead:'Buscar. Comparar. Seguir.',
-    sections:[['1. Encontre o lugar','Busque o endereço ou escolha um destino salvo.'],['2. Confira as opções','Analise tempo, distância e fonte do roteiro. Nem todas as alternativas possuem avaliação de risco.'],['3. Inicie com segurança','O mapa acompanha o GPS autorizado. A prévia simulada é diferente de uma navegação real.']],cta:'Começar',ctaHref:'/inicio'
+    "path": "/como-funciona",
+    "category": "Produto",
+    "title": "Como usar o VANO Maps",
+    "description": "Aprenda em passos simples a pesquisar um destino, comparar opções de trajeto e acompanhar sua posição no VANO Maps.",
+    "lead": "Pesquise um lugar, confira o caminho e comece com segurança.",
+    "sections": [
+      [
+        "1. Encontre o destino",
+        "Abra o mapa e digite um endereço ou nome de lugar. Confira se o resultado corresponde ao destino desejado."
+      ],
+      [
+        "2. Compare as opções",
+        "Veja a distância e o tempo previsto. Quando mais de um caminho estiver disponível, compare antes de escolher."
+      ],
+      [
+        "3. Acompanhe sua posição",
+        "Com permissão de localização ativa e sinal de GPS disponível, você pode acompanhar seu deslocamento no mapa."
+      ],
+      [
+        "4. Viaje com atenção",
+        "Planeje com o veículo parado. As leis de trânsito, a sinalização e as condições reais da rua têm prioridade."
+      ]
+    ],
+    "cta": "Começar no mapa",
+    "ctaHref": "/mapa"
   },
   {
     path:'/seguranca-na-navegacao',aliases:['/termos-de-seguranca','/seguranca'],category:'Transparência',title:'Segurança na navegação: limites e boas práticas',description:'Cuidados, limites de dados e responsabilidades ao utilizar mapas e rotas.',lead:'A tecnologia auxilia a decisão, mas não substitui atenção e prudência.',
