@@ -11,12 +11,15 @@ const cue=step=>buildV2ManeuverArrows({...eastThenNorth,steps:[{
 }]});
 test('V2 arrow follows the provider turn instead of pointing down the original road',()=>{
   const result=cue({type:'turn',modifier:'left'});
-  assert.equal(result.features.length,3);
-  assert.deepEqual(result.features.map(f=>f.properties.part),['shaft','wing-left','wing-right']);
+  assert.equal(result.features.length,2);
+  assert.deepEqual(result.features.map(f=>f.properties.part),['shaft','head']);
   assert.ok(result.features[0].geometry.coordinates.length>3);
   assert.ok(result.features[0].geometry.coordinates.at(-1)[1]>-23.5);
-  assert.ok(result.features.every(f=>f.geometry.coordinates.every(p=>
-    p.length===2&&p.every(Number.isFinite))));
+  assert.equal(result.features[1].geometry.type,'Point');
+  assert.ok(result.features[1].geometry.coordinates.every(Number.isFinite));
+  assert.ok(Number.isFinite(result.features[1].properties.bearing));
+  assert.ok(result.features[0].geometry.coordinates.every(p=>
+    p.length===2&&p.every(Number.isFinite)));
 });
 test('V2 arrow marks a right/left road split, on-ramp and bridge-access instruction',()=>{
   for(const maneuver of [
@@ -25,14 +28,14 @@ test('V2 arrow marks a right/left road split, on-ramp and bridge-access instruct
     {type:'continue',instruction:'Pegue a alça para subir a ponte'},
     {type:'continue',instruction:'Mantenha-se à direita no acesso ao viaduto'},
     {type:'exit',modifier:'slight right'}
-  ])assert.equal(cue(maneuver).features.length,3,JSON.stringify(maneuver));
+  ])assert.equal(cue(maneuver).features.length,2,JSON.stringify(maneuver));
 });
 test('V2 draws the roundabout, without duplicating its provider exit',()=>{
   const result=buildV2ManeuverArrows({...eastThenNorth,steps:[
     {type:'roundabout',modifier:'right',location:[-46.6998,-23.5]},
     {type:'exit roundabout',location:[-46.6996,-23.5]}
   ]});
-  assert.equal(result.features.length,3);
+  assert.equal(result.features.length,2);
   const shaft=result.features[0].geometry.coordinates;
   assert.ok(shaft.at(-1)[1]>-23.5);
 });
