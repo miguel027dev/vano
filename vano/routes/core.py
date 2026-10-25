@@ -88,6 +88,33 @@ def embed_entry():
     return index()
 
 
+# VANO White/Black styles and UX rules are kept together in one JSON manifest.
+# The two style endpoints return actual Mapbox Style Specification v8 documents.
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
+def _vano_map_appearance_manifest():
+    with open(os.path.join(BASE_DIR, "static", "mapbox", "vano-map-config.json"), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+@app.get("/mapbox/vano-style/<mode>.json")
+def vano_mapbox_style(mode):
+    if mode not in {"light", "black"}:
+        abort(404)
+    try:
+        style = _vano_map_appearance_manifest()["themes"][mode]["style"]
+        if not isinstance(style, dict) or style.get("version") != 8:
+            raise ValueError("Invalid VANO Mapbox style document")
+        response = jsonify(style)
+        response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
+    except (OSError, ValueError, TypeError, KeyError):
+        app.logger.exception("VANO map style manifest unavailable: %s", mode)
+        fallback = "vano-light-3d.json" if mode == "light" else "vano-dark-3d.json"
+        return redirect(url_for("static", filename="mapbox/" + fallback))
+
+
 # -----------------------------
 # Pages
 # -----------------------------
@@ -113,13 +140,14 @@ def index():
         map_style_pref = "day"
     if map_style_pref not in {"auto", "day", "afternoon", "night", "rain"}:
         map_style_pref = "auto"
-    style_lookup = {
-        "day": MAPBOX_STYLE_DAY,
-        "afternoon": MAPBOX_STYLE_DAY,
-        "night": MAPBOX_STYLE_NIGHT,
-        "rain": MAPBOX_STYLE_DAY,
-    }
-    selected_map_style = style_lookup.get(map_style_pref, MAPBOX_STYLE_DAY)
+    # Use the VANO Mapbox JSON styles as the base, preserving the saved theme.
+    white_style = url_for("vano_mapbox_style", mode="light")
+    black_style = url_for("vano_mapbox_style", mode="black")
+    selected_map_style = black_style if map_style_pref == "night" else white_style
+    try:
+        map_visual_rules = _vano_map_appearance_manifest().get("designRules", {})
+    except (OSError, ValueError, TypeError):
+        map_visual_rules = {}
     map_accent_pref = (user["map_accent"] if user and "map_accent" in user.keys() else "violet") or "violet"
     if map_accent_pref not in MAPBOX_ACCENT_PRESETS:
         map_accent_pref = "violet"
@@ -129,12 +157,13 @@ def index():
         mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
         mapbox_style=selected_map_style,
         mapbox_styles={
-            "day": MAPBOX_STYLE_DAY,
-            "afternoon": MAPBOX_STYLE_DAY,
-            "night": MAPBOX_STYLE_NIGHT,
-            "black": MAPBOX_STYLE_NIGHT,
-            "rain": MAPBOX_STYLE_DAY,
+            "day": white_style,
+            "afternoon": white_style,
+            "night": black_style,
+            "black": black_style,
+            "rain": white_style,
         },
+        map_visual_rules=map_visual_rules,
         map_style_mode=map_style_pref,
         map_accent=map_accent_pref,
         map_accent_colors=MAPBOX_ACCENT_PRESETS[map_accent_pref],
