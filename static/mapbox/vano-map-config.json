@@ -253,15 +253,40 @@
       ],
       "contextualCategories": [
         "hospital",
-        "pharmacy",
         "parking",
         "fuel",
         "railway-crossing",
-        "school",
         "restaurant"
       ],
       "hideNonEssentialWhileNavigating": true,
-      "noPermanentTrafficSegmentLabels": true
+      "noPermanentTrafficSegmentLabels": true,
+      "hiddenCategories": [
+        "pharmacy",
+        "hotel",
+        "lodging",
+        "grocery",
+        "convenience",
+        "supermarket",
+        "hypermarket",
+        "market",
+        "cafe",
+        "coffee-shop",
+        "school",
+        "pet-shop"
+      ],
+      "alwaysKeepCategories": [
+        "bank",
+        "parking",
+        "charging-station",
+        "restaurant",
+        "fast-food",
+        "post",
+        "fitness-centre",
+        "park"
+      ],
+      "customIconAssetsPreserved": true,
+      "filterAppliesTo": "vano-secondary-pois-icons",
+      "note": "Ocultar somente os POIs visuais do mapa; manter busca de destinos, ícones registrados e pontos de apoio sob demanda."
     },
     "camera": {
       "owner": "static/vano-map.js",
