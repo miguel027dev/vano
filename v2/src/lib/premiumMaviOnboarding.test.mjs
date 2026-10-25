@@ -10,10 +10,11 @@ const map=read('../pages/MapPage.jsx');
 const server=read('../../server/index.mjs');
 const moto=read('../../public/vehicle-moto-cutout.svg');
 
-test('onboarding replaces daily routine collection with transparent vehicle cards and a MAVI chat',()=>{
+test('onboarding replaces artificial MAVI chat with explicit editable map preferences',()=>{
  assert.match(onboard,/const total=2/);
- assert.match(onboard,/import MaviSetupChat from/);
- assert.match(onboard,/step===2&&<MaviSetupChat/);
+ assert.match(onboard,/import PersonalizationChoices from/);
+ assert.match(onboard,/step===2&&<PersonalizationChoices/);
+ assert.doesNotMatch(onboard,/step===2&&<MaviSetupChat/);
  assert.doesNotMatch(onboard,/O que faz parte do seu dia\?/);
  assert.doesNotMatch(onboard,/setup-tags/);
  assert.match(onboard,/vehicle-moto-cutout\.svg/);
