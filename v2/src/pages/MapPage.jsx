@@ -41,7 +41,7 @@ import '../admin-route-simulator.css';
 import {createManeuverTracker} from '../lib/maneuverTracker.js';
 import {evaluateRouteDeviation} from '../lib/routeDeviation.js';
 import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from '../lib/maneuverVisuals';
-import {previewManeuvers,modeManeuverDetail,nextMappedCrossing,crossingLabel,crossingSafetyNote,crossingVoiceCue} from '../lib/routeModeDetails.mjs';
+import {modeManeuverDetail,nextMappedCrossing,crossingLabel,crossingSafetyNote,crossingVoiceCue} from '../lib/routeModeDetails.mjs';
 import '../route-mode-detail.css';
 import ManeuverGlyph from '../components/ManeuverGlyph';
 import {isNativeShell,notifyNative} from '../lib/nativeShell';
@@ -651,7 +651,6 @@ export default function MapPage({active=true}){
     }).catch(()=>{/* Optional public-data lookup. Never block walking. */});
     return()=>controller.abort();
   },[routeVehicle,route?.geometry,routeData?.source]);
-  const previewDetails=previewManeuvers(route,routeVehicle);
   const mappedCrossing=routeVehicle==='a-pe'&&navMode&&!simActive&&hasLiveGPS?
     nextMappedCrossing(walkingFeatures,guidance?.routeMeters):null;
   // MAVI is available on the public V1 map and the administrator's V2 map.
@@ -1308,20 +1307,7 @@ export default function MapPage({active=true}){
         </div>
       </div>
       {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?'Micro-rota V1 • desvio anti-gargalo':r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?t('Avaliação V1'):t('Menor tempo estimado')}{r.trafficDataStatus==='degraded'?' · sem trânsito ao vivo':''}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
-       {!adminV2RoadSigns&&<section className="v70-route-details" aria-label="Detalhes e orientações do percurso">
-         <h3>{routeVehicle==='a-pe'?'Caminhada, passo a passo':routeVehicle==='moto'?'Atenção a curvas e acessos':'Orientações da viagem'}</h3>
-         <p className="v70-route-details-intro">{routeVehicle==='a-pe'?'Travessias e ruas mapeadas, sem substituir a sinalização real.':routeVehicle==='moto'?'Manobras reais do provedor, com atenção aos acessos.':'Próximas manobras e faixas somente quando informadas pelo provedor.'}</p>
-         {choice==='safe'&&routeVehicle!=='a-pe'&&<p className="v70-route-details-intro" role="note">{routeData.safetyMessage||'Os dados de segurança podem ser limitados nesta região. Nenhuma rota garante segurança absoluta.'}</p>}
-         <ol className="v70-route-steps">{previewDetails.map((step,index)=>
-           <li key={index}><span className="v70-route-index">{index+1}</span><span className="v70-route-step-copy"><strong>{step.instruction}</strong>{step.detail&&<small>{step.detail}</small>}</span></li>
-         )}</ol>
-         {routeVehicle==='a-pe'&&<div className="v70-route-crossings">
-           {walkingFeatures.length>0?walkingFeatures.slice(0,3).map(feature=>
-             <p key={feature.id}><strong>{crossingLabel(feature,language)}</strong> · aproximadamente {feature.routeMeters} m desde o início do trajeto</p>
-           ):<p>Faixas específicas aparecem apenas quando há registros públicos compatíveis com o percurso.</p>}
-           <small className="v70-route-source">Fonte das travessias: OpenStreetMap (dados colaborativos). {crossingSafetyNote(language)}</small>
-         </div>}
-       </section>}
+
        <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:!validPoint(origin)?<div className="notice" role="status">
           <p>Para calcular a rota até {dest?.name||'o destino'}, escolha primeiro seu ponto de partida. O GPS é opcional.</p>
           <button type="button" onClick={()=>{setSheetOpen(false);setPickOriginMode(true);}}>Escolher origem no mapa</button>
