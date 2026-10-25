@@ -79,7 +79,7 @@
         },
         "terrain": {
           "source": "vano-terrain",
-          "exaggeration": 0.72
+          "exaggeration": 0.62
         },
         "projection": {
           "name": "mercator"
