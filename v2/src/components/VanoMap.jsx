@@ -35,6 +35,7 @@ import '../private-road-signs.css';
 import {syncRouteTrafficMarkers,clearRouteTrafficMarkers,syncLeafletRouteTraffic} from '../lib/routeTrafficMarkers.jsx';
 import {TRAFFIC_COLORS} from '../lib/routeTraffic.mjs';
 import {updateV2RouteFlow} from '../lib/v2RouteFlow.mjs';
+import {buildV2ManeuverArrows} from '../lib/v2ManeuverArrows.mjs';
 
 const START=[-46.6808,-23.5857];
 const coord=p=>validPoint(p)?p:START;
@@ -1204,6 +1205,22 @@ function paintMapbox(map,data,selection){
     layout:{'line-join':'round','line-cap':'butt'},
     paint:{'line-color':'#fff2df','line-width':2.1,'line-opacity':.62,'line-dasharray':STATIC_ROUTE_DASH_PATTERN}
   },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
+  // /v2-only maneuver cues follow the selected route's provider steps.
+  // The GeoJSON stays stable across GPS frames: no extra route-flow repaints.
+  if(data.v2Experience){
+    const arrowsSource='vano-v2-maneuver-arrows';
+    const arrowRoute=selected||null;
+    if(!map.getSource(arrowsSource)||map._vanoDirectionArrowRoute!==arrowRoute){
+      upsert(arrowsSource,buildV2ManeuverArrows(arrowRoute));
+      map._vanoDirectionArrowRoute=arrowRoute;
+    }
+    if(!map.getLayer('vano-v2-maneuver-arrows-line'))map.addLayer({
+      id:'vano-v2-maneuver-arrows-line',type:'line',source:arrowsSource,minzoom:15,
+      layout:{'line-join':'round','line-cap':'round'},
+      paint:{'line-color':'#ffffff','line-opacity':.97,
+        'line-width':['interpolate',['linear'],['zoom'],15,2.4,17,3.3,19,4.1]}
+    },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
+  }
   const traffic=data.v2Experience&&data.vehicle!=='a-pe'?data.routeTraffic:null;
   if(map._vanoTrafficGradient!==traffic?.gradient||map._vanoTrafficV2!==Boolean(traffic)){
     if(traffic&&traffic.index?.points===selected?.geometry?.coordinates){
