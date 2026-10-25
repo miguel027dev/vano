@@ -130,8 +130,10 @@ test('Paulista viewport scales down semaphores without blanking the map',()=>{
  const selected=selectPublicPins([...semaphores,...points],project,15,300,mobile);
  assert.ok(selected.length<=m.total);
  assert.ok(selected.filter(x=>x.type==='semaforo').length<=m.signalMax);
- for(const id of ['radar','danger','school','pharmacy','market'])
+ for(const id of ['radar','danger'])
   assert.ok(selected.some(x=>x.id===id),'missing '+id);
+ for(const id of ['school','pharmacy','market'])
+  assert.ok(!selected.some(x=>x.id===id),'unexpected '+id);
  assert.equal(selected[0].id,'radar');
 });
 test('semaphores stay farther apart than ordinary POIs in dense city blocks',()=>{
@@ -164,7 +166,7 @@ test('restaurants survive many supermarkets and the new glyphs remain recognisab
   ...Array.from({length:16},(_,i)=>({id:'meal'+i,type:'restaurante',priority:20,coords:[.10+i%8*.005,Math.floor(i/8)*.005] }))
  ];
  const selected=selectPublicPins(businesses,([x,y])=>({x:x*4000+15,y:y*4000+20}),17,100,{width:850,height:720});
- assert.ok(selected.some(x=>x.type==='supermercado'));
+ assert.ok(!selected.some(x=>x.type==='supermercado'));
  assert.ok(selected.some(x=>x.type==='restaurante'));
  for(const t of ['hotel','restaurante','fastfood','petshop','escola']){
   assert.match(iconSvg(t),/<path/);
@@ -223,9 +225,9 @@ test('active road navigation hides all commerce but retains guidance and essenti
  const view={width:1900,height:500};
  const selected=selectPublicPins(points,project,15,100,view,{navigation:true});
  const visible=new Set(selected.map(p=>p.type));
- for(const type of ['radar','semaforo','estacionamento','obra','relato-transito','hospital','farmacia','travessia','rotatoria','alerta-via'])
+ for(const type of ['radar','semaforo','estacionamento','obra','relato-transito','hospital','travessia','rotatoria','alerta-via'])
   assert.ok(visible.has(type),'navigation must keep '+type);
- for(const type of ['fastfood','restaurante','cafeteria','shopping','mercado','supermercado','eletroposto','estacao-recarga','hotel','academia','petshop','combustivel','escola'])
+ for(const type of ['fastfood','restaurante','cafeteria','shopping','mercado','supermercado','eletroposto','estacao-recarga','hotel','academia','petshop','combustivel','escola','farmacia'])
   assert.ok(!visible.has(type),'navigation must hide '+type);
  assert.ok(selectPublicPins(points,project,15,100,view).some(p=>p.type==='fastfood'),
   'food and commerce must remain discoverable outside navigation');
@@ -269,4 +271,27 @@ test('public POI cards use a theme-aware named place and real route destination 
  assert.match(css,/min-height:44px/);
  assert.ok(!overlay.includes('title.innerHTML=item.name'),
   'provider names must always use textContent, never HTML');
+});
+
+
+test('White and Black maps hide requested POIs but preserve bank and safety icons',()=>{
+ const coords=[-46.68,-23.58],project=()=>({x:100,y:100});
+ const hidden=['farmacia','hotel','mercado','supermercado','cafeteria','escola','petshop'];
+ for(const type of hidden){
+  const points=selectPublicPins([{id:type,type,coords}],project,17,10,{width:300,height:300});
+  assert.equal(points.length,0,`POI ${type} should be hidden`);
+  assert.ok(ICON_THEME[type],`Original icon for ${type} remains available`);
+ }
+ for(const type of ['banco','radar','hospital','estacionamento']){
+  assert.ok(ICON_THEME[type],`Preserve ${type} icon`);
+ }
+ const styles=['light','black'];
+ for(const mode of styles){
+  const doc=JSON.parse(readFileSync(new URL(`../../public/mapbox/vano-atlas-${mode==='light'?'light':'black'}.json`,import.meta.url)));
+  const essentials=doc.layers.find(layer=>layer.id==='vano-essentials');
+  assert.ok(essentials);
+  const allowed=essentials.filter[2][1];
+  for(const cls of ['school','supermarket','grocery','pharmacy'])assert.ok(!allowed.includes(cls));
+  for(const cls of ['hospital','clinic','park'])assert.ok(allowed.includes(cls));
+ }
 });

@@ -67,7 +67,8 @@ test('academia uses matching green pastel; critical services stay visible among 
  assert.match(overlay,/academia:'is-fitness'/);
  assert.match(css,/\.v40-public-pin\.is-fitness\{background:#E4F7EA/);
  const features=Array.from({length:100},(_,i)=>({id:'a'+i,type:'mercado',coords:[i*.01,0],priority:20}))
-   .concat([{id:'school',type:'escola',coords:[2,1],priority:38}]);
+   .concat([{id:'hospital',type:'hospital',coords:[2,1],priority:38}]);
  const selected=selectPublicPins(features,c=>({x:c[0]*100,y:c[1]*100}),15,32);
- assert.ok(selected.some(x=>x.id==='school'));
+ assert.ok(selected.some(x=>x.id==='hospital'));
+ assert.ok(!selected.some(x=>x.type==='mercado'));
 });
