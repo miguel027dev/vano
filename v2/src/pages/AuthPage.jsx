@@ -112,17 +112,15 @@ export function OnboardingPage(){
  const [vehicle,setVehicle]=useState(preferences?.vehicle||'carro');
  const [settings,setSettings]=useState({route:preferences?.preferredRoute||'fast',tolls:preferences?.avoidTolls===true,alerts:preferences?.alerts!==false});
  const [poiVisible,setPoiVisible]=useState(()=>sanitizePoiVisibility(preferences?.poiVisible));
- const [mapExperience,setMapExperience]=useState(preferences?.mapExperience==='immersive'?'immersive':'clean');
  const [step,setStep]=useState(1),[busy,setBusy]=useState(false),[error,setError]=useState('');
  useEffect(()=>{
    setVehicle(preferences?.vehicle||'carro');
    setSettings({route:preferences?.preferredRoute||'fast',tolls:preferences?.avoidTolls===true,alerts:preferences?.alerts!==false});
    setPoiVisible(sanitizePoiVisibility(preferences?.poiVisible));
-   setMapExperience(preferences?.mapExperience==='immersive'?'immersive':'clean');
- },[preferences?.vehicle,preferences?.preferredRoute,preferences?.avoidTolls,preferences?.alerts,preferences?.poiVisible,preferences?.mapExperience]);
+ },[preferences?.vehicle,preferences?.preferredRoute,preferences?.avoidTolls,preferences?.alerts,preferences?.poiVisible]);
  const total=2;
  async function finish(){setBusy(true);setError('');try{
-   await savePreference({vehicle,preferredRoute:settings.route,avoidTolls:settings.tolls,alerts:settings.alerts,poiVisible,mapExperience,onboardingComplete:true});
+   await savePreference({vehicle,preferredRoute:settings.route,avoidTolls:settings.tolls,alerts:settings.alerts,poiVisible,onboardingComplete:true});
    try{localStorage.setItem('vano-v2-intro-seen','1')}catch{}
    navigate('/mapa',{replace:true});
  }catch(e){setError(e.message||t('Falha ao salvar preferências.'))}finally{setBusy(false)}}
@@ -132,14 +130,14 @@ export function OnboardingPage(){
    <header className="setup-header"><Brand/><div className="setup-progress-info"><span>SEU VANO, DO SEU JEITO</span><strong>0{step} <i>/</i> 0{total}</strong></div></header>
    <div className="setup-progress-bars" aria-label={`Etapa ${step} de ${total}`}>{Array.from({length:total},(_,i)=><div key={i} className={i<step?'active':''}/>)}</div>
    <div className="setup-head"><span className="access-overline">{step===1?'01 / SEU PERFIL':'02 / SUA EXPERIÊNCIA'}</span><h1>{step===1?'Como você se move?':'Seu mapa, suas escolhas.'}</h1>
-    <p>{step===1?'Escolha seu veículo. Seus dados de conta continuam editáveis.':'Prioridade de rota, lugares e aparência do mapa. Sem chatbot ou interpretação por IA.'}</p>
+    <p>{step===1?'Escolha seu veículo. Seus dados de conta continuam editáveis.':'Prioridade de rota e lugares no mapa. Sem chatbot ou interpretação por IA.'}</p>
     {step===1&&user&&<Link to="/conta" className="v3-auth-back">Editar meus dados de conta <ArrowRight size={16}/></Link>}</div>
    {step===1&&<div className="setup-vehicle-grid">{vehicleChoices.map(v=><button type="button" key={v.id} className={`setup-vehicle v92-vehicle ${vehicle===v.id?'selected':''}`} aria-pressed={vehicle===v.id} onClick={()=>setVehicle(v.id)}>
      <span className="setup-vehicle-check">{vehicle===v.id?<Check size={19} strokeWidth={3}/>:null}</span>
      <div className="setup-vehicle-figure"><img src={v.image} alt={`Ilustração sem fundo de ${v.name.toLowerCase()}`}/></div>
      <div className="setup-vehicle-meta"><v.icon size={21}/><div><strong>{v.name}</strong><small>{v.detail}</small></div><ArrowRight size={19}/></div>
    </button>)}</div>}
-   {step===2&&<PersonalizationChoices settings={settings} onSettingsChange={(id,value)=>setSettings(old=>({...old,[id]:value}))} poiVisible={poiVisible} onPoiChange={setPoiVisible} mapExperience={mapExperience} onMapChange={setMapExperience}/>}
+   {step===2&&<PersonalizationChoices settings={settings} onSettingsChange={(id,value)=>setSettings(old=>({...old,[id]:value}))} poiVisible={poiVisible} onPoiChange={setPoiVisible}/>}
    {error&&<div className="access-error" role="alert">{error}</div>}
    <div className="setup-actions"><button type="button" onClick={back} className="setup-back"><ArrowLeft size={17}/> Voltar</button>
    <button type="button" className="setup-next" disabled={busy} onClick={step===1?()=>setStep(2):finish}>{busy?'Salvando…':step===2?'Salvar e abrir mapa':'Continuar'} <ArrowRight size={19}/></button></div>

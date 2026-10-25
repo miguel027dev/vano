@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL(path,import.meta.url),'utf8');
 const onboard=read('../pages/AuthPage.jsx');
+const personalization=read('../components/PersonalizationChoices.jsx');
 const chat=read('../components/MaviSetupChat.jsx');
 const account=read('../pages/SettingsPage.jsx');
 const profile=read('../pages/ProfilePage.jsx');
@@ -17,6 +18,8 @@ test('onboarding replaces artificial MAVI chat with explicit editable map prefer
  assert.doesNotMatch(onboard,/step===2&&<MaviSetupChat/);
  assert.doesNotMatch(onboard,/O que faz parte do seu dia\?/);
  assert.doesNotMatch(onboard,/setup-tags/);
+ assert.doesNotMatch(personalization,/Qual estilo de mapa você prefere\?|Imersivo|MapArtwork|03 \/ APARÊNCIA/);
+ assert.doesNotMatch(onboard,/mapExperience|onMapChange/);
  assert.match(onboard,/vehicle-moto-cutout\.svg/);
  assert.match(moto,/<svg[^>]*viewBox/);
  assert.doesNotMatch(moto,/<rect[^>]*width="900"/);
