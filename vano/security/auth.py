@@ -158,7 +158,7 @@ CURRENT_USER_COLUMNS = (
     'onboarding_completed_at,distance_unit,vehicle_make,vehicle_model,vehicle_plate,'
     'vehicle_year,preferred_fuel_networks,home_label,work_label,presence_visible,'
     'presence_terms_accepted_at,emergency_name,emergency_phone,map_style,map_accent,'
-    'avoid_ferries,avoid_tolls,avoid_unpaved'
+    'avoid_ferries,avoid_tolls,avoid_unpaved,poi_visibility_json'
 )
 
 
