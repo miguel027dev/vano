@@ -19,20 +19,22 @@ def test_svg_assets_are_valid_and_match_original_secondary_geometry():
         rectangles = [x for x in root.iter() if x.tag.endswith("rect")]
         assert rectangles and rectangles[0].attrib.get("rx") == "15"
 
-def test_layers_use_mapbox_streets_and_keep_requested_pois():
+def test_layers_use_mapbox_streets_and_preference_whitelist():
     assert "mapbox://mapbox.mapbox-streets-v8" in JS
     for layer in ("vano-secondary-pois-icons", "vano-secondary-transit-icons", "vano-secondary-airport-icons"):
         assert layer in JS
     for old in ("poi-bank.svg", "poi-parking.svg", "poi-pedestrian-crossing.svg", "poi-railway-crossing.svg"):
         assert old in JS
     import ast
-    whitelist = re.search(r"const VANO_POI_MAKI=(\[[^;]+\]);", JS)
+    whitelist = re.search(r"const VANO_POI_MAKI=(\\[[^;]+\\]);", JS)
     assert whitelist
-    visible = set(ast.literal_eval(whitelist.group(1)))
-    assert {"bank", "charging-station", "fitness-centre", "restaurant", "post"} <= visible
-    assert not ({"school", "pharmacy", "lodging", "cafe", "grocery", "convenience"} & visible)
+    supported = set(ast.literal_eval(whitelist.group(1)))
+    assert {"bank", "park", "parking", "charging-station", "restaurant", "fitness-centre", "school", "pharmacy", "cafe", "grocery"} <= supported
+    assert not ({"fast-food", "lodging", "convenience", "bus"} & supported)
+    assert "VANO_POI_SELECTED" in JS
     assert "'icon-allow-overlap':false" in JS
     assert "'icon-pitch-alignment':'viewport'" in JS
+
 
 def test_transit_stations_are_filtered_not_all_stops():
     assert "['get','stop_type'],'station'" in JS
