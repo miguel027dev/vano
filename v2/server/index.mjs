@@ -720,10 +720,10 @@ async function route(req, res) {
     const snapshot=intelligenceSnapshot(db,runtimeMetrics,{days:body.days});
     try{
       return json(res,200,{ok:true,...await askIntelligenceConversational(body.question,db,runtimeMetrics,{
-        days:body.days,historyPeriod:body.historyPeriod||'all',history:body.history
+        days:body.days,historyPeriod:body.historyPeriod||'all',history:body.history,mode:body.mode||'fast'
       })});
     }catch(e){
-      console.warn('VANO Intelligence NVIDIA:',e?.status||'error');
+      console.warn('VANO Intelligence NVIDIA:',e?.diagnostic||'failure','providerStatus='+Number(e?.providerStatus||0));
       return err(res,e?.status===400?400:e?.status===503?503:502,
         e?.status===503?'NVIDIA não configurada no Render.':e?.status===400?'Pergunta inválida.':'Análise temporariamente indisponível. Consulte os indicadores do painel.');
     }
