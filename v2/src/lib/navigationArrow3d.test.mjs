@@ -21,11 +21,11 @@ test('one procedural 3D arrow uses consistent orange face, white rim and raised 
   assert.ok(svg.includes('fill="url(#vano-arrow3d-side)"'));
   assert.ok(!svg.includes('<image')&&!svg.includes('base64,'));
 });
-test('Mapbox marker rotates with heading; only V2 Sim keeps the pointer upright',()=>{
+test('Mapbox marker rotates with heading; V2 Sim and white GPS remain aligned to the viewport',()=>{
   assert.match(map,/el\.innerHTML=navigationArrowSvg\(\)/);
   assert.match(map,/vano-3d-nav-marker/);
-  assert.match(map,/pitchAlignment:type==='vehicle'&&!data\.droneSimulation\?'map':'viewport'/);
-  assert.match(map,/const desiredPitch=data\.droneSimulation\?'viewport':'map'/);
+  assert.match(map,/pitchAlignment:type==='vehicle'&&!data\.droneSimulation&&!stableLightGpsPuck\?'map':'viewport'/);
+  assert.match(map,/const desiredPitch=data\.droneSimulation\|\|stableLightGpsPuck\?'viewport':'map'/);
   assert.match(map,/setPitchAlignment\?\.\(desiredPitch\)/);
   assert.match(map,/rotationAlignment:type==='vehicle'\?'map':'viewport'/);
   assert.match(map,/marker\.setRotation\(state\.bearing\|\|0\)/);
