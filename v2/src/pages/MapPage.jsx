@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, Minimize2, Maximize2, SlidersHorizontal, CalendarDays } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
+import B1RouteSheet from '../components/B1RouteSheet.jsx';
 import RoadAuditPanel from '../components/RoadAuditPanel.jsx';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
 import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
@@ -53,6 +54,7 @@ const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusines
 export default function MapPage({active=true}){
   const {user,preferences,favorites,saveTrip,savePreference,report,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/mapa'||location.pathname==='/v2';
+  const b1User=location.pathname==='/mapa';
   // Experiment is available ONLY in the role-gated administrator route.
   const adminV2RoadSigns=location.pathname==='/v2'&&user?.isAdmin===true;
   // The same preference powers /configuracoes and the map. The local
@@ -107,6 +109,9 @@ export default function MapPage({active=true}){
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
+  const [b1Stage,setB1Stage]=useState('transport');
+  const [b1CinematicSeed,setB1CinematicSeed]=useState(0);
+  const b1CameraArmed=useRef(false);
   // The same turn-name markers work on the real /mapa and admin /v2; all
   // experimental simulation/traffic controls remain administrator-only.
   const navigationRoadSigns=jevMode&&active&&routeVehicle!=='a-pe'&&
@@ -288,7 +293,7 @@ export default function MapPage({active=true}){
     setGpsStatus(fix.accuracy<=50?'granted':'approximate');setGpsMessage('');
     if(awaitingGpsDestination.current&&!validPoint(manualCoordsRef.current)&&destRef.current){
       awaitingGpsDestination.current=false;setPickOriginMode(false);
-      routeCalculator.current?.(destRef.current,fix.coords);
+      if(!b1User||b1Stage==='route')routeCalculator.current?.(destRef.current,fix.coords);
     }
     return fix;
   }
@@ -303,7 +308,7 @@ export default function MapPage({active=true}){
     if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=50){
       const coords=lastGpsFix.current.coords;
       setManualCoords(null);setPickOriginMode(false);setGpsStatus('granted');setGpsMessage('');
-      if(destRef.current)calculateRoute(destRef.current,coords);
+      if(destRef.current&&(!b1User||b1Stage==='route'))calculateRoute(destRef.current,coords);
       mapControl.current?.center?.();
       return;
     }
@@ -317,7 +322,7 @@ export default function MapPage({active=true}){
       const fix=onPosition(p);
       if(switchToGPS&&fix){
         awaitingGpsDestination.current=false;setManualCoords(null);setPickOriginMode(false);
-        if(destRef.current&&!waiting)calculateRoute(destRef.current,fix.coords);
+        if(destRef.current&&!waiting&&(!b1User||b1Stage==='route'))calculateRoute(destRef.current,fix.coords);
       }
     };
     const failed=e=>{
@@ -455,7 +460,7 @@ export default function MapPage({active=true}){
       const data=await api('/route',{method:'POST',signal:controller.signal,body:JSON.stringify({origin:departure,destination:place.coords,vehicle,language,telemetry:{bearing:hasLiveGPS?telemetry.heading:null,speed:hasLiveGPS?telemetry.speed:null},
         routeOptions:{v2FastCorridor:location.pathname==='/v2',avoidTolls:preferences?.avoidTolls===true}})});
       if(!Array.isArray(data?.routes)||data.routes.length===0)throw new Error('Nenhuma rota disponível para este trajeto. Tente outra origem ou destino.');
-      if(epoch===routeEpoch.current&&!controller.signal.aborted){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);}
+      if(epoch===routeEpoch.current&&!controller.signal.aborted){setRouteData(data);setChoice(vehicle==='a-pe'?'fast':initialChoice);if(b1User&&b1CameraArmed.current){b1CameraArmed.current=false;setB1CinematicSeed(value=>value+1);}}
     }catch(e){
       if(epoch===routeEpoch.current){
         const message=timedOut?'A rota demorou a responder. Tente novamente.':controller.signal.aborted?'Cálculo interrompido. Tente novamente.':e?.message||'Não foi possível calcular esta rota.';
@@ -469,6 +474,14 @@ export default function MapPage({active=true}){
     }
   }
   routeCalculator.current=calculateRoute;
+  function chooseB1Vehicle(vehicle){
+    if(!['carro','moto','a-pe'].includes(vehicle)||!dest)return;
+    b1CameraArmed.current=true;
+    setRouteVehicle(vehicle);setB1Stage('route');setRouteData(null);setRouteError('');
+    setChoice(vehicle==='a-pe'?'fast':initialChoice);
+    if(!validPoint(origin)){setPickOriginMode(true);setSheetOpen(false);return;}
+    calculateRoute(dest,origin,vehicle);
+  }
   function chooseRouteVehicle(vehicle){
     if(!['carro','moto','a-pe'].includes(vehicle)||vehicle===routeVehicle)return;
     setRouteVehicle(vehicle);
@@ -501,13 +514,14 @@ export default function MapPage({active=true}){
       return;
     }
     awaitingGpsDestination.current=false;setPickOriginMode(false);
+    if(b1User){b1CameraArmed.current=false;setB1Stage('transport');setSheetOpen(true);return;}
     calculateRoute(place,origin);
   }
   function chooseOrigin(coords,label='Origem selecionada no mapa'){
     if(!validPoint(coords))return;
     awaitingGpsDestination.current=false;setMaviPendingStop(null);setManualCoords(coords);setManualLabel(label);setPickOriginMode(false);setNavMode(false);setEditor(null);setPointMenu(null);
     setToast('Origem manual definida. Você já pode calcular rotas sem GPS.');
-    if(dest)calculateRoute(dest,coords);
+    if(dest){if(b1User){setSheetOpen(true);if(b1Stage==='route'){b1CameraArmed.current=true;calculateRoute(dest,coords,routeVehicle);}else{b1CameraArmed.current=false;setB1Stage('transport');}}else calculateRoute(dest,coords);}
   }
   function openEditor(kind){
     setEditor(kind);setPointMenu(null);setSearchOpen(false);
@@ -525,7 +539,7 @@ export default function MapPage({active=true}){
     setMaviPendingStop(null);setManualCoords(flipped.manualCoords);setManualLabel(flipped.manualLabel);setDest(flipped.destination);
     setPointMenu(null);setEditor(null);setNavMode(false);setRouteData(null);
     setSheetOpen(true);setPickOriginMode(false);setQuery('');
-    calculateRoute(flipped.destination,flipped.manualCoords);
+    if(b1User){b1CameraArmed.current=false;setB1Stage('transport');}else calculateRoute(flipped.destination,flipped.manualCoords);
   }
   useEffect(()=>{
     if(!editor)return;
@@ -1173,6 +1187,14 @@ export default function MapPage({active=true}){
   const islandPresentation=dynamicManeuverIsland(shownGuidance,{
     vehicle:routeVehicle,language,crossingNearby:Boolean(mappedCrossing)
   });
+  useEffect(()=>{
+    if(!b1User||!b1CinematicSeed||!active||navMode||!routeData?.routes?.length)return;
+    let frame=0,attempts=0,done=false;
+    const run=()=>{if(done)return;if(mapControl.current?.cinematicPreview?.())return;
+      if(++attempts<150)frame=requestAnimationFrame(run);};
+    frame=requestAnimationFrame(run);
+    return()=>{done=true;cancelAnimationFrame(frame);};
+  },[b1User,b1CinematicSeed,active,navMode]);
   const compactIsland=adminV2RoadSigns&&islandPresentation.compact;
   const visualLanes=Array.isArray(shownGuidance?.lanes)?shownGuidance.lanes.map((lane,index)=>({
     index,valid:lane?.valid===true,symbols:laneVariants(lane),
@@ -1321,7 +1343,17 @@ export default function MapPage({active=true}){
       <button title={simActive?'Centralizar na simulação':'Minha localização'} aria-label={simActive?'Centralizar no ponto simulado':'Minha localização'} className="circle-btn" onClick={()=>simActive?mapControl.current?.center?.():validPoint(origin)?mapControl.current?.center():requestGPS()}><LocateFixed size={22}/></button>
       {!navMode&&<button type="button" className="circle-btn vano-quick-report-trigger" title="Registrar ocorrência no mapa" aria-label="Registrar ocorrência no mapa" aria-haspopup="dialog" aria-expanded={quickReportOpen} onClick={()=>setQuickReportOpen(true)}><AlertTriangle size={20} strokeWidth={2.1}/></button>}
     </div>}
-    {!navMode&&dest&&sheetOpen&&!pickOriginMode&&<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{adminV2RoadSigns?'SEU TRAJETO':t('DESTINO SELECIONADO')}</span><h2>{adminV2RoadSigns?'Escolha seu caminho':t('Escolha a sua rota')}</h2>{adminV2RoadSigns&&<span className="v95-route-destination" title={dest?.name}>{dest?.name}</span>}</div><button type="button" className="sheet-close" aria-label="Recolher opções de rota" title="Recolher opções" onClick={()=>setSheetOpen(false)}>{adminV2RoadSigns?<X size={20}/>:<ChevronDown size={23}/>}</button></div>
+        {!navMode&&dest&&sheetOpen&&!pickOriginMode&&(b1User?<B1RouteSheet
+      step={b1Stage} vehicle={routeVehicle} routeData={routeData} choice={choice}
+      loading={loadingRoute} error={routeError} language={language}
+      onVehicle={chooseB1Vehicle} onChoice={id=>{mapControl.current?.cancelCinematic?.();setChoice(id);}}
+      onStart={begin} onRetry={()=>{b1CameraArmed.current=true;calculateRoute(dest,origin,routeVehicle);}}
+      onBack={()=>{
+        mapControl.current?.cancelCinematic?.();b1CameraArmed.current=false;
+        if(b1Stage==='transport'){reset();return;}
+        routeEpoch.current++;routeRequest.current?.abort();
+        setRouteData(null);setRouteError('');setLoadingRoute(false);setB1Stage('transport');
+      }}/>:<<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{adminV2RoadSigns?'SEU TRAJETO':t('DESTINO SELECIONADO')}</span><h2>{adminV2RoadSigns?'Escolha seu caminho':t('Escolha a sua rota')}</h2>{adminV2RoadSigns&&<span className="v95-route-destination" title={dest?.name}>{dest?.name}</span>}</div><button type="button" className="sheet-close" aria-label="Recolher opções de rota" title="Recolher opções" onClick={()=>setSheetOpen(false)}>{adminV2RoadSigns?<X size={20}/>:<ChevronDown size={23}/>}</button></div>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
         <div className={`v47-route-vehicle-switch ${import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
@@ -1350,7 +1382,7 @@ export default function MapPage({active=true}){
         </div>:<div className="notice" role="alert"><p>{routeError||t('Não foi possível calcular o trajeto agora.')}</p>
           <button type="button" onClick={()=>calculateRoute(dest,origin,routeVehicle)}>Tentar novamente</button>
         </div>}
-    </div>}
+    </div>)}
     {!navMode&&dest&&!sheetOpen&&!searchOpen&&<button className="collapsed-route" onClick={()=>setSheetOpen(true)}><span><strong>{dest.name}</strong><small>{route?`${fmtTime(route.duration)} · ${fmtKm(route.distance,language)}`:'Rota selecionada'}</small></span><ChevronUp size={23}/></button>}
     {navMode&&<div className="v36-nav-road-row" aria-label="Localização atual na navegação">
       {speedometer}
