@@ -348,6 +348,7 @@ def google_callback():
     return redirect(safe_next_url(next_url) or url_for("index"))
 
 
+@app.route("/personalizar", methods=["GET", "POST"])
 @app.route("/onboarding", methods=["GET", "POST"])
 @login_required
 def onboarding():
