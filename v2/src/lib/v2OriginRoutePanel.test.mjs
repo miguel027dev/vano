@@ -15,7 +15,8 @@ test('destination selected without accepted GPS or manual origin requests a map 
 });
 
 test('origin picker and route choice sheet are mutually exclusive',()=>{
- assert.match(file,/\{!navMode&&dest&&sheetOpen&&!pickOriginMode&&<div className="route-sheet">/);
+ assert.match(file,/b1User\?<B1RouteSheet/);
+ assert.match(file,/\/>:<div className="route-sheet">/);
  assert.match(file,/\{!navMode&&!searchOpen&&pickOriginMode&&<div className="gps-banner gps-picking"/);
 });
 
@@ -29,7 +30,8 @@ test('missing origin does not start provider requests or display stale failure s
 test('a real map-chosen origin still calculates a route and GPS remains optional',()=>{
  assert.match(file,/function chooseOrigin\(coords,label='Origem selecionada no mapa'\)/);
  assert.match(file,/setManualCoords\(coords\)/);
- assert.match(file,/if\(dest\)calculateRoute\(dest,coords\);/);
+ assert.match(file,/if\(dest\)\{if\(b1User\)/);
+ assert.match(file,/else calculateRoute\(dest,coords\);/);
  assert.match(file,/onPickOrigin=\{chooseOrigin\}/);
  assert.match(file,/onClick=\{\(\)=>requestGPS\(true\)\}/);
 });
