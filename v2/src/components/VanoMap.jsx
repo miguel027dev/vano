@@ -516,7 +516,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   const [error,setError]=useState(''),[forceRaster,setForceRaster]=useState(false);
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
   useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[poiVisible]);
-  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,focusMode,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards,routeTraffic,poiVisible,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  const visibleRoadCards=roadCards&&!focusMode;
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,focusMode,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards:visibleRoadCards,routeTraffic,poiVisible,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false,styleRecoveryAt=0;const initial=coord(latest.current.userCoords);
@@ -780,7 +781,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     if(map&&backend.current==='mapbox')syncPrivateRoadSignMarkers(map,mapboxgl,latest.current);
   },[privateRoadSigns,navigation,routes,selectedRoute,guidance?.stepIndex,guidance?.distance,guidance?.following?.stepIndex,guidance?.following?.gapMeters,appearance]);
    useEffect(()=>{mapRef.current?._vanoRefreshVisibleStreetCards?.();},
-      [roadCards,active,navigation,layer,appearance,selectedRoute,privateRoadSigns]);
+      [visibleRoadCards,active,navigation,layer,appearance,selectedRoute,privateRoadSigns]);
   // If GPS arrives before Mapbox is ready, the style.load handler performs
   // this same recenter as soon as the map can accept camera operations.
   useEffect(()=>{centerOnFirstGpsFix();},[userCoords?.[0],userCoords?.[1],telemetry?.accuracy,navigation,destination?.id]);
