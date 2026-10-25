@@ -2,6 +2,7 @@
 
 import ast
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,4 +67,25 @@ def test_mapbox_routes_and_js_theme_wiring():
     assert "window.addEventListener('vano:themechange'" in js
     api = (ROOT / "vano" / "routes" / "api.py").read_text(encoding="utf-8")
     assert api.count('mapbox_style=url_for("vano_mapbox_style", mode="light")') == 2
+
+
+
+def test_all_existing_map_icons_are_present_and_reloaded_in_both_themes():
+    js = (ROOT / "static" / "vano-map.js").read_text(encoding="utf-8")
+    match = re.search(r"const VANO_MAP_ICONS=\\{(.*?)\\};", js, re.DOTALL)
+    assert match, "VANO icon catalog not found"
+    icons = dict(re.findall(r"([A-Za-z]\\w*):'([^']+)'", match.group(1)))
+    assert len(icons) >= 40, "VANO marker/POI catalog unexpectedly reduced"
+    for key in ("radar", "signal", "pharmacy", "parking", "school", "trainStation", "alertAccident", "alertTraffic", "alertFlood"):
+        assert key in icons, f"missing existing VANO icon: {key}"
+    for key, url in icons.items():
+        path = ROOT / (url.removeprefix("/") if url.startswith("/") else "static/icons/vano/" + url)
+        assert path.is_file(), f"missing icon asset for {key}: {path}"
+    assert "async function registerSparkMapIcons()" in js
+    assert "await registerSparkMapIcons();" in js
+    assert "map.on('style.load',async()=>{" in js
+    assert "await installRuntimeLayers();" in js
+    assert "mapbox://mapbox.mapbox-streets-v8" in js
+    for layer in ("vano-secondary-pois-icons", "vano-secondary-transit-icons", "vano-secondary-airport-icons", "road-controls-secondary-icons", "alerts-marker-symbol"):
+        assert f"id:'{layer}'" in js, f"missing existing symbol layer: {layer}"
 
