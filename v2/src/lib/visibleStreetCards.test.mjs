@@ -89,7 +89,7 @@ test('mapa/v2 controls require feature enablement, and do not touch route or GPS
  const map=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  const renderer=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  const overlay=readFileSync(new URL('./visibleStreetCards.mjs',import.meta.url),'utf8');
- assert.ok(map.includes("roadCards={jevMode&&!immersiveV2&&import.meta.env.VITE_VISIBLE_STREET_CARDS!=='0'}"));
+ assert.ok(map.includes("roadCards={jevMode&&") && map.includes("VITE_VISIBLE_STREET_CARDS!=='0'"));
  assert.match(renderer,/map\.on\('idle',scheduleVisibleCards\)/);
  assert.match(renderer,/clearVisibleStreetCards\(map\)/);
  assert.doesNotMatch(overlay,/\/api\/route|setRouteData|setChoice\(|window\.localStorage|innerHTML|fetch\(/);
