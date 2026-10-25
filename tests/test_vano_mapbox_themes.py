@@ -89,3 +89,28 @@ def test_all_existing_map_icons_are_present_and_reloaded_in_both_themes():
     for layer in ("vano-secondary-pois-icons", "vano-secondary-transit-icons", "vano-secondary-airport-icons", "road-controls-secondary-icons", "alerts-marker-symbol"):
         assert f"id:'{layer}'" in js, f"missing existing symbol layer: {layer}"
 
+
+def test_map_only_hides_requested_poi_categories_and_keeps_banks():
+    """Hide noisy marker classes without deleting icon files or search support."""
+    js = (ROOT / "static" / "vano-map.js").read_text(encoding="utf-8")
+    match = re.search(r"const VANO_POI_MAKI=(\[[^;]+\]);", js)
+    assert match, "visible custom POI whitelist not found"
+    import ast as py_ast
+    visible = set(py_ast.literal_eval(match.group(1)))
+    assert {"bank", "parking", "charging-station", "restaurant", "fast-food", "park", "post"} <= visible
+    assert not ({"pharmacy", "lodging", "grocery", "convenience", "cafe", "school"} & visible)
+    special = js.split("const VANO_POI_SPECIAL=[", 1)[1].split("];", 1)[0]
+    for hidden in ("pet shop", "pet store", "petshop", "supermarket", "hypermarket"):
+        assert hidden not in special
+    for kept in ("car wash", "shopping mall", "charging point"):
+        assert kept in special
+    # Image files remain registered for any existing search/route components.
+    icon_catalog = js.split("const VANO_MAP_ICONS={", 1)[1].split("};", 1)[0]
+    for icon in ("bank:", "pharmacy:", "market:", "hotel:", "petShop:", "cafe:"):
+        assert icon in icon_catalog
+    assert "filter:vanoPoiFilterExpr()" in js
+    assert "await registerSparkMapIcons();" in js
+    assert "map.on('style.load',async()=>{" in js
+    labels = MANIFEST["designRules"]["labelsAndPoi"]
+    assert {"pharmacy", "hotel", "market", "supermarket", "school", "pet-shop"} <= set(labels["hiddenCategories"])
+    assert "bank" in labels["alwaysKeepCategories"]
