@@ -114,3 +114,18 @@ def test_map_only_hides_requested_poi_categories_and_keeps_banks():
     labels = MANIFEST["designRules"]["labelsAndPoi"]
     assert {"pharmacy", "hotel", "market", "supermarket", "school", "pet-shop"} <= set(labels["hiddenCategories"])
     assert "bank" in labels["alwaysKeepCategories"]
+
+
+def test_white_and_black_have_identical_gps_terrain_and_projection():
+    """Visual themes must not change the camera's geographic projection or elevation."""
+    light = MANIFEST["themes"]["light"]["style"]
+    black = MANIFEST["themes"]["black"]["style"]
+    for key in ("projection", "sources", "terrain"):
+        assert light[key] == black[key], f"map themes diverge on geographic {key}"
+
+    js = (ROOT / "static" / "vano-map.js").read_text(encoding="utf-8")
+    assert "applyVanoLightBasemapConfig" not in js, (
+        "The light map must not mutate its imported basemap after initial loading"
+    )
+    assert "map.on('load',async()=>{" in js
+    assert "bootstrapGps(!SHARED_TOKEN);" in js
