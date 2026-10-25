@@ -197,11 +197,6 @@ function localSmartDestinations(){const now=Date.now(),hour=new Date().getHours(
 let mapThemeOverride=null;try{const saved=localStorage.getItem('vano.map.theme.override.v173');if(saved==='night'||saved==='day')mapThemeOverride=saved}catch{}
 let currentMapMood=VANO_BLACK_THEME?'black':'day';
 function mapStyleForMood(m){return m==='black'||m==='night'?(STYLE_SET?.black||STYLE_SET?.night||STYLE_SET?.day||STYLE):(STYLE_SET?.day||STYLE)}
-function applyVanoLightBasemapConfig(){
-  if(!map||document.body.dataset.mood==='night'||currentMapMood==='night'||currentMapMood==='black')return;
-  const cfg={lightPreset:'day',theme:'faded',font:'Inter',showPlaceLabels:true,showRoadLabels:true,showPointOfInterestLabels:false,showTransitLabels:false,showLandmarkIcons:false,showLandmarkIconLabels:false,showAdminBoundaries:false,showIndoor:false,showIndoorLabels:false,show3dObjects:true,show3dBuildings:true,show3dTrees:false,show3dLandmarks:true,show3dFacades:false};
-  for(const [k,v] of Object.entries(cfg)){try{map.setConfigProperty?.('basemap',k,v)}catch{}}
-}
 let currentStyleUri=mapStyleForMood(currentMapMood),styleSwitching=false,weatherController=null,lastWeatherFetchAt=0,lastWeatherPos=null,moodTimer=null,signalPulseTimer=null,signalPulseState=false;
 
 const VOICE_PREF_KEY='vano-nav-voice-v126';
@@ -1435,7 +1430,7 @@ function hardRefreshMapViewport(){
 }
 map.on('style.load',async()=>{initialStyleLoaded=true;clearTimeout(initialStyleWatchdog);try{map.setProjection?.('mercator')}catch{}await installRuntimeLayers();await ensureVehicle3DLayer();syncNavigationThemePaint();updateAnimatedRoutePaint(true);restoreRuntimeMapState();styleSwitching=false;$('mapMoodFade')?.classList.remove('active')});
 map.on('load',async()=>{
-  restoreMapGestureHealth();hardRefreshMapViewport();applyVanoLightBasemapConfig();
+  restoreMapGestureHealth();hardRefreshMapViewport();
   await installRuntimeLayers();await ensureVehicle3DLayer();
   startRouteFlowAnimation();startPerformanceMonitor();
   applyMapPrefs();bootstrapGps(!SHARED_TOKEN);updatePlannerOriginStatus();scheduleEnvironmentalRefresh(BOOT_GPS||null,true);
