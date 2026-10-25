@@ -1175,17 +1175,21 @@ function paintMapbox(map,data,selection){
   if(!map.getLayer('vano-v2-other'))map.addLayer({id:'vano-v2-other',type:'line',source:'vano-v2-alternatives',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#7d91a3','line-width':5,'line-opacity':.66}});
   const strokeV2=shouldHighlightSelectedRoute(data);
   const stroke=v2RouteStrokePaint(strokeV2);
-  if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:stroke.halo});
-  if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900',...stroke.line,'line-opacity':1,'line-opacity-transition':{duration:250}}});
+  // Only /v2 gets this heavier brand stroke. /mapa keeps its existing widths.
+  const privateV2=Boolean(data.v2Experience);
+  const privateLineWidth=privateV2?['interpolate',['linear'],['zoom'],14,6,15,7.5,16,9.5,17,11.5,18,13.5,19,15]:stroke.line['line-width'];
+  const privateHaloWidth=privateV2?['interpolate',['linear'],['zoom'],14,10,15,11.5,16,14,17,16,18,19,19,21]:stroke.halo['line-width'];
+  if(!map.getLayer('vano-v2-halo'))map.addLayer({id:'vano-v2-halo',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{...stroke.halo,'line-width':privateHaloWidth}});
+  if(!map.getLayer('vano-v2-line'))map.addLayer({id:'vano-v2-line',type:'line',source:'vano-v2-selected',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#ff7900',...stroke.line,'line-width':privateLineWidth,'line-opacity':1,'line-opacity-transition':{duration:250}}});
   // /mapa and /v2 share the approved thicker stroke while leaving camera,
   // GPS and privileged V2 behaviors separate. Update only on a true mode
   // change, never per frame, so route-flow animations stay untouched.
-  if(map._vanoRouteStrokeV2!==strokeV2){
+  if(map._vanoRouteStrokeV2!==strokeV2||map._vanoPrivateV2Stroke!==privateV2){
     map.setPaintProperty('vano-v2-halo','line-color',stroke.halo['line-color']);
-    map.setPaintProperty('vano-v2-halo','line-width',stroke.halo['line-width']);
+    map.setPaintProperty('vano-v2-halo','line-width',privateHaloWidth);
     map.setPaintProperty('vano-v2-halo','line-opacity',stroke.halo['line-opacity']);
-    map.setPaintProperty('vano-v2-line','line-width',stroke.line['line-width']);
-    map._vanoRouteStrokeV2=strokeV2;
+    map.setPaintProperty('vano-v2-line','line-width',privateLineWidth);
+    map._vanoRouteStrokeV2=strokeV2;map._vanoPrivateV2Stroke=privateV2;
   }
   if(!map.getLayer('vano-mavi-preview-halo'))map.addLayer({
     id:'vano-mavi-preview-halo',type:'line',source:'vano-mavi-route-preview',
@@ -1215,11 +1219,15 @@ function paintMapbox(map,data,selection){
       map._vanoDirectionArrowRoute=arrowRoute;
     }
     if(!map.getLayer('vano-v2-maneuver-arrows-line'))map.addLayer({
-      id:'vano-v2-maneuver-arrows-line',type:'line',source:arrowsSource,minzoom:15,
+      id:'vano-v2-maneuver-arrows-line',type:'line',source:arrowsSource,minzoom:14.2,
       layout:{'line-join':'round','line-cap':'round'},
       paint:{'line-color':'#ffffff','line-opacity':.97,
-        'line-width':['interpolate',['linear'],['zoom'],15,2.4,17,3.3,19,4.1]}
+        'line-width':['interpolate',['linear'],['zoom'],14,3.2,15,4.1,16,4.6,17,5.0,18,5.3,19,5.6]}
     },map.getLayer('vano-v2-progress')?'vano-v2-progress':undefined);
+    // In case React reuses the same map on /mapa, never leak V2 cues to users.
+    map.setLayoutProperty('vano-v2-maneuver-arrows-line','visibility','visible');
+  }else if(map.getLayer('vano-v2-maneuver-arrows-line')){
+    map.setLayoutProperty('vano-v2-maneuver-arrows-line','visibility','none');
   }
   const traffic=data.v2Experience&&data.vehicle!=='a-pe'?data.routeTraffic:null;
   if(map._vanoTrafficGradient!==traffic?.gradient||map._vanoTrafficV2!==Boolean(traffic)){
