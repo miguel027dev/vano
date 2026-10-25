@@ -978,39 +978,13 @@ async function searchPlaces(q,kind){
 }
 
 
-const VANO_MAP_ICONS={destination:'destination.svg',traffic:'traffic.svg',signal:'traffic-signal.svg',stop:'stop-sign.svg',yield:'yield-sign.svg',roadsign:'road-sign.svg',radar:'speed-camera.svg',alertAccident:'alert-accident-premium.png',alertTraffic:'/static/icons/vano/reports/report-traffic.png',alertBlock:'/static/icons/vano/reports/report-roadblock.png',alertRadar:'/static/icons/vano/reports/report-radar.png',alertHazard:'alert-hazard.svg',alertPothole:'alert-pothole.svg',alertStoppedVehicle:'alert-stopped-vehicle.svg',alertObjectRoad:'alert-object-road.svg',alertBrokenSignal:'alert-broken-signal.svg',alertFlood:'alert-flood.svg',alertConstruction:'alert-construction.svg',alertCrowd:'alert-crowd.svg',alertRobbery:'alert-robbery-premium.png',alertPolice:'/static/icons/vano/reports/report-police.png',alertSecurity:'alert-security.svg',alertLight:'alert-light.svg',alertGeneric:'alert-generic.svg',pedestrianCrossing:'poi-pedestrian-crossing.svg',parking:'poi-parking.svg',railwayCrossing:'poi-railway-crossing.svg',bank:'poi-bank.svg',market:'poi-market.svg',supermarket:'poi-supermarket.svg',mall:'poi-mall.svg',evCharge:'poi-ev-charge.svg',evStation:'poi-ev-station.svg',carwash:'poi-carwash.svg',hotel:'poi-hotel.svg',school:'poi-school.svg',fitness:'poi-fitness.svg',park:'poi-park.svg',petShop:'poi-pet-shop.svg',post:'poi-post.svg',pharmacy:'poi-pharmacy.svg',restaurant:'poi-restaurant.svg',fastFood:'poi-fast-food.svg',cafe:'poi-cafe.svg',busTerminal:'poi-bus-terminal.svg',trainStation:'poi-train-station.svg',railwayStation:'poi-railway-station.svg',airport:'poi-airport.svg'};
+const VANO_MAP_ICONS={destination:'destination.svg',traffic:'traffic.svg',signal:'traffic-signal.svg',stop:'stop-sign.svg',yield:'yield-sign.svg',roadsign:'road-sign.svg',radar:'speed-camera.svg',alertAccident:'alert-accident-premium.png',alertTraffic:'/static/icons/vano/reports/report-traffic.png',alertBlock:'/static/icons/vano/reports/report-roadblock.png',alertRadar:'/static/icons/vano/reports/report-radar.png',alertHazard:'alert-hazard.svg',alertPothole:'alert-pothole.svg',alertStoppedVehicle:'alert-stopped-vehicle.svg',alertObjectRoad:'alert-object-road.svg',alertBrokenSignal:'alert-broken-signal.svg',alertFlood:'alert-flood.svg',alertConstruction:'alert-construction.svg',alertCrowd:'alert-crowd.svg',alertRobbery:'alert-robbery-premium.png',alertPolice:'/static/icons/vano/reports/report-police.png',alertSecurity:'alert-security.svg',alertLight:'alert-light.svg',alertGeneric:'alert-generic.svg',pedestrianCrossing:'poi-pedestrian-crossing.svg',parking:'poi-parking.svg',railwayCrossing:'poi-railway-crossing.svg',bank:'poi-bank.svg',market:'poi-market.svg',supermarket:'poi-supermarket.svg',mall:'poi-mall.svg',evCharge:'poi-ev-charge.svg',evStation:'poi-ev-station.svg',carwash:'poi-carwash.svg',hotel:'poi-hotel.svg',school:'poi-school.svg',fitness:'poi-fitness.svg',park:'poi-park.svg',petShop:'poi-pet-shop.svg',post:'poi-post.svg',pharmacy:'poi-pharmacy.svg',restaurant:'poi-restaurant.svg',fastFood:'poi-fast-food.svg',cafe:'poi-cafe.svg',busTerminal:'poi-bus-terminal.svg',trainStation:'poi-train-station.svg',railwayStation:'poi-railway-station.svg',airport:'poi-airport.svg',hospital:'poi-hospital.svg',fuel:'poi-fuel.svg',police:'poi-police.svg',toll:'poi-toll.svg'};
 function loadSparkSvg(name,file){return new Promise(resolve=>{if(map.hasImage(name)){resolve();return}const img=new Image();img.onload=()=>{try{if(!map.hasImage(name))map.addImage(name,img,{pixelRatio:name==='vano-signal'?1.55:2})}catch{}resolve()};img.onerror=()=>resolve();img.src=String(file||'').startsWith('/')?file:'/static/icons/vano/'+file})}
 async function registerSparkMapIcons(){await Promise.all(Object.entries(VANO_MAP_ICONS).map(([name,file])=>loadSparkSvg('vano-'+name,file)))}
 function roadControlIconExpr(){return ['match',['get','type'],'speed_camera','vano-radar','traffic_signal','vano-signal','stop_sign','vano-stop','yield_sign','vano-yield','traffic_sign','vano-roadsign','vano-signal']}
 function secondaryRoadControlIconExpr(){return ['match',['get','type'],'railway_crossing','vano-railwayCrossing','pedestrian_crossing','vano-pedestrianCrossing','vano-pedestrianCrossing']}
 
-/* VANO secondary map POIs: Mapbox Streets v8 categories, with explicit subtype gates
-   for classes that share a generic Maki icon. No location sampling or HTML overlays. */
-const VANO_POI_MAKI=['bank','parking','parking-garage','charging-station','restaurant','restaurant-noodle','restaurant-pizza','restaurant-seafood','fast-food','post','fitness-centre','park'];
-const VANO_POI_DETAILS=['downcase',['concat',['to-string',['coalesce',['get','type'],'']],' ',['to-string',['coalesce',['get','category_en'],'']]]];
-function vanoPoiDetailsMatch(words){return ['any',...words.map(w=>['in',w,VANO_POI_DETAILS])]}
-const VANO_POI_SPECIAL=[
-  [vanoPoiDetailsMatch(['car wash','carwash','lava-rápido','lava rapido','lavagem automotiva']),'vano-carwash'],
-  [['any',vanoPoiDetailsMatch(['shopping mall','shopping centre','shopping center']),['==',['downcase',['to-string',['coalesce',['get','type'],'']]],'mall']],'vano-mall'],
-  [['all',['==',['get','maki'],'charging-station'],vanoPoiDetailsMatch(['charging point','electric charger','carregador'])],'vano-evCharge']
-];
-function vanoPoiIconExpr(){
-  const values=[];
-  for(const [condition,icon] of VANO_POI_SPECIAL)values.push(condition,icon);
-  return ['case',...values,
-    ['match',['get','maki'],
-      'bank','vano-bank','parking','vano-parking','parking-garage','vano-parking',
-      'charging-station','vano-evStation',
-      'restaurant','vano-restaurant','restaurant-noodle','vano-restaurant','restaurant-pizza','vano-restaurant','restaurant-seafood','vano-restaurant',
-      'fast-food','vano-fastFood','post','vano-post',
-      'fitness-centre','vano-fitness','park','vano-park',
-      '']];
-}
-function vanoPoiFilterExpr(){
-  return ['any',['in',['get','maki'],['literal',VANO_POI_MAKI]],...VANO_POI_SPECIAL.map(item=>item[0])];
-}
-
-function alertIconExpr(){return ['match',['get','category'],'robbery','vano-alertRobbery','harassment','vano-alertSecurity','poor_lighting','vano-alertLight','accident','vano-alertAccident','traffic','vano-alertTraffic','road_block','vano-alertBlock','blitz','vano-alertPolice','speed_camera','vano-alertRadar','road_hazard','vano-alertHazard','pothole','vano-alertPothole','stopped_vehicle','vano-alertStoppedVehicle','object_on_road','vano-alertObjectRoad','broken_signal','vano-alertBrokenSignal','flood','vano-alertFlood','construction','vano-alertConstruction','crowd','vano-alertCrowd','vano-alertGeneric']}
+const VANO_POI_MAKI=['bank','park','parking','charging-station','restaurant','fitness-centre','pharmacy','hospital','school','cafe','grocery'];const VANO_POI_DEFAULT=['pharmacy','fitness','parking','fuel','airport','ev_charging','train_station','toll','restaurant','supermarket','shopping','hospital','school','police','cafe'];const VANO_POI_SELECTED=new Set(Array.isArray(BOOT.poiVisible)?BOOT.poiVisible:VANO_POI_DEFAULT);const VANO_POI_ALWAYS=['bank','park'];const VANO_POI_DETAILS=['downcase',['concat',['to-string',['coalesce',['get','type'],'']],' ',['to-string',['coalesce',['get','category_en'],'']]]];function vanoPoiDetailsMatch(words){return ['any',...words.map(w=>['in',w,VANO_POI_DETAILS])]}const VANO_POI_SHOPPING= ['any',vanoPoiDetailsMatch(['shopping mall','shopping centre','shopping center']),['==',['downcase',['to-string',['coalesce',['get','type'],'']]],'mall']];const VANO_POI_EVCHARGE=['all',['==',['get','maki'],'charging-station'],vanoPoiDetailsMatch(['charging point','electric charger','carregador'])];function vanoPoiIconExpr(){return ['case',VANO_POI_SHOPPING,'vano-mall',VANO_POI_EVCHARGE,'vano-evCharge',['match',['get','maki'],'bank','vano-bank','park','vano-park','parking','vano-parking','parking-garage','vano-parking','charging-station','vano-evStation','restaurant','vano-restaurant','restaurant-noodle','vano-restaurant','restaurant-pizza','vano-restaurant','restaurant-seafood','vano-restaurant','fitness-centre','vano-fitness','pharmacy','vano-pharmacy','fuel','vano-fuel','hospital','vano-hospital','school','vano-school','police','vano-police','cafe','vano-cafe','grocery','vano-supermarket','supermarket','vano-supermarket','mall','vano-mall','toll','vano-toll','']];}function vanoPoiFilterExpr(){const allowed=[...VANO_POI_ALWAYS];const mapping={parking:['parking','parking-garage'],ev_charging:['charging-station'],restaurant:['restaurant','restaurant-noodle','restaurant-pizza','restaurant-seafood'],fitness:['fitness-centre'],pharmacy:['pharmacy'],fuel:['fuel'],hospital:['hospital'],school:['school'],police:['police'],cafe:['cafe'],supermarket:['grocery','supermarket'],shopping:['mall'],toll:['toll']};Object.entries(mapping).forEach(([key,maki])=>{if(VANO_POI_SELECTED.has(key))allowed.push(...maki)});return ['any',['in',['get','maki'],['literal',allowed]],...(VANO_POI_SELECTED.has('shopping')?[VANO_POI_SHOPPING]:[])];}function alertIconExpr(){return ['match',['get','category'],'robbery','vano-alertRobbery','harassment','vano-alertSecurity','poor_lighting','vano-alertLight','accident','vano-alertAccident','traffic','vano-alertTraffic','road_block','vano-alertBlock','blitz','vano-alertPolice','speed_camera','vano-alertRadar','road_hazard','vano-alertHazard','pothole','vano-alertPothole','stopped_vehicle','vano-alertStoppedVehicle','object_on_road','vano-alertObjectRoad','broken_signal','vano-alertBrokenSignal','flood','vano-alertFlood','construction','vano-alertConstruction','crowd','vano-alertCrowd','vano-alertGeneric']}
 
 let lastPresenceSyncAt=0,lastNearbyFetchAt=0,nearbyController=null,lastNearbyDriversCount=0;
 function nearbyDriverFC(items){return{type:'FeatureCollection',features:(items||[]).map(x=>({type:'Feature',properties:{id:x.id,label:x.label||'Motorista próximo'},geometry:{type:'Point',coordinates:[+x.lon,+x.lat]}}))}}
@@ -1132,12 +1106,9 @@ async function installRuntimeLayers(){
         'symbol-sort-key':['match',['get','maki'],'bank',1,'parking',2,'parking-garage',2,'charging-station',3,'restaurant',4,5]
       }
     },'route-shadow');
-    // A terminal is a station, not every local bus stop.
     ensureLayer({
       id:'vano-secondary-transit-icons',type:'symbol',source:'vano-secondary-pois','source-layer':'transit_stop_label',minzoom:13.5,
-      filter:['any',
-        ['all',['==',['get','maki'],'bus'],['==',['get','stop_type'],'station']],
-        ['in',['get','maki'],['literal',['rail','rail-light','rail-metro']]]],
+      filter:VANO_POI_SELECTED.has('train_station')?['in',['get','maki'],['literal',['rail','rail-light','rail-metro']]]:['==',1,0],
       layout:{
         'icon-image':['match',['get','maki'],'bus','vano-busTerminal','rail','vano-railwayStation','rail-light','vano-trainStation','rail-metro','vano-trainStation','vano-trainStation'],
         'icon-size':['interpolate',['linear'],['zoom'],13.5,.48,16,.66,18,.77],
@@ -1147,7 +1118,7 @@ async function installRuntimeLayers(){
     },'route-shadow');
     ensureLayer({
       id:'vano-secondary-airport-icons',type:'symbol',source:'vano-secondary-pois','source-layer':'airport_label',minzoom:11.5,
-      filter:['==',['get','maki'],'airport'],
+      filter:VANO_POI_SELECTED.has('airport')?['==',['get','maki'],'airport']:['==',1,0],
       layout:{
         'icon-image':'vano-airport','icon-size':['interpolate',['linear'],['zoom'],11.5,.42,14,.55,18,.72],
         'icon-pitch-alignment':'viewport','icon-rotation-alignment':'viewport',

@@ -87,16 +87,18 @@ def test_requested_stop_never_falls_back_to_direct_route(monkeypatch):
         routing.mapbox_routes(-46.7,-23.5,-46.68,-23.5,"driving",via=(-46.69,-23.5))
 
 
-def test_optional_preferences_and_confirmed_stop_frontend_contract():
+def test_personalization_uses_explicit_choices_and_keeps_real_route_stops():
     root = Path(__file__).resolve().parents[1]
     html = (root / "templates/onboarding.html").read_text(encoding="utf-8")
-    onboarding = (root / "static/vano-personality-onboarding.js").read_text(encoding="utf-8")
     server = (root / "vano/routes/auth.py").read_text(encoding="utf-8")
     mapjs = (root / "static/vano-map.js").read_text(encoding="utf-8")
     smartjs = (root / "static/vano-personal-routes.js").read_text(encoding="utf-8")
-    assert 'id="routeStyleSkip"' in html
-    assert 'name="route_style_skipped"' in html
-    assert "skipped.value='1'" in onboarding
-    assert 'style_skipped = request.form.get("route_style_skipped") == "1"' in server
+    assert 'name="route_preference"' in html
+    assert 'name="poi_visible"' in html
+    assert 'data-poi-action="all"' in html and 'data-poi-action="clear"' in html
+    assert 'id="routeStyleAnalyze"' not in html
+    assert 'vano-personality-onboarding.js' not in html
+    assert 'request.form.getlist("poi_visible")' in server
+    assert "interpret_preference_text" not in server
     assert "p.set('via_lat'" in mapjs and "p.set('via_lon'" in mapjs
     assert "via_stop:x.stops?.[0]||null" in smartjs

@@ -2,6 +2,81 @@
 {% block title %}Personalizar conta · VANO MAPS{% endblock %}
 {% block head %}
 <script>document.documentElement.classList.add('vano-onboarding-js','vano-onboarding-v500-js')</script>
+<style>
+/* VANO Personalizar 2.0 — isolated overrides for the account personalization flow. */
+[data-ob500-root] .ob500-ambient,
+[data-ob500-root] .ob500-xp,
+[data-ob500-root] .ob500-live-dot,
+[data-ob500-root] .ob500-level-card,
+[data-ob500-root] .ob500-core-badge { display:none!important; }
+
+[data-ob500-root] .ob500-preference-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+[data-ob500-root] .ob500-route-card { position:relative;display:block; min-width:0; cursor:pointer; }
+[data-ob500-root] .ob500-route-card input,
+[data-ob500-root] .ob500-poi-choice input,
+[data-ob500-root] .ob500-map-choice input { position:absolute; opacity:0; width:1px; height:1px; }
+[data-ob500-root] .ob500-route-card > span { display:flex; flex-direction:column; gap:9px; height:100%; min-height:142px; padding:19px; border:1px solid rgba(151,162,177,.28); border-radius:16px; color:var(--text,#f4f5f8); background:rgba(126,135,150,.055); transition:border-color .17s ease,background .17s ease; }
+[data-ob500-root] .ob500-route-card svg { color:#f27c38; width:23px; height:23px; }
+[data-ob500-root] .ob500-route-card b { font-size:14px; font-weight:760; letter-spacing:-.015em; }
+[data-ob500-root] .ob500-route-card small { line-height:1.5; color:var(--muted,#a3a9b0); font-size:12px; }
+[data-ob500-root] .ob500-route-card input:checked+span { border-color:#f27c38; background:rgba(244,117,38,.11); box-shadow:inset 0 0 0 1px rgba(244,117,38,.22); }
+[data-ob500-root] .ob500-route-card input:focus-visible+span,
+[data-ob500-root] .ob500-poi-choice input:focus-visible+span,
+[data-ob500-root] .ob500-map-choice input:focus-visible+.ob500-visual-preview { outline:2px solid #f27c38;outline-offset:3px; }
+
+[data-ob500-root] .ob500-pois-actions { display:flex; align-items:center; flex-wrap:wrap; gap:9px; margin:16px 0; }
+[data-ob500-root] .ob500-pois-action { display:inline-flex; align-items:center; gap:7px; border-radius:11px; border:1px solid rgba(145,151,162,.3); background:rgba(135,145,165,.06); color:var(--text,#f4f5f8); padding:11px 14px; min-height:42px; font-size:12px; font-weight:720; }
+[data-ob500-root] .ob500-pois-action:hover { border-color:#f27c38; }
+[data-ob500-root] .ob500-pois-count { margin-left:auto; font-size:12px; color:var(--muted,#aab4c2); font-weight:700; }
+[data-ob500-root] .ob500-pois-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px; }
+[data-ob500-root] .ob500-poi-choice { position:relative; min-width:0; cursor:pointer; }
+[data-ob500-root] .ob500-poi-choice > span { display:flex; align-items:center; gap:11px; min-height:58px; border-radius:13px; border:1px solid rgba(145,151,162,.28); background:rgba(132,146,165,.05); padding:11px 13px; color:var(--text,#f4f5f8);transition:border-color .17s ease,background .17s ease; }
+[data-ob500-root] .ob500-poi-choice svg { flex-shrink:0; color:var(--muted,#aab4c2); }
+[data-ob500-root] .ob500-poi-choice b { font-weight:670; font-size:12px; line-height:1.3; flex:1; min-width:0; }
+[data-ob500-root] .ob500-poi-choice em { display:flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:7px; border:1px solid rgba(145,151,162,.3); flex-shrink:0; font-style:normal; }
+[data-ob500-root] .ob500-poi-choice em svg { opacity:0; }
+[data-ob500-root] .ob500-poi-choice input:checked+span { background:rgba(244,117,38,.095); border-color:rgba(244,117,38,.8); }
+[data-ob500-root] .ob500-poi-choice input:checked+span > svg { color:#f27c38; }
+[data-ob500-root] .ob500-poi-choice input:checked+span em { background:#f27c38; border-color:#f27c38; }
+[data-ob500-root] .ob500-poi-choice input:checked+span em svg { color:#fff; opacity:1; }
+[data-ob500-root] .ob500-pois-note { display:flex; align-items:center; gap:8px; margin:16px 0 0; color:var(--muted,#aab4c2); font-size:12px; line-height:1.5; }
+
+[data-ob500-root] .ob500-map-styles { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+[data-ob500-root] .ob500-map-choice { min-width:0;display:flex;flex-direction:column;position:relative;padding:10px;gap:8px; cursor:pointer; }
+[data-ob500-root] .ob500-map-choice > b { font-size:15px; }
+[data-ob500-root] .ob500-map-choice > small { font-size:12px; line-height:1.5; }
+[data-ob500-root] .ob500-map-choice .ob500-visual-preview { position:relative; display:block; width:100%; height:142px; border-radius:13px; border:1px solid rgba(125,131,144,.16); background:#e9e5df; isolation:isolate; overflow:hidden; }
+[data-ob500-root] .ob500-map-choice .ob500-visual-map { position:absolute; inset:0; width:100%;height:100%; z-index:2; filter:drop-shadow(0 1px 1px rgba(49,56,65,.13)); }
+[data-ob500-root] .ob500-visual-clean { background:linear-gradient(135deg,#f7f4ef,#e7e7e3 74%)!important; }
+[data-ob500-root] .ob500-preview-label { position:absolute; z-index:3;bottom:8px;left:9px;display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.91);color:#555b64;font-size:9px;font-weight:850;letter-spacing:.08em; }
+[data-ob500-root] .ob500-visual-immersive { background:#a8bbbd!important; }
+[data-ob500-root] .ob500-weather-piece { display:block; position:absolute; inset:0; }
+[data-ob500-root] .ob500-weather-piece.sun { background:linear-gradient(165deg,#fae4a8,#f7d6a8); clip-path:polygon(0 0,30% 0,12% 100%,0 100%); }
+[data-ob500-root] .ob500-weather-piece.rain { background:linear-gradient(150deg,#b3c9d4,#637c93); clip-path:polygon(30% 0,55% 0,37% 100%,12% 100%); }
+[data-ob500-root] .ob500-weather-piece.snow { background:linear-gradient(140deg,#eaf1f5,#aecbd4); clip-path:polygon(55% 0,80% 0,62% 100%,37% 100%); }
+[data-ob500-root] .ob500-weather-piece.dusk { background:linear-gradient(130deg,#a49bad,#4b586f); clip-path:polygon(80% 0,100% 0,100% 100%,62% 100%); }
+[data-ob500-root] .ob500-weather-symbol { position:absolute; z-index:3; top:15px; color:#fff;filter:drop-shadow(0 1px 2px #53606a); }
+[data-ob500-root] .ob500-weather-symbol.sun { left:7%;color:#e98d24; }
+[data-ob500-root] .ob500-weather-symbol.rain { left:33%; }
+[data-ob500-root] .ob500-weather-symbol.snow { left:58%; }
+[data-ob500-root] .ob500-weather-symbol.dusk { left:85%; }
+[data-ob500-root] .ob500-map-choice:has(input:checked) { border-color:#f27c38!important;box-shadow:inset 0 0 0 1px #f27c38; }
+@media(max-width:700px) {
+ [data-ob500-root] .ob500-preference-cards { grid-template-columns:1fr; }
+ [data-ob500-root] .ob500-route-card > span { min-height:74px;display:grid;grid-template-columns:26px 1fr; gap:4px 12px; padding:13px 15px; }
+ [data-ob500-root] .ob500-route-card > span svg { grid-row:span 2; align-self:center; }
+ [data-ob500-root] .ob500-pois-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ [data-ob500-root] .ob500-map-choice .ob500-visual-preview { height:112px; }
+}
+@media(max-width:360px) {
+ [data-ob500-root] .ob500-pois-grid { grid-template-columns:1fr; }
+ [data-ob500-root] .ob500-map-styles { grid-template-columns:1fr; }
+}
+@media(prefers-reduced-motion:reduce) {
+ [data-ob500-root] .ob500-poi-choice > span, [data-ob500-root] .ob500-route-card > span { transition:none; }
+}
+
+</style>
 {% endblock %}
 {% block content %}
 {% set selected_locale = user['locale'] or active_locale %}
@@ -104,41 +179,42 @@
             <div class="ob500-core-badge" id="ob500CoreBadge"><i data-lucide="cpu" width="17"></i><span><small>PERFIL DE ROTA</small><b>Equilibrado</b></span></div>
           </div>
 
+
           <div class="ob500-section-card ob500-route-section">
-            <div class="ob500-section-head"><div><span>01 // PREFERÊNCIA DE ROTA</span><h2>Como você prefere navegar?</h2><p>Isso altera o peso que o VANO dá para segurança e tempo durante o cálculo.</p></div><span class="ob500-live-dot"><i></i> LIVE</span></div>
-            <div class="ob-personality-v1">
-              <label for="routeStyleText" class="ob-personality-label">Conte com suas próprias palavras</label>
-              <textarea id="routeStyleText" name="route_style_text" rows="4" maxlength="500"
-                placeholder="Ex.: Prefiro ruas tranquilas, não gosto de pedágios e quero evitar estradas de terra."
-                aria-describedby="routeStyleHint">{{ user.get('route_style_text','') if user is mapping else '' }}</textarea>
-              <p id="routeStyleHint">O VANO vai interpretar seu texto. Você confere o resultado antes de continuar.</p>
-              <button type="button" class="ob-personality-analyze" id="routeStyleAnalyze">Interpretar minha preferência <span aria-hidden="true">→</span></button>
-              <div id="routeStylePreview" class="ob-personality-preview" aria-live="polite" hidden></div>
-              <button type="button" class="ob-personality-confirm" id="routeStyleConfirm" hidden>✓ É isso que eu quero</button>
-              <input type="hidden" id="routeStyleConfirmed" name="route_style_confirmed" value="0">
-              <input type="hidden" id="routeStyleSkipped" name="route_style_skipped" value="0">
-              <button type="button" class="ob-personality-skip" id="routeStyleSkip">Pular por enquanto</button>
-              <input type="radio" name="route_preference" value="balanced" checked hidden aria-hidden="true">
-              <input type="radio" name="route_preference" value="fast_first" hidden aria-hidden="true">
-              <input type="radio" name="route_preference" value="safety_first" hidden aria-hidden="true">
+            <div class="ob500-section-head"><div><span>01 // SUA ROTA</span><h2>Como prefere chegar?</h2><p>Escolha diretamente o que priorizar. Sem interpretação por IA.</p></div></div>
+            <div class="ob500-preference-cards" role="radiogroup" aria-label="Prioridade de rota">
+              <label class="ob500-route-card"><input type="radio" name="route_preference" value="fast_first" {% if selected_route=='fast_first' %}checked{% endif %}><span><i data-lucide="gauge" width="22"></i><b>Chegar mais rápido</b><small>Priorizar o tempo estimado.</small></span></label>
+              <label class="ob500-route-card"><input type="radio" name="route_preference" value="safety_first" {% if selected_route=='safety_first' %}checked{% endif %}><span><i data-lucide="shield-check" width="22"></i><b>Rota mais segura</b><small>Priorizar fatores de segurança disponíveis.</small></span></label>
+              <label class="ob500-route-card"><input type="radio" name="route_preference" value="balanced" {% if selected_route=='balanced' %}checked{% endif %}><span><i data-lucide="route" width="22"></i><b>Comparar rotas</b><small>Equilibrar tempo e segurança.</small></span></label>
             </div>
-            <style>
-              .ob-personality-v1{display:grid;gap:11px;max-width:690px;width:100%}
-              .ob-personality-label{font-size:14px;font-weight:750;color:var(--text,#eef2f7)}
-              .ob-personality-v1 textarea{display:block;width:100%;box-sizing:border-box;min-height:122px;max-height:250px;
-                padding:15px 16px;border:1px solid rgba(160,173,190,.34);border-radius:15px;background:#1d242c;
-                color:#f4f6f8;font:inherit;font-size:14px;line-height:1.55;resize:vertical}
-              .ob-personality-v1 textarea:focus{outline:2px solid #f36b21;outline-offset:2px}
-              .ob-personality-v1 p{margin:0;color:#aebac8;font-size:12px;line-height:1.5}
-              .ob-personality-v1 button{min-height:48px;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:750;cursor:pointer}
-              .ob-personality-analyze{border:1px solid #e97637;background:#242c34;color:#ffad7e}
-              .ob-personality-confirm{border:0;background:#f36b21;color:#20150e}
-              .ob-personality-skip{border:1px solid rgba(164,175,190,.32);background:transparent;color:#c3ceda}
-              .ob-personality-preview{padding:15px;background:#202b34;border:1px solid #46515d;border-radius:13px;
-                color:#e4ebf2;font-size:13px;line-height:1.65;white-space:pre-line}
-              .ob-personality-v1 [hidden]{display:none!important}
-              @media(prefers-reduced-motion:reduce){.ob-personality-v1 *{transition:none!important}}
-            </style>
+          </div>
+
+          <div class="ob500-section-card ob500-pois-section" id="ob500Pois">
+            <div class="ob500-section-head"><div><span>02 // SEUS LUGARES</span><h2>Lugares no mapa</h2><p>Exiba apenas as categorias que deseja encontrar. Banco, parque e sinalização de trânsito continuam no mapa.</p></div></div>
+            <div class="ob500-pois-actions">
+              <button type="button" class="ob500-pois-action" data-poi-action="all"><i data-lucide="check-check" width="16"></i> Selecionar todos</button>
+              <button type="button" class="ob500-pois-action" data-poi-action="clear"><i data-lucide="x" width="16"></i> Limpar</button>
+              <span class="ob500-pois-count" id="ob500PoisCount" aria-live="polite"></span>
+            </div>
+            {% set poi_options = [
+              ('pharmacy','Farmácia','pill'), ('fitness','Academia','dumbbell'),
+              ('parking','Estacionamento','square-parking'), ('fuel','Combustível','fuel'),
+              ('airport','Aeroporto','plane'), ('ev_charging','Recarga elétrica','plug-zap'),
+              ('train_station','Estação de trem','train-front'), ('toll','Pedágio','ticket'),
+              ('restaurant','Restaurante','utensils'), ('supermarket','Supermercado','shopping-cart'),
+              ('shopping','Shopping','shopping-bag'), ('hospital','Hospital','hospital'),
+              ('school','Escola','graduation-cap'), ('police','Delegacia','shield-check'),
+              ('cafe','Cafeteria','coffee')
+            ] %}
+            <div class="ob500-pois-grid">
+              {% for value, label, icon in poi_options %}
+              <label class="ob500-poi-choice">
+                <input type="checkbox" name="poi_visible" value="{{ value }}" {% if value in selected_pois %}checked{% endif %}>
+                <span><i data-lucide="{{ icon }}" width="19"></i><b>{{ label }}</b><em><i data-lucide="check" width="13"></i></em></span>
+              </label>
+              {% endfor %}
+            </div>
+            <p class="ob500-pois-note"><i data-lucide="info" width="15"></i> Os ícones aparecem onde houver dados cartográficos disponíveis. Alertas de segurança não são afetados.</p>
           </div>
 
           <div class="ob500-config-grid">
@@ -162,14 +238,30 @@
             </div>
           </div>
 
+
           <div class="ob500-section-card ob500-map-section">
-            <div class="ob500-section-head"><div><span>04 // VISUAL</span><h2>Escolha o clima do mapa</h2><p>A rota continua laranja. Você muda apenas o ambiente e o contraste.</p></div><span class="ob500-map-selected" id="ob500MapSelected">Automático</span></div>
-            <div class="ob500-map-grid" role="radiogroup" aria-label="Estilo do mapa">
-              <label class="ob500-map-card is-auto" data-map-label="Automático"><input type="radio" name="map_style" value="auto" {% if selected_map in ['auto','vivid','vano'] %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="wand-sparkles" width="16"></i></em></span><b>Auto</b><small>Se adapta</small></label>
-              <label class="ob500-map-card is-day" data-map-label="Dia"><input type="radio" name="map_style" value="day" {% if selected_map in ['day','standard','streets'] %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="sun" width="16"></i></em></span><b>Dia</b><small>Claro</small></label>
-              <label class="ob500-map-card is-afternoon" data-map-label="Tarde"><input type="radio" name="map_style" value="afternoon" {% if selected_map=='afternoon' %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="sunset" width="16"></i></em></span><b>Tarde</b><small>Quente</small></label>
-              <label class="ob500-map-card is-night" data-map-label="Escuro"><input type="radio" name="map_style" value="night" {% if selected_map=='night' %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="moon-star" width="16"></i></em></span><b>Escuro</b><small>Noite</small></label>
-              <label class="ob500-map-card is-rain" data-map-label="Chuva"><input type="radio" name="map_style" value="rain" {% if selected_map=='rain' %}checked{% endif %}><span class="ob500-map-mini"><i class="road r1"></i><i class="road r2"></i><i class="route"></i><em><i data-lucide="cloud-rain" width="16"></i></em></span><b>Chuva</b><small>Contraste</small></label>
+            <div class="ob500-section-head"><div><span>04 // APARÊNCIA</span><h2>Qual mapa você prefere?</h2><p>O mapa mantém suas rotas e créditos cartográficos. Só a experiência visual muda.</p></div><span class="ob500-map-selected" id="ob500MapSelected">Imersivo</span></div>
+            <div class="ob500-map-grid ob500-map-styles" role="radiogroup" aria-label="Estilo do mapa">
+              <label class="ob500-map-card ob500-map-choice" data-map-label="Clean">
+                <input type="radio" name="map_style" value="day" {% if selected_map in ['day','standard','streets'] %}checked{% endif %}>
+                <span class="ob500-visual-preview ob500-visual-clean" role="img" aria-label="Mapa VANO claro, branco quente, ruas cinza e rota laranja">
+                  <svg class="ob500-visual-map" viewBox="0 0 320 145" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="12" opacity=".88"><path d="M-10 44 C68 13 98 85 166 48 S255 50 335 18"/><path d="M-10 116 C72 91 91 135 166 95 S270 93 335 132"/><path d="M60 -15 L108 166 M217 -15 L261 166"/></g><path d="M12 133 Q85 103 125 80 T300 24" fill="none" stroke="#f36b21" stroke-width="6" stroke-linecap="round"/></svg>
+                  <span class="ob500-preview-label"><i data-lucide="map" width="15"></i> VANO CLEAN</span>
+                </span>
+                <b>Clean</b><small>Mapa claro, limpo e legível.</small>
+              </label>
+              <label class="ob500-map-card ob500-map-choice" data-map-label="Imersivo">
+                <input type="radio" name="map_style" value="auto" {% if selected_map not in ['day','standard','streets'] %}checked{% endif %}>
+                <span class="ob500-visual-preview ob500-visual-immersive" role="img" aria-label="Mesma cidade dividida em faixas diagonais com sol, chuva, neve e entardecer">
+                  <i class="ob500-weather-piece sun"></i><i class="ob500-weather-piece rain"></i><i class="ob500-weather-piece snow"></i><i class="ob500-weather-piece dusk"></i>
+                  <svg class="ob500-visual-map" viewBox="0 0 320 145" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="12" opacity=".88"><path d="M-10 44 C68 13 98 85 166 48 S255 50 335 18"/><path d="M-10 116 C72 91 91 135 166 95 S270 93 335 132"/><path d="M60 -15 L108 166 M217 -15 L261 166"/></g><path d="M12 133 Q85 103 125 80 T300 24" fill="none" stroke="#f36b21" stroke-width="6" stroke-linecap="round"/></svg>
+                  <span class="ob500-weather-symbol sun"><i data-lucide="sun" width="18"></i></span>
+                  <span class="ob500-weather-symbol rain"><i data-lucide="cloud-rain" width="18"></i></span>
+                  <span class="ob500-weather-symbol snow"><i data-lucide="snowflake" width="18"></i></span>
+                  <span class="ob500-weather-symbol dusk"><i data-lucide="moon" width="18"></i></span>
+                </span>
+                <b>Imersivo</b><small>Clima e iluminação adaptados ao local.</small>
+              </label>
             </div>
           </div>
 
@@ -261,5 +353,5 @@
 {% endblock %}
 {% block scripts %}
 <script src="{{ url_for('static', filename='vano-onboarding.js') }}?v={{ vano_build_id }}"></script>
-<script src="{{ url_for('static', filename='vano-personality-onboarding.js') }}?v={{ vano_build_id }}"></script>
+
 {% endblock %}

@@ -17,6 +17,8 @@
   const mapInputs=$$('input[name="map_style"]',form);
   const night=$('#nightSafetyMode');
   const avoidInputs=$$('input[name="avoid_tolls"],input[name="avoid_unpaved"],input[name="avoid_ferries"]',form);
+  const poiInputs=$$('input[name="poi_visible"]',form);
+  const poiCount=$('#ob500PoisCount');
   const label=$('#obStepLabel');
   const bar=$('#obProgressBar');
   const progressTrack=$('.ob500-progress');
@@ -78,7 +80,7 @@
     balanced:{name:'Equilibrado',code:'SMART',copy:'Equilíbrio entre tempo e segurança',safety:'76%',eta:'18 min',icon:'sparkles'},
     fast_first:{name:'Mais rápido',code:'BOOST',copy:'Tempo e trânsito com peso maior',safety:'61%',eta:'15 min',icon:'gauge'}
   };
-  const mapNames={auto:'Automático',day:'Dia',afternoon:'Tarde',night:'Escuro',rain:'Chuva'};
+  const mapNames={auto:'Imersivo',day:'Clean',afternoon:'Tarde',night:'Escuro',rain:'Chuva'};
 
   function refreshIcons(){
     if(lucideFrame)return;
@@ -108,6 +110,8 @@
     routeInputs.forEach(input=>input.closest('.ob500-route-card')?.classList.toggle('is-selected',input.checked));
     mapInputs.forEach(input=>input.closest('.ob500-map-card')?.classList.toggle('is-selected',input.checked));
     avoidInputs.forEach(input=>input.closest('label')?.classList.toggle('is-selected',input.checked));
+    poiInputs.forEach(input=>input.closest('.ob500-poi-choice')?.classList.toggle('is-selected',input.checked));
+    if(poiCount)poiCount.textContent=`${poiInputs.filter(input=>input.checked).length} de ${poiInputs.length} selecionados`;
     night?.closest('.ob500-power-toggle')?.classList.toggle('is-selected',Boolean(night.checked));
   }
 
@@ -346,6 +350,13 @@
     root.style.setProperty('--ob-px','0');
     root.style.setProperty('--ob-py','0');
   },{passive:true});
+
+  $$('[data-poi-action]',form).forEach(button=>button.addEventListener('click',()=>{
+    const selectAll=button.dataset.poiAction==='all';
+    poiInputs.forEach(input=>{input.checked=selectAll});
+    syncSelectionClasses();
+    vibrate(6);
+  }));
 
   form.addEventListener('focusin',updateKeyboardState);
   form.addEventListener('focusout',updateKeyboardState);
