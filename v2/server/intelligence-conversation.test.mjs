@@ -90,3 +90,31 @@ test('invalid intelligence mode is rejected before calling NVIDIA',async()=>{
   mode:'custom',fetcher:async()=>{throw Error('should not reach upstream');}
  }),error=>error.status===400);
 });
+
+test('shared NVIDIA key takes precedence over an older admin-specific key',async()=>{
+ let bearer='';
+ const mock=async(_url,options)=>{
+  bearer=options.headers.Authorization;
+  return {ok:true,json:async()=>({choices:[{message:{content:'Ok'}}]})};
+ };
+ await askIntelligenceConversational('Teste de chave',data,{},{
+  now,fetcher:mock,env:{VANO_INTELLIGENCE_API_KEY:'LEGACY_KEY_123456',NVIDIA_API_KEY:'WORKING_KEY_123456'}
+ });
+ assert.equal(bearer,'Bearer WORKING_KEY_123456');
+});
+test('explicit 120B config still allows fallback to 20B',async()=>{
+ let count=0;
+ const mock=async(_url,options)=>{
+  count+=1;
+  const model=JSON.parse(options.body).model;
+  return model==='openai/gpt-oss-120b'
+   ? {ok:false,status:403}
+   : {ok:true,json:async()=>({choices:[{message:{content:'Ok no modo alternativo'}}]})};
+ };
+ const result=await askIntelligenceConversational('Explique as falhas',data,{},{
+  now,mode:'deep',fetcher:mock,
+  env:{VANO_INTELLIGENCE_MODEL:'openai/gpt-oss-120b',NVIDIA_API_KEY:'WORKING_KEY_123456'}
+ });
+ assert.equal(count,2);
+ assert.equal(result.fallbackUsed,true);
+});
