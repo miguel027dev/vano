@@ -72,9 +72,9 @@ def test_mapbox_routes_and_js_theme_wiring():
 
 def test_all_existing_map_icons_are_present_and_reloaded_in_both_themes():
     js = (ROOT / "static" / "vano-map.js").read_text(encoding="utf-8")
-    match = re.search(r"const VANO_MAP_ICONS=\\{(.*?)\\};", js, re.DOTALL)
+    match = re.search(r"const VANO_MAP_ICONS=\{(.*?)\};", js, re.DOTALL)
     assert match, "VANO icon catalog not found"
-    icons = dict(re.findall(r"([A-Za-z]\\w*):'([^']+)'", match.group(1)))
+    icons = dict(re.findall(r"([A-Za-z]\w*):'([^']+)'", match.group(1)))
     assert len(icons) >= 40, "VANO marker/POI catalog unexpectedly reduced"
     for key in ("radar", "signal", "pharmacy", "parking", "school", "trainStation", "alertAccident", "alertTraffic", "alertFlood"):
         assert key in icons, f"missing existing VANO icon: {key}"
