@@ -16,3 +16,8 @@
 .v70-nav-context small{display:block;font-size:10px;opacity:.8;margin-top:2px}
 @media(max-width:360px){.v70-route-details{padding:9px 10px}.v70-route-steps{max-height:100px}.v70-nav-context{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.v70-route-steps{scroll-behavior:auto}}
+
+/* V1 keeps GPS degradation visible without a multiline error below the navigation summary. */
+.v1-gps-status{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;gap:3px;align-self:center;padding:4px 5px;border:1px solid rgba(154,110,58,.25);border-radius:8px;background:rgba(154,110,58,.09);color:var(--text,#59452e);font-size:10px;font-weight:700;line-height:1}
+.v1-gps-status svg{display:block;flex:0 0 auto}
+@media(max-width:360px){.v1-gps-status{font-size:9px;padding:3px}}
