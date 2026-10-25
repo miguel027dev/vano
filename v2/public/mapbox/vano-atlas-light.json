@@ -652,11 +652,8 @@
           "literal",
           [
             "hospital",
-            "school",
             "university",
             "park",
-            "supermarket",
-            "grocery",
             "pharmacy",
             "clinic"
           ]
