@@ -89,7 +89,7 @@ function popupBody(item,onSelect){
  }
  return wrapper;
 }
-export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPickPlace=null,getHideSignals=()=>false){
+export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPickPlace=null,getHideSignals=()=>false,getPoiVisible=()=>null){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
  let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,radarRetryTimer=null,radarRetryCount=0,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,chargeKey='',chargeReadAt=0,chargeDisabled=false,chargeController=null,chargeTimer=null,overtureKey='',overtureReadAt=0,overtureDisabled=false,overtureController=null,overtureTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
@@ -147,7 +147,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const markerBudget=Math.max(20,Math.min(90,Math.round(node.clientWidth*node.clientHeight/10500)));
   // /v2 keeps mapped signal evidence internally, but never paints semaphore blocks over the route.
    const allowed=filterV2TrafficSignalPins(
-     selectPublicPins(items,project,zoom,markerBudget,{width:node.clientWidth,height:node.clientHeight},{navigation:Boolean(getNavigation())}),
+     selectPublicPins(items,project,zoom,markerBudget,{width:node.clientWidth,height:node.clientHeight},{navigation:Boolean(getNavigation()),poiVisible:getPoiVisible()}),
      {v2Experience:Boolean(getHideSignals()),hiddenIds:map._vanoRouteTrafficHiddenIds});
   const current=new Set(allowed.map(x=>x.id));
   for(const [id,entry] of markers)if(!current.has(id)){entry.marker.remove();markers.delete(id);}

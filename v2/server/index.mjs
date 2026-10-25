@@ -347,9 +347,11 @@ async function jevTranscribe(audio,mime,provider){
  return words;
 }
 function ownRecords(name, id) { return db[name].filter(x => x.owner === id).sort((a,b) => (b.createdAt || '').localeCompare(a.createdAt || '')); }
+const MAP_POI_CHOICE_IDS=Object.freeze(['farmacia','academia','estacionamento','combustivel','aeroporto','recarga','trem','pedagio','restaurante','supermercado','shopping','hospital','escola','delegacia','cafeteria']);
+const MAP_POI_CHOICE_SET=new Set(MAP_POI_CHOICE_IDS);
 function prefFor(id, suggestedLanguage='pt-BR') {
   const saved=db.preferences.find(x=>x.owner===id)||{};
-  return {vehicle:'carro',preferredRoute:'safe',avoidTolls:false,theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
+  return {vehicle:'carro',preferredRoute:'safe',avoidTolls:false,theme:'light',language:suggestedLanguage,alerts:true,routineTags:[],poiVisible:[...MAP_POI_CHOICE_IDS],mapExperience:'clean',onboardingComplete:false,...saved,...(!saved.languageConfirmed?{language:suggestedLanguage}:{})};
 }
 function bootstrap(req) {
   const id = owner(req);
@@ -1627,6 +1629,15 @@ async function route(req, res) {
     if(p.language!==undefined){if(!LANGUAGES.has(p.language))return err(res,400,'Idioma indisponível.');next.language=p.language;next.languageConfirmed=true;}
     if(p.alerts!==undefined){if(typeof p.alerts!=='boolean')return err(res,400,'Alertas inválidos.');next.alerts=p.alerts;}
     if(p.routineTags!==undefined){if(!Array.isArray(p.routineTags))return err(res,400,'Rotina inválida.');const allowed=new Set(['Casa','Trabalho','Faculdade','Academia','Mercado']);next.routineTags=[...new Set(p.routineTags.filter(x=>allowed.has(x)))].slice(0,5);}
+    if(p.poiVisible!==undefined){
+      if(!Array.isArray(p.poiVisible)||p.poiVisible.length>MAP_POI_CHOICE_IDS.length||p.poiVisible.some(x=>typeof x!=='string'||!MAP_POI_CHOICE_SET.has(x)))
+        return err(res,400,'Categorias do mapa inválidas.');
+      next.poiVisible=MAP_POI_CHOICE_IDS.filter(x=>p.poiVisible.includes(x));
+    }
+    if(p.mapExperience!==undefined){
+      if(!['clean','immersive'].includes(p.mapExperience))return err(res,400,'Estilo de mapa inválido.');
+      next.mapExperience=p.mapExperience;
+    }
     if(p.onboardingComplete!==undefined){if(typeof p.onboardingComplete!=='boolean')return err(res,400,'Preferência inválida.');next.onboardingComplete=p.onboardingComplete;}
     db.preferences=db.preferences.filter(x=>x.owner!==id);db.preferences.push(next);await persist();const {owner:_privateOwner,...publicPref}=next;return json(res,200,publicPref);
   }

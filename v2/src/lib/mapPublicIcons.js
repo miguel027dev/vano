@@ -1,6 +1,7 @@
 /** VANO map icon family — small static SVG glyphs in accessible touch targets.
  * Icons are rendered from a closed enum; untrusted tags are never interpolated.
  */
+import {personalizedPoiAllowed} from './mapPoiPreferences.mjs';
 export const ICON_THEME=Object.freeze({
  radar:['radar-device','#ff781e'],semaforo:['signal','#283f52'],lombada:['bump','#f6a000'],pare:['stop','#ed3345'],
  preferencia:['yield','#f6a000'],placa:['sign','#e58d00'],travessia:['crossing','#283440'],
@@ -140,7 +141,8 @@ export function selectPublicPins(features=[],project=()=>null,zoom=12.4,max=52,v
  const navigation=options?.navigation===true;
  const rules=publicPinDensity(viewport,zoom,max,{navigation});
  const hidden=new Set(['farmacia','hotel','mercado','supermercado','cafeteria','escola','petshop']);
- const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]&&!hidden.has(f.type)&&(!navigation||navigationPinAllowed(f.type)));
+ const custom=Array.isArray(options?.poiVisible);
+ const candidates=features.filter(f=>Array.isArray(f?.coords)&&f.coords.length===2&&ICON_THEME[f.type]&&(custom?personalizedPoiAllowed(f.type,options.poiVisible):!hidden.has(f.type))&&(!navigation||navigationPinAllowed(f.type)));
  const urgent=diversePinOrder(candidates.filter(f=>PIN_URGENT.has(f.type)));
  const services=diversePinOrder(candidates.filter(f=>PIN_SERVICES.has(f.type)&&!PIN_URGENT.has(f.type)));
  const businesses=diversePinOrder(candidates.filter(f=>!PIN_SERVICES.has(f.type)&&!PIN_ROAD.has(f.type)&&!PIN_URGENT.has(f.type)));
