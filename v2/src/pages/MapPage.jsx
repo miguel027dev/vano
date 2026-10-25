@@ -20,7 +20,7 @@ import {searchGeoBias} from '../lib/searchGeoBias.js';
 import {shouldRefreshAddress,navigationStreetLabel} from '../lib/addressCard';
 import {swapJourney} from '../lib/routePoints';
 import { api, fmtKm, fmtTime } from '../lib/api';
-import { navigationSummary,navigationSummaryWithRefresh,selectFreshEtaReview,arrivalClock } from '../lib/navigationSummary';
+import { navigationSummary,navigationSummaryWithRefresh,selectFreshEtaReview,arrivalClock,arrivalCalendarDate } from '../lib/navigationSummary';
 import { useVano } from '../context';
 import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineStore';
 import {spokenCue} from '../lib/offlineGuidance';
@@ -891,9 +891,7 @@ export default function MapPage({active=true}){
   const navigationStats=confirmedEtaReview?
     navigationSummaryWithRefresh(baselineNavigationStats,confirmedEtaReview,etaNow):baselineNavigationStats;
   const estimatedArrival=arrivalClock(navigationStats?.arrivalAt,language);
-  const v2ArrivalDate=navigationStats?.arrivalAt instanceof Date&&!Number.isNaN(navigationStats.arrivalAt.getTime())
-    ?new Intl.DateTimeFormat(language||'pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(navigationStats.arrivalAt)
-    :'Data indisponível';
+  const v2ArrivalDate=arrivalCalendarDate(navigationStats?.arrivalAt,language);
   const trafficUpdateAt=confirmedEtaReview?.checkedAt??route?.etaUpdatedAt;
   const trafficDataStatus=confirmedEtaReview?'traffic-aware':route?.trafficDataStatus;
   const currentTraffic=trafficDataStatus==='traffic-aware'&&Number.isFinite(trafficUpdateAt)&&
@@ -1343,6 +1341,13 @@ export default function MapPage({active=true}){
       {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?(adminV2RoadSigns?'Alternativa por outras vias':'Micro-rota V1 • desvio anti-gargalo'):r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?(adminV2RoadSigns?'Dados disponíveis para esta rota':t('Avaliação V1')):t('Menor tempo estimado')}{r.trafficDataStatus==='degraded'?' · sem trânsito ao vivo':''}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
 
        {choice==='safe'&&routeVehicle!=='a-pe'&&<p className="route-safety-note" role="note">{routeData.safetyMessage||'Os dados de segurança podem ser limitados nesta região. Nenhuma rota garante segurança absoluta.'}</p>}
+       {adminV2RoadSigns&&Number.isFinite(route?.duration)&&route.duration>=0&&<div className="v95-preview-arrival" aria-label="Previsão de chegada da rota selecionada">
+         <div className="v95-preview-arrival-time">
+           <span>CHEGADA ESTIMADA</span>
+           <strong>{arrivalClock(new Date(Date.now()+route.duration*60000),language)}</strong>
+         </div>
+         <span className="v95-preview-arrival-date"><CalendarDays size={15} aria-hidden="true"/>{arrivalCalendarDate(new Date(Date.now()+route.duration*60000),language)}</span>
+       </div>}
        <span className="sr-only" role="status">{offlineMap.status==='saving'?'Atualizando detalhes adicionais do mapa.':''}</span><button className="btn btn-primary start-btn" onClick={begin}><Navigation size={20}/> {t(hasLiveGPS?'Iniciar navegação':'Ativar GPS para navegar')}</button></>:!validPoint(origin)?<div className="notice" role="status">
           <p>Para calcular a rota até {dest?.name||'o destino'}, escolha primeiro seu ponto de partida. O GPS é opcional.</p>
           <button type="button" onClick={()=>{setSheetOpen(false);setPickOriginMode(true);}}>Escolher origem no mapa</button>
