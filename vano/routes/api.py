@@ -885,7 +885,7 @@ def shared_route_view(token):
     row = get_shared_route_or_404(token)
     try: route = json.loads(row["route_json"])
     except Exception: abort(404)
-    return render_template("shared_route.html", share=row, route=route, mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "", mapbox_style=MAPBOX_STYLE, mapbox_style_night=MAPBOX_STYLE_NIGHT, mapbox_ready=mapbox_ready())
+    return render_template("shared_route.html", share=row, route=route, mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "", mapbox_style=url_for("vano_mapbox_style", mode="light"), mapbox_style_night=url_for("vano_mapbox_style", mode="black"), mapbox_ready=mapbox_ready())
 
 
 @app.route("/api/shared-route/<token>")
@@ -1405,7 +1405,7 @@ def live_trip_api(token):
 @app.route("/live/<token>")
 def live_trip_view(token):
     row = get_live_trip_or_404(token)
-    return render_template("live_trip.html", token=token, destination_label=row["destination_label"], mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "", mapbox_style=MAPBOX_STYLE, mapbox_style_night=MAPBOX_STYLE_NIGHT, mapbox_ready=mapbox_ready())
+    return render_template("live_trip.html", token=token, destination_label=row["destination_label"], mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "", mapbox_style=url_for("vano_mapbox_style", mode="light"), mapbox_style_night=url_for("vano_mapbox_style", mode="black"), mapbox_ready=mapbox_ready())
 
 
 @app.route("/api/telemetry/event", methods=["POST"])
