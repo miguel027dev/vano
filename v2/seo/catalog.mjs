@@ -237,8 +237,31 @@ export const PUBLIC_PAGES = [
     "ctaHref": "/excluir-conta"
   },
   {
-    path:'/excluir-conta',category:'Legal',title:'Como excluir sua conta VANO',description:'Entenda como solicitar a exclusão da conta e dos dados associados no VANO Maps.',lead:'Você mantém o controle sobre a sua conta.',
-    sections:[['Dentro do aplicativo','Entre em Minha conta e procure a opção de excluir conta. Dependendo do método de login, uma confirmação de identidade poderá ser necessária.'],['Se não conseguir entrar','Consulte o suporte pelo canal oficial para verificar as alternativas disponíveis. Não compartilhe sua senha.'],['Dados e retenção','Alguns registros podem exigir conservação legal, antifraude ou de segurança. O tratamento deve seguir a Política de privacidade e a legislação aplicável.']],cta:'Abrir Minha conta',ctaHref:'/conta'
+    "path": "/excluir-conta",
+    "category": "Legal",
+    "title": "Como excluir sua conta VANO",
+    "description": "Encontre orientações sobre a exclusão de conta no VANO Maps, confirmação de identidade e tratamento dos dados após a solicitação.",
+    "lead": "Entenda como solicitar a exclusão da conta e o que pode acontecer com seus dados.",
+    "sections": [
+      [
+        "1. Consulte Minha conta",
+        "Entre no aplicativo e procure a opção de exclusão em Minha conta. Se estiver disponível, siga as instruções e confirme a solicitação."
+      ],
+      [
+        "2. Se não conseguir acessar",
+        "Não compartilhe senhas ou códigos de confirmação. Consulte as orientações dos canais oficiais disponíveis para sua conta."
+      ],
+      [
+        "3. Tratamento dos dados",
+        "A remoção pode exigir verificação de identidade. Alguns registros ainda podem precisar ser conservados por obrigações legais, segurança ou prevenção de fraude."
+      ],
+      [
+        "4. Conheça seus direitos",
+        "Excluir a conta e eliminar todas as informações não são necessariamente a mesma operação. Consulte a Política de privacidade para saber mais."
+      ]
+    ],
+    "cta": "Abrir minha conta",
+    "ctaHref": "/conta"
   },
   {
     "path": "/rotas-para-evitar-transito",
@@ -278,8 +301,37 @@ export const PUBLIC_PAGES = [
     "ctaHref": "/mapa"
   },
   {
-    path:'/alternativa-ao-waze',category:'Alternativas',title:'VANO Maps: alternativa ao Waze',description:'Conheça o VANO Maps como alternativa de navegação ao Waze e entenda diferenças de proposta e disponibilidade.',lead:'Uma alternativa para planejar rotas e comparar caminhos com uma interface enxuta.',
-    sections:[['Outra forma de navegar','O VANO aposta em uma experiência de mapa simples, busca rápida e comparação entre trajetos disponíveis.'],['Rotas e inteligência','O projeto trabalha na integração de rotas mais rápidas e análise contextual. A disponibilidade de micro-rotas depende de um serviço de roteamento conectado.'],['Escolha com informação','Compare os recursos, cobertura e limites de cada aplicativo. O VANO não é afiliado, patrocinado nem endossado pelo Waze ou pelo Google.']],faq:[['VANO é o mesmo que Waze?','Não. São produtos distintos, com tecnologias, cobertura e políticas próprias.'],['Posso usar durante a direção?','Configure o destino antes de sair e evite manusear o telefone enquanto dirige.']],cta:'Conhecer o mapa',ctaHref:'/mapa'
+    "path": "/alternativa-ao-waze",
+    "category": "Alternativas",
+    "title": "VANO Maps: uma alternativa ao Waze",
+    "description": "Conheça o VANO Maps como outra opção para pesquisar destinos, consultar o mapa e comparar caminhos disponíveis.",
+    "lead": "Outra forma de pesquisar seu destino e conferir o caminho.",
+    "sections": [
+      [
+        "Pesquise com simplicidade",
+        "O VANO reúne pesquisa de destinos, visualização do mapa e opções de trajeto em uma interface direta."
+      ],
+      [
+        "Compare com atenção",
+        "Os aplicativos podem mostrar resultados diferentes. Tempo previsto, precisão e disponibilidade dependem dos dados e serviços utilizados."
+      ],
+      [
+        "Uma proposta independente",
+        "O VANO não é afiliado, patrocinado nem endossado pelo Waze. Experimente com um destino conhecido e confira quais opções estão disponíveis para você."
+      ]
+    ],
+    "faq": [
+      [
+        "O VANO é igual ao Waze?",
+        "Não. São aplicativos independentes, com experiências e fontes de informações que podem variar."
+      ],
+      [
+        "O VANO sempre encontra um caminho mais rápido?",
+        "Não. Nenhum aplicativo pode garantir que uma alternativa será sempre mais rápida."
+      ]
+    ],
+    "cta": "Conhecer o VANO",
+    "ctaHref": "/mapa"
   },
   {
     "path": "/rota-mais-rapida",
@@ -319,8 +371,37 @@ export const PUBLIC_PAGES = [
     sections:[['Busca simplificada','Digite um local ou endereço, examine as sugestões e abra as alternativas de trajeto.'],['Mapas e camadas','Dependendo da configuração, o VANO exibe mapas de ruas e imagem de satélite de provedores externos.'],['Independência de produto','O VANO é independente do Google Maps. Disponibilidade de dados, detalhes da navegação e precisão podem ser diferentes.']],faq:[["O VANO usa dados do Google Maps?","O VANO é independente do Google Maps. Provedores de mapas e direções são definidos pelas integrações ativas do aplicativo."],["Consigo buscar endereços e comparar rotas?","Esses são recursos centrais do VANO. Os resultados variam conforme a disponibilidade dos provedores de busca e roteamento."]],cta:'Abrir VANO',ctaHref:'/mapa'
   },
   {
-    path:'/gps-para-moto',category:'Mobilidade',title:'GPS para moto e planejamento de rotas',description:'Conheça a opção de navegação para motocicletas no VANO Maps e suas limitações.',lead:'Planeje o trajeto antes de ligar a moto.',
-    sections:[['Perfil de motocicleta','Ao selecionar moto, o aplicativo envia essa preferência ao roteador conectado quando ele suporta esse perfil.'],['Priorize segurança física','Velocidade, condições de pista, clima, equipamentos e sinalização são fatores que o mapa não pode garantir.'],['Não manuseie durante a condução','Ajuste o destino com o veículo parado e utilize comandos apropriados somente quando for seguro e permitido.']],faq:[["O GPS funciona sem internet?","O dispositivo pode calcular a posição por satélite, mas o carregamento de mapas, a busca e o cálculo de rotas normalmente precisam de conexão."],["Rotas de moto consideram todas as restrições?","Nem sempre. Restrições legais e condições das vias podem não estar completas no provedor. Respeite sempre a sinalização e as regras locais."]],cta:'Planejar de moto',ctaHref:'/mapa'
+    "path": "/gps-para-moto",
+    "category": "Mobilidade",
+    "title": "Mapa e rotas para motocicleta",
+    "description": "Veja como planejar trajetos de moto no VANO Maps e conheça os limites dos serviços de mapas e navegação.",
+    "lead": "Confira seu caminho antes de ligar a moto.",
+    "sections": [
+      [
+        "Encontre seu destino",
+        "Pesquise um endereço e examine o trajeto antes de partir. Quando disponível, escolha o perfil de motocicleta."
+      ],
+      [
+        "Conheça as limitações",
+        "Nem todos os serviços de mapas calculam rotas específicas para motos. A sinalização, as restrições locais e as condições reais da via têm prioridade."
+      ],
+      [
+        "Use com o veículo parado",
+        "Faça buscas e ajustes antes de conduzir. A tela do mapa não substitui sua atenção e os cuidados necessários à viagem."
+      ]
+    ],
+    "faq": [
+      [
+        "Existe uma rota exclusiva para moto?",
+        "Isso depende do serviço de cálculo de rotas conectado. Nem todos os caminhos apresentados são específicos para motocicletas."
+      ],
+      [
+        "O mapa funciona sem internet?",
+        "O GPS pode identificar a posição sem rede, mas carregar mapas e calcular rotas normalmente exige conexão."
+      ]
+    ],
+    "cta": "Planejar trajeto",
+    "ctaHref": "/mapa"
   },
   {
     path:'/benchmark-de-rotas',category:'Transparência',title:'Benchmark de rotas VANO',description:'Teste rotas reais de carro ou moto, compare ETA, distância e latência e exporte resultados do VANO Maps.',lead:'Um laboratório público para pessoas e agentes de IA compararem trajetos com dados reais.',
