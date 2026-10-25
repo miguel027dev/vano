@@ -13,9 +13,9 @@ def test_b1_flow_is_loaded_only_outside_admin_v2_preview():
     assert "{% if not v2_preview|default(false) %}" in html
     assert "window.VANO_B1_FLOW=true;" in html
     assert "vano-b1-flow.js" in html
-    assert "vano-b1-flow.css" in html
     assert "{% else %}\n<link rel=\"stylesheet\" href=\"{{ url_for('static', filename='vano-b1-flow.css') }}" in html
     assert "vano-v2.js" in html
+    assert "vano-foundation.css" not in html or "vano-b1-flow.css" not in html
 
 
 def test_b1_keeps_the_engine_route_contract():
@@ -39,7 +39,7 @@ def test_b1_keeps_the_engine_route_contract():
 
 def test_b1_hides_unrequested_ui_without_deleting_base_engine():
     html = file("templates/index.html")
-    css = file("static/vano-b1-flow.css")
+    css = file("static/vano-foundation.css")
     js = file("static/vano-b1-flow.js")
     assert 'id="routeVariants"' in html
     assert 'id="startTripBtn"' in html
