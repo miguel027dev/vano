@@ -186,6 +186,8 @@ export default function MapPage({active=true}){
     };
   },[navMode,muted,language]);
   useEffect(()=>{const native=e=>onPosition(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
+  // Keep Android's location feed active on both maps, even before a trip starts.
+  useEffect(()=>{notifyNative({action:'mapTracking',active:active&&!simActive});return()=>notifyNative({action:'mapTracking',active:false});},[active,simActive]);
   useEffect(()=>{notifyNative({action:'navigation',active:navMode&&!simActive});return()=>notifyNative({action:'navigation',active:false});},[navMode,simActive]);
   useEffect(()=>{notifyNative({action:'wake',active:navMode});return()=>notifyNative({action:'wake',active:false});},[navMode]);
   // Keep the screen on during both actual navigation and administrator route playback.

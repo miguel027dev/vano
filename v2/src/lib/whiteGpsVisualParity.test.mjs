@@ -4,11 +4,11 @@ import {readFileSync} from 'node:fs';
 
 const src=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
 
-test('white map keeps live puck above 3D map depth without changing black presentation',()=>{
+test('both map appearances keep the live pointer upright above 3D map depth',()=>{
   assert.match(src,/const stableLightGpsPuck=key==='current'&&data\.appearance==='light'/);
-  assert.match(src,/pitchAlignment:type==='vehicle'&&!data\.droneSimulation&&!stableLightGpsPuck\?'map':'viewport'/);
+  assert.match(src,/pitchAlignment:'viewport'/);
   assert.match(src,/occludedOpacity:stableLightGpsPuck\|\|\(type==='vehicle'&&data\.droneSimulation\)\?1:\.2/);
-  assert.match(src,/const desiredPitch=data\.droneSimulation\|\|stableLightGpsPuck\?'viewport':'map'/);
+  assert.match(src,/const desiredPitch='viewport'/);
   assert.match(src,/const visibility=data\.droneSimulation\|\|stableLightGpsPuck\?1:\.2/);
 });
 

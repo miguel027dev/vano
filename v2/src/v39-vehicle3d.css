@@ -1,6 +1,5 @@
-/* VANO Atlas 3D — the GPS arrow belongs to the map, not to the viewport.
-   Mapbox's pitchAlignment:'map' projects this procedural, layered object
-   into the ground plane as the camera tilts. No raster/angle sprite downloads. */
+/* Keep the GPS arrow upright while the map camera tilts in both map modes.
+   Its heading still follows the accepted sensor/route position. */
 .vano-atlas-direction.vano-direction-arrow.vano-3d-nav-marker{
   width:70px;
   height:82px;

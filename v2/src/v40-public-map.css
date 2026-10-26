@@ -197,23 +197,6 @@
  bottom:calc(min(66dvh,570px) + 50px);
 }
 
-/* Same calm canvas while lazy map route loads and while GPS is acquired.
-   Do not delay rendering to wait for token, GPS or third-party Overpass. */
-.v42-map-bootstrap{
- position:fixed;inset:0;display:grid;place-items:center;z-index:1;
- background-color:#e4ebe5;
- background-image:
-  repeating-linear-gradient(26deg,transparent 0 78px,#fafffa77 78px 85px,transparent 85px 165px),
-  repeating-linear-gradient(115deg,transparent 0 48px,#fff9 48px 55px,transparent 55px 135px),
-  linear-gradient(145deg,#dfe9e4,#eaf0e9);
- color:#577067;
-}
-.v42-map-bootstrap-label{
- display:block;background:#ffffffeb;border:1px solid #e3e8e5;
- border-radius:999px;padding:11px 18px;box-shadow:0 4px 19px #263b2a1b;
- font:600 12px/1.4 system-ui,sans-serif;
-}
-
 /* Keep native Mapbox/Leaflet attribution intact. The distinct OSM and
    TomTom badges are pinned to the physical bottom-right above the UI. */
 .map-page .mapboxgl-ctrl-bottom-left{

@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { VanoProvider } from './context';
 import App from './App';
 import './styles.css';
+import './splash.css';
 import './entry-v3.css';
 import './v4-design.css';
 import './v5-refinement.css';

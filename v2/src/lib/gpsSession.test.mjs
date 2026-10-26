@@ -16,7 +16,7 @@ function harness(){
  const options={
   schedule:(fn,delay)=>{const k=++id;tasks.set(k,{fn,at:time+delay});return k;},
   cancel:k=>tasks.delete(k),now:()=>time,
-  documentObject:doc,windowObject:win,firstFixTimeoutMs:8500,
+  documentObject:doc,windowObject:win,firstFixTimeoutMs:1500,
   watchdogMs:12000,minRestartMs:12000,staleMs:35000
  };
  function advance(ms){
@@ -30,18 +30,19 @@ function harness(){
  const latest=()=>api.watches.at(-1);
  return {api,options,doc,win,events,advance,latest,get pending(){return tasks.size;}};
 }
-test('one initial watch; first delayed network fix is only a fallback',()=>{
+test('one initial precision watch; a real fix cancels the quick network probe',()=>{
  const h=harness();let accepted=0;
  const stop=startGpsSession(h.api,{onPosition:()=>{accepted++;return true},onError:()=>{}},h.options);
  assert.equal(h.api.watchCount,1);assert.equal(h.api.probeCount,0);
- h.latest().success({timestamp:1234});h.advance(8500);
+ h.latest().success({timestamp:1234});h.advance(1500);
  assert.equal(accepted,1);assert.equal(h.api.probeCount,0);
  stop();assert.deepEqual(h.api.cleared,[41]);assert.equal(h.pending,0);
 });
-test('no fix starts a delayed coarse probe but retains precision watch',()=>{
+test('no fix starts a quick coarse probe but retains precision watch',()=>{
  const h=harness();const stop=startGpsSession(h.api,{onPosition:()=>true,onError:()=>{}},h.options);
- h.advance(8500);assert.equal(h.api.probeCount,1);
+ h.advance(1500);assert.equal(h.api.probeCount,1);
  assert.equal(h.api.probeOptions.enableHighAccuracy,false);
+ assert.equal(h.api.probeOptions.maximumAge,5000);
  h.api.probeSuccess({});assert.equal(h.api.watchCount,1);
  stop();
 });
@@ -78,7 +79,7 @@ test('rejected cached fixes do not count as accepted GPS and old callbacks remai
  const h=harness();let count=0;
  const stop=startGpsSession(h.api,{onPosition:()=>{count++;return null},onError:()=>{}},h.options);
  const old=h.latest();old.success({timestamp:100});
- h.advance(9000);assert.equal(h.api.probeCount,1);
+ h.advance(2000);assert.equal(h.api.probeCount,1);
  stop();old.success({});old.error({code:2});
  assert.equal(count,1);
 });
