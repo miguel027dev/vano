@@ -42,7 +42,7 @@ public final class MainActivity extends Activity {
     private String pendingSpeechId="",pendingSpeechLanguage="pt-BR";
     private boolean microphonePrompt=false;
     private LocationManager gps;
-    private boolean routeTracking=false;
+    private boolean routeTracking=false,mapTracking=false;
     private final LocationListener gpsListener=new LocationListener(){
         @Override public void onLocationChanged(Location fix){dispatchPosition(fix);}
         @Override public void onStatusChanged(String provider,int status,Bundle extras){}
@@ -75,7 +75,7 @@ public final class MainActivity extends Activity {
         offlineCache=new OfflineCache(this,"vanu-73xu.onrender.com");
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        root=new FrameLayout(this);root.setBackgroundColor(Color.rgb(244,245,248));setContentView(root);
+        root=new FrameLayout(this);root.setBackgroundColor(Color.rgb(255,239,228));setContentView(root);
         if(Build.VERSION.SDK_INT>=30){
             getWindow().setDecorFitsSystemWindows(false);
             root.setOnApplyWindowInsetsListener((view,insets)->{
@@ -96,7 +96,7 @@ public final class MainActivity extends Activity {
         handleAuthReturn(getIntent());
     }
     private void createWebView(){
-        web=new WebView(this);web.setBackgroundColor(Color.rgb(244,245,248));
+        web=new WebView(this);web.setBackgroundColor(Color.rgb(255,239,228));
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         // Default layer policy preserves compositor behavior; never force a software layer.
         WebSettings settings=web.getSettings();
@@ -105,7 +105,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false); // Spoken navigation follows the explicit start-trip action.
-        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.4");
+        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.5");
         settings.setSupportMultipleWindows(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
@@ -183,7 +183,7 @@ public final class MainActivity extends Activity {
                 try{
                     if(defaultValue==null||defaultValue.length()>130000)throw new IllegalArgumentException();
                     JSONObject data=new JSONObject(defaultValue);String action=data.optString("action");
-                    if("firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)||"speak".equals(action)||"stopSpeech".equals(action)||"navigation".equals(action)||"prepareMap".equals(action)||"voiceSettings".equals(action)||"session".equals(action)||"startSpeechRecognition".equals(action)||"stopSpeechRecognition".equals(action)||"abortSpeechRecognition".equals(action)){
+                    if("firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)||"speak".equals(action)||"stopSpeech".equals(action)||"navigation".equals(action)||"mapTracking".equals(action)||"prepareMap".equals(action)||"voiceSettings".equals(action)||"session".equals(action)||"startSpeechRecognition".equals(action)||"stopSpeechRecognition".equals(action)||"abortSpeechRecognition".equals(action)){
                         handleNative(view,data);result.confirm("ok");
                     }else result.cancel();
                 }catch(Exception e){result.cancel();}
@@ -236,7 +236,9 @@ public final class MainActivity extends Activity {
                 int id=data.optInt("id");offlineCache.prepare(coords,count->runOnUiThread(()->{try{dispatch("vano:offline-map",new JSONObject().put("id",id).put("ok",count>=0).put("tiles",Math.max(0,count)));}catch(Exception ignored){}}));
             }catch(Exception ignored){}
         }else if("navigation".equals(action)){
-            routeTracking=data.optBoolean("active");if(routeTracking){startGps();}else{stopGps();if(voice!=null)voice.stop();}
+            routeTracking=data.optBoolean("active");if(routeTracking)startGps();else{if(!mapTracking)stopGps();if(voice!=null)voice.stop();}
+        }else if("mapTracking".equals(action)){
+            mapTracking=data.optBoolean("active");if(mapTracking)startGps();else if(!routeTracking)stopGps();
         }else if("speak".equals(action)){ensureVoice();voice.speak(data.optString("text"),data.optString("language","pt-BR"),data.optString("utteranceId"));}
         else if("stopSpeech".equals(action)){if(voice!=null)voice.stop(data.optString("utteranceId"));}
         else if("startSpeechRecognition".equals(action)){
@@ -275,11 +277,11 @@ public final class MainActivity extends Activity {
         speech.start(id,pendingSpeechLanguage);
     }
     private void dispatchPosition(Location fix){
-        if(!routeTracking||fix==null||fix.getTime()<=0)return;
+        if((!routeTracking&&!mapTracking)||fix==null||fix.getTime()<=0)return;
         try{JSONObject coords=new JSONObject().put("latitude",fix.getLatitude()).put("longitude",fix.getLongitude()).put("accuracy",fix.getAccuracy()).put("heading",fix.hasBearing()?fix.getBearing():JSONObject.NULL).put("speed",fix.hasSpeed()?fix.getSpeed():JSONObject.NULL);dispatch("vano:native-position",new JSONObject().put("coords",coords).put("timestamp",fix.getTime()));}catch(Exception ignored){}
     }
     private void startGps(){
-        if(!routeTracking||!locationGranted())return;
+        if((!routeTracking&&!mapTracking)||!locationGranted())return;
         if(gps==null)gps=(LocationManager)getSystemService(LOCATION_SERVICE);
         try{gps.removeUpdates(gpsListener);if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED&&gps.isProviderEnabled(LocationManager.GPS_PROVIDER))gps.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,gpsListener,Looper.getMainLooper());if(gps.isProviderEnabled(LocationManager.NETWORK_PROVIDER))gps.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,0,gpsListener,Looper.getMainLooper());}catch(Exception ignored){}
     }
@@ -305,11 +307,16 @@ public final class MainActivity extends Activity {
     private void showLoading(){
         if(destroyed)return;
         if(loadingPanel!=null){loadingPanel.setAlpha(1);loadingPanel.bringToFront();return;}
-        loadingPanel=new LinearLayout(this);loadingPanel.setOrientation(LinearLayout.VERTICAL);loadingPanel.setGravity(Gravity.CENTER);loadingPanel.setPadding(dp(28),dp(28),dp(28),dp(28));loadingPanel.setBackgroundColor(Color.rgb(249,247,244));
-        ImageView logo=new ImageView(this);logo.setImageResource(com.vano.maps.fluidez.R.drawable.ic_vano);loadingPanel.addView(logo,new LinearLayout.LayoutParams(dp(80),dp(80)));
-        TextView name=new TextView(this);name.setText("VANO");name.setTextSize(36);name.setTypeface(null,android.graphics.Typeface.BOLD);name.setTextColor(Color.rgb(32,35,40));name.setGravity(Gravity.CENTER);loadingPanel.addView(name);
-        loadingText=new TextView(this);loadingText.setText("Preparando seu mapa");loadingText.setTextSize(16);loadingText.setGravity(Gravity.CENTER);loadingText.setTextColor(Color.rgb(104,107,114));loadingText.setPadding(0,dp(16),0,dp(24));loadingPanel.addView(loadingText);
-        ProgressBar progress=new ProgressBar(this);progress.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Color.rgb(233,91,34)));loadingPanel.addView(progress,new LinearLayout.LayoutParams(dp(32),dp(32)));
+        loadingPanel=new LinearLayout(this);loadingPanel.setOrientation(LinearLayout.VERTICAL);loadingPanel.setGravity(Gravity.CENTER);loadingPanel.setPadding(dp(28),dp(28),dp(28),dp(28));
+        android.graphics.drawable.GradientDrawable background=new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(255,250,245),Color.rgb(255,229,213)});
+        loadingPanel.setBackground(background);
+        ImageView logo=new ImageView(this);logo.setImageResource(com.vano.maps.fluidez.R.drawable.ic_vano);logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        android.graphics.drawable.GradientDrawable circle=new android.graphics.drawable.GradientDrawable();circle.setShape(android.graphics.drawable.GradientDrawable.OVAL);circle.setColor(Color.rgb(247,111,42));
+        logo.setBackground(circle);logo.setClipToOutline(true);
+        LinearLayout.LayoutParams logoParams=new LinearLayout.LayoutParams(dp(132),dp(132));logoParams.bottomMargin=dp(26);loadingPanel.addView(logo,logoParams);
+        TextView name=new TextView(this);name.setText("VANO");name.setTextSize(30);name.setLetterSpacing(.11f);name.setTypeface(null,android.graphics.Typeface.BOLD);name.setTextColor(Color.rgb(64,42,34));name.setGravity(Gravity.CENTER);loadingPanel.addView(name);
+        TextView maps=new TextView(this);maps.setText("MAPS");maps.setTextSize(10);maps.setLetterSpacing(.54f);maps.setTypeface(null,android.graphics.Typeface.BOLD);maps.setTextColor(Color.rgb(175,109,80));maps.setGravity(Gravity.CENTER);loadingPanel.addView(maps);
+        loadingText=new TextView(this);loadingText.setText("Seu caminho começa aqui");loadingText.setTextSize(12);loadingText.setGravity(Gravity.CENTER);loadingText.setTextColor(Color.rgb(154,118,102));loadingText.setPadding(0,dp(22),0,0);loadingPanel.addView(loadingText);
         loadingActions=new LinearLayout(this);loadingActions.setOrientation(LinearLayout.VERTICAL);loadingActions.setGravity(Gravity.CENTER);loadingActions.setPadding(0,dp(24),0,0);loadingActions.setVisibility(View.GONE);loadingPanel.addView(loadingActions);
         Button retry=new Button(this);retry.setText("Tentar novamente");retry.setOnClickListener(v->{hideError();if(web!=null)web.reload();});retry.setMinHeight(dp(48));loadingActions.addView(retry);
         Button continueButton=new Button(this);continueButton.setText("Ver mapa enquanto carrega");continueButton.setOnClickListener(v->{if(loadingPanel!=null){root.removeView(loadingPanel);loadingPanel=null;loadingText=null;loadingActions=null;}});continueButton.setMinHeight(dp(48));loadingActions.addView(continueButton);

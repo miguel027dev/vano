@@ -6,7 +6,7 @@
 export function startGpsSession(geolocation,{onPosition,onError,onRecover=()=>{}},{
  navigation=false,schedule=setTimeout,cancel=clearTimeout,now=Date.now,
  documentObject=globalThis.document,windowObject=globalThis.window,
- firstFixTimeoutMs=8500,staleMs=navigation?35000:60000,
+ firstFixTimeoutMs=1500,staleMs=navigation?35000:60000,
  watchdogMs=12000,minRestartMs=12000
 }={}){
  if(!geolocation||typeof geolocation.watchPosition!=='function'||typeof geolocation.clearWatch!=='function')
@@ -59,12 +59,12 @@ export function startGpsSession(geolocation,{onPosition,onError,onRecover=()=>{}
   firstTimer=schedule(()=>{
    firstTimer=null;
    if(!active||denied||epoch!==generation||!visible())return;
-   // A coarse one-shot is only a recovery aid; the original high-accuracy
-   // watch stays active and remains the single primary GPS subscription.
+   // Obtain a quick network fix while the high-accuracy watch locks onto GPS.
+   // The watch remains the single primary subscription and refines the point.
    if(everAccepted&&now()-lastAccepted<staleMs)return;
    try{
     geolocation.getCurrentPosition(p=>success(p,epoch),e=>failure(e,epoch),{
-     enableHighAccuracy:false,maximumAge:8000,timeout:12000
+     enableHighAccuracy:false,maximumAge:5000,timeout:8000
     });
    }catch(error){failure(error,epoch);}
   },firstFixTimeoutMs);

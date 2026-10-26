@@ -1,14 +1,11 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><meta name="theme-color" content="#E95B22"/><meta name="description" content="VANO Maps — navegação inteligente para sua cidade."/><title>VANO Maps — o melhor caminho é o seu</title><link rel="apple-touch-icon" href="/apple-touch-icon.png"/><link rel="icon" href="/vano-logo-original.webp" type="image/webp"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/><script src="/theme-preflight.js"></script><style>
- html,body,#root{min-height:100%;margin:0;background:#e4ebe5}
- .v42-preboot{position:fixed;inset:0;display:grid;place-items:center;
-  background:repeating-linear-gradient(26deg,transparent 0 78px,#fafffa77 78px 85px,transparent 85px 165px),
-  repeating-linear-gradient(115deg,transparent 0 48px,#fff9 48px 55px,transparent 55px 135px),
-  linear-gradient(145deg,#dfe9e4,#eaf0e9);font:600 12px system-ui,sans-serif;color:#577067}
- #root:not(:empty) + .v42-preboot{display:none}
- .v42-preboot span{background:#ffffffeb;border:1px solid #e3e8e5;
- border-radius:999px;padding:11px 18px;box-shadow:0 4px 19px #263b2a1b}
-
- html[data-theme="dark"],html[data-theme="dark"] body,html[data-theme="dark"] #root{background:#10171b}
- html[data-theme="dark"] .v42-preboot{background:#10171b;color:#eaf2f5}
- html[data-theme="dark"] .v42-preboot span{background:#1e2c33;border-color:#2b414b;box-shadow:none}
-</style></head><body><div id="root"></div><main class="v42-preboot" role="status"><span>Preparando VANO Maps…</span></main><script type="module" src="/src/main.jsx"></script></body></html>
+ html,body,#root{min-height:100%;margin:0;background:#ffefe4}
+ .v42-preboot{position:fixed;inset:0;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#fffaf5 0 17%,#ffefe4 53%,#ffe5d5 100%);color:#402a22;text-align:center;font-family:Manrope,'DM Sans',system-ui,sans-serif}
+ #root:not(:empty)+.v42-preboot{display:none}
+ .v42-preboot-mark{width:132px;height:132px;display:grid;place-items:center;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 35% 27%,#ffad66 0,#f56b26 58%,#df4e16 100%);box-shadow:0 18px 46px #b94e1d29,0 0 0 12px #fff8f2b8}
+ .v42-preboot-mark img{width:120px;height:120px;display:block;object-fit:cover;border-radius:50%}
+ .v42-preboot strong{margin-top:28px;display:flex;flex-direction:column;gap:2px;font-size:29px;line-height:1;font-weight:850;letter-spacing:.11em}
+ .v42-preboot strong small{font-size:10px;letter-spacing:.54em;color:#af6d50;font-weight:800;padding-left:.54em}
+ .v42-preboot p{margin:23px 0 0;font-size:12px;letter-spacing:.045em;color:#9a7666;font-weight:600}
+ @media(max-width:480px){.v42-preboot-mark{width:116px;height:116px}.v42-preboot-mark img{width:106px;height:106px}}
+</style></head><body><div id="root"></div><main class="v42-preboot" role="status" aria-label="Abrindo VANO Maps"><div class="v42-preboot-mark" aria-hidden="true"><img src="/vano-logo-original.webp" width="120" height="120" alt=""/></div><strong aria-hidden="true">VANO<small>MAPS</small></strong><p>Seu caminho começa aqui</p></main><script type="module" src="/src/main.jsx"></script></body></html>

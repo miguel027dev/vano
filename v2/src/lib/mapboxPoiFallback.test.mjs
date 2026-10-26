@@ -50,11 +50,13 @@ test('UI keeps local POIs on Overpass failure and refreshes tiles after camera i
  assert.match(overlay,/map\.on\('idle',updateVectorPoi\)/);
  assert.match(overlay,/map\.off\('idle',updateVectorPoi\)/);
  assert.match(overlay,/rememberPublicFeatures\(sourceCache,remoteItems\)/);
- assert.match(app,/!map&&<BrandSplash\/>/);
- assert.match(app,/v42-map-bootstrap/);
+ assert.match(app,/fallback=\{<BrandSplash\/>\}/);
+ assert.doesNotMatch(app,/v42-map-bootstrap/);
  assert.match(html,/class="v42-preboot"/);
+ assert.match(html,/vano-logo-original\.webp/);
+ assert.doesNotMatch(html,/repeating-linear-gradient/);
  assert.match(html,/<div id="root"><\/div>/);
- assert.match(html,/#root:not\(:empty\) \+ \.v42-preboot\{display:none\}/);
+ assert.match(html,/#root:not\(:empty\)\s*\+\s*\.v42-preboot\{display:none\}/);
 });
 
 test('Mapbox Streets road points provide traffic lights and level crossings without Overpass',()=>{

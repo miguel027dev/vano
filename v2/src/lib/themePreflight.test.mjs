@@ -33,7 +33,7 @@ test('CSP-safe script runs before critical loading styles and module hydration',
   const script=html.indexOf('<script src="/theme-preflight.js"></script>');
   assert.ok(script>=0 && script<html.indexOf('<style>'));
   assert.ok(script<html.indexOf('type="module"'));
-  assert.match(html,/html\[data-theme="dark"\] \.v42-preboot/);
+  assert.match(html,/\.v42-preboot\{position:fixed/);
   assert.match(app,/if\(loading\)return;const theme=preferences\?\.theme/);
   assert.match(app,/localStorage\.setItem\('vano-boot-theme',theme\)/);
   assert.match(app,/document\.documentElement\.dataset\.theme=theme/);
