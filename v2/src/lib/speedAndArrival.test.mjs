@@ -32,7 +32,7 @@ test('speed is from real telemetry and expires with GPS; never route ETA or map 
  assert.match(page,/speedKmh===null\?'—':speedKmh/);
  assert.match(page,/className="v43-speedometer"/);
  assert.match(page,/<small>km\/h<\/small>/);
- assert.match(page,/setTelemetry\(\{heading:result\.heading,speed:result\.speed,accuracy:fix\.accuracy\}\)/);
+ assert.match(page,/setTelemetry\(\{heading:result\.heading,speed:result\.speed,accuracy:fix\.accuracy,sourceAt:fix\.sourceAt\}\)/);
  assert.match(page,/speedSampleRef\.current=next/);
  assert.match(page,/setSpeedSample\(null\)/);
 });
