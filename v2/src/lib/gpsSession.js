@@ -6,7 +6,9 @@
 export function startGpsSession(geolocation,{onPosition,onError,onRecover=()=>{}},{
  navigation=false,schedule=setTimeout,cancel=clearTimeout,now=Date.now,
  documentObject=globalThis.document,windowObject=globalThis.window,
- firstFixTimeoutMs=650,staleMs=navigation?15000:30000,
+ // Start the coarse network-assisted probe on the next event-loop turn while
+ // the high-accuracy watch acquires satellites. Do not wait 650 ms first.
+ firstFixTimeoutMs=0,staleMs=navigation?15000:30000,
  watchdogMs=5000,minRestartMs=7000
 }={}){
  if(!geolocation||typeof geolocation.watchPosition!=='function'||typeof geolocation.clearWatch!=='function')
