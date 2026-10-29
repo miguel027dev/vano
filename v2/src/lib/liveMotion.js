@@ -31,3 +31,43 @@ export function routeTrace(timeline,meters){
   const t=length>0?(distance-cumulative[i-1])/length:1;
   return [...points.slice(0,i),[start[0]+(end[0]-start[0])*t,start[1]+(end[1]-start[1])*t]];
 }
+
+/**
+ * Frame-rate independent visual filtering for REAL GPS matched to an observed route.
+ * Speeds and raw fixes never come from this interpolation.
+ */
+export function smoothLiveRoadProgress(previous,desired,elapsedMs,{speed=0,accuracy=10,reducedMotion=false}={}){
+  if(!Number.isFinite(desired))return Number.isFinite(previous)?previous:null;
+  if(!Number.isFinite(previous)||reducedMotion)return desired;
+  const delta=desired-previous;
+  if(Math.abs(delta)<.08)return previous;
+  // A real relocation/new road must not crawl along hundreds of metres of route.
+  if(Math.abs(delta)>170)return desired;
+  const moving=Number.isFinite(speed)&&speed>=2;
+  // Keep small backward multipath corrections from making the car jitter in reverse.
+  if(moving&&delta<0&&delta> -2.5)return previous;
+  if(!moving&&Math.abs(delta)<2.8)return previous;
+  const dt=Math.max(0,Math.min(90,elapsedMs));
+  if(dt===0)return previous;
+  const halfLife=moving?(speed>=8?170:220):310;
+  const eased=Math.abs(delta)*(1-Math.pow(.5,dt/halfLife));
+  // Bound catch-up after a sensor batch: no single frame travels an arbitrary
+  // number of street metres, but real driving remains responsive.
+  const maxStep=moving?Math.max(.45,dt/1000*(Math.max(2,speed)*2.6+7)):
+    Math.max(.16,dt/1000*6);
+  const step=Math.min(Math.abs(delta),eased,maxStep);
+  return previous+Math.sign(delta)*step;
+}
+
+export function smoothLiveBearing(previous,desired,elapsedMs,{speed=0,reducedMotion=false}={}){
+  if(!Number.isFinite(desired))return Number.isFinite(previous)?previous:null;
+  if(!Number.isFinite(previous)||reducedMotion)return (desired+360)%360;
+  if(!Number.isFinite(speed)||speed<2)return previous;
+  const delta=((desired-previous+540)%360)-180;
+  const dt=Math.max(0,Math.min(90,elapsedMs));
+  if(dt===0||Math.abs(delta)<.1)return previous;
+  const eased=Math.abs(delta)*(1-Math.pow(.5,dt/210));
+  // Do not whip the orientation across 90° on a noisy sensor sample.
+  const maxTurn=150*dt/1000;
+  return (previous+Math.sign(delta)*Math.min(eased,maxTurn)+360)%360;
+}
