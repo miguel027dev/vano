@@ -38,7 +38,7 @@ export function evaluateGpsPosition(position, previous=null, now=Date.now()) {
   const timestamp=Number(position.timestamp);
   if(!Number.isFinite(timestamp)||timestamp<=0||timestamp>now+5000||now-timestamp>35000)
     return {ok:false,reason:'stale'};
-  if(previous?.sourceAt && timestamp<previous.sourceAt-1000)
+  if(previous?.sourceAt && timestamp<=previous.sourceAt)
     return {ok:false,reason:'out-of-order'};
   const accuracy=Number(p.accuracy);
   if(!Number.isFinite(accuracy)||accuracy<0||accuracy>2000)
@@ -50,10 +50,12 @@ export function evaluateGpsPosition(position, previous=null, now=Date.now()) {
     const meters=Math.hypot(dlat,dlon);
     const elapsed=Math.max(0.5,(timestamp-previous.sourceAt)/1000);
     const tolerance=Math.max(accuracy,Number(previous.accuracy)||0);
-    // GPS multipath frequently projects one isolated point on a parallel road.
-    // Keep a generous recovery envelope after a real gap, but reject a jump
-    // that would require implausible road speed between adjacent samples.
-    if(meters>Math.max(120,elapsed*55+55,tolerance*2+45))
+    // Tight envelope for adjacent readings; larger recovery window after
+    // genuine signal gaps. Poor-accuracy samples cannot authorize teleports.
+    const limit=elapsed<=2
+      ?Math.max(48,elapsed*42+16,Math.min(tolerance,55)*1.2+18)
+      :Math.max(elapsed*60+35,Math.min(tolerance,120)*1.5+20);
+    if(meters>limit)
       return {ok:false,reason:'jump'};
   }
   return {ok:true,fix:{coords,receivedAt:timestamp,sourceAt:timestamp,accuracy},heading:Number.isFinite(p.heading)?p.heading:null,speed:Number.isFinite(p.speed)?p.speed:null};
