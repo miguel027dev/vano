@@ -271,7 +271,7 @@ export default function MapPage({active=true}){
     setUserCoords(fix.coords);
     if(warmCoords)setWarmCoords(null);
     if(Date.now()-lastWarmGpsWrite.current>=10000&&saveWarmGps(window.localStorage,fix))lastWarmGpsWrite.current=Date.now();
-    setTelemetry({heading:result.heading,speed:result.speed,accuracy:fix.accuracy});
+    setTelemetry({heading:result.heading,speed:result.speed,accuracy:fix.accuracy,sourceAt:fix.sourceAt});
     if(measuredTrip.current&&!measuredTrip.current.simulated){
       odometer.current=advanceTravelDistance(odometer.current,fix,{active:true,speed:result.speed,vehicle:measuredTrip.current.vehicle});
       syncMeasuredDistance();
