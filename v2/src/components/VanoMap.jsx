@@ -5,6 +5,7 @@ import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetwee
 import {buildRouteTimeline,distanceOnRoute,nextManeuver,sampleRoute} from '../lib/routeAnimation';
 import {simulationPointerBearing} from '../lib/adminRouteSimulator.mjs';
 import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
+import {anticipateRoadProgress} from '../lib/liveGpsForecast.mjs';
 import {matchLiveRoadPosition,bearingAtDrivenProgress} from '../lib/liveRoadPuck.mjs';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
@@ -1096,7 +1097,15 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           if(!state.roadMatch||!sameGeometry)state.roadMeters=null;
         }
         if(state.roadMatch&&timeline.total>0){
-          const desired=state.roadMatch.meters;
+          const measured=state.roadMatch.meters;
+          // Visual-only prediction along the observed straight road segment:
+          // never used for turn alerts, speed, route decisions or location APIs.
+          const desired=d.navigation&&!d.simulationPreview&&!d.droneSimulation
+            ?anticipateRoadProgress({timeline,meters:measured,
+              sourceAt:d.telemetry?.sourceAt,now:Date.now(),
+              speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
+              heading:d.telemetry?.heading})
+            :measured;
           if(!Number.isFinite(state.roadMeters)||Math.abs(desired-state.roadMeters)>170)
             state.roadMeters=desired;
           else{
@@ -1113,6 +1122,13 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       if(!validPoint(point))return;
       state.point=point;
       const realDriving=d.navigation&&!d.simulationPreview&&!d.droneSimulation;
+      // Keep the camera in phase with the smoothly moving pointer even when
+      // React GPS events arrive just once per second.
+      if(realDriving&&now-(state.lastChaseKick||0)>=90&&
+          metersBetween(state.lastChasePoint,point)>.12){
+        state.lastChasePoint=point;state.lastChaseKick=now;
+        motion.current?.start();
+      }
       const matchedRoadHeading=realDriving&&state.roadMatch&&d.telemetry?.speed>1.5?
         bearingAtDrivenProgress(timeline,state.roadMeters):null;
       const sensorHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&
