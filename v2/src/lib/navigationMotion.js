@@ -35,10 +35,11 @@ if(immersiveDark&&!reducedMotion&&!arriving&&!turnFocus&&focus<=.1&&!compactView
  zoom=clamp(zoom-.12,14.8,18.2);pitch=clamp(pitch+10,0,58);
 }
 if(compactViewport){zoom=Math.min(zoom,16.5);pitch=Math.min(pitch,22);}
-const aheadMeters=arriving||(!route?.geometry&&(speed<1.5||bearing===null))?0:
+const aheadMeters=arriving||(preferLiveHeading&&(speed<1.5||bearing===null))||(!route?.geometry&&(speed<1.5||bearing===null))?0:
   isMoto?clamp(speed*4+30,30,175):clamp(speed*5+40,45,230);const desiredAheadMeters=aheadMeters*(maneuverPlan?.lookAheadScale??1)*(compactViewport?0.65:1)*(experimentalCameraV2?1.18:1);
 const metersPerPixel=156543.03392*Math.max(.1,Math.cos(pos[1]*Math.PI/180))/Math.pow(2,zoom);
 const maxAheadMeters=Number.isFinite(viewportClearancePx)?Math.max(0,viewportClearancePx)*metersPerPixel*.7:Infinity;
 const safeAheadMeters=Math.min(desiredAheadMeters,maxAheadMeters);
-const lookPos=near.distance<45?near.point:pos;const lookBearing=bearing??0;const rad=lookBearing*Math.PI/180;const ahead=[lookPos[0]+Math.sin(rad)*safeAheadMeters/(111320*Math.max(.25,Math.cos(lookPos[1]*Math.PI/180))),lookPos[1]+Math.cos(rad)*safeAheadMeters/111320];return {state:arriving?CAMERA_STATES.ARRIVAL:focus>.1||turnFocus?CAMERA_STATES.TURN:CAMERA_STATES.FOLLOW,
+// Camera must track the rendered user pointer, not independently snap to a different route leg.
+const lookPos=pos;const lookBearing=bearing??0;const rad=lookBearing*Math.PI/180;const ahead=[lookPos[0]+Math.sin(rad)*safeAheadMeters/(111320*Math.max(.25,Math.cos(lookPos[1]*Math.PI/180))),lookPos[1]+Math.cos(rad)*safeAheadMeters/111320];return {state:arriving?CAMERA_STATES.ARRIVAL:focus>.1||turnFocus?CAMERA_STATES.TURN:CAMERA_STATES.FOLLOW,
 center:reducedMotion?pos:ahead,zoom,pitch:reducedMotion?0:pitch,bearing,accuracy:telemetry.accuracy,remaining};}

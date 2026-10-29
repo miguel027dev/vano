@@ -97,3 +97,57 @@ test('road center matching is ONLY visual; GPS guidance and preview remain senso
  assert.match(page,/const result=evaluateGpsPosition\(p,lastGpsFix\.current\)/);
  assert.doesNotMatch(page,/matchLiveRoadPosition/);
 });
+
+
+test('a stopped car stays on its confirmed route leg despite GPS choosing a lateral street',()=>{
+ const first=matchLiveRoadPosition({...opts,
+   position:[start[0]+east(65),start[1]+north(2)],speed:0});
+ assert.ok(first);
+ assert.equal(first.segment,0);
+ const noisy=matchLiveRoadPosition({...opts,
+   position:[corner[0]+east(1),corner[1]+north(8)],speed:0,heading:0,previous:first});
+ assert.strictEqual(noisy,first,'a nearby side street must not steal the stopped car');
+ assert.ok(Math.abs(noisy.point[1]-start[1])<1e-8);
+ // The anchor must not move with each new noisy GPS callback.
+ const noisyAgain=matchLiveRoadPosition({...opts,
+   position:[corner[0]+east(1),corner[1]+north(12)],speed:0,previous:noisy});
+ assert.strictEqual(noisyAgain,first);
+});
+
+test('a weak GPS reading preserves an already verified stopped road lock, but cannot invent a new lock',()=>{
+ const first=matchLiveRoadPosition({...opts,position:[start[0]+east(38),start[1]+north(3)],speed:0});
+ assert.ok(first);
+ const weak=[start[0]+east(40),start[1]+north(19)];
+ assert.strictEqual(matchLiveRoadPosition({...opts,position:weak,speed:0,accuracy:60,previous:first}),first);
+ assert.equal(matchLiveRoadPosition({...opts,position:weak,speed:0,accuracy:60}),null);
+ assert.equal(matchLiveRoadPosition({...opts,position:[start[0]+east(40),start[1]+north(70)],
+   speed:0,accuracy:60,previous:first}),null);
+});
+
+test('a moving car can turn when sensor displacement actually confirms the new leg',()=>{
+ const stopped=matchLiveRoadPosition({...opts,position:[start[0]+east(65),start[1]+north(3)],speed:0});
+ const entering=matchLiveRoadPosition({...opts,position:[corner[0]+east(2),corner[1]+north(20)],
+   speed:5,heading:0,previous:stopped});
+ assert.ok(entering);
+ assert.equal(entering.segment,1);
+ assert.ok(entering.meters>stopped.meters+20);
+});
+
+test('follow camera stays on the visual GPS point while stopped or bearing is unreliable',()=>{
+ const raw=[start[0]+east(36),start[1]+north(30)];
+ const paused=cameraTarget({navigation:true,position:raw,route,
+   telemetry:{speed:0,accuracy:60,heading:null},preferLiveHeading:true});
+ assert.deepEqual(paused.center,raw,'no arbitrary 40 m offset when stationary');
+ assert.equal(paused.bearing,null);
+ const movingUncertain=cameraTarget({navigation:true,position:raw,route,
+   telemetry:{speed:8,accuracy:90,heading:90},preferLiveHeading:true});
+ assert.deepEqual(movingUncertain.center,raw,'route geometry must not move an unreliable GPS marker');
+});
+
+
+test('GPS may report 5 km/h at a traffic light and still must not switch streets',()=>{
+ const first=matchLiveRoadPosition({...opts,position:[start[0]+east(65),start[1]+north(2)],speed:0});
+ const adjacent=[corner[0]+east(1),corner[1]+north(8)];
+ assert.strictEqual(matchLiveRoadPosition({...opts,position:adjacent,speed:1.4,heading:0,previous:first}),first);
+ assert.strictEqual(matchLiveRoadPosition({...opts,position:adjacent,speed:null,heading:null,previous:first}),first);
+});
