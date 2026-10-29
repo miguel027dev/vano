@@ -15,7 +15,7 @@ export function anticipateRoadProgress({
       timeline.points.length<2||timeline.cumulative.length!==timeline.points.length||
       !Number.isFinite(timeline.total)||timeline.total<=0)return meters;
   const age=now-sourceAt;
-  if(age<80||age>2300)return meters;
+  if(age<80)return meters;
   // Cap the display offset to a fraction of a second and 10 metres.
   // A GPS outage must never turn into an indefinitely moving pointer.
   // Browser GPS is commonly delivered at ~1 Hz. The old .8 s cap caused the
