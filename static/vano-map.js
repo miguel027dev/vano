@@ -29,7 +29,7 @@ let osintRouteSessionId='';
 function emitVanoOsint(type,detail={}){if(!LOGGED_IN)return;try{window.dispatchEvent(new CustomEvent('vano:osint',{detail:{type,...detail}}))}catch{}}
 function osintPoint(x){if(!x)return{};const lat=Number.isFinite(+x.lat)?+x.lat:null,lon=Number.isFinite(+x.lon)?+x.lon:null;return{lat,lon,label:String(x.label||x.name||'').slice(0,255)}}
 function makeOsintRouteSessionId(){const signature=String(selectedRoute?.route_signature||selectedRoute?.id||'route').replace(/[^A-Za-z0-9_.:-]/g,'').slice(0,70)||'route';return `vano-${signature}-${navStartedAt||Date.now()}`.slice(0,120)}
-function osintLocationPayload(raw,p){return{lat:+p.lat,lon:+p.lon,accuracy_m:Number.isFinite(+raw?.accuracy)?+raw.accuracy:null,altitude_m:Number.isFinite(+raw?.altitude)?+raw.altitude:null,speed_mps:Number.isFinite(+raw?.speed)?Math.max(0,+raw.speed):(Number.isFinite(+p?.speed)?Math.max(0,+p.speed):null),heading_deg:Number.isFinite(+raw?.heading)?((+raw.heading%360+360)%360):(Number.isFinite(+p?.heading)?((+p.heading%360+360)%360):null),timestamp:new Date().toISOString()}}
+function osintLocationPayload(raw,p){return{lat:+p.lat,lon:+p.lon,accuracy_m:Number.isFinite(+raw?.accuracy)?+raw.accuracy:null,altitude_m:Number.isFinite(+raw?.altitude)?+raw.altitude:null,speed_mps:Number.isFinite(+raw?.speed)?Math.max(0,+raw.speed):(Number.isFinite(+p?.speed)?Math.max(0,+p.speed):null),heading_deg:validGpsHeading(raw?.heading)??validGpsHeading(p?.heading),timestamp:new Date().toISOString()}}
 function osintRoutePayload(position=null,metrics=null,etaSeconds=null){const o=osintPoint(origin),d=osintPoint(destination),route=selectedRoute||{};return{vano_route_id:osintRouteSessionId||makeOsintRouteSessionId(),route_mode:String(routeMode||'').slice(0,40),origin_name:o.label||'Minha localização',origin_lat:o.lat,origin_lon:o.lon,destination_name:d.label||'Destino',destination_lat:d.lat,destination_lon:d.lon,distance_m:Number.isFinite(+route.distance)?Math.max(0,+route.distance):null,remaining_m:Number.isFinite(+metrics?.remaining)?Math.max(0,+metrics.remaining):(Number.isFinite(+route.distance)?Math.max(0,+route.distance):null),eta_seconds:Number.isFinite(+etaSeconds)?Math.max(0,Math.round(+etaSeconds)):(Number.isFinite(+route.duration)?Math.max(0,Math.round(+route.duration)):null)}}
 
 function renderGuestTrial(remaining){if(LOGGED_IN)return;guestRoutesRemaining=Math.max(0,Number(remaining??guestRoutesRemaining)||0);const el=$('guestTrialRemaining');if(el)el.textContent=guestRoutesRemaining;const pill=$('guestTrialPill');if(pill){pill.classList.toggle('low',guestRoutesRemaining<=3);pill.classList.toggle('empty',guestRoutesRemaining<=0)}}
@@ -91,7 +91,7 @@ document.addEventListener('click',e=>{const btn=e.target.closest?.('#startTripBt
 let map,userMarker,userMarkerElement,originMarker,destinationMarker,userLocation=null,origin=null,destination=null,routes=[],selectedRoute=null,routeMode='safest',profile='driving',searchTimer=null,watchId=null,passiveWatchId=null,mapFollowMode=true,lastPassivePosition=null,lastPassiveCameraAt=0,navStartedAt=0,gpsDistance=0,lastGps=null,lastNavPosition=null,smoothedPos=null,routeCumulative=[],routeTotalGeometry=1,starting=false,rerouting=false,offRouteCount=0,lastRerouteAt=0,followMode=true,wakeLock=null,soundEnabled=false,lastSpokenInstruction='',roadAwareness=[],lastRoadFetchAt=0,lastRoadFetchPos=null,lastCameraBearing=null,trafficSuggestionRoute=null,lastTrafficCheckAt=0,trafficDismissUntil=0,trafficChecking=false,lastLiveEta=0,lastMarkerHeading=null,navCameraMode='perspective',spokenMilestones=new Set(),liveShareToken=null,liveShareUrl='',lastLiveShareAt=0,liveShareUpdating=false,safetyPulse=false,supportPoints=[],supportLoading=false,previewFrame=null,previewing=false,previewStartedAt=0,searchController=null,fastSearchController=null,searchRefineTimer=null,searchRequestId=0,activeSearchKind=null,liveContext=null,lastLiveContextAt=0,lastLiveContextPos=null,lastFlowProbeAt=0,signalRefreshTimer=null,lastSignalViewportKey='',adminSimulation=false,adminSimFrame=null,adminSimDistance=0,adminSimLastTs=0,adminSimRealSpeed=11.5,adminSimTimeScale=6,routeLoadingSeq=0,navGpsHeartbeatTimer=null,passiveGpsHeartbeatTimer=null,gpsHeartbeatBusy=false,lastGpsFixAt=0;
 
 function vanoNativeMapBridge(){try{const b=window.VanoNative;if(!b||typeof b.nativeMapAvailable!=='function'||!b.nativeMapAvailable())return null;return b}catch{return null}}
-function vanoNativeMapPayload(p=null){return JSON.stringify({route:selectedRoute||null,origin:origin||null,destination:destination||null,route_mode:routeMode||'',profile:profile||'driving',position:p&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lon)?{lat:+p.lat,lon:+p.lon,accuracy:Number.isFinite(+p.accuracy)?+p.accuracy:null,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?+p.speed:null}:null,started_at:navStartedAt||Date.now()})}
+function vanoNativeMapPayload(p=null){return JSON.stringify({route:selectedRoute||null,origin:origin||null,destination:destination||null,route_mode:routeMode||'',profile:profile||'driving',position:p&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lon)?{lat:+p.lat,lon:+p.lon,accuracy:Number.isFinite(+p.accuracy)?+p.accuracy:null,heading:validGpsHeading(p.heading),speed:Number.isFinite(+p.speed)?+p.speed:null}:null,started_at:navStartedAt||Date.now()})}
 function vanoStartNativeMap(p=null){const b=vanoNativeMapBridge();if(!b||!selectedRoute?.geometry?.coordinates?.length)return false;try{b.startNativeMap(vanoNativeMapPayload(p));vanoEnsureNativeMapSync();return true}catch(e){console.debug('[VANO MAPS:native-map-start]',e);return false}}
 function vanoSyncNativeMapRoute(p=null){const b=vanoNativeMapBridge();if(!b||!selectedRoute?.geometry?.coordinates?.length)return false;try{b.updateNativeMapRoute(vanoNativeMapPayload(p));return true}catch(e){console.debug('[VANO MAPS:native-map-route]',e);return false}}
 function vanoStopNativeMap(){const b=vanoNativeMapBridge();if(!b)return;try{b.stopNativeMap()}catch(e){console.debug('[VANO MAPS:native-map-stop]',e)}}
@@ -324,6 +324,8 @@ function tripElapsedSeconds(){return navStartedAt?Math.max(0,(Date.now()-navStar
 function syncArrivalMetrics(){const time=$('arrivalTripTime'),dist=$('arrivalTripDistance'),mode=$('arrivalTripMode'),reroutes=$('arrivalTripReroutes');if(time)time.textContent=fmtRemaining(tripElapsedSeconds());if(dist)dist.textContent=fmtDistance(gpsDistance>30?gpsDistance:(tripStartRouteDistance||selectedRoute?.distance||0));if(mode)mode.textContent=tripStartMode||routeModeLabel();if(reroutes)reroutes.textContent=String(tripRerouteCount)}
 function bearingBetween(a,b){const y=Math.sin((b[0]-a[0])*Math.PI/180)*Math.cos(b[1]*Math.PI/180),x=Math.cos(a[1]*Math.PI/180)*Math.sin(b[1]*Math.PI/180)-Math.sin(a[1]*Math.PI/180)*Math.cos(b[1]*Math.PI/180)*Math.cos((b[0]-a[0])*Math.PI/180);return (Math.atan2(y,x)*180/Math.PI+360)%360}
 function blendBearing(prev,next,alpha=.24){if(!Number.isFinite(prev))return next;let d=((next-prev+540)%360)-180;return (prev+d*alpha+360)%360}
+// A missing GPS heading is unknown, not 0 degrees (north).
+function validGpsHeading(value){if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)?((n%360+360)%360):null}
 function routeBearingAt(index,speed=0){const c=selectedRoute?.geometry?.coordinates||[];if(c.length<2)return null;const i=Math.max(0,Math.min(c.length-2,index||0)),look=Math.max(2,Math.min(30,Math.round(5+(+speed||0)*.9))),j=Math.min(c.length-1,i+look);if(hav(c[i],c[j])<4&&j<c.length-1)return bearingBetween(c[i],c[Math.min(c.length-1,j+2)]);return bearingBetween(c[i],c[j])}
 function bearingDelta(a,b){return Math.abs(((b-a+540)%360)-180)}
 function hav(a,b){const R=6371000,p1=a[1]*Math.PI/180,p2=b[1]*Math.PI/180,dp=(b[1]-a[1])*Math.PI/180,dl=(b[0]-a[0])*Math.PI/180,x=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
@@ -333,8 +335,8 @@ function hidePermission(){$('locationPermission').classList.remove('show')}
 $('dismissLocationPromptBtn')?.addEventListener('click',hidePermission);
 const LAST_GPS_KEY='vano-last-location-v3';
 let startupWatchId=null,startupWatchTimer=null;
-function readLastGps(){try{const x=JSON.parse(localStorage.getItem(LAST_GPS_KEY)||'null');const age=Date.now()-(+x?.ts||0);if(!x||!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon)||age>2*60*60*1000)return null;return{lat:+x.lat,lon:+x.lon,accuracy:+x.accuracy||999,heading:age<=20000&&Number.isFinite(+x.heading)?+x.heading:null,speed:age<=12000&&Number.isFinite(+x.speed)?Math.max(0,+x.speed):null,ts:+x.ts||0}}catch{return null}}
-function saveLastGps(p){if(!p||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;try{localStorage.setItem(LAST_GPS_KEY,JSON.stringify({lat:+p.lat,lon:+p.lon,accuracy:+p.accuracy||999,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?+p.speed:null,ts:Date.now()}))}catch{}}
+function readLastGps(){try{const x=JSON.parse(localStorage.getItem(LAST_GPS_KEY)||'null');const age=Date.now()-(+x?.ts||0);if(!x||!Number.isFinite(+x.lat)||!Number.isFinite(+x.lon)||age>2*60*60*1000)return null;return{lat:+x.lat,lon:+x.lon,accuracy:+x.accuracy||999,heading:age<=20000?validGpsHeading(x.heading):null,speed:age<=12000&&Number.isFinite(+x.speed)?Math.max(0,+x.speed):null,ts:+x.ts||0}}catch{return null}}
+function saveLastGps(p){if(!p||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;try{localStorage.setItem(LAST_GPS_KEY,JSON.stringify({lat:+p.lat,lon:+p.lon,accuracy:+p.accuracy||999,heading:validGpsHeading(p.heading),speed:Number.isFinite(+p.speed)?+p.speed:null,ts:Date.now()}))}catch{}}
 function geoRaw(g){return{lat:g.coords.latitude,lon:g.coords.longitude,accuracy:g.coords.accuracy,altitude:Number.isFinite(g.coords.altitude)?g.coords.altitude:null,altitudeAccuracy:Number.isFinite(g.coords.altitudeAccuracy)?g.coords.altitudeAccuracy:null,heading:Number.isFinite(g.coords.heading)?g.coords.heading:null,speed:Number.isFinite(g.coords.speed)?Math.max(0,g.coords.speed):null,ts:Number.isFinite(+g.timestamp)?+g.timestamp:Date.now()}}
 function gpsFixScore(raw){const age=Math.max(0,Date.now()-(+raw?.ts||Date.now())),accuracy=Math.max(1,+raw?.accuracy||999);return accuracy+Math.min(180,age/18)}
 function chooseNavigationGpsFix(current,candidate){
@@ -384,9 +386,9 @@ function updatePassiveTracking(g){
   if(!g?.coords)return;const raw=geoRaw(g);if(!acceptGpsRaw(raw))return;lastGpsFixAt=Date.now();const p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);emitVanoOsint('location',{location:osintLocationPayload(raw,p),navigation:false});
   const movedMeters=!lastPassivePosition?Infinity:hav([lastPassivePosition.lon,lastPassivePosition.lat],[p.lon,p.lat]);lastPassivePosition={...p};
   const accuracy=Math.max(0,+raw.accuracy||999);
-  if(!passiveCameraAllowed()||searchInteractionActive||movedMeters<.35||accuracy>95)return;
-  const now=performance.now(),gap=lastPassiveCameraAt?now-lastPassiveCameraAt:520;if(gap<160)return;lastPassiveCameraAt=now;
-  const z=Math.max(15.9,Math.min(17.1,map.getZoom?.()||16.25)),duration=Math.max(180,Math.min(620,gap*.86));
+  if(!passiveCameraAllowed()||searchInteractionActive||movedMeters<Math.max(1.6,Math.min(4.2,accuracy*.055))||accuracy>95)return;
+  const now=performance.now(),gap=lastPassiveCameraAt?now-lastPassiveCameraAt:520;if(gap<380)return;lastPassiveCameraAt=now;
+  const z=Math.max(15.9,Math.min(17.1,map.getZoom?.()||16.25)),duration=Math.max(240,Math.min(440,gap*.70));
   internalCameraMoveUntil=now+duration+80;
   try{map.easeTo({center:[p.lon,p.lat],zoom:z,duration:REDUCED_MOTION?0:duration,essential:!REDUCED_MOTION,easing:t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2})}catch{}
 }
@@ -396,7 +398,40 @@ function startPassiveMapTracking(){
   startPassiveGpsHeartbeat();
 }
 function applyStartupFix(g,asOrigin=false,center=false){const raw=geoRaw(g);if(!acceptGpsRaw(raw))return null;lastGpsFixAt=Date.now();const p=filterPosition(raw);saveLastGps(raw);userLocation={lat:p.lat,lon:p.lon};updateUserMarker(p);updateGpsQuality(raw.accuracy);hidePermission();if(asOrigin){if(!origin||origin.is_gps){if(!origin)setPoint('origin',{...p,is_gps:true},'Minha localização',false);else{origin={...origin,...p,is_gps:true,label:'Minha localização'};originInput.value='Minha localização';originMarker?.setLngLat([p.lon,p.lat])}}}if(center&&map){try{map.stop?.();map.easeTo({center:[p.lon,p.lat],zoom:MAP_HOME_ZOOM,pitch:0,bearing:0,duration:REDUCED_MOTION?0:460,essential:!REDUCED_MOTION,easing:t=>1-Math.pow(1-t,3)})}catch{map.jumpTo({center:[p.lon,p.lat],zoom:MAP_HOME_ZOOM})}}if(destinationConfirmed&&destination&&origin&&!selectedRoute&&!window.__sparkStartupRouteQueued){window.__sparkStartupRouteQueued=true;setTimeout(()=>{window.__sparkStartupRouteQueued=false;if(!selectedRoute)calculateRoutes()},120)}maybeSyncPresence(p);scheduleEnvironmentalRefresh(p,false);scheduleTrafficSnapshot(false);emitVanoOsint('location',{location:osintLocationPayload(raw,p),navigation:false});return p}
-function bootstrapGps(asOrigin=false){if(window.__vanoGpsDenied)return;const cached=readLastGps();mapFollowMode=true;if(cached){userLocation={lat:cached.lat,lon:cached.lon};lastPassivePosition={...cached};updateUserMarker(cached);updateGpsQuality(cached.accuracy);if(map)map.jumpTo({center:[cached.lon,cached.lat],zoom:MAP_HOME_ZOOM-.12});scheduleTrafficSnapshot(false);if(asOrigin&&!origin){setPoint('origin',{...cached,is_gps:true},'Minha localização',false);origin.is_gps=true}}if(!navigator.geolocation)return;let gotFresh=false;const finishStartup=()=>{stopStartupGps();startPassiveMapTracking()};navigator.geolocation.getCurrentPosition(g=>{gotFresh=true;applyStartupFix(g,asOrigin,!cached)},e=>{if(e?.code===1){window.__vanoGpsDenied=true;if(!cached)showPermission(locationErrorMessage(e));stopStartupGps()}},{enableHighAccuracy:false,timeout:1200,maximumAge:60000});stopStartupGps();startupWatchId=navigator.geolocation.watchPosition(g=>{applyStartupFix(g,asOrigin,!cached&&!gotFresh);gotFresh=true;if((+g.coords.accuracy||999)<=35)finishStartup()},e=>{if(e?.code===1){window.__vanoGpsDenied=true;if(!cached)showPermission(locationErrorMessage(e));stopStartupGps()}},{enableHighAccuracy:true,maximumAge:600,timeout:5000});startupWatchTimer=setTimeout(finishStartup,8500)}
+function bootstrapGps(asOrigin=false){
+  if(window.__vanoGpsDenied)return;
+  const cached=readLastGps(),cachedFresh=!!cached&&Date.now()-cached.ts<12000;
+  mapFollowMode=true;
+  if(cached){
+    userLocation={lat:cached.lat,lon:cached.lon};lastPassivePosition={...cached};
+    updateUserMarker(cached);updateGpsQuality(cached.accuracy);
+    // Old cached coordinates are only a hint, not the current street.
+    if(map&&cachedFresh)map.jumpTo({center:[cached.lon,cached.lat],zoom:MAP_HOME_ZOOM-.12});
+    scheduleTrafficSnapshot(false);
+    if(asOrigin&&!origin){setPoint('origin',{...cached,is_gps:true},'Minha localização',false);origin.is_gps=true}
+  }
+  if(!navigator.geolocation)return;
+  let gotFresh=false,finished=false;
+  const finishStartup=()=>{
+    if(finished)return;finished=true;stopStartupGps();startPassiveMapTracking()
+  };
+  const receive=g=>{
+    if(finished){updatePassiveTracking(g);return}
+    const fix=applyStartupFix(g,asOrigin,!cachedFresh&&!gotFresh);
+    if(!fix)return;
+    gotFresh=true;
+    // Handoff to the continuous GPS watch on the first usable fix.
+    if((+g.coords.accuracy||999)<=80)finishStartup()
+  };
+  const denied=e=>{
+    if(e?.code===1){window.__vanoGpsDenied=true;if(!cached)showPermission(locationErrorMessage(e));stopStartupGps()}
+  };
+  // Acquire a fast estimate and a precise location in parallel.
+  navigator.geolocation.getCurrentPosition(receive,denied,{enableHighAccuracy:false,timeout:1200,maximumAge:cachedFresh?12000:10000});
+  stopStartupGps();
+  startupWatchId=navigator.geolocation.watchPosition(receive,denied,{enableHighAccuracy:true,maximumAge:600,timeout:5000});
+  startupWatchTimer=setTimeout(finishStartup,3600)
+}
 function updateGpsQuality(acc){if(!Number.isFinite(acc))return;const box=$('gpsQuality'),bars=$('gpsBars'),label=$('gpsAccuracy');if(!box||!bars||!label)return;const weak=acc>60,nav=!!activeNav?.classList.contains('show');box.classList.toggle('show',nav?weak:true);box.classList.toggle('weak',weak);label.textContent=weak?`GPS fraco · ±${Math.round(acc)} m`:`GPS ±${Math.round(acc)} m`;bars.className='gps-bars '+(acc<=20?'good':acc<=60?'mid':'')}
 function makeUserMarker(){
   const el=document.createElement('div');
@@ -405,7 +440,7 @@ function makeUserMarker(){
   userMarkerElement=el;markerHeadingReady=false;markerHeadingVisual=0;markerHeadingUpdatedAt=0;return el
 }
 function updateMarkerHeading(absoluteHeading,{instant=false,speed=0,accuracy=35}={}){
-  let heading=Number.isFinite(+absoluteHeading)?+absoluteHeading:(Number.isFinite(+lastMarkerHeading)?+lastMarkerHeading:null);if(!Number.isFinite(heading))return;
+  let heading=validGpsHeading(absoluteHeading)??validGpsHeading(lastMarkerHeading);if(heading===null)return;
   heading=(heading%360+360)%360;const moving=Math.max(0,+speed||0)>.65,goodGps=Math.max(0,+accuracy||999)<70,now=performance.now();
   if(!moving&&markerHeadingReady)return;lastMarkerHeading=heading;
   if(!markerHeadingReady||instant){markerHeadingVisual=heading;markerHeadingReady=true;markerHeadingUpdatedAt=now}
@@ -426,6 +461,7 @@ function routeAlignedPuckBearing(p){
   if(p?._routeSnapped===false||(Number.isFinite(rawOff)&&rawOff>snapLimit))return null;
   const along=Number.isFinite(+p?._distanceAlong)?+p._distanceAlong:+nearestProgress(p).distanceAlong||0,speed=Math.max(0,+p?.speed||0),span=Math.max(28,Math.min(82,36+speed*2.2)),raw=routeBearingAtDistance(along,span);
   if(!Number.isFinite(raw))return Number.isFinite(lastRoutePuckBearing)?lastRoutePuckBearing:null;
+  if(speed<.65&&Number.isFinite(lastRoutePuckBearing))return lastRoutePuckBearing;
   if(!Number.isFinite(lastRoutePuckBearing))lastRoutePuckBearing=raw;else lastRoutePuckBearing=blendBearing(lastRoutePuckBearing,raw,speed>=8?.26:speed>=2?.20:.14);
   return lastRoutePuckBearing
 }
@@ -563,13 +599,20 @@ function remainingNavGeometry(startAlong=0){
   const measured=Math.max(0,+startAlong||0),visual=Number.isFinite(puckRouteAlong)?Math.max(0,+puckRouteAlong):measured,anchor=Math.min(measured,visual),speed=Math.max(0,+puckRouteTargetSpeed||+lastNavPosition?.speed||0),trail=Math.max(2.4,Math.min(5.5,2.4+speed*.12));
   const start=Math.max(0,Math.min(routeTotalGeometry-0.01,anchor-trail)),pt=routePointAtDistance(start);let lo=0,hi=routeCumulative.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(routeCumulative[mid]<start)lo=mid+1;else hi=mid}const coords=[pt,...c.slice(Math.max(1,lo))].filter(Boolean),clean=[];for(const x of coords){const prev=clean.at(-1);if(!prev||hav(prev,x)>.25)clean.push(x)}return clean.length>1?{type:'LineString',coordinates:clean}:selectedRoute.geometry;
 }
-function routeBearingAtDistance(distance,span=34){const a=routePointAtDistance(distance),b=routePointAtDistance(distance+span);return a&&b?bearingBetween(a,b):null}
+function routeBearingAtDistance(distance,span=34){
+  if(!selectedRoute?.geometry?.coordinates?.length||routeTotalGeometry<3)return null;
+  const max=Math.max(0,routeTotalGeometry-.01),d=Math.max(0,+distance||0),look=Math.max(5,+span||34);
+  let from=Math.min(max,d),to=Math.min(max,d+look);
+  if(to-from<3)from=Math.max(0,to-look);
+  const a=routePointAtDistance(from),b=routePointAtDistance(to);
+  return a&&b&&hav(a,b)>=2?bearingBetween(a,b):null
+}
 function startupRouteBearing(m,p){
   const along=Math.max(0,+m?.distanceAlong||0),samples=[18,32,52,78,108],bearings=[];
   for(const span of samples){const b=routeBearingAtDistance(Math.max(0,along-2),span);if(Number.isFinite(b))bearings.push({b,w:span<=52?3:span<=78?2:1})}
-  if(!bearings.length)return Number.isFinite(+p?.heading)?+p.heading:null;
+  if(!bearings.length)return validGpsHeading(p?.heading);
   let x=0,y=0;for(const v of bearings){const r=v.b*Math.PI/180;x+=Math.sin(r)*v.w;y+=Math.cos(r)*v.w}let route=(Math.atan2(x,y)*180/Math.PI+360)%360;
-  const gps=Number.isFinite(+p?.heading)?+p.heading:null,speed=Math.max(0,+p?.speed||0),acc=Math.max(0,+p?.accuracy||0);
+  const gps=validGpsHeading(p?.heading),speed=Math.max(0,+p?.speed||0),acc=Math.max(0,+p?.accuracy||0);
   if(gps!=null&&speed>2.2&&acc<45&&bearingDelta(route,gps)<42)route=blendBearing(route,gps,.12);
   return route
 }
@@ -656,7 +699,7 @@ function buildCameraTarget(ctx,ts){
     }
   }
   const calibrating=ts<cameraCalibrationUntil;if(navCameraState!==NAV_CAMERA_STATES.REROUTING&&navCameraState!==NAV_CAMERA_STATES.FREE_LOOK){if(arrivalApproach)setNavCameraState(NAV_CAMERA_STATES.ARRIVAL);else if(junction.decision)setNavCameraState(NAV_CAMERA_STATES.MANEUVER_FOCUS);else if(!calibrating)setNavCameraState(NAV_CAMERA_STATES.FOLLOWING)}
-  const offRoute=Number.isFinite(+p?._rawOffRoute)?+p._rawOffRoute:0,bearingSpan=calibrating?72:Math.max(profile==='motorcycle'?38:42,Math.min(profile==='motorcycle'?112:125,(profile==='motorcycle'?46:52)+speed*(profile==='motorcycle'?2.8:3.2))),routeBearing=routeBearingAtDistance(Math.max(0,m.distanceAlong-(calibrating?2:(profile==='motorcycle'?4:6))),bearingSpan),gpsHeading=Number.isFinite(+p.heading)?+p.heading:null;
+  const offRoute=Number.isFinite(+p?._rawOffRoute)?+p._rawOffRoute:0,bearingSpan=calibrating?72:Math.max(profile==='motorcycle'?38:42,Math.min(profile==='motorcycle'?112:125,(profile==='motorcycle'?46:52)+speed*(profile==='motorcycle'?2.8:3.2))),routeBearing=routeBearingAtDistance(Math.max(0,m.distanceAlong-(calibrating?2:(profile==='motorcycle'?4:6))),bearingSpan),gpsHeading=validGpsHeading(p.heading);
   let rawTarget=Number.isFinite(routeBearing)?routeBearing:(Number.isFinite(lastRoutePuckBearing)?lastRoutePuckBearing:map.getBearing());
   if(offRoute>Math.max(55,(+p.accuracy||35)*1.5)&&gpsHeading!=null)rawTarget=gpsHeading;
   const startupLocked=Number.isFinite(navStartupBearing)&&ts<navStartupBearingUntil;
@@ -1435,10 +1478,10 @@ function hardRefreshMapViewport(){
 }
 map.on('style.load',async()=>{initialStyleLoaded=true;clearTimeout(initialStyleWatchdog);try{map.setProjection?.('mercator')}catch{}await installRuntimeLayers();await ensureVehicle3DLayer();syncNavigationThemePaint();updateAnimatedRoutePaint(true);restoreRuntimeMapState();styleSwitching=false;$('mapMoodFade')?.classList.remove('active')});
 map.on('load',async()=>{
-  restoreMapGestureHealth();hardRefreshMapViewport();applyVanoLightBasemapConfig();
+  restoreMapGestureHealth();hardRefreshMapViewport();applyVanoLightBasemapConfig();bootstrapGps(!SHARED_TOKEN);
   await installRuntimeLayers();await ensureVehicle3DLayer();
   startRouteFlowAnimation();startPerformanceMonitor();
-  applyMapPrefs();bootstrapGps(!SHARED_TOKEN);updatePlannerOriginStatus();scheduleEnvironmentalRefresh(BOOT_GPS||null,true);
+  applyMapPrefs();updatePlannerOriginStatus();scheduleEnvironmentalRefresh(BOOT_GPS||null,true);
   setTimeout(()=>scheduleSignalRefresh(true),1200);setTimeout(()=>refreshNearbyDrivers(true),3500);hydrateQuickAlertBadges();
   if(SHARED_TOKEN)setTimeout(loadSharedRoute,350);else setTimeout(showSavedTripResume,520);
   setInterval(()=>{if(document.visibilityState==='visible')refreshEnvironmentalStyle(false)},300000);
@@ -1963,9 +2006,10 @@ async function startTrip(){
   setNavigationExperience('immersive',{recenter:false,announce:false});
   stopStartupGps();stopPassiveMapTracking();if(previewing)stopRoutePreview(false);starting=true;const btn=$('startTripBtn');btn?.classList.add('is-starting');if(btn){btn.disabled=true;btn.innerHTML='<span class="start-trip-icon start-trip-loading-icon"><span class="loading"></span></span><span class="start-trip-copy"><b>Preparando navegação…</b><small>GPS, câmera e trajeto</small></span><span class="start-trip-arrow">…</span>'}showToast('Preparando navegação…');
   try{
-    let p=null;const cached=userLocation||readLastGps()||((origin&&Number.isFinite(+origin.lat)&&Number.isFinite(+origin.lon))?origin:null);
-    if(navigator.geolocation){try{const g=await requestFreshNavigationPosition(cached?2100:3200),raw=geoRaw(g);lastGpsFixAt=Date.now();saveLastGps(raw);updateGpsQuality(raw.accuracy);smoothedPos=null;p=filterPosition(raw)}catch(e){console.debug('[VANO MAPS:fresh-nav-fix]',e?.code||e?.message||e)}}
-    if(!p&&cached&&Number.isFinite(+cached.lat)&&Number.isFinite(+cached.lon)){smoothedPos=null;p=filterPosition({lat:+cached.lat,lon:+cached.lon,accuracy:+cached.accuracy||80,heading:Number.isFinite(+cached.heading)?+cached.heading:null,speed:Number.isFinite(+cached.speed)?+cached.speed:null,ts:+cached.ts||Date.now()})}
+    let p=null;const recentGps=readLastGps(),cached=userLocation||recentGps||((origin&&Number.isFinite(+origin.lat)&&Number.isFinite(+origin.lon))?origin:null);
+    if(recentGps&&Date.now()-recentGps.ts<3500&&recentGps.accuracy<=55){smoothedPos=null;p=filterPosition(recentGps)}
+    if(!p&&navigator.geolocation){try{const g=await requestFreshNavigationPosition(cached?2100:3200),raw=geoRaw(g);lastGpsFixAt=Date.now();saveLastGps(raw);updateGpsQuality(raw.accuracy);smoothedPos=null;p=filterPosition(raw)}catch(e){console.debug('[VANO MAPS:fresh-nav-fix]',e?.code||e?.message||e)}}
+    if(!p&&cached&&Number.isFinite(+cached.lat)&&Number.isFinite(+cached.lon)){smoothedPos=null;p=filterPosition({lat:+cached.lat,lon:+cached.lon,accuracy:+cached.accuracy||80,heading:validGpsHeading(cached.heading),speed:Number.isFinite(+cached.speed)?+cached.speed:null,ts:+cached.ts||Date.now()})}
     if(!p)throw new Error('Não foi possível determinar uma posição inicial.');
     await playNavigationLaunchCue(p);await activateNavigationAt(p,{simulated:false});productTelemetry('route','navigation-start','navigation');beginNavigationGpsWatch();setTimeout(()=>nonFatal('event-start',()=>checkEventDisruption(true,{pretrip:false})),4200);setTimeout(()=>nonFatal('traffic-start',()=>checkLiveTraffic(true)),12000);showToast('Navegação iniciada.');
   }catch(e){console.error('[VANO MAPS:startTrip]',e);if(activeNav.classList.contains('show')){showToast('Navegação iniciada. Alguns recursos ainda estão carregando.')}else{const geoCode=Number.isFinite(+e?.code)?+e.code:null;if(geoCode)showPermission(locationErrorMessage(e));showToast(geoCode?locationErrorMessage(e):(e?.message||'Não foi possível iniciar a navegação. Tente recalcular a rota.'))}}
