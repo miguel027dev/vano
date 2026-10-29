@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block title %}DevSync · Coordenação VANO{% endblock %}
+{% block content %}
+<style nonce="{{ g.csp_nonce }}">
+.ds-page{--ds-bg:#0f141c;--ds-panel:#161d28;--ds-line:#303a49;--ds-muted:#a2adbf;--ds-text:#f4f7fc;--ds-accent:#f59a62;color:var(--ds-text);max-width:1400px;margin:20px auto 80px;padding:clamp(16px,3vw,32px);font-family:inherit}
+.ds-page *{box-sizing:border-box}.ds-page a{color:inherit}.ds-top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:26px}.ds-eyebrow{letter-spacing:.16em;font-size:.74rem;font-weight:700;color:var(--ds-accent)}.ds-top h1{font-size:clamp(1.8rem,4vw,2.9rem);margin:7px 0}.ds-top p{max-width:730px;line-height:1.5;color:var(--ds-muted);margin:0}.ds-actions{display:flex;gap:8px;flex-wrap:wrap}.ds-page button,.ds-page .ds-button{font:inherit;border:1px solid var(--ds-line);border-radius:12px;background:#202939;color:var(--ds-text);padding:10px 13px;cursor:pointer;transition:background .15s,border-color .15s;text-decoration:none}.ds-page button:hover,.ds-page .ds-button:hover{background:#303b4c}.ds-page button:focus-visible,.ds-page a:focus-visible,.ds-page input:focus-visible,.ds-page select:focus-visible,.ds-page textarea:focus-visible{outline:2px solid var(--ds-accent);outline-offset:2px}.ds-page button:disabled{opacity:.5;cursor:wait}.ds-primary{background:#f59a62!important;color:#1c1513!important;border-color:#f59a62!important;font-weight:800!important}.ds-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}.ds-stat{background:#18212d;border:1px solid var(--ds-line);border-radius:16px;padding:16px}.ds-stat b{display:block;font-size:1.8rem;font-variant-numeric:tabular-nums}.ds-stat span{color:var(--ds-muted);font-size:.85rem}.ds-layout{display:grid;grid-template-columns:minmax(270px,.9fr) minmax(0,1.4fr);gap:18px;align-items:start}.ds-column{min-width:0;display:grid;gap:18px}.ds-panel{background:var(--ds-panel);border:1px solid var(--ds-line);border-radius:20px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.12)}.ds-panel h2{font-size:1.1rem;margin:0 0 6px}.ds-panel p{color:var(--ds-muted);font-size:.87rem;line-height:1.5;margin:0 0 16px}.ds-page form{display:grid;gap:12px}.ds-page label{font-size:.83rem;color:var(--ds-muted);display:grid;gap:5px}.ds-page input,.ds-page select,.ds-page textarea{font:inherit;border:1px solid #394558;background:#101722;color:#fff;border-radius:10px;padding:11px;min-width:0;width:100%}.ds-page textarea{resize:vertical;min-height:90px}.ds-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ds-scroll{max-height:480px;overflow:auto;padding-right:5px}.ds-task{border:1px solid #334052;background:#111a25;border-radius:13px;padding:14px;margin:0 0 10px}.ds-task-top{display:flex;align-items:start;justify-content:space-between;gap:12px}.ds-task b{font-size:.96rem}.ds-task small,.ds-event small,.ds-log small{display:block;color:var(--ds-muted);font-size:.77rem;margin-top:4px;overflow-wrap:anywhere}.ds-task p{margin:10px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}.ds-task .ds-buttons{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}.ds-task button{padding:7px 9px;font-size:.8rem}.ds-tag{display:inline-block;font-size:.68rem;font-weight:800;white-space:nowrap;padding:5px 8px;background:#293547;border-radius:8px;color:#b7c6da}.ds-tag[data-state=in_progress]{color:#b9f3ce;background:#183e35}.ds-tag[data-state=blocked]{color:#ffd3a2;background:#483224}.ds-tag[data-state=review]{color:#bfcfff;background:#2b3556}.ds-tag[data-state=done]{color:#d0e1cf;background:#263c2e}.ds-chat{display:flex;flex-direction:column;gap:13px;min-height:200px;max-height:580px;overflow:auto;padding:4px 6px 12px 0}.ds-event{background:#111a25;border:1px solid #303d4e;border-radius:14px;padding:13px 15px;max-width:100%;overflow-wrap:anywhere}.ds-event[data-kind=decision]{border-left:3px solid #f59a62}.ds-event[data-kind=blocker]{border-left:3px solid #ff7272}.ds-event[data-kind=handoff]{border-left:3px solid #a7a2fc}.ds-event header{display:flex;gap:8px;justify-content:space-between;align-items:center}.ds-event b{font-size:.86rem}.ds-event p{margin:9px 0 0;white-space:pre-wrap;color:#e6ecf7;font-size:.91rem}.ds-event time,.ds-log time{color:var(--ds-muted);font-size:.76rem;white-space:nowrap}.ds-log{display:flex;gap:8px;justify-content:space-between;border-top:1px solid #2b3748;padding:10px 0;overflow-wrap:anywhere}.ds-log span{font-size:.86rem}.ds-log:first-child{border-top:0}.ds-empty{color:var(--ds-muted);padding:22px 6px;text-align:center}.ds-help{font-size:.83rem;color:var(--ds-muted);line-height:1.55}.ds-error{color:#ffd1c9;font-size:.85rem;min-height:20px}.ds-ok{color:#b7f0ce}.ds-refresh{font-size:.78rem;color:var(--ds-muted);align-self:center}.ds-conflicts:not(:empty){border:1px solid #8a523d;background:#3c2c28;color:#ffe1c9;border-radius:12px;padding:12px;margin-bottom:12px;font-size:.88rem}.ds-bar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap}.ds-chip{font-size:.73rem;color:var(--ds-accent);letter-spacing:.09em}.ds-page .ds-inline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ds-page .ds-inline select{max-width:220px}.ds-page .ds-inline input{max-width:270px}.ds-log{word-break:break-word}
+@media(max-width:880px){.ds-layout{grid-template-columns:1fr}.ds-top{flex-direction:column}.ds-page{margin-top:0}.ds-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:540px){.ds-row{grid-template-columns:1fr}.ds-page{padding:12px}.ds-panel{padding:15px}.ds-stats{gap:6px}.ds-stat{padding:11px}.ds-stat b{font-size:1.45rem}}@media(prefers-reduced-motion:reduce){.ds-page button{transition:none}}
+</style>
+<main class="ds-page" id="conteudo-principal" tabindex="-1" data-devsync>
+ <header class="ds-top">
+  <div><span class="ds-eyebrow">VANO CONTROL CENTER · ADMIN ONLY</span><h1>DevSync <span aria-hidden="true" style="color:#f59a62">/</span> Coordenação</h1><p>O que cada modelo está fazendo, decisões, alterações e conflitos em um histórico único. Apenas sessões administrativas autorizadas podem visualizar e registrar.</p></div>
+  <div class="ds-actions"><a class="ds-button" href="{{ url_for('admin_dashboard') }}">Voltar ao painel</a><button type="button" id="dsCopy">Copiar resumo para outro chat</button><button type="button" id="dsRefresh">Atualizar</button></div>
+ </header>
+ <div class="ds-stats" aria-label="Indicadores de trabalho">
+  <div class="ds-stat"><b id="dsActive">—</b><span>Áreas em execução</span></div>
+  <div class="ds-stat"><b id="dsPlanned">—</b><span>Aguardando</span></div>
+  <div class="ds-stat"><b id="dsBlocked">—</b><span>Bloqueadas</span></div>
+ </div>
+ <div id="dsNotice" class="ds-error" role="status" aria-live="polite"></div>
+ <div class="ds-layout">
+  <div class="ds-column">
+   <section class="ds-panel">
+    <h2>Conectar Argon ou outro agente</h2>
+    <p>Gere uma credencial exclusiva para a central de desenvolvimento. O agente poderá consultar o contexto, criar tarefas e registrar progresso, mas não poderá usar funções administrativas gerais.</p>
+    <form id="dsAgentForm">
+      <label>Identificação do agente<input name="name" maxlength="70" required placeholder="Ex.: Argon · trabalho de GPS"></label>
+      <button class="ds-primary" type="submit">Criar credencial para agente</button>
+    </form>
+    <div id="dsAgentToken" hidden style="margin-top:14px"><label>Token de acesso — mostrado uma única vez<textarea id="dsAgentSecret" readonly rows="3" autocomplete="off" spellcheck="false"></textarea></label><button id="dsAgentCopy" type="button">Copiar token</button><p style="margin-top:10px">Configure este token como segredo no ambiente do agente, nunca em mensagens, commits ou arquivos públicos.</p></div>
+    <div id="dsAgentKeys" style="margin-top:12px" aria-live="polite"></div>
+    <p style="margin-top:12px">Integração de agentes: <code>/api/agent/dev-sync/handoff</code> e demais rotas de tarefas. <a href="https://github.com/miguel027dev/vano/blob/main/docs/VANO_DEVSYNC_PROTOCOL.md" target="_blank" rel="noopener noreferrer">Guia do protocolo</a></p>
+   </section>
+   <section class="ds-panel">
+    <h2>Registrar um trabalho</h2><p>Antes de alterar código, cada chat cria e assume uma tarefa. A reserva impede duas tarefas cooperantes na mesma área.</p>
+    <form id="dsTaskForm">
+     <label>Ação ou correção<input name="title" maxlength="160" required placeholder="Ex.: Corrigir orientação do GPS"></label>
+     <div class="ds-row"><label>Área<select name="area" required>{% for area in areas %}<option value="{{ area }}">{{ area }}</option>{% endfor %}</select></label><label>Modelo / agente<input name="model" maxlength="70" placeholder="Ex.: GPT-6"></label></div>
+     <label>Identificação deste chat<input name="actor" id="dsTaskActor" maxlength="70" required placeholder="Ex.: Chat GPS · sessão A"></label>
+     <div class="ds-row"><label>Arquivo / escopo<input name="scope" maxlength="160" placeholder="static/vano-map.js"></label><label>Branch<input name="branch" maxlength="180" placeholder="fix/gps-..."></label></div>
+     <label>Plano inicial<textarea name="summary" maxlength="1000" rows="3" placeholder="Objetivo, o que será alterado e riscos"></textarea></label>
+     <button type="submit" class="ds-primary">Criar tarefa</button>
+    </form>
+   </section>
+   <section class="ds-panel">
+    <div class="ds-bar"><div><h2>Quadro de trabalhos</h2><p>Reivindique sua tarefa antes de editar.</p></div><span class="ds-chip">RESERVAS DE 15 MIN</span></div>
+    <div id="dsConflicts" class="ds-conflicts" aria-live="polite"></div>
+    <div id="dsTasks" class="ds-scroll" aria-live="polite"><div class="ds-empty">Carregando tarefas…</div></div>
+   </section>
+   <section class="ds-panel"><h2>Registros administrativos</h2><p>Últimas ações do sistema já auditadas. Metadados sensíveis não são exibidos aqui.</p><div id="dsAudit" class="ds-scroll"><div class="ds-empty">Carregando auditoria…</div></div></section>
+  </div>
+  <div class="ds-column">
+   <section class="ds-panel">
+    <div class="ds-bar"><div><span class="ds-eyebrow">TIMELINE COMPARTILHADA</span><h2>Conversas e atualizações</h2><p>Mensagens, commits, decisões, problemas e entregas ficam disponíveis para os próximos chats.</p></div><span class="ds-refresh" id="dsUpdated">Atualizando…</span></div>
+    <div class="ds-chat" id="dsFeed" role="log" aria-live="polite" aria-relevant="additions"><div class="ds-empty">Carregando histórico…</div></div>
+    <form id="dsMessageForm">
+      <div class="ds-row"><label>Quem está falando<input name="actor" id="dsMessageActor" maxlength="70" required placeholder="Nome do chat / modelo"></label><label>Tipo<select name="kind"><option value="message">Mensagem</option><option value="progress">O que estou fazendo</option><option value="decision">Decisão</option><option value="blocker">Bloqueio</option><option value="handoff">Entrega / handoff</option></select></label></div>
+      <label>Relacionar à tarefa<select name="task_id" id="dsTaskSelect"><option value="">Mensagem geral</option></select></label>
+      <label>Registro<textarea name="body" maxlength="1600" required rows="3" placeholder="Ex.: Ajustei o filtro de heading; PR #200; aguardando teste real no Android."></textarea></label>
+      <button type="submit" class="ds-primary">Publicar na timeline</button>
+    </form>
+   </section>
+   <section class="ds-panel"><h2>Protocolo entre modelos</h2><div class="ds-help">1. Consultar o snapshot antes de alterar qualquer módulo. 2. Registrar tarefa, identificar branch e assumir a área. 3. Registrar progresso e decisões na timeline. 4. Renovar reserva durante o trabalho. 5. Finalizar com commit, PR, testes e pendências. Reservas protegem apenas agentes que seguem este protocolo — não impedem commits diretos no GitHub.<p style="margin-top:12px">Snapshot autenticado: <code>/api/admin/dev-sync/snapshot</code><br>Handoff JSON: <code>/api/admin/dev-sync/handoff</code></p></div></section>
+  </div>
+ </div>
+</main>
+{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static',filename='vano-devsync.js') }}?v={{ vano_build_id }}"></script>{% endblock %}

@@ -15,11 +15,13 @@
       <div class="admin350-hero-actions">
         <a class="admin350-btn is-ghost" href="{{ url_for('index') }}"><i data-lucide="map" width="16"></i><span>Mapa</span></a>
         <a class="admin350-btn is-ghost" href="{{ url_for('admin_audit_logs') }}"><i data-lucide="history" width="16"></i><span>Auditoria</span></a>
+        <a class="admin350-btn is-primary" href="{{ url_for('admin_dev_sync') }}"><i data-lucide="messages-square" width="16"></i><span>Chat · Tarefas · Progresso</span></a>
         <button class="admin350-btn is-primary" id="testAllNodes" type="button"><i data-lucide="activity" width="16"></i><span>Testar nodes</span></button>
       </div>
     </header>
 
     <nav class="admin350-nav admin350-reveal" aria-label="Áreas administrativas">
+      <a href="{{ url_for('admin_dev_sync') }}"><span><i data-lucide="messages-square" width="18"></i></span><div><b>DevSync</b><small>Chats, tarefas e histórico de correções</small></div><i data-lucide="arrow-up-right" width="14"></i></a>
       <a href="{{ url_for('admin_beta_feedback') }}"><span><i data-lucide="message-square" width="18"></i></span><div><b>Feedback de teste</b><small>Relatos e correções</small></div><i data-lucide="arrow-up-right" width="14"></i></a>
       <a href="{{ url_for('admin_users') }}"><span><i data-lucide="users" width="18"></i></span><div><b>Usuários</b><small>{{ stats['users'] }} contas</small></div><i data-lucide="arrow-up-right" width="14"></i></a>
       <a href="{{ url_for('admin_reports') }}"><span><i data-lucide="triangle-alert" width="18"></i></span><div><b>Alertas</b><small>{{ stats['active_reports'] }} ativos</small></div><i data-lucide="arrow-up-right" width="14"></i></a>

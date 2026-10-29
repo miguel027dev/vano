@@ -684,6 +684,47 @@ def init_db():
             """
         )
 
+        # VANO DevSync: durable admin-only work journal and cooperative area leases.
+        db.executescript("""
+            CREATE TABLE IF NOT EXISTS devsync_tasks (
+                id BIGSERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                area TEXT NOT NULL,
+                scope TEXT NOT NULL DEFAULT '',
+                branch TEXT NOT NULL DEFAULT '',
+                model TEXT NOT NULL DEFAULT '',
+                actor TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'planned',
+                summary TEXT NOT NULL DEFAULT '',
+                lease_hash TEXT,
+                lease_expires_at TEXT,
+                version INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_devsync_task_area_lease ON devsync_tasks(area,status,lease_expires_at);
+            CREATE INDEX IF NOT EXISTS idx_devsync_task_updated ON devsync_tasks(updated_at DESC,id DESC);
+            CREATE TABLE IF NOT EXISTS devsync_events (
+                id BIGSERIAL PRIMARY KEY,
+                task_id BIGINT REFERENCES devsync_tasks(id) ON DELETE SET NULL,
+                actor TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                body TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_devsync_event_recent ON devsync_events(id DESC);
+            CREATE INDEX IF NOT EXISTS idx_devsync_event_task ON devsync_events(task_id,id DESC);
+            CREATE TABLE IF NOT EXISTS devsync_agent_keys (
+                id BIGSERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                revoked_at TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_devsync_agent_key_expiry ON devsync_agent_keys(expires_at,revoked_at);
+        """)
+
         # Additive migrations for existing PostgreSQL databases.
         user_columns = table_columns(db, "users")
         user_migrations = {
