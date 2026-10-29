@@ -95,3 +95,17 @@ test('rejected cached fixes do not count as accepted GPS and old callbacks remai
  stop();old.success({});old.error({code:2});
  assert.equal(count,1);
 });
+
+test('first usable coarse location is requested immediately next tick without blocking precision watch',()=>{
+ const h=harness();let accepted=0;
+ const stop=startGpsSession(h.api,{onPosition:()=>{accepted++;return true;},onError:()=>{}},
+   {...h.options,firstFixTimeoutMs:0});
+ assert.equal(h.api.watchCount,1);
+ h.advance(0);
+ assert.equal(h.api.probeCount,1,'start a low-power fast network probe without the old 650ms wait');
+ h.api.probeSuccess({});
+ assert.equal(accepted,1);
+ h.latest().success({});
+ assert.equal(accepted,2,'high accuracy sensor can still improve the coarse fix');
+ stop();
+});

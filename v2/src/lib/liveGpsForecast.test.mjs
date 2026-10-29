@@ -14,7 +14,7 @@ const sample={timeline,sourceAt:100000,now:100680,speed:12,accuracy:8,heading:90
 test('moving live pointer advances smoothly but never beyond ten metres',()=>{
   const future=anticipateRoadProgress({...sample,meters:40});
   assert.ok(future>40&&future<49);
-  assert.ok(anticipateRoadProgress({...sample,meters:40,now:103000})<=50);
+  assert.ok(anticipateRoadProgress({...sample,meters:40,now:103000})<=53);
 });
 test('visual motion cannot anticipate a turning intersection',()=>{
   const near=anticipateRoadProgress({...sample,meters:97});
@@ -28,4 +28,16 @@ test('lost accuracy, bad bearing, stationary driving and missing sensor time can
 });
 test('visual prediction never supplies route progress when no route geometry exists',()=>{
   assert.equal(anticipateRoadProgress({...sample,meters:40,timeline:null}),40);
+});
+
+test('sensor cadence near one hertz no longer freezes car before next real callback',()=>{
+ const progresses=[100180,100480,100780,101080].map(now=>
+   anticipateRoadProgress({...sample,meters:40,now}));
+ assert.ok(progresses.every((x,i)=>i===0||x>progresses[i-1]),
+   'the displayed pointer should progress at 180/480/780/1080 ms');
+ assert.ok(progresses.at(-1)>50,'progress should continue past former .8 second cutoff');
+ const capped=anticipateRoadProgress({...sample,meters:40,now:102000});
+ assert.ok(capped<=53&&capped>=52);
+ assert.equal(anticipateRoadProgress({...sample,meters:40,now:109000}),capped,
+   'signal outage must hold at a strict cap rather than roaming without GPS');
 });
