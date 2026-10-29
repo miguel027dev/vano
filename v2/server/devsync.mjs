@@ -66,7 +66,7 @@ export function createDevSync({db,persist,json,err,getBody,protectedWrite,userSe
    const isAdmin=pathname==='/api/admin/dev-sync'||pathname.startsWith('/api/admin/dev-sync/');
    const isAgent=pathname==='/api/agent/dev-sync'||pathname.startsWith('/api/agent/dev-sync/');
    if(!isAdmin&&!isAgent)return false;
-   if(!persistent)return void err(res,503,'DevSync exige armazenamento PostgreSQL persistente.');
+   if(!persistent){err(res,503,'DevSync exige armazenamento PostgreSQL persistente.');return true;}
    if(!limits(req,res,'devsync-requests',80,60000))return true;
    let identity='';
    if(isAdmin){
