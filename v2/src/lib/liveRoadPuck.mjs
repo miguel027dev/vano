@@ -31,7 +31,7 @@ export function matchLiveRoadPosition({position,route,accuracy,speed,heading,pre
       !Number.isFinite(accuracy)||accuracy<0||accuracy>75)return null;
   const points=route.geometry.coordinates;
   if(points.length<2||timeline.cumulative.length!==points.length)return null;
-  const stopped=Number.isFinite(speed)&&speed>=0&&speed<1;
+  const stopped=speed==null||(Number.isFinite(speed)&&speed>=0&&speed<2);
   const anchor=previous?.anchorRaw||previous?.raw;
   // Maintain a fixed anchor during a stop, rather than replacing it with every
   // noisy sample (which would let the marker slowly walk into a side street).
@@ -67,7 +67,7 @@ export function matchLiveRoadPosition({position,route,accuracy,speed,heading,pre
   if(stopped&&previous&&Number.isFinite(previous.meters)&&
       best.meters<previous.meters&&previous.meters-best.meters<8)
     best={...best,meters:previous.meters,point:previous.point,bearing:previous.bearing,segment:previous.segment};
-  return {...best,raw:position,anchorRaw:position};
+  return {point:best.point,meters:best.meters,bearing:best.bearing,segment:best.segment,raw:position,anchorRaw:position};
 }
 
 /** Direction of the road segment actually reached; never pre-rotate at a turn. */
