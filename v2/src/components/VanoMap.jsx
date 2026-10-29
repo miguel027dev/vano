@@ -6,7 +6,7 @@ import {buildRouteTimeline,distanceOnRoute,nextManeuver,sampleRoute} from '../li
 import {simulationPointerBearing} from '../lib/adminRouteSimulator.mjs';
 import {easeGpsPoint,routeTrace,smoothLiveRoadProgress,smoothLiveBearing} from '../lib/liveMotion.js';
 import {anticipateRoadProgress} from '../lib/liveGpsForecast.mjs';
-import {matchLiveRoadPosition,bearingAtDrivenProgress} from '../lib/liveRoadPuck.mjs';
+import {matchLiveRoadPosition,bearingAtDrivenProgress,shouldHoldVisualRoadLock} from '../lib/liveRoadPuck.mjs';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
 import {planV2DroneCamera,observeV2DroneScene,shiftDroneView,chooseV2UrbanCamera,planV2RampApproach,v2UserCenteredRampView,planV2RearChase,inspectV2RoadAhead} from '../lib/v2DroneCamera.mjs';
 import {planAdaptiveRoadDistance} from '../lib/adaptiveRoadCamera.mjs';
@@ -1090,13 +1090,30 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         const geometry=route?.geometry||null;
         if(state.gpsMatchRaw!==target||state.gpsMatchGeometry!==geometry){
           const sameGeometry=state.gpsMatchGeometry===geometry;
-          state.roadMatch=matchLiveRoadPosition({
+          const previousMatch=sameGeometry?state.roadMatch:null;
+          const matched=matchLiveRoadPosition({
             position:target,route,accuracy:d.telemetry?.accuracy,
             speed:d.telemetry?.speed,heading:d.telemetry?.heading,
             vehicle:d.vehicle,navigation:d.navigation,
             simulation:d.simulationPreview||d.droneSimulation,
-            timeline,previous:sameGeometry?state.roadMatch:null
+            timeline,previous:previousMatch
           });
+          const fixNow=Date.now();
+          state.heldRoadLock=false;
+          if(matched){
+            state.roadMatch=matched;
+            state.lastRoadMatchedAt=fixNow;
+          }else if(sameGeometry&&shouldHoldVisualRoadLock({
+            previous:previousMatch,position:target,
+            accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,
+            heading:d.telemetry?.heading,
+            lastMatchedAt:state.lastRoadMatchedAt,now:fixNow
+          })){
+            // One weak callback must not eject the marker to a lateral street.
+            // A confirmed turn or longer loss of matching exits this grace.
+            state.roadMatch=previousMatch;
+            state.heldRoadLock=true;
+          }else state.roadMatch=null;
           state.gpsMatchRaw=target;
           state.gpsMatchGeometry=geometry;
           if(!state.roadMatch||!sameGeometry)state.roadMeters=null;
@@ -1105,7 +1122,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           const measured=state.roadMatch.meters;
           // Visual-only prediction along the observed straight road segment:
           // never used for turn alerts, speed, route decisions or location APIs.
-          const desired=d.navigation&&!d.simulationPreview&&!d.droneSimulation
+          const desired=d.navigation&&!d.simulationPreview&&!d.droneSimulation&&!state.heldRoadLock
             ?anticipateRoadProgress({timeline,meters:measured,
               sourceAt:d.telemetry?.sourceAt,now:Date.now(),
               speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
