@@ -81,3 +81,22 @@ export function bearingAtDrivenProgress(timeline,meters){
   }
   return null;
 }
+
+/** Briefly hold a confirmed road leg when one browser GPS sample is noisy.
+ * Visual-only. Never use it as a new GPS fix, to trigger turns or rerouting.
+ * Do not hold if a vehicle is clearly turning onto a different road.
+ */
+export function shouldHoldVisualRoadLock({previous,position,accuracy,speed,heading,
+  lastMatchedAt,now=Date.now()}={}){
+  if(!previous||!validPoint(previous.point)||!validPoint(previous.raw)||
+      !validPoint(position)||!Number.isFinite(lastMatchedAt)||
+      now<lastMatchedAt||now-lastMatchedAt>1500||
+      !Number.isFinite(accuracy)||accuracy<0||accuracy>45)return false;
+  if(Number.isFinite(speed)&&speed>5&&Number.isFinite(heading)&&
+      Number.isFinite(previous.bearing)&&
+      Math.abs(shortestAngle(previous.bearing,heading))>65)return false;
+  const rawMove=metersBetween(position,previous.raw);
+  const roadOffset=metersBetween(position,previous.point);
+  return rawMove<=Math.min(23,Math.max(9,accuracy*1.3+4))&&
+    roadOffset<=Math.min(30,Math.max(12,accuracy*1.5+5));
+}
