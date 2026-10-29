@@ -162,7 +162,7 @@ export function createDevSync({db,persist,json,err,getBody,protectedWrite,userSe
        task.status=status;task.summary=summary;task.leaseExpiresAt=0;task.leaseHash=null;
        task.updatedAt=iso(now());task.version++;
        log(task,identity,'handoff',status+': '+summary);
-       await save(res,200,{ok:true,status});return true;
+       await save(res,200,{ok:true,taskStatus:status});return true;
      }
      if(sub==='/events'&&method==='POST'){
        const body=await getBody(req);
