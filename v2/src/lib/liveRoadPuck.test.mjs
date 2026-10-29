@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildRouteTimeline,sampleRoute} from './routeAnimation.js';
-import {matchLiveRoadPosition,bearingAtDrivenProgress} from './liveRoadPuck.mjs';
+import {matchLiveRoadPosition,bearingAtDrivenProgress,shouldHoldVisualRoadLock} from './liveRoadPuck.mjs';
 import {cameraTarget,metersBetween} from './navigationMotion.js';
 import {easeGpsPoint} from './liveMotion.js';
 import {readFileSync} from 'node:fs';
@@ -150,4 +150,20 @@ test('GPS may report 5 km/h at a traffic light and still must not switch streets
  const adjacent=[corner[0]+east(1),corner[1]+north(8)];
  assert.strictEqual(matchLiveRoadPosition({...opts,position:adjacent,speed:1.4,heading:0,previous:first}),first);
  assert.strictEqual(matchLiveRoadPosition({...opts,position:adjacent,speed:null,heading:null,previous:first}),first);
+});
+
+test('a single missed map-match does not tear GPS marker off the route centerline',()=>{
+ const first=matchLiveRoadPosition({...opts,position:[start[0]+east(35),start[1]+north(3)]});
+ assert.ok(first);
+ const base={previous:first,position:[start[0]+east(36),start[1]+north(17)],
+   accuracy:20,speed:6,heading:90,lastMatchedAt:100000,now:100900};
+ assert.equal(shouldHoldVisualRoadLock(base),true);
+ assert.equal(shouldHoldVisualRoadLock({...base,now:102000}),false,'no indefinite fake road lock');
+ assert.equal(shouldHoldVisualRoadLock({...base,speed:9,heading:0}),false,
+   'real intersection turn must leave old leg');
+ assert.equal(shouldHoldVisualRoadLock({...base,position:[start[0]+east(36),start[1]+north(66)]}),false);
+ assert.equal(shouldHoldVisualRoadLock({...base,accuracy:90}),false);
+ const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ assert.match(map,/shouldHoldVisualRoadLock\(\{/);
+ assert.match(map,/!state\.heldRoadLock/);
 });
