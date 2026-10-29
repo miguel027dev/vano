@@ -10,6 +10,7 @@ os.environ.update(VANO_SKIP_DB_INIT="1", VANO_DB_INIT_ONLY="1", VANO_KEEPALIVE_E
 import app as runtime
 
 sync = importlib.import_module("vano.routes.devsync")
+agent = importlib.import_module("vano.routes.devsync_agent")
 auth = importlib.import_module("vano.security.auth")
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,6 +27,10 @@ class JournalDB:
             );
             CREATE TABLE devsync_events(
               id INTEGER PRIMARY KEY AUTOINCREMENT,task_id INTEGER,actor TEXT,kind TEXT,body TEXT,created_at TEXT
+            );
+            CREATE TABLE devsync_agent_keys(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,token_hash TEXT,
+              created_at TEXT,expires_at TEXT,revoked_at TEXT
             );
             CREATE TABLE users(id INTEGER PRIMARY KEY,name TEXT);
             CREATE TABLE audit_logs(id INTEGER PRIMARY KEY,action TEXT,created_at TEXT,user_id INTEGER);
@@ -47,6 +52,7 @@ class JournalDB:
 def env(monkeypatch):
     store = JournalDB()
     monkeypatch.setattr(sync, "get_db", lambda: store)
+    monkeypatch.setattr(agent, "get_db", lambda: store)
     monkeypatch.setattr(auth, "current_user", lambda: {"role": "admin", "email": "qa@example.invalid"})
     monkeypatch.setattr(auth, "is_admin_email", lambda email: True)
     client = runtime.app.test_client()
@@ -129,3 +135,52 @@ def test_frontend_escapes_untrusted_agent_messages():
     assert '"vano.routes.devsync"' in app
     assert "CREATE TABLE IF NOT EXISTS devsync_tasks" in schema
     assert "CREATE TABLE IF NOT EXISTS devsync_events" in schema
+
+def test_scoped_agent_credential_workflow_and_revocation(env):
+    client, db = env
+    endpoint = "/api/agent/dev-sync"
+    assert client.get(endpoint + "/handoff", base_url="https://localhost").status_code == 401
+    create = send(client, "/api/admin/dev-sync/keys", {"name": "Argon · GPS"})
+    assert create.status_code == 201
+    token = create.json["token"]
+    assert token.startswith("vano_ds_")
+    assert token not in repr(client.get("/api/admin/dev-sync/keys", base_url="https://localhost").json)
+    assert token not in repr(db.execute("SELECT * FROM devsync_agent_keys").fetchone())
+    headers = {"Authorization": "Bearer " + token}
+    handoff = client.get(endpoint + "/handoff", headers=headers, base_url="https://localhost")
+    assert handoff.status_code == 200 and handoff.json["ok"]
+    assert "audit" not in handoff.json
+    task = client.post(endpoint + "/tasks", json={
+        "title": "Investigar GPS", "area": "gps", "actor": "Falsificado"},
+        headers=headers, base_url="https://localhost")
+    assert task.status_code == 201
+    task_id = task.json["task_id"]
+    assert db.execute("SELECT actor FROM devsync_tasks WHERE id=?", (task_id,)).fetchone()["actor"] == "Argon · GPS"
+    claim = client.post(endpoint + f"/tasks/{task_id}/claim",
+                        json={"actor": "Outro"}, headers=headers, base_url="https://localhost")
+    assert claim.status_code == 200
+    assert claim.json["lease_token"]
+    event = client.post(endpoint + "/events", json={"actor": "Outro", "task_id": task_id,
+                       "kind": "progress", "body": "Revisei a orientação."}, headers=headers,
+                       base_url="https://localhost")
+    assert event.status_code == 201
+    assert db.execute("SELECT actor FROM devsync_events ORDER BY id DESC LIMIT 1").fetchone()["actor"] == "Argon · GPS"
+    assert client.get("/admin/dev-sync", headers=headers, base_url="https://localhost").status_code == 200
+    assert send(client, "/api/admin/dev-sync/keys/" + str(create.json["id"]) + "/revoke", {}).status_code == 200
+    assert client.get(endpoint + "/handoff", headers=headers, base_url="https://localhost").status_code == 401
+
+
+def test_agent_token_cannot_open_other_admin_routes_without_admin_session(env, monkeypatch):
+    client, db = env
+    create = send(client, "/api/admin/dev-sync/keys", {"name": "Outro agente"})
+    token = create.json["token"]
+    monkeypatch.setattr(auth, "current_user", lambda: None)
+    headers = {"Authorization": "Bearer " + token}
+    assert client.get("/api/admin/dev-sync/snapshot", headers=headers,
+                      base_url="https://localhost").status_code == 403
+    assert client.get("/admin", headers=headers, base_url="https://localhost").status_code == 403
+    assert client.post("/api/admin/dev-sync/tasks", headers=headers,
+                       json={"title": "Invasão", "area": "gps", "actor": "none"},
+                       base_url="https://localhost").status_code == 403
+    assert client.get("/api/agent/dev-sync/handoff", headers=headers,
+                      base_url="https://localhost").status_code == 200
