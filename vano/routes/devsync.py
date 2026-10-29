@@ -29,10 +29,20 @@ def _sync_text(value, max_chars=200, required=False):
     return value
 
 
+def _sync_authorized_write():
+    # Agent endpoints are authenticated by a separate, narrowly scoped bearer
+    # token decorator. Normal administrative writes still require session CSRF.
+    if request.path.startswith("/api/agent/dev-sync/"):
+        return bool(getattr(g, "devsync_agent_auth", False))
+    return validate_csrf()
+
+
 def _sync_payload():
     value = request.get_json(silent=True)
     if not isinstance(value, dict):
         raise ValueError("Envie um objeto JSON válido.")
+    if getattr(g, "devsync_agent_auth", False):
+        value["actor"] = str(getattr(g, "devsync_agent_name", "Agente"))[:70]
     return value
 
 
@@ -117,7 +127,7 @@ def api_admin_dev_sync_handoff():
 @app.route("/api/admin/dev-sync/tasks", methods=["POST"])
 @admin_required
 def api_admin_dev_sync_create_task():
-    if not validate_csrf():
+    if not _sync_authorized_write():
         return _sync_error("Sessão expirada.", 403)
     try:
         payload = _sync_payload()
@@ -148,7 +158,7 @@ def api_admin_dev_sync_create_task():
 @app.route("/api/admin/dev-sync/tasks/<int:task_id>/claim", methods=["POST"])
 @admin_required
 def api_admin_dev_sync_claim(task_id):
-    if not validate_csrf():
+    if not _sync_authorized_write():
         return _sync_error("Sessão expirada.", 403)
     try:
         payload = _sync_payload()
@@ -199,7 +209,7 @@ def api_admin_dev_sync_claim(task_id):
 @app.route("/api/admin/dev-sync/tasks/<int:task_id>/pulse", methods=["POST"])
 @admin_required
 def api_admin_dev_sync_pulse(task_id):
-    if not validate_csrf():
+    if not _sync_authorized_write():
         return _sync_error("Sessão expirada.", 403)
     try:
         token = _sync_payload().get("lease_token")
@@ -219,7 +229,7 @@ def api_admin_dev_sync_pulse(task_id):
 @app.route("/api/admin/dev-sync/tasks/<int:task_id>/transition", methods=["POST"])
 @admin_required
 def api_admin_dev_sync_transition(task_id):
-    if not validate_csrf():
+    if not _sync_authorized_write():
         return _sync_error("Sessão expirada.", 403)
     try:
         payload = _sync_payload()
@@ -248,7 +258,7 @@ def api_admin_dev_sync_transition(task_id):
 @app.route("/api/admin/dev-sync/events", methods=["POST"])
 @admin_required
 def api_admin_dev_sync_event():
-    if not validate_csrf():
+    if not _sync_authorized_write():
         return _sync_error("Sessão expirada.", 403)
     try:
         payload = _sync_payload()
