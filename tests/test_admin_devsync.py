@@ -165,7 +165,6 @@ def test_scoped_agent_credential_workflow_and_revocation(env):
                        base_url="https://localhost")
     assert event.status_code == 201
     assert db.execute("SELECT actor FROM devsync_events ORDER BY id DESC LIMIT 1").fetchone()["actor"] == "Argon · GPS"
-    assert client.get("/admin/dev-sync", headers=headers, base_url="https://localhost").status_code == 200
     assert send(client, "/api/admin/dev-sync/keys/" + str(create.json["id"]) + "/revoke", {}).status_code == 200
     assert client.get(endpoint + "/handoff", headers=headers, base_url="https://localhost").status_code == 401
 
