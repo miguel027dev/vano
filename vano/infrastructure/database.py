@@ -714,6 +714,15 @@ def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_devsync_event_recent ON devsync_events(id DESC);
             CREATE INDEX IF NOT EXISTS idx_devsync_event_task ON devsync_events(task_id,id DESC);
+            CREATE TABLE IF NOT EXISTS devsync_agent_keys (
+                id BIGSERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                revoked_at TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_devsync_agent_key_expiry ON devsync_agent_keys(expires_at,revoked_at);
         """)
 
         # Additive migrations for existing PostgreSQL databases.
