@@ -4,7 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetween,nearestOnRoute,nextRouteBearing,shortestAngle,shouldFollowLocation,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver,sampleRoute} from '../lib/routeAnimation';
 import {simulationPointerBearing} from '../lib/adminRouteSimulator.mjs';
-import {easeGpsPoint,routeTrace} from '../lib/liveMotion.js';
+import {easeGpsPoint,routeTrace,smoothLiveRoadProgress,smoothLiveBearing} from '../lib/liveMotion.js';
 import {anticipateRoadProgress} from '../lib/liveGpsForecast.mjs';
 import {matchLiveRoadPosition,bearingAtDrivenProgress} from '../lib/liveRoadPuck.mjs';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
@@ -449,11 +449,12 @@ function motionController(map,latest,status){
     const drone=t.droneCamera;
     // Real GPS tracking responds promptly; keep cinematic smoothing isolated to playback.
     const liveFollow=!d.simulationPreview&&!d.droneSimulation;
-    const cameraHalfLife=reduced?85:liveFollow?(motorcycle?155:145):drone?.halfLife??(motorcycle?350:300);
-    const pointHalfLife=reduced?90:liveFollow?(motorcycle?165:145):drone?.pointHalfLife??(motorcycle?390:360);
+    const cameraHalfLife=reduced?85:liveFollow?(motorcycle?310:285):drone?.halfLife??(motorcycle?350:300);
+    // Prioritize keeping the vehicle anchored while filtering camera micro-jitter.
+    const pointHalfLife=reduced?90:liveFollow?(motorcycle?210:190):drone?.pointHalfLife??(motorcycle?390:360);
     const nextCenter=reduced?t.center:blendPoint(pose.center,t.center,dt,pointHalfLife);
     const nextZoom=reduced?t.zoom:damp(pose.zoom,t.zoom,dt,cameraHalfLife),nextPitch=reduced?t.pitch:damp(pose.pitch,t.pitch,dt,cameraHalfLife);
-    const softenedBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(drone?.bearingHalfLife??(motorcycle?420:320))));
+    const softenedBearing=t.bearing==null?pose.bearing:reduced?t.bearing:blendAngle(pose.bearing,t.bearing,1-Math.pow(.5,dt/(drone?.bearingHalfLife??(liveFollow?420:(motorcycle?420:320)))));
     // Only admin Play: do not whip the map around when the marker enters a
     // corner. The physical car starts rotating first; the camera follows.
     const yawDelta=shortestAngle(pose.bearing,softenedBearing);
@@ -1034,7 +1035,11 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
     const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,
-      gpsMatchRaw:null,gpsMatchGeometry:null,roadMatch:null,roadMeters:null};
+      // Preserve a valid on-road visual target when the same route/RAF restarts.
+      gpsMatchRaw:visual.current.gpsMatchRaw??null,
+      gpsMatchGeometry:visual.current.gpsMatchGeometry??null,
+      roadMatch:visual.current.roadMatch??null,
+      roadMeters:Number.isFinite(visual.current.roadMeters)?visual.current.roadMeters:null};
     // Reduced-motion still controls GPS/camera smoothing, not static markings.
     function preferenceChanged(){reduced=Boolean(preference?.matches);}
     preference?.addEventListener?.('change',preferenceChanged);
@@ -1110,8 +1115,9 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
             state.roadMeters=desired;
           else{
             // Animate ALONG the route, not diagonally across a block on turns.
-            state.roadMeters=damp(state.roadMeters,desired,dt,reduced?50:
-              d.telemetry?.speed>5?85:d.telemetry?.speed>1.5?110:175);
+            state.roadMeters=smoothLiveRoadProgress(state.roadMeters,desired,dt,{
+              speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced
+            });
           }
           point=sampleRoute(timeline,state.roadMeters)?.point;
         }else{
@@ -1159,7 +1165,17 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       }else{
         state.droneHeadingInitialized=false;
         state.playHeadingInitialized=false;
-        if(Number.isFinite(heading))state.bearing=blendAngle(state.bearing||0,heading,1-Math.pow(.5,dt/(reduced?75:240)));
+        if(realDriving&&Number.isFinite(heading)){
+          if(!state.liveHeadingInitialized){
+            state.bearing=heading;
+            state.liveHeadingInitialized=true;
+          }else state.bearing=smoothLiveBearing(state.bearing,heading,dt,{
+            speed:d.telemetry?.speed,reducedMotion:reduced
+          });
+        }else if(Number.isFinite(heading)){
+          state.liveHeadingInitialized=false;
+          state.bearing=blendAngle(state.bearing||0,heading,1-Math.pow(.5,dt/(reduced?75:240)));
+        }
       }
       d.motionCoords=point;d.motionBearing=state.bearing||0;
       const map=mapRef.current;
