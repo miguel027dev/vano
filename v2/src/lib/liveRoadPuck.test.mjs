@@ -143,3 +143,11 @@ test('follow camera stays on the visual GPS point while stopped or bearing is un
    telemetry:{speed:8,accuracy:90,heading:90},preferLiveHeading:true});
  assert.deepEqual(movingUncertain.center,raw,'route geometry must not move an unreliable GPS marker');
 });
+
+
+test('GPS may report 5 km/h at a traffic light and still must not switch streets',()=>{
+ const first=matchLiveRoadPosition({...opts,position:[start[0]+east(65),start[1]+north(2)],speed:0});
+ const adjacent=[corner[0]+east(1),corner[1]+north(8)];
+ assert.strictEqual(matchLiveRoadPosition({...opts,position:adjacent,speed:1.4,heading:0,previous:first}),first);
+ assert.strictEqual(matchLiveRoadPosition({...opts,position:adjacent,speed:null,heading:null,previous:first}),first);
+});
