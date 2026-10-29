@@ -35,7 +35,7 @@ if(immersiveDark&&!reducedMotion&&!arriving&&!turnFocus&&focus<=.1&&!compactView
  zoom=clamp(zoom-.12,14.8,18.2);pitch=clamp(pitch+10,0,58);
 }
 if(compactViewport){zoom=Math.min(zoom,16.5);pitch=Math.min(pitch,22);}
-const aheadMeters=arriving||(!route?.geometry&&(speed<1.5||bearing===null))?0:
+const aheadMeters=arriving||(preferLiveHeading&&(speed<1.5||bearing===null))||(!route?.geometry&&(speed<1.5||bearing===null))?0:
   isMoto?clamp(speed*4+30,30,175):clamp(speed*5+40,45,230);const desiredAheadMeters=aheadMeters*(maneuverPlan?.lookAheadScale??1)*(compactViewport?0.65:1)*(experimentalCameraV2?1.18:1);
 const metersPerPixel=156543.03392*Math.max(.1,Math.cos(pos[1]*Math.PI/180))/Math.pow(2,zoom);
 const maxAheadMeters=Number.isFinite(viewportClearancePx)?Math.max(0,viewportClearancePx)*metersPerPixel*.7:Infinity;
