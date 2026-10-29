@@ -20,6 +20,17 @@
  <div class="ds-layout">
   <div class="ds-column">
    <section class="ds-panel">
+    <h2>Conectar Argon ou outro agente</h2>
+    <p>Gere uma credencial exclusiva para a central de desenvolvimento. O agente poderá consultar o contexto, criar tarefas e registrar progresso, mas não poderá usar funções administrativas gerais.</p>
+    <form id="dsAgentForm">
+      <label>Identificação do agente<input name="name" maxlength="70" required placeholder="Ex.: Argon · trabalho de GPS"></label>
+      <button class="ds-primary" type="submit">Criar credencial para agente</button>
+    </form>
+    <div id="dsAgentToken" hidden style="margin-top:14px"><label>Token de acesso — mostrado uma única vez<textarea id="dsAgentSecret" readonly rows="3" autocomplete="off" spellcheck="false"></textarea></label><button id="dsAgentCopy" type="button">Copiar token</button><p style="margin-top:10px">Configure este token como segredo no ambiente do agente, nunca em mensagens, commits ou arquivos públicos.</p></div>
+    <div id="dsAgentKeys" style="margin-top:12px" aria-live="polite"></div>
+    <p style="margin-top:12px">Integração de agentes: <code>/api/agent/dev-sync/handoff</code> e demais rotas de tarefas. <a href="https://github.com/miguel027dev/vano/blob/main/docs/VANO_DEVSYNC_PROTOCOL.md" target="_blank" rel="noopener noreferrer">Guia do protocolo</a></p>
+   </section>
+   <section class="ds-panel">
     <h2>Registrar um trabalho</h2><p>Antes de alterar código, cada chat cria e assume uma tarefa. A reserva impede duas tarefas cooperantes na mesma área.</p>
     <form id="dsTaskForm">
      <label>Ação ou correção<input name="title" maxlength="160" required placeholder="Ex.: Corrigir orientação do GPS"></label>
