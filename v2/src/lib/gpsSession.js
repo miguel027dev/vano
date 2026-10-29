@@ -6,8 +6,8 @@
 export function startGpsSession(geolocation,{onPosition,onError,onRecover=()=>{}},{
  navigation=false,schedule=setTimeout,cancel=clearTimeout,now=Date.now,
  documentObject=globalThis.document,windowObject=globalThis.window,
- firstFixTimeoutMs=1500,staleMs=navigation?35000:60000,
- watchdogMs=12000,minRestartMs=12000
+ firstFixTimeoutMs=650,staleMs=navigation?15000:30000,
+ watchdogMs=5000,minRestartMs=7000
 }={}){
  if(!geolocation||typeof geolocation.watchPosition!=='function'||typeof geolocation.clearWatch!=='function')
   throw new TypeError('Geolocation watch unavailable');
@@ -63,8 +63,12 @@ export function startGpsSession(geolocation,{onPosition,onError,onRecover=()=>{}
    // The watch remains the single primary subscription and refines the point.
    if(everAccepted&&now()-lastAccepted<staleMs)return;
    try{
-    geolocation.getCurrentPosition(p=>success(p,epoch),e=>failure(e,epoch),{
-     enableHighAccuracy:false,maximumAge:5000,timeout:8000
+    geolocation.getCurrentPosition(p=>success(p,epoch),e=>{
+     // A failed coarse probe is not failure of the active high-accuracy watch.
+     // Only an explicit permission denial should invalidate the session.
+     if(e?.code===1)failure(e,epoch);
+    },{
+     enableHighAccuracy:false,maximumAge:3500,timeout:6500
     });
    }catch(error){failure(error,epoch);}
   },firstFixTimeoutMs);
