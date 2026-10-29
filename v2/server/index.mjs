@@ -58,6 +58,7 @@ import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './globa
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
 import {isAdminAccount,adminMetrics,adminUsers,recordOperationalEvent} from './admin.mjs';
+import {createDevSync} from './devsync.mjs';
 import {INTELLIGENCE_TOOLS,recordRouteDecision,recordNavigationOutcome,intelligenceSnapshot,askIntelligence} from './intelligence.mjs';
 import {historicalIntelligence,HISTORICAL_SOURCES} from './intelligence-history.mjs';
 import {askIntelligenceConversational} from './intelligence-conversation.mjs';
@@ -493,10 +494,14 @@ function requestHTTPS(req, res) {
   if (req.headers['x-forwarded-proto'] !== 'https') { err(res,426,'Acesso HTTPS obrigatório.'); return false; }
   return true;
 }
+const devSync=createDevSync({db,persist,json,err,getBody,protectedWrite,userSession,isAdminAccount,limits,
+  persistent:store.persistent===true});
 function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ownerId?1:0),0)<max; }
 async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
+  if((pathname.startsWith('/api/admin/dev-sync')||pathname.startsWith('/api/agent/dev-sync')) &&
+      await devSync.handle(req,res,pathname))return;
   // Public agent/human benchmarking: same real route engine, no account, no writes.
   if((pathname==='/api/benchmark/v1/capabilities'||pathname==='/.well-known/vano-benchmark.json')&&req.method==='GET'){
     const enabled=process.env.VANO_PUBLIC_BENCHMARK_ENABLED!=='0';
