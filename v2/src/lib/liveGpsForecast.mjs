@@ -15,10 +15,14 @@ export function anticipateRoadProgress({
       timeline.points.length<2||timeline.cumulative.length!==timeline.points.length||
       !Number.isFinite(timeline.total)||timeline.total<=0)return meters;
   const age=now-sourceAt;
-  if(age<80)return meters;
+  if(age<80||age>2300)return meters;
   // Cap the display offset to a fraction of a second and 10 metres.
   // A GPS outage must never turn into an indefinitely moving pointer.
-  const advance=Math.min(10,speed*clamp((age-80)/1000,0,.8));
+  // Browser GPS is commonly delivered at ~1 Hz. The old .8 s cap caused the
+  // displayed car to halt between fixes, then visibly catch up in a burst.
+  // Continue only along the verified straight leg, for at most 1.3 seconds
+  // and 13 metres. This is visual-only and not a real sensor position.
+  const advance=Math.min(13,speed*clamp((age-80)/1000,0,1.3));
   if(advance<=0)return meters;
   const cumulative=timeline.cumulative,points=timeline.points;
   let segment=1;
