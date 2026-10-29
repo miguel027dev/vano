@@ -34,7 +34,7 @@ class JournalDB:
     def execute(self, query, values=()):
         if "pg_advisory_xact_lock" in query:
             return self.db.execute("SELECT 1")
-        return self.db.execute(query, values)
+        return self.db.execute(query.replace(" FOR UPDATE", ""), values)
 
     def commit(self):
         self.db.commit()
