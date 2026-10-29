@@ -42,8 +42,20 @@ test('no fix starts a quick coarse probe but retains precision watch',()=>{
  const h=harness();const stop=startGpsSession(h.api,{onPosition:()=>true,onError:()=>{}},h.options);
  h.advance(1500);assert.equal(h.api.probeCount,1);
  assert.equal(h.api.probeOptions.enableHighAccuracy,false);
- assert.equal(h.api.probeOptions.maximumAge,5000);
+ assert.equal(h.api.probeOptions.maximumAge,3500);
  h.api.probeSuccess({});assert.equal(h.api.watchCount,1);
+ stop();
+});
+test('a failed coarse probe does not interrupt the precision GPS watch',()=>{
+ const h=harness();let errors=0;
+ const stop=startGpsSession(h.api,{onPosition:()=>true,onError:()=>errors++},h.options);
+ h.advance(1500);
+ h.api.probeError({code:3});
+ assert.equal(h.api.watchCount,1);
+ assert.equal(errors,0);
+ h.latest().success({});
+ h.advance(1500);
+ assert.equal(h.api.watchCount,1);
  stop();
 });
 test('stale GPS watch restarts, then resumes positioning; late callbacks ignored',()=>{
