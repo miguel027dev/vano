@@ -165,5 +165,47 @@ setInterval(async()=>{
     catch(e){setLease(task.id,'');message('Reserva perdida para a tarefa #'+task.id+': '+e.message)}
   }
 },4*60*1000);
+async function refreshKeys(){
+  try{
+    const payload=await request('/keys');
+    const list=$('dsAgentKeys');list.replaceChildren();
+    if(!payload.keys.length){list.appendChild(el('div','ds-help','Nenhum agente conectado.'));return}
+    for(const item of payload.keys){
+      const row=el('div','ds-log'),left=el('div');
+      const expired=new Date(item.expires_at)<new Date();
+      const active=!item.revoked_at&&!expired;
+      left.append(el('span','',item.name+' · #'+item.id),el('small','',item.revoked_at?'Revogado':expired?'Expirado':'Expira em '+date(item.expires_at)));
+      row.append(left);
+      if(active){
+        const button=el('button','','Revogar');button.type='button';
+        button.addEventListener('click',()=>safeSubmit(button,async()=>{
+          if(!window.confirm('Revogar o acesso de '+item.name+'?'))return;
+          await request('/keys/'+item.id+'/revoke','POST');
+          message('Credencial revogada.',true);await refreshKeys();
+        }));
+        row.appendChild(button)
+      }
+      list.appendChild(row)
+    }
+  }catch(e){message('Credenciais: '+e.message)}
+}
+$('dsAgentForm').addEventListener('submit',e=>{
+  e.preventDefault();const form=e.currentTarget,button=form.querySelector('[type=submit]');
+  safeSubmit(button,async()=>{
+    const payload=await request('/keys','POST',{name:field(form,'name')});
+    $('dsAgentSecret').value=payload.token;
+    $('dsAgentToken').hidden=false;
+    form.reset();
+    message('Credencial criada. Guarde-a como segredo: ela será mostrada somente agora.',true);
+    await refreshKeys();
+  })
+});
+$('dsAgentCopy').addEventListener('click',()=>safeSubmit($('dsAgentCopy'),async()=>{
+  const token=$('dsAgentSecret').value;
+  if(!token){message('Gere uma credencial primeiro.');return}
+  await navigator.clipboard.writeText(token);
+  message('Credencial copiada. Configure-a como variável de ambiente secreta do agente.',true)
+}));
 refresh();
+refreshKeys();
 })();
