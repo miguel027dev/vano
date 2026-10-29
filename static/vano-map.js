@@ -324,7 +324,6 @@ function tripElapsedSeconds(){return navStartedAt?Math.max(0,(Date.now()-navStar
 function syncArrivalMetrics(){const time=$('arrivalTripTime'),dist=$('arrivalTripDistance'),mode=$('arrivalTripMode'),reroutes=$('arrivalTripReroutes');if(time)time.textContent=fmtRemaining(tripElapsedSeconds());if(dist)dist.textContent=fmtDistance(gpsDistance>30?gpsDistance:(tripStartRouteDistance||selectedRoute?.distance||0));if(mode)mode.textContent=tripStartMode||routeModeLabel();if(reroutes)reroutes.textContent=String(tripRerouteCount)}
 function bearingBetween(a,b){const y=Math.sin((b[0]-a[0])*Math.PI/180)*Math.cos(b[1]*Math.PI/180),x=Math.cos(a[1]*Math.PI/180)*Math.sin(b[1]*Math.PI/180)-Math.sin(a[1]*Math.PI/180)*Math.cos(b[1]*Math.PI/180)*Math.cos((b[0]-a[0])*Math.PI/180);return (Math.atan2(y,x)*180/Math.PI+360)%360}
 function blendBearing(prev,next,alpha=.24){if(!Number.isFinite(prev))return next;let d=((next-prev+540)%360)-180;return (prev+d*alpha+360)%360}
-// A missing GPS heading is unknown, not 0 degrees (north).
 function validGpsHeading(value){if(value===null||value===undefined||value==='')return null;const n=Number(value);return Number.isFinite(n)?((n%360+360)%360):null}
 function routeBearingAt(index,speed=0){const c=selectedRoute?.geometry?.coordinates||[];if(c.length<2)return null;const i=Math.max(0,Math.min(c.length-2,index||0)),look=Math.max(2,Math.min(30,Math.round(5+(+speed||0)*.9))),j=Math.min(c.length-1,i+look);if(hav(c[i],c[j])<4&&j<c.length-1)return bearingBetween(c[i],c[Math.min(c.length-1,j+2)]);return bearingBetween(c[i],c[j])}
 function bearingDelta(a,b){return Math.abs(((b-a+540)%360)-180)}
@@ -405,7 +404,6 @@ function bootstrapGps(asOrigin=false){
   if(cached){
     userLocation={lat:cached.lat,lon:cached.lon};lastPassivePosition={...cached};
     updateUserMarker(cached);updateGpsQuality(cached.accuracy);
-    // Old cached coordinates are only a hint, not the current street.
     if(map&&cachedFresh)map.jumpTo({center:[cached.lon,cached.lat],zoom:MAP_HOME_ZOOM-.12});
     scheduleTrafficSnapshot(false);
     if(asOrigin&&!origin){setPoint('origin',{...cached,is_gps:true},'Minha localização',false);origin.is_gps=true}
@@ -420,13 +418,11 @@ function bootstrapGps(asOrigin=false){
     const fix=applyStartupFix(g,asOrigin,!cachedFresh&&!gotFresh);
     if(!fix)return;
     gotFresh=true;
-    // Handoff to the continuous GPS watch on the first usable fix.
     if((+g.coords.accuracy||999)<=80)finishStartup()
   };
   const denied=e=>{
     if(e?.code===1){window.__vanoGpsDenied=true;if(!cached)showPermission(locationErrorMessage(e));stopStartupGps()}
   };
-  // Acquire a fast estimate and a precise location in parallel.
   navigator.geolocation.getCurrentPosition(receive,denied,{enableHighAccuracy:false,timeout:1200,maximumAge:cachedFresh?12000:10000});
   stopStartupGps();
   startupWatchId=navigator.geolocation.watchPosition(receive,denied,{enableHighAccuracy:true,maximumAge:600,timeout:5000});
