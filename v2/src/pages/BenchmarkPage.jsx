@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {ArrowLeftRight,ArrowRight,Bot,CarFront,Check,Download,FileJson,MapPin,Play,Route as RouteIcon,Search,ShieldCheck,SlidersHorizontal,X,Zap} from 'lucide-react';
 import '../benchmark-page.css';
+// Published, reviewed results are available separately from this interactive lab.
 
 const API='/api/benchmark/v1';
 const PRESETS=[
