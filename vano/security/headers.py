@@ -35,6 +35,8 @@ def security_headers(response):
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
     frame_ancestors = FRAME_ANCESTORS if embed_surface else "'self'"
     nonce = str(getattr(g, "csp_nonce", "") or "")
+    # Permit Google Live WebSocket only on the V2 preview. No other route's CSP changes.
+    gemini_live_ws = " wss://generativelanguage.googleapis.com" if request.path.lower() == "/v2" else ""
     csp = "; ".join([
         "default-src 'self'",
         "base-uri 'self'",
@@ -47,7 +49,7 @@ def security_headers(response):
         "style-src-attr 'unsafe-inline'",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data: https://api.mapbox.com https://*.mapbox.com",
-        "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.mapbox.com https://api.open-meteo.com",
+        f"connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://tiles.mapbox.com https://*.mapbox.com https://api.open-meteo.com{gemini_live_ws}",
         "worker-src 'self' blob:",
         "child-src 'self' blob:",
         "media-src 'self' blob:",

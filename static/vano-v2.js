@@ -196,3 +196,11 @@
     document.addEventListener('DOMContentLoaded', setup, {once:true});
   } else setup();
 })();
+/* The Gemini experiment loads only for an authenticated V2 administrator. */
+(() => {
+  if (!/^\/v2\/?$/i.test(location.pathname) || window.VANO_BOOT?.isAdmin !== true) return;
+  const script = document.createElement('script');
+  script.src = '/static/vano-gemini-live.js?v=20261030';
+  script.defer = true;
+  document.head.appendChild(script);
+})();

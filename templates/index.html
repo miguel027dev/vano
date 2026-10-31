@@ -7,7 +7,7 @@
 {% block head %}
 {% if v2_preview|default(false) %}
 <meta name="robots" content="noindex,nofollow,noarchive">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=v2-sim-20261017-r1">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=mavi-live-20261030-r1">
 {% endif %}
 
 <script>
@@ -561,6 +561,6 @@
 </script>
 
 {% if v2_preview|default(false) %}
-<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=v2-sim-20261017-r1"></script>
+<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=mavi-live-20261030-r1"></script>
 {% endif %}
 {% endblock %}
