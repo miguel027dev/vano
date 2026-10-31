@@ -34,7 +34,7 @@ const routeCommitKeys=new Set();
 let navAlternativeHitKey='',navAlternativeHitCount=0,navAlternativeLastPaintAt=0,navAlternativePrimary=null,navAlternativeDismissedKey='',navAlternativeDismissUntil=0,navSuppressedRouteKeys=new Set(),lastRoutePuckBearing=null;
 let navExperienceMode='normal',pendingCameraChoiceResolve=null,cameraChoicePending=false;
 let searchInteractionActive=false,searchComposing=false,searchInteractionTimer=null;
-let puckFrame=null,puckDisplayPos=null,puckTargetPos=null,puckAnimFrom=null,puckAnimStartedAt=0,puckAnimDuration=320,puckLastPaintAt=0,puckLastFixAt=0;
+let puckFrame=null,puckDisplayPos=null,puckTargetPos=null,puckTargetUpdatedAt=0,puckMotionLastTs=0,puckFreeVelocity=null,puckLastPaintAt=0,puckLastFixAt=0;
 // Navigation stability: do not reroute on a couple of noisy GPS fixes or nearby street entrances.
 const NAV_OFF_ROUTE_MIN_TRAVEL_M=500,NAV_OFF_ROUTE_MIN_TIME_MS=12000,NAV_OFF_ROUTE_MAX_ACCURACY_M=95;
 let offRouteStartedAt=0,offRouteTravelM=0,offRouteStartRaw=null,offRouteLastRaw=null,offRoutePeakM=0;
@@ -130,9 +130,62 @@ function makeUserMarker(){const el=document.createElement('div');el.className='u
 function updateMarkerHeading(absoluteHeading){if(!userMarkerElement||!map)return;const h=userMarkerElement.querySelector('.user-puck-image');if(!h)return;if(!Number.isFinite(absoluteHeading)){h.style.transform='rotate(0deg)';return}lastMarkerHeading=absoluteHeading;const screen=((absoluteHeading-map.getBearing()+540)%360)-180;h.style.transform=`rotate(${screen}deg)`}
 function routeAlignedPuckBearing(p){if(!selectedRoute?.geometry?.coordinates?.length)return null;const m=nearestProgress(p),along=Number.isFinite(+p?._distanceAlong)?+p._distanceAlong:+m.distanceAlong||0,speed=Math.max(0,+p?.speed||0),span=Math.max(22,Math.min(64,30+speed*1.8)),bearing=routeBearingAtDistance(along,span);if(!Number.isFinite(bearing))return Number.isFinite(lastRoutePuckBearing)?lastRoutePuckBearing:null;lastRoutePuckBearing=bearing;return bearing}
 function paintUserMarker(p){if(!p||!map)return;if(!userMarker)userMarker=new mapboxgl.Marker({element:makeUserMarker(),anchor:'center'}).setLngLat([p.lon,p.lat]).addTo(map);else userMarker.setLngLat([p.lon,p.lat]);const navOn=activeNav?.classList.contains('show')&&selectedRoute,routeHeading=navOn?routeAlignedPuckBearing(p):null;updateMarkerHeading(Number.isFinite(routeHeading)?routeHeading:p.heading)}
-function stopPuckAnimation(){if(puckFrame!==null){cancelAnimationFrame(puckFrame);puckFrame=null}}
-function puckAnimationTick(ts){puckFrame=null;if(!puckTargetPos||!puckAnimFrom||document.visibilityState==='hidden'||searchInteractionActive)return;const t=Math.max(0,Math.min(1,(ts-puckAnimStartedAt)/Math.max(1,puckAnimDuration))),e=1-Math.pow(1-t,3);puckDisplayPos={...puckTargetPos,lat:puckAnimFrom.lat+(puckTargetPos.lat-puckAnimFrom.lat)*e,lon:puckAnimFrom.lon+(puckTargetPos.lon-puckAnimFrom.lon)*e};if(ts-puckLastPaintAt>=30||t>=1){puckLastPaintAt=ts;paintUserMarker(puckDisplayPos)}if(t<1)puckFrame=requestAnimationFrame(puckAnimationTick)}
-function updateUserMarker(p,opts={}){if(!p||!map||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;const now=performance.now(),next={...p,lat:+p.lat,lon:+p.lon},gap=puckLastFixAt?Math.max(100,Math.min(1800,now-puckLastFixAt)):360;puckLastFixAt=now;puckTargetPos=next;if(searchInteractionActive){stopPuckAnimation();return}if(previewing||adminSimulation){stopPuckAnimation();puckDisplayPos={...next};if(now-puckLastPaintAt>=30||!userMarker){puckLastPaintAt=now;paintUserMarker(puckDisplayPos)}return}const distance=puckDisplayPos?hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]):Infinity;if(opts.instant||!puckDisplayPos||distance>220){stopPuckAnimation();puckDisplayPos={...next};paintUserMarker(puckDisplayPos);return}stopPuckAnimation();puckAnimFrom={...puckDisplayPos};puckAnimStartedAt=now;puckAnimDuration=Math.max(110,Math.min(480,gap*.68));if(distance<.02){puckDisplayPos={...next};paintUserMarker(puckDisplayPos);return}puckFrame=requestAnimationFrame(puckAnimationTick)}
+// Fallback renderer uses the same bounded visual extrapolation as the main map.
+function updateFallbackPuckVelocity(previous,next,elapsedMs){
+  puckFreeVelocity=null;
+  if(!previous||elapsedMs<250||elapsedMs>3500||!Number.isFinite(+previous.lat)||!Number.isFinite(+previous.lon))return;
+  const accuracy=next.accuracy==null?999:Number(next.accuracy),reported=next.speed==null?null:Number(next.speed);
+  if(!Number.isFinite(accuracy)||accuracy>45||reported!=null&&(!Number.isFinite(reported)||reported<.65))return;
+  const seconds=elapsedMs/1000,distance=hav([previous.lon,previous.lat],[next.lon,next.lat]),measured=distance/seconds;
+  if(distance<1.4||measured<.65||measured>38||reported!=null&&measured>Math.max(4,reported*2.2+2))return;
+  const speed=Math.min(measured,reported==null?12:Math.max(1.3,reported*1.2)),scale=speed/measured;
+  puckFreeVelocity={lat:(next.lat-previous.lat)/seconds*scale,lon:(next.lon-previous.lon)/seconds*scale};
+}
+function predictedFallbackPuckTarget(ts){
+  const p=puckTargetPos;if(!p)return null;
+  const age=Math.max(0,(ts-puckTargetUpdatedAt)/1000),lead=Math.min(.8,age);
+  if(activeNav?.classList.contains('show')&&p._routeSnapped!==false&&Number.isFinite(+p._distanceAlong)&&selectedRoute?.geometry?.coordinates?.length){
+    const speed=p.speed==null?0:Math.max(0,+p.speed||0);
+    if(speed>.65){const xy=routePointAtDistance(Math.min(routeTotalGeometry-1,+p._distanceAlong+speed*lead));if(xy)return{...p,lon:xy[0],lat:xy[1]}}
+  }
+  return puckFreeVelocity?{...p,lat:p.lat+puckFreeVelocity.lat*lead,lon:p.lon+puckFreeVelocity.lon*lead}:p;
+}
+function stopPuckAnimation(){if(puckFrame!==null){cancelAnimationFrame(puckFrame);puckFrame=null}puckMotionLastTs=0}
+function puckAnimationTick(ts){
+  puckFrame=null;
+  if(!puckTargetPos||document.visibilityState==='hidden'||searchInteractionActive){puckMotionLastTs=0;return}
+  const target=predictedFallbackPuckTarget(ts);if(!target)return;
+  if(!puckDisplayPos){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);return}
+  const dt=puckMotionLastTs?Math.max(8,Math.min(72,ts-puckMotionLastTs)):16;puckMotionLastTs=ts;
+  const distance=hav([puckDisplayPos.lon,puckDisplayPos.lat],[target.lon,target.lat]);
+  if(distance>220){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);puckMotionLastTs=0;return}
+  const tau=puckFreeVelocity?370:310,alpha=1-Math.exp(-dt/tau);
+  puckDisplayPos={...target,lat:puckDisplayPos.lat+(target.lat-puckDisplayPos.lat)*alpha,lon:puckDisplayPos.lon+(target.lon-puckDisplayPos.lon)*alpha};
+  if(ts-puckLastPaintAt>=24){puckLastPaintAt=ts;paintUserMarker(puckDisplayPos)}
+  if(distance>.05)puckFrame=requestAnimationFrame(puckAnimationTick);
+  else{puckDisplayPos={...target};paintUserMarker(puckDisplayPos);puckMotionLastTs=0}
+}
+function updateUserMarker(p,opts={}){
+  if(!p||!map||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;
+  const now=performance.now(),previous=puckTargetPos,previousAt=puckTargetUpdatedAt,next={...p,lat:+p.lat,lon:+p.lon};
+  const navOn=!!activeNav?.classList.contains('show');
+  if(!navOn&&next.speed!=null&&Number(next.speed)<.45&&puckDisplayPos){
+    const drift=hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]);
+    if(drift<Math.max(2,Math.min(4.5,(+next.accuracy||20)*.12))){next.lon=puckDisplayPos.lon;next.lat=puckDisplayPos.lat}
+  }
+  puckLastFixAt=now;puckTargetUpdatedAt=now;puckTargetPos=next;
+  if(opts.instant||previewing||adminSimulation||navOn)puckFreeVelocity=null;
+  else updateFallbackPuckVelocity(previous,next,now-previousAt);
+  if(searchInteractionActive){stopPuckAnimation();return}
+  if(previewing||adminSimulation){stopPuckAnimation();puckDisplayPos={...next};if(now-puckLastPaintAt>=30||!userMarker){puckLastPaintAt=now;paintUserMarker(puckDisplayPos)}return}
+  const distance=puckDisplayPos?hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]):Infinity;
+  if(opts.instant||!puckDisplayPos||distance>220){
+    stopPuckAnimation();puckDisplayPos={...next};puckLastPaintAt=now;paintUserMarker(puckDisplayPos);
+    if(navOn&&!opts.instant&&Math.max(0,+next.speed||0)>.65)puckFrame=requestAnimationFrame(puckAnimationTick);
+    return;
+  }
+  if(puckFrame===null)puckFrame=requestAnimationFrame(puckAnimationTick);
+}
 function filterPosition(raw){
   if(!smoothedPos){smoothedPos={...raw};return smoothedPos}
   const prev=smoothedPos,jump=hav([prev.lon,prev.lat],[raw.lon,raw.lat]);
