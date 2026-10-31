@@ -113,6 +113,7 @@ let lastDisplayedSpeedKmh=0,currentMappedSpeedLimitKmh=null,lastSpeedCameraWarnK
 let navSpeedFix=null,stableNavSpeedKmh=0,lastSpeedMotionAt=0;
 let searchInteractionActive=false,searchComposing=false,searchInteractionTimer=null;
 let puckFrame=null,puckDisplayPos=null,puckTargetPos=null,puckTargetUpdatedAt=0,puckLastPaintAt=0,puckLastFixAt=0,puckMotionLastTs=0;
+let puckFreeVelocity=null;
 let puckRouteAlong=null,puckRouteVelocity=0,puckRouteTargetAlong=null,puckRouteTargetSpeed=0,puckRouteFixAt=0;
 let markerHeadingVisual=0,markerHeadingReady=false,markerHeadingUpdatedAt=0;
 let cameraMotionFrame=null,cameraTargetContext=null,cameraVisualState=null,cameraLastPaintAt=0,internalCameraMoveUntil=0,driveCameraMood='',navStartupBearing=null,navStartupBearingUntil=0,cameraCalibrationUntil=0,cameraCalibrationStartedAt=0,cameraCalibrationTimer=null,navLaunchAnimationUntil=0,navLaunchResumeTimer=null,cameraIntent='',cameraIntentUntil=0,cameraTargetBearing=null,cameraTargetBearingAt=0;
@@ -464,24 +465,83 @@ function paintUserMarker(p){
 function stopPuckAnimation(){if(puckFrame!==null){cancelAnimationFrame(puckFrame);puckFrame=null}puckMotionLastTs=0}
 function resetPuckMotionModel(){puckRouteAlong=null;puckRouteVelocity=0;puckRouteTargetAlong=null;puckRouteTargetSpeed=0;puckRouteFixAt=0}
 function updatePuckRouteModel(next,now,{instant=false}={}){
-  const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length&&Number.isFinite(+next?._distanceAlong);if(!navOn)return false;
+  const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length&&Number.isFinite(+next?._distanceAlong);if(!navOn){if(next?._routeSnapped===false)resetPuckMotionModel();return false}
   let along=Math.max(0,Math.min(routeTotalGeometry-1,+next._distanceAlong||0)),gpsSpeed=Number.isFinite(+next.speed)?Math.max(0,+next.speed):0;
   if(instant||!Number.isFinite(puckRouteAlong)){puckRouteAlong=along;puckRouteVelocity=gpsSpeed;puckRouteTargetAlong=along;puckRouteTargetSpeed=gpsSpeed;puckRouteFixAt=now;return true}
   const dtFix=puckRouteFixAt?Math.max(.12,Math.min(3,(now-puckRouteFixAt)/1000)):0,previousTarget=Number.isFinite(puckRouteTargetAlong)?puckRouteTargetAlong:along;let measured=dtFix>0?Math.max(0,(along-previousTarget)/dtFix):0;if(!Number.isFinite(measured)||measured>65)measured=0;
   const inferred=measured>.18?(gpsSpeed>.18?gpsSpeed*.68+measured*.32:measured):gpsSpeed;puckRouteTargetSpeed=Math.max(0,Math.min(60,Number.isFinite(inferred)?inferred:0));
   if(Number.isFinite(puckRouteAlong)&&along<puckRouteAlong&&puckRouteAlong-along<9)along=puckRouteAlong;puckRouteTargetAlong=along;puckRouteFixAt=now;return true
 }
+// Predict only a small part of the interval between real GPS fixes. The GPS
+// remains authoritative: this is a visual animation, never route progress.
+function updatePuckFreeVelocity(previous,next,elapsedMs){
+  puckFreeVelocity=null;
+  if(!previous||elapsedMs<250||elapsedMs>3500||!Number.isFinite(+previous.lat)||!Number.isFinite(+previous.lon))return;
+  const accuracy=next.accuracy==null?999:Number(next.accuracy);
+  if(!Number.isFinite(accuracy)||accuracy>45)return;
+  const reported=next.speed==null?null:Number(next.speed);
+  if(reported!=null&&(!Number.isFinite(reported)||reported<.65))return;
+  const seconds=elapsedMs/1000,distance=hav([previous.lon,previous.lat],[next.lon,next.lat]),measured=distance/seconds;
+  if(distance<1.4||measured<.65||measured>38)return;
+  // GPS speed corroborates the displacement, rejecting sideways jumps.
+  if(reported!=null&&measured>Math.max(4,reported*2.2+2))return;
+  const estimated=Math.min(measured,reported==null?12:Math.max(1.3,reported*1.2));
+  const scale=estimated/measured;
+  puckFreeVelocity={lat:(next.lat-previous.lat)/seconds*scale,lon:(next.lon-previous.lon)/seconds*scale};
+}
+function predictedFreePuckTarget(base,ts){
+  if(!puckFreeVelocity||!base||document.visibilityState==='hidden')return base;
+  const age=Math.max(0,(ts-puckTargetUpdatedAt)/1000);
+  // At most 0.8s of dead-reckoning: hold, never drift indefinitely on GPS loss.
+  const lead=Math.min(.8,age);
+  return {...base,lat:base.lat+puckFreeVelocity.lat*lead,lon:base.lon+puckFreeVelocity.lon*lead};
+}
 function predictedPuckTarget(ts){
-  const base=puckTargetPos;if(!base)return null;const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length;if(!navOn||!Number.isFinite(+base._distanceAlong)||!Number.isFinite(puckRouteTargetAlong))return base;
+  const base=puckTargetPos;if(!base)return null;const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length;if(!navOn||base._routeSnapped===false||!Number.isFinite(+base._distanceAlong)||!Number.isFinite(puckRouteTargetAlong))return predictedFreePuckTarget(base,ts);
   const age=Math.max(0,(ts-puckRouteFixAt)/1000),leadSec=age<=1.05?age:1.05+Math.min(.75,age-1.05)*.32,desiredAlong=Math.min(routeTotalGeometry-1,puckRouteTargetAlong+puckRouteTargetSpeed*leadSec),xy=routePointAtDistance(desiredAlong);return xy?{...base,lon:xy[0],lat:xy[1],_distanceAlong:desiredAlong,_motionAge:age}:base
 }
 function puckAnimationTick(ts){
   puckFrame=null;if(!puckTargetPos||document.visibilityState==='hidden'||searchInteractionActive){puckMotionLastTs=0;return}const target=predictedPuckTarget(ts);if(!target)return;const dt=puckMotionLastTs?Math.max(8,Math.min(72,ts-puckMotionLastTs)):visualFrameGap(),dtSec=dt/1000;puckMotionLastTs=ts;
   const routeMotion=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length&&Number.isFinite(+target._distanceAlong)&&Number.isFinite(puckRouteAlong);
   if(routeMotion){const desiredAlong=Math.max(0,Math.min(routeTotalGeometry-1,+target._distanceAlong)),error=desiredAlong-puckRouteAlong,age=Math.max(0,+target._motionAge||0),speed=Math.max(0,puckRouteTargetSpeed||+target.speed||0),correction=Math.max(-(speed*.55+1.2),Math.min(speed*.65+3.2,error*1.28)),staleFactor=age<=1.45?1:Math.max(0,1-(age-1.45)/.75);let desiredVelocity=Math.max(0,(speed+correction)*staleFactor);if(speed<.38&&Math.abs(error)<1.6)desiredVelocity=0;const velocityTau=performanceTier==='eco'?240:performanceTier==='normal'?185:145,va=1-Math.exp(-dt/velocityTau);puckRouteVelocity=puckRouteVelocity+(desiredVelocity-puckRouteVelocity)*va;let nextAlong=puckRouteAlong+puckRouteVelocity*dtSec;if(error>=0)nextAlong=Math.min(nextAlong,desiredAlong+1.15);else if(Math.abs(error)>9)nextAlong=Math.max(desiredAlong,nextAlong-Math.min(2.2,Math.abs(error)*.08));puckRouteAlong=Math.max(0,Math.min(routeTotalGeometry-1,nextAlong));const xy=routePointAtDistance(puckRouteAlong);puckDisplayPos=xy?{...target,lon:xy[0],lat:xy[1],_distanceAlong:puckRouteAlong}:{...target};if(ts-puckLastPaintAt>=visualFrameGap()){puckLastPaintAt=ts;paintUserMarker(puckDisplayPos)}const keepAlive=age<2.2&&(puckRouteVelocity>.08||Math.abs(error)>.06);if(keepAlive)puckFrame=requestAnimationFrame(puckAnimationTick);else{paintUserMarker(puckDisplayPos);puckMotionLastTs=0}return}
-  if(!puckDisplayPos){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);return}const distance=hav([puckDisplayPos.lon,puckDisplayPos.lat],[target.lon,target.lat]);if(distance>420){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);return}const tau=performanceTier==='eco'?165:performanceTier==='normal'?120:105,alpha=1-Math.exp(-dt/tau);puckDisplayPos={...target,lat:puckDisplayPos.lat+(target.lat-puckDisplayPos.lat)*alpha,lon:puckDisplayPos.lon+(target.lon-puckDisplayPos.lon)*alpha};if(ts-puckLastPaintAt>=visualFrameGap()){puckLastPaintAt=ts;paintUserMarker(puckDisplayPos)}if(distance>.035)puckFrame=requestAnimationFrame(puckAnimationTick);else{puckDisplayPos={...target};paintUserMarker(puckDisplayPos);puckMotionLastTs=0}
+  if(!puckDisplayPos){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);return}const distance=hav([puckDisplayPos.lon,puckDisplayPos.lat],[target.lon,target.lat]);if(distance>420){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);return}const tau=puckFreeVelocity?(performanceTier==='eco'?440:performanceTier==='normal'?370:310):(performanceTier==='eco'?340:performanceTier==='normal'?290:245),alpha=1-Math.exp(-dt/tau);puckDisplayPos={...target,lat:puckDisplayPos.lat+(target.lat-puckDisplayPos.lat)*alpha,lon:puckDisplayPos.lon+(target.lon-puckDisplayPos.lon)*alpha};if(ts-puckLastPaintAt>=visualFrameGap()){puckLastPaintAt=ts;paintUserMarker(puckDisplayPos)}if(distance>.035)puckFrame=requestAnimationFrame(puckAnimationTick);else{puckDisplayPos={...target};paintUserMarker(puckDisplayPos);puckMotionLastTs=0}
 }
-function updateUserMarker(p,opts={}){if(!p||!map||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;const now=performance.now(),next={...p,lat:+p.lat,lon:+p.lon};puckLastFixAt=now;puckTargetUpdatedAt=now;puckTargetPos=next;const routeMotion=updatePuckRouteModel(next,now,{instant:!!opts.instant});if(searchInteractionActive){stopPuckAnimation();return}if(previewing||adminSimulation){stopPuckAnimation();if(previewing)resetPuckMotionModel();puckDisplayPos={...next};if(now-puckLastPaintAt>=visualFrameGap()||!vehicle3DState.hasFix){puckLastPaintAt=now;paintUserMarker(puckDisplayPos)}return}const distance=puckDisplayPos?hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]):Infinity;if(opts.instant||!puckDisplayPos||distance>420){stopPuckAnimation();if(routeMotion&&Number.isFinite(puckRouteAlong)){const xy=routePointAtDistance(puckRouteAlong);puckDisplayPos=xy?{...next,lon:xy[0],lat:xy[1],_distanceAlong:puckRouteAlong}:{...next}}else puckDisplayPos={...next};puckLastPaintAt=now;paintUserMarker(puckDisplayPos);return}if(puckFrame===null)puckFrame=requestAnimationFrame(puckAnimationTick)}
+function updateUserMarker(p,opts={}){
+  if(!p||!map||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;
+  if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;
+  const now=performance.now(),previous=puckTargetPos,previousAt=puckTargetUpdatedAt,next={...p,lat:+p.lat,lon:+p.lon};
+  const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length;
+  // A stationary device may wander a few metres between GPS measurements.
+  if(!navOn&&next.speed!=null&&Number(next.speed)<.45&&puckDisplayPos){
+    const drift=hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]);
+    const deadband=Math.max(2,Math.min(4.5,(+next.accuracy||20)*.12));
+    if(drift<deadband){next.lon=puckDisplayPos.lon;next.lat=puckDisplayPos.lat}
+  }
+  puckLastFixAt=now;puckTargetUpdatedAt=now;puckTargetPos=next;
+  const routeMotion=updatePuckRouteModel(next,now,{instant:!!opts.instant});
+  if(routeMotion||previewing||adminSimulation||opts.instant)puckFreeVelocity=null;
+  else updatePuckFreeVelocity(previous,next,now-previousAt);
+  if(searchInteractionActive){stopPuckAnimation();return}
+  if(previewing||adminSimulation){
+    stopPuckAnimation();if(previewing)resetPuckMotionModel();puckDisplayPos={...next};
+    if(now-puckLastPaintAt>=visualFrameGap()||!vehicle3DState.hasFix){puckLastPaintAt=now;paintUserMarker(puckDisplayPos)}
+    return;
+  }
+  const distance=puckDisplayPos?hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]):Infinity;
+  if(opts.instant||!puckDisplayPos||distance>420){
+    stopPuckAnimation();
+    if(routeMotion&&Number.isFinite(puckRouteAlong)){
+      const xy=routePointAtDistance(puckRouteAlong);
+      puckDisplayPos=xy?{...next,lon:xy[0],lat:xy[1],_distanceAlong:puckRouteAlong}:{...next};
+    }else puckDisplayPos={...next};
+    puckLastPaintAt=now;paintUserMarker(puckDisplayPos);
+    // Begin continuous movement on the first valid navigation fix, not just
+    // after the second callback (which can arrive a second later).
+    if(routeMotion&&!opts.instant&&puckRouteTargetSpeed>.65)puckFrame=requestAnimationFrame(puckAnimationTick);
+    return;
+  }
+  if(puckFrame===null)puckFrame=requestAnimationFrame(puckAnimationTick);
+}
 function filterPosition(raw){
   if(!smoothedPos){smoothedPos={...raw};return smoothedPos}
   const prev=smoothedPos,jump=hav([prev.lon,prev.lat],[raw.lon,raw.lat]);
