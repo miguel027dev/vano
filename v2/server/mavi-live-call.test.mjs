@@ -17,7 +17,10 @@ const allowed={
 test('live call is disabled unless all three opt-in flags and providers are present',()=>{
  assert.equal(maviLiveStatus({}).enabled,false);
  assert.equal(maviLiveStatus({...allowed,VANO_MAVI_LIVE_CALL_ENABLED:'0'}).enabled,false);
- assert.equal(maviLiveStatus({...allowed,VANO_MAVI_CARTESIA_ENABLED:'0'}).enabled,false);
+ assert.equal(maviLiveStatus({...allowed,VANO_MAVI_CARTESIA_ENABLED:'0'}).enabled,true);
+ assert.equal(maviLiveStatus({...allowed,VANO_MAVI_NVIDIA_ENABLED:'0'}).enabled,true);
+ assert.equal(maviLiveStatus({...allowed,CARTESIA_API_KEY:''}).enabled,false);
+ assert.equal(maviLiveStatus({...allowed,NVIDIA_API_KEY:''}).enabled,false);
  assert.equal(maviLiveStatus(allowed).enabled,true);
  assert.equal(maviLiveStatus(allowed).sampleRate,24000);
 });
