@@ -33,9 +33,9 @@ O laboratório não usa um proxy contínuo no Render: o servidor emite um token 
 ### Arquivos
 
 - `vano/services/gemini_live_v2.py`: token efêmero e gate admin
-- `static/vano-gemini-live-v2.js`: cliente bidirecional e interface de laboratório
+- `static/vano-gemini-live.js`: cliente bidirecional e interface de laboratório
 - `static/vano-gemini-pcm-worklet.js`: áudio do microfone
-- `static/vano-gemini-live-v2.css`: painel isolado
+- `static/vano-v2.css`: estilos do painel isolado
 - `static/vano-v2.js`: carregador admin-only
 - `vano/security/headers.py`: CSP de WebSocket restrito à V2
 - `tests/test_gemini_live_v2.py`: isolamento e autorização
