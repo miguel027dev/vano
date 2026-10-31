@@ -120,6 +120,10 @@ def register():
 @app.route("/auth/google")
 @app.route("/login/google")
 def google_login():
+    # The account-link action calls this handler internally through POST;
+    # ordinary GET login must never inherit a stale link target.
+    if request.method == "GET":
+        session.pop("google_link_user_id", None)
     if not rate_limit("google-login", 30, 300, shared=True):
         flash("Muitas tentativas de login. Aguarde um instante.", "warning")
         return redirect(url_for("login"))
