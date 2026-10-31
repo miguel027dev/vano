@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Link} from 'react-router-dom';
 import {ArrowLeftRight,ArrowRight,Bot,CarFront,Check,Download,FileJson,MapPin,Play,Route as RouteIcon,Search,ShieldCheck,SlidersHorizontal,X,Zap} from 'lucide-react';
 import '../benchmark-page.css';
+// Published, reviewed results are available separately from this interactive lab.
 
 const API='/api/benchmark/v1';
 const PRESETS=[
@@ -179,7 +180,7 @@ export default function BenchmarkPage(){
  }
  return <main className="vb-page" role="main" id="benchmark-page">
   <div className="vb-container">
-   <header className="vb-header"><Link to="/mapa" className="vb-back"><ArrowRight size={16}/> Voltar ao mapa</Link><div className="vb-brand"><img className="vb-logo-img" src="/vano-logo-original.webp" width="33" height="33" alt=""/> VANO <b>LAB</b></div><div className="vb-public"><span/> Público · sem login</div></header>
+   <header className="vb-header"><Link to="/mapa" className="vb-back"><ArrowRight size={16}/> Voltar ao mapa</Link><div className="vb-brand"><img className="vb-logo-img" src="/vano-logo-original.webp" width="33" height="33" alt=""/> VANO <b>LAB</b></div><Link to="/benchmark-resultados" className="vb-back">Resultados publicados <ArrowRight size={15}/></Link><div className="vb-public"><span/> Público · sem login</div></header>
    <section className="vb-hero"><div><span className="vb-eyebrow"><RouteIcon size={15}/> LABORATÓRIO DE ROTAS</span><h1>Compare caminhos.<br/><em>Meça resultados.</em></h1><p>Defina origem e destino, escolha carro ou moto e execute cálculos reais do VANO. Uma interface para pessoas e agentes de IA.</p></div><div className="vb-agent-chip"><Bot size={22}/><div><strong>Agent ready</strong><span>Interface + API JSON pública</span></div></div></section>
    <div className="vb-workspace">
     <form className="vb-config" onSubmit={execute} data-testid="benchmark-form">

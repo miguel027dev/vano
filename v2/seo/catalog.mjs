@@ -86,6 +86,17 @@ export const PUBLIC_PAGES = [
     faq:[['Preciso ativar GPS para pesquisar?','Não necessariamente. Você pode digitar origem e destino sem compartilhar sua posição atual.'],['O mapa funciona offline?','Conteúdo já carregado pode permanecer temporariamente, mas novas buscas e cálculos normalmente precisam de internet.'],['Posso comparar caminhos diferentes?','Sim, quando o motor disponibiliza alternativas válidas.']],cta:'Abrir GPS online',ctaHref:'/mapa'
   },
 ];
+PUBLIC_PAGES.push({
+  path:'/benchmark-resultados',category:'Transparência',title:'Resultados públicos de benchmark de rotas | VANO Maps',
+  description:'Veja resultados públicos e verificáveis dos benchmarks VANO Maps: rota padrão, ETA, distância, fonte, horário e metodologia, com API JSON para modelos de IA.',
+  lead:'Comparações auditáveis de rotas — medição identificada, metodologia aberta e nenhuma estatística inventada.',
+  sections:[
+    ['Resultados públicos, não demonstrações','Os registros só aparecem depois de serem revisados e publicados. O laboratório executa cálculos sob demanda, mas não armazena automaticamente resultados antigos.'],
+    ['Rota padrão versus alternativa VANO','A referência pode ser o modo mais rápido do próprio VANO ou, quando comprovadamente coletado, o Google Maps. Fontes externas e internas recebem rótulos diferentes.'],
+    ['Métricas, hora e proveniência','Para cada trajeto publicamos as duas estimativas de ETA e distância, data de consulta, categoria, provedor e referências verificáveis quando disponíveis.'],
+    ['Acesso aberto a dados estruturados','O JSON em /api/benchmark/v1/results usa campos estáveis com paginação, unidade, timestamp, fonte e limitações para interpretação por modelos de IA.']
+  ],cta:'Ver resultados',ctaHref:'/benchmark-resultados'
+});
 export const CANONICAL_PATHS = PUBLIC_PAGES.map(p=>p.path);
 export const PUBLIC_PATHS = PUBLIC_PAGES.flatMap(p=>[p.path,...(p.aliases||[])]);
 export const pageForPath = path => PUBLIC_PAGES.find(p=>p.path===path || p.aliases?.includes(path)) || null;
