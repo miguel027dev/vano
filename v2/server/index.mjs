@@ -29,6 +29,7 @@ import {retrieveMaviKnowledge} from './mavi-grounding.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {maviLiveStatus,cleanMaviLiveInput,streamMaviLiveCall} from './mavi-live-call.mjs';
+import {liveSttProvider,liveSttMime,MAX_LIVE_AUDIO_BYTES,transcribeMaviLiveAudio} from './mavi-live-stt.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
@@ -1055,7 +1056,32 @@ async function route(req, res) {
     const actor=userSession(req)?.user;
     if(!actor)return err(res,401,'Faça login para testar a MAVI.');
     if(!isAdminAccount(actor))return err(res,403,'Somente administradores.');
-    return json(res,200,maviLiveStatus());
+    return json(res,200,{...maviLiveStatus(),sttAvailable:!!liveSttProvider(),microphoneMode:'single-stream-voice-activity'});
+  }
+  if(pathname==='/api/admin/mavi-live/transcribe'&&req.method==='POST'){
+    const actor=userSession(req)?.user;
+    if(!actor)return err(res,401,'Faça login para testar a MAVI.');
+    if(!isAdminAccount(actor))return err(res,403,'Somente administradores.');
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'mavi-live-stt',18,60000))return;
+    if(!limitAccount(res,'mavi-live-stt',String(actor.id),80,900000))return;
+    if(!maviLiveStatus().enabled)return err(res,503,'Chamada não habilitada.');
+    const provider=liveSttProvider();
+    if(!provider)return err(res,503,'Transcrição em português não configurada.');
+    const media=liveSttMime(req.headers['content-type']);
+    if(!media)return err(res,415,'Áudio inválido.');
+    const length=Number(req.headers['content-length']||0);
+    if(length>MAX_LIVE_AUDIO_BYTES)return err(res,413,'Áudio muito grande.');
+    const bytes=await getAudioBytes(req,MAX_LIVE_AUDIO_BYTES);
+    try{
+      const text=await transcribeMaviLiveAudio(bytes,media.mime,{provider});
+      return json(res,200,{text});
+    }catch(error){
+      const code=String(error?.message||'');
+      if(code==='stt_no_speech'||code==='stt_audio_size')
+        return err(res,422,'Não foi possível identificar fala.');
+      return err(res,503,'Serviço de transcrição indisponível.');
+    }
   }
   if(pathname==='/api/admin/mavi-live/stream'&&req.method==='POST'){
     const actor=userSession(req)?.user;
