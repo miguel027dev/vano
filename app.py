@@ -114,10 +114,6 @@ _vano_install(globals(), "vano.routes.personalization")
 from vano.services.voice_assistant import register_voice_assistant as _register_voice_assistant
 _register_voice_assistant(app, rate_limit=rate_limit, validate_csrf=validate_csrf)
 
-# Isolated admin-only Gemini Live laboratory for /v2; disabled by default.
-from vano.services.gemini_live_v2 import register_gemini_live_v2 as _register_gemini_live_v2
-_register_gemini_live_v2(app, rate_limit=rate_limit, validate_csrf=validate_csrf, current_user=current_user)
-
 
 @app.after_request
 def authenticate_route_responses(response):
