@@ -13,7 +13,7 @@
     </button>
     <section id="maviLivePanel" class="mavi-live-panel" hidden>
       <header class="mavi-live-header">
-        <div><strong>MAVI Live</strong><small>Gemini · ambiente de teste V2</small></div>
+        <div><strong>MAVI Live</strong><small>Voz simultânea · modo ligação V2</small></div>
         <button class="mavi-live-close" type="button" aria-label="Fechar laboratório">×</button>
       </header>
       <label class="mavi-live-label">Modelo
@@ -28,17 +28,25 @@
           <option value="Kore">Kore</option>
           <option value="Aoede">Aoede</option>
           <option value="Puck">Puck</option>
-          <option value="Charon">Charon</option>
+          <option value="Charon">Charon · informativa</option>
+          <option value="Achird">Achird · amigável</option>
+          <option value="Algieba">Algieba · suave</option>
+          <option value="Iapetus">Iapetus · clara</option>
+          <option value="Sulafat">Sulafat · acolhedora</option>
+          <option value="Leda">Leda · jovem</option>
+          <option value="Zephyr">Zephyr · brilhante</option>
+          <option value="Orus">Orus · firme</option>
         </select>
       </label>
       <div class="mavi-live-actions">
-        <button class="mavi-live-start" type="button">Iniciar conversa</button>
+        <button class="mavi-live-start" type="button">Iniciar chamada</button>
         <button class="mavi-live-mute" type="button" disabled>Silenciar</button>
         <button class="mavi-live-stop" type="button" disabled>Encerrar</button>
       </div>
       <p class="mavi-live-status" role="status" aria-live="polite">Verificando disponibilidade…</p>
+      <p class="mavi-live-metrics" aria-label="Diagnóstico de streaming" aria-live="off">Streaming em tempo real · métricas aparecerão na chamada</p>
       <div class="mavi-live-transcript" aria-live="off" aria-label="Transcrição da conversa"></div>
-      <small class="mavi-live-footer">Sessão contínua enquanto ativada · teste exclusivo do administrador. A IA não troca rotas automaticamente.</small>
+      <small class="mavi-live-footer">Microfone e alto-falante funcionam juntos. Para evitar eco, prefira fones de ouvido. Rotas não são alteradas automaticamente.</small>
     </section>`;
   document.body.appendChild(root);
 
@@ -47,11 +55,25 @@
   const startBtn = el('.mavi-live-start'), stopBtn = el('.mavi-live-stop');
   const muteBtn = el('.mavi-live-mute'), statusEl = el('.mavi-live-status');
   const transcript = el('.mavi-live-transcript');
+  const metricsEl = el('.mavi-live-metrics');
+  const UPSTREAM_BACKPRESSURE_BYTES = 48000;
+  const PLAYBACK_START_BUFFER_S = 0.055;
+  const PLAYBACK_MAX_QUEUE_S = 1.25;
+  let liveMetrics = { sent:0, dropped:0, received:0, interruptions:0, queuedMs:0, setupMs:null, firstAudioMs:null };
+  let sessionRequestStartedAt = 0, lastUserTranscriptionAt = 0;
+  function metricsLabel() {
+    const ms = v => v == null ? '—' : Math.round(v) + 'ms';
+    metricsEl.textContent = '↑ 20ms · ' + liveMetrics.sent + ' pacotes | ↓ ' +
+      liveMetrics.received + ' blocos | fila ' + ms(liveMetrics.queuedMs) +
+      ' | conexão ' + ms(liveMetrics.setupMs) + ' | resposta aprox. ' +
+      ms(liveMetrics.firstAudioMs) + ' | descartes ' + liveMetrics.dropped +
+      ' | interrupções ' + liveMetrics.interruptions;
+  }
   const modelEl = el('.mavi-live-model'), voiceEl = el('.mavi-live-voice');
   let socket = null, stream = null, context = null, source = null, worklet = null, silent = null;
   let muted = false, starting = false, closing = false, nextPlayAt = 0;
   const playing = new Set();
-  let audioStartedAt = 0, firstAudioRecorded = false;
+  let firstAudioRecorded = false;
 
   function status(label) { statusEl.textContent = label; }
   function addLine(who, text) {
