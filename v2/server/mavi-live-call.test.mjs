@@ -118,7 +118,7 @@ test('call connection chime plays only two brief tones',async()=>{
  assert.equal(started.length,2);
  assert.ok(started[1]>started[0]);
  const component=readFileSync(new URL('../src/components/MaviLiveCall.jsx',import.meta.url),'utf8');
- assert.match(component,/playMaviDialSequence\\(context,5\\)/);
+ assert.match(component,/playMaviDialSequence\(context,5\)/);
  assert.doesNotMatch(component,/SpeechRecognition|webkitSpeechRecognition/);
 });
 
