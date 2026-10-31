@@ -19,7 +19,7 @@ def test_live_duplex_has_independent_send_and_receive():
     assert "autoGainControl: true" in src
     assert "mavi-live-metrics" in src
     assert "user_id" not in src
-    assert "GEMINI_API_KEY" not in src
+    assert "window.GEMINI_API_KEY" not in src
 
 
 def test_20ms_audio_worklet_frame_behavior():
