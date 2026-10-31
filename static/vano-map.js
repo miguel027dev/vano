@@ -340,23 +340,18 @@ function geoRaw(g){return{lat:g.coords.latitude,lon:g.coords.longitude,accuracy:
 function gpsFixScore(raw){const age=Math.max(0,Date.now()-(+raw?.ts||Date.now())),accuracy=Math.max(1,+raw?.accuracy||999);return accuracy+Math.min(180,age/18)}
 function chooseNavigationGpsFix(current,candidate){
   if(!current)return candidate;const newer=(+candidate.ts||0)-(+current.ts||0),candidateScore=gpsFixScore(candidate),currentScore=gpsFixScore(current);
-  // Prefer the newest real fix, unless the older callback is materially more accurate.
   return newer>220||candidateScore+5<currentScore?candidate:current
 }
 function acceptGpsRaw(raw,{force=false}={}){
   if(force||!raw)return true;
   const now=Date.now(),ts=Number.isFinite(+raw.ts)?+raw.ts:now,acc=Math.max(1,+raw.accuracy||999),lat=+raw.lat,lon=+raw.lon,key=`${lat.toFixed(7)}:${lon.toFixed(7)}:${Math.round(acc)}`;
   if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return false;
-  // Browsers can deliver a late callback after a watch/heartbeat race. It is
-  // not a new GPS observation and must never pull an active route backwards.
   if(ts<now-15000||ts>now+60000)return false;
   if(lastAcceptedGpsTimestamp&&ts<lastAcceptedGpsTimestamp-350)return false;
   if(key===lastAcceptedGpsKey&&ts-lastAcceptedGpsTimestamp<700)return false;
   const previous=lastAcceptedGpsRaw;
   if(previous){
     const dt=Math.max(.05,(ts-(+previous.ts||ts))/1000),distance=hav([previous.lon,previous.lat],[lon,lat]),reportedSpeed=Math.max(0,+raw.speed||0,+previous.speed||0);
-    // Reject an isolated teleport only while a usable recent fix exists. The
-    // generous bound still permits real recovery after a short signal outage.
     const allowance=Math.max(45,(reportedSpeed*dt*3.2)+acc+Math.max(1,+previous.accuracy||35)+24);
     if(dt<12&&distance>allowance)return false;
   }
@@ -368,8 +363,6 @@ function queueNavigationGps(g,source='watch'){
   const raw=geoRaw(g);if(!Number.isFinite(+raw.lat)||!Number.isFinite(+raw.lon))return;
   navGpsPending=chooseNavigationGpsFix(navGpsPending,raw);
   if(navGpsFlushTimer)return;
-  // Coalesce near-simultaneous watchPosition/getCurrentPosition callbacks. A
-  // 55 ms window is imperceptible to driving, but removes source-order jumps.
   navGpsFlushTimer=setTimeout(()=>{navGpsFlushTimer=null;const next=navGpsPending;navGpsPending=null;if(next&&activeNav?.classList.contains('show')&&!adminSimulation)updateNavigation(next)},source==='heartbeat'?70:55);
 }
 function requestPosition(){return new Promise((ok,no)=>{if(!navigator.geolocation)return no({code:0});navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:4500,maximumAge:5000})})}
@@ -472,30 +465,7 @@ function updatePuckRouteModel(next,now,{instant=false}={}){
   const movingConfirmed=gpsSpeed>.45||(next._moving===true&&measured>.75);const inferred=movingConfirmed?(measured>.18?(gpsSpeed>.18?gpsSpeed*.68+measured*.32:measured):gpsSpeed):0;puckRouteTargetSpeed=Math.max(0,Math.min(60,Number.isFinite(inferred)?inferred:0));
   if(Number.isFinite(puckRouteAlong)&&along<puckRouteAlong&&puckRouteAlong-along<9)along=puckRouteAlong;puckRouteTargetAlong=along;puckRouteFixAt=now;return true
 }
-// Predict only a small part of the interval between real GPS fixes. The GPS
-// remains authoritative: this is a visual animation, never route progress.
-function updatePuckFreeVelocity(previous,next,elapsedMs){
-  puckFreeVelocity=null;
-  if(!previous||elapsedMs<250||elapsedMs>3500||!Number.isFinite(+previous.lat)||!Number.isFinite(+previous.lon))return;
-  const accuracy=next.accuracy==null?999:Number(next.accuracy);
-  if(!Number.isFinite(accuracy)||accuracy>45)return;
-  const reported=next.speed==null?null:Number(next.speed);
-  if(reported!=null&&(!Number.isFinite(reported)||reported<.65))return;
-  const seconds=elapsedMs/1000,distance=hav([previous.lon,previous.lat],[next.lon,next.lat]),measured=distance/seconds;
-  if(distance<1.4||measured<.65||measured>38)return;
-  // GPS speed corroborates the displacement, rejecting sideways jumps.
-  if(reported!=null&&measured>Math.max(4,reported*2.2+2))return;
-  const estimated=Math.min(measured,reported==null?12:Math.max(1.3,reported*1.2));
-  const scale=estimated/measured;
-  puckFreeVelocity={lat:(next.lat-previous.lat)/seconds*scale,lon:(next.lon-previous.lon)/seconds*scale};
-}
-function predictedFreePuckTarget(base,ts){
-  if(!puckFreeVelocity||!base||document.visibilityState==='hidden')return base;
-  const age=Math.max(0,(ts-puckTargetUpdatedAt)/1000);
-  // At most 0.8s of dead-reckoning: hold, never drift indefinitely on GPS loss.
-  const lead=Math.min(.8,age);
-  return {...base,lat:base.lat+puckFreeVelocity.lat*lead,lon:base.lon+puckFreeVelocity.lon*lead};
-}
+function updatePuckFreeVelocity(previous,next,elapsedMs){puckFreeVelocity=null;if(!previous||elapsedMs<250||elapsedMs>3500||!Number.isFinite(+previous.lat)||!Number.isFinite(+previous.lon))return;const accuracy=next.accuracy==null?999:Number(next.accuracy);if(!Number.isFinite(accuracy)||accuracy>45)return;const reported=next.speed==null?null:Number(next.speed);if(reported!=null&&(!Number.isFinite(reported)||reported<.65))return;const seconds=elapsedMs/1000,distance=hav([previous.lon,previous.lat],[next.lon,next.lat]),measured=distance/seconds;if(distance<1.4||measured<.65||measured>38)return;if(reported!=null&&measured>Math.max(4,reported*2.2+2))return;const estimated=Math.min(measured,reported==null?12:Math.max(1.3,reported*1.2));const scale=estimated/measured;puckFreeVelocity={lat:(next.lat-previous.lat)/seconds*scale,lon:(next.lon-previous.lon)/seconds*scale};}function predictedFreePuckTarget(base,ts){if(!puckFreeVelocity||!base||document.visibilityState==='hidden')return base;const age=Math.max(0,(ts-puckTargetUpdatedAt)/1000);const lead=Math.min(.8,age);return {...base,lat:base.lat+puckFreeVelocity.lat*lead,lon:base.lon+puckFreeVelocity.lon*lead};}
 function predictedPuckTarget(ts){
   const base=puckTargetPos;if(!base)return null;const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length;if(!navOn||base._routeSnapped===false||!Number.isFinite(+base._distanceAlong)||!Number.isFinite(puckRouteTargetAlong))return predictedFreePuckTarget(base,ts);
   const age=Math.max(0,(ts-puckRouteFixAt)/1000),leadSec=age<=1.05?age:1.05+Math.min(.75,age-1.05)*.32,desiredAlong=Math.min(routeTotalGeometry-1,puckRouteTargetAlong+puckRouteTargetSpeed*leadSec),xy=routePointAtDistance(desiredAlong);return xy?{...base,lon:xy[0],lat:xy[1],_distanceAlong:desiredAlong,_motionAge:age}:base
@@ -506,42 +476,7 @@ function puckAnimationTick(ts){
   if(routeMotion){const desiredAlong=Math.max(0,Math.min(routeTotalGeometry-1,+target._distanceAlong)),error=desiredAlong-puckRouteAlong,age=Math.max(0,+target._motionAge||0),speed=Math.max(0,puckRouteTargetSpeed||+target.speed||0),correction=Math.max(-(speed*.55+1.2),Math.min(speed*.65+3.2,error*1.28)),staleFactor=age<=1.45?1:Math.max(0,1-(age-1.45)/.75);let desiredVelocity=Math.max(0,(speed+correction)*staleFactor);if(speed<.38&&Math.abs(error)<1.6)desiredVelocity=0;const velocityTau=performanceTier==='eco'?240:performanceTier==='normal'?185:145,va=1-Math.exp(-dt/velocityTau);puckRouteVelocity=puckRouteVelocity+(desiredVelocity-puckRouteVelocity)*va;let nextAlong=puckRouteAlong+puckRouteVelocity*dtSec;if(error>=0)nextAlong=Math.min(nextAlong,desiredAlong+1.15);else if(Math.abs(error)>9)nextAlong=Math.max(desiredAlong,nextAlong-Math.min(2.2,Math.abs(error)*.08));puckRouteAlong=Math.max(0,Math.min(routeTotalGeometry-1,nextAlong));const xy=routePointAtDistance(puckRouteAlong);puckDisplayPos=xy?{...target,lon:xy[0],lat:xy[1],_distanceAlong:puckRouteAlong}:{...target};if(ts-puckLastPaintAt>=visualFrameGap()){puckLastPaintAt=ts;paintUserMarker(puckDisplayPos)}const keepAlive=age<2.2&&(puckRouteVelocity>.08||Math.abs(error)>.06);if(keepAlive)puckFrame=requestAnimationFrame(puckAnimationTick);else{paintUserMarker(puckDisplayPos);puckMotionLastTs=0}return}
   if(!puckDisplayPos){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);return}const distance=hav([puckDisplayPos.lon,puckDisplayPos.lat],[target.lon,target.lat]);if(distance>420){puckDisplayPos={...target};paintUserMarker(puckDisplayPos);return}const tau=puckFreeVelocity?(performanceTier==='eco'?440:performanceTier==='normal'?370:310):(performanceTier==='eco'?340:performanceTier==='normal'?290:245),alpha=1-Math.exp(-dt/tau);puckDisplayPos={...target,lat:puckDisplayPos.lat+(target.lat-puckDisplayPos.lat)*alpha,lon:puckDisplayPos.lon+(target.lon-puckDisplayPos.lon)*alpha};if(ts-puckLastPaintAt>=visualFrameGap()){puckLastPaintAt=ts;paintUserMarker(puckDisplayPos)}if(distance>.035)puckFrame=requestAnimationFrame(puckAnimationTick);else{puckDisplayPos={...target};paintUserMarker(puckDisplayPos);puckMotionLastTs=0}
 }
-function updateUserMarker(p,opts={}){
-  if(!p||!map||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;
-  if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;
-  const now=performance.now(),previous=puckTargetPos,previousAt=puckTargetUpdatedAt,next={...p,lat:+p.lat,lon:+p.lon};
-  const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length;
-  // A stationary device may wander a few metres between GPS measurements.
-  if(!navOn&&next.speed!=null&&Number(next.speed)<.45&&puckDisplayPos){
-    const drift=hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]);
-    const deadband=Math.max(2,Math.min(4.5,(+next.accuracy||20)*.12));
-    if(drift<deadband){next.lon=puckDisplayPos.lon;next.lat=puckDisplayPos.lat}
-  }
-  puckLastFixAt=now;puckTargetUpdatedAt=now;puckTargetPos=next;
-  const routeMotion=updatePuckRouteModel(next,now,{instant:!!opts.instant});
-  if(routeMotion||previewing||adminSimulation||opts.instant)puckFreeVelocity=null;
-  else updatePuckFreeVelocity(previous,next,now-previousAt);
-  if(searchInteractionActive){stopPuckAnimation();return}
-  if(previewing||adminSimulation){
-    stopPuckAnimation();if(previewing)resetPuckMotionModel();puckDisplayPos={...next};
-    if(now-puckLastPaintAt>=visualFrameGap()||!vehicle3DState.hasFix){puckLastPaintAt=now;paintUserMarker(puckDisplayPos)}
-    return;
-  }
-  const distance=puckDisplayPos?hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]):Infinity;
-  if(opts.instant||!puckDisplayPos||distance>420){
-    stopPuckAnimation();
-    if(routeMotion&&Number.isFinite(puckRouteAlong)){
-      const xy=routePointAtDistance(puckRouteAlong);
-      puckDisplayPos=xy?{...next,lon:xy[0],lat:xy[1],_distanceAlong:puckRouteAlong}:{...next};
-    }else puckDisplayPos={...next};
-    puckLastPaintAt=now;paintUserMarker(puckDisplayPos);
-    // Begin continuous movement on the first valid navigation fix, not just
-    // after the second callback (which can arrive a second later).
-    if(routeMotion&&!opts.instant&&puckRouteTargetSpeed>.65)puckFrame=requestAnimationFrame(puckAnimationTick);
-    return;
-  }
-  if(puckFrame===null)puckFrame=requestAnimationFrame(puckAnimationTick);
-}
+function updateUserMarker(p,opts={}){if(!p||!map||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lon))return;if(window.__vanoNativeMapActive&&activeNav?.classList.contains('show'))return;const now=performance.now(),previous=puckTargetPos,previousAt=puckTargetUpdatedAt,next={...p,lat:+p.lat,lon:+p.lon};const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length;if(!navOn&&next.speed!=null&&Number(next.speed)<.45&&puckDisplayPos){const drift=hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]);const deadband=Math.max(2,Math.min(4.5,(+next.accuracy||20)*.12));if(drift<deadband){next.lon=puckDisplayPos.lon;next.lat=puckDisplayPos.lat}}puckLastFixAt=now;puckTargetUpdatedAt=now;puckTargetPos=next;const routeMotion=updatePuckRouteModel(next,now,{instant:!!opts.instant});if(routeMotion||previewing||adminSimulation||opts.instant)puckFreeVelocity=null;else updatePuckFreeVelocity(previous,next,now-previousAt);if(searchInteractionActive){stopPuckAnimation();return}if(previewing||adminSimulation){stopPuckAnimation();if(previewing)resetPuckMotionModel();puckDisplayPos={...next};if(now-puckLastPaintAt>=visualFrameGap()||!vehicle3DState.hasFix){puckLastPaintAt=now;paintUserMarker(puckDisplayPos)}return;}const distance=puckDisplayPos?hav([puckDisplayPos.lon,puckDisplayPos.lat],[next.lon,next.lat]):Infinity;if(opts.instant||!puckDisplayPos||distance>420){stopPuckAnimation();if(routeMotion&&Number.isFinite(puckRouteAlong)){const xy=routePointAtDistance(puckRouteAlong);puckDisplayPos=xy?{...next,lon:xy[0],lat:xy[1],_distanceAlong:puckRouteAlong}:{...next};}else puckDisplayPos={...next};puckLastPaintAt=now;paintUserMarker(puckDisplayPos);if(routeMotion&&!opts.instant&&puckRouteTargetSpeed>.65)puckFrame=requestAnimationFrame(puckAnimationTick);return;}if(puckFrame===null)puckFrame=requestAnimationFrame(puckAnimationTick);}
 function filterPosition(raw){
   if(!smoothedPos){smoothedPos={...raw};return smoothedPos}
   const prev=smoothedPos,jump=hav([prev.lon,prev.lat],[raw.lon,raw.lat]);
@@ -566,10 +501,6 @@ function stabilizeActiveNavPosition(filtered,raw,match=null){
   if(mapMatchMismatchHits>=3)mapMatchReleaseUntil=Date.now()+6500;const reacquired=m.offRoute<Math.max(6,acc*.38)&&mismatch<42;if(reacquired&&mapMatchMismatchHits===0&&Date.now()+1500>mapMatchReleaseUntil)mapMatchReleaseUntil=0;
   if(Date.now()<mapMatchReleaseUntil)return{...filtered,_rawOffRoute:m.offRoute,_routeSnapped:false,_mapMatchReleased:true};
   const jitterRadius=Math.max(2.4,Math.min(7.0,acc*.17)),moving=speed>.72||rawMove>jitterRadius;if(navLastAlong>0){if(!moving&&Math.abs(along-navLastAlong)<20)along=navLastAlong;else if(along<navLastAlong-5)along=navLastAlong;else if(moving&&along<navLastAlong)along=Math.max(navLastAlong-1.2,along);else if(moving&&rawDt>0){
-    // At crossings and under multipath GPS a single fix can project far ahead
-    // on the same route. Keep visual/progress motion physically continuous;
-    // subsequent consistent samples catch up immediately, while a real
-    // off-route departure is still detected from the unmodified raw fix.
     const forwardAllowance=Math.max(14,Math.min(180,speed*rawDt*3.2+acc*.85+12));
     if(along-navLastAlong>forwardAllowance)along=navLastAlong+forwardAllowance;
   }}
@@ -618,8 +549,6 @@ function maybeAdoptNavigationAlternative(raw,p){
 
 function remainingNavGeometry(startAlong=0){
   const c=selectedRoute?.geometry?.coordinates||[];if(c.length<2)return selectedRoute?.geometry||null;if(!routeCumulative.length)buildMetrics();
-  // Keep only a tiny tail under the puck. This makes the orange path disappear
-  // continuously behind the user instead of vanishing in large visual chunks.
   const measured=Math.max(0,+startAlong||0),visual=Number.isFinite(puckRouteAlong)?Math.max(0,+puckRouteAlong):measured,anchor=Math.min(measured,visual),speed=Math.max(0,+puckRouteTargetSpeed||+lastNavPosition?.speed||0),trail=Math.max(2.4,Math.min(5.5,2.4+speed*.12));
   const start=Math.max(0,Math.min(routeTotalGeometry-0.01,anchor-trail)),pt=routePointAtDistance(start);let lo=0,hi=routeCumulative.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(routeCumulative[mid]<start)lo=mid+1;else hi=mid}const coords=[pt,...c.slice(Math.max(1,lo))].filter(Boolean),clean=[];for(const x of coords){const prev=clean.at(-1);if(!prev||hav(prev,x)>.25)clean.push(x)}return clean.length>1?{type:'LineString',coordinates:clean}:selectedRoute.geometry;
 }
@@ -633,7 +562,6 @@ function startupRouteBearing(m,p){
   if(gps!=null&&speed>2.2&&acc<45&&bearingDelta(route,gps)<42)route=blendBearing(route,gps,.12);
   return route
 }
-// The experimental drone camera is enabled only by the separate V2 admin test.
 let adminSimulationCameraV2=false,v2DroneManeuverUntil=0,adminSimStarting=false;
 function isV2DroneCamera(){
   return IS_ADMIN && adminSimulation && adminSimulationCameraV2 &&
@@ -696,8 +624,6 @@ function stabilizeCameraTargetBearing(raw,ts,speed=0,junction=null){
 }
 function buildCameraTarget(ctx,ts){
   const p=ctx.p,m=cameraDynamicProgress(ctx,ts),speed=Math.max(0,+p.speed||0),motion=cameraKinematics(speed,ts),tune=cameraVehicleTuning(),step=currentStep(m.distanceAlong),turn=upcomingTurn(m,speed),junction=cameraJunctionContext(m,step,turn),v2Drone=isV2DroneCamera(),signal=roadControlAhead('traffic_signal',m.distanceAlong,70),nearlyStopped=speed<.45,stoppedAtSignal=!!signal&&speed<.9,arrivalApproach=m.remaining<420&&m.progress>.80,urban=cameraUrbanContext(p,ts);
-  // The next route step often names the maneuver at the END of this step.
-  // Anticipate it early; retain the wide framing briefly after the junction.
   if(v2Drone){
     const rem=Number.isFinite(+step?.remainingInStep)?Math.max(0,+step.remainingInStep):Infinity;
     const upcoming=selectedRoute?.steps?.[Math.max(0,(+step?.stepIndex||0)+1)];
@@ -728,11 +654,7 @@ function buildCameraTarget(ctx,ts){
   let look=calibrating?NAV_CAMERA_HOME.lookAhead:cameraLookAhead(speed,m,motion);if(!calibrating){if(junction.decision)look*=junction.large?.88:.94;if(junction.roundabout)look*=profile==='motorcycle'?.82:.76;if(arrivalApproach)look*=.68;look*=profile==='motorcycle'?.94:.88;if(urban.close&&!junction.large)look*=1-Math.min(.16,urban.density*.14);look=Math.max(tune.lookMin,Math.min(profile==='motorcycle'?285:isMotorizedProfile()?220:54,look));if(startupRatio>.01)look*=.82+.18*(1-startupRatio)}
   let centerLead=calibrating?NAV_CAMERA_HOME.centerLead:(junction.roundabout?tune.roundLead:junction.large?tune.largeLead:junction.decision?tune.turnLead:tune.centerLead);if(motion.phase==='braking')centerLead*=profile==='motorcycle'?.88:.92;if(motion.phase==='crawl')centerLead*=.90;if(urban.close&&!junction.decision)centerLead*=1-Math.min(.07,urban.density*.06);const target=routePointAtDistance(Math.min(routeTotalGeometry-1,m.distanceAlong+look*centerLead));setDriveCameraMood(speed,junction,turn);
   {
-    // The route decides bearing/zoom/context; the user's puck decides the camera anchor.
-    // Keeping center on the puck prevents the camera from visually chasing the route line after a reroute.
     if(target&&previewing)center=target;
-    // Keep the user prominent while opening a small, predictable amount of road
-    // ahead. Never lead toward stale geometry during an off-route/recalculation.
     else if(target&&document.documentElement.classList.contains('vano-android-shell')&&isMotorizedProfile()&&offRoute<Math.max(28,(+p.accuracy||18)*1.05)
       &&navCameraState!==NAV_CAMERA_STATES.REROUTING&&Math.max(0,+p.accuracy||0)<55){
       const routeLead=Math.min(junction.decision?12:28,Math.max(7,look*(junction.decision?.075:.13)));
@@ -745,9 +667,6 @@ function buildCameraTarget(ctx,ts){
     zoom=calibrating?NAV_CAMERA_HOME.zoom:tune.zoomBase-speedOpen-turnOpen-accelOpen+brakeClose+arrivalClose;zoom=Math.max(tune.zoomMin,Math.min(tune.zoomMax,zoom));
     pitch=calibrating?NAV_CAMERA_HOME.pitch:(junction.roundabout?tune.pitchRound:junction.large?tune.pitchLarge:(junction.decision||turn.angle>48?tune.pitchTurn:tune.pitchCruise));if(motion.phase==='accelerating'&&!junction.decision)pitch=Math.min(56,pitch+(profile==='motorcycle'?2:1));if(motion.phase==='braking')pitch=Math.max(42,pitch-(profile==='motorcycle'?2:1));if(arrivalApproach)pitch=Math.min(pitch,46);
     if(urban.close&&!calibrating&&!junction.large){const crowd=Math.max(0,Math.min(1,urban.density)),speedGuard=1-Math.min(.32,speed/55),urbanFocus=crowd*speedGuard;zoom+=urbanFocus*(profile==='motorcycle'?.24:.28);pitch-=urbanFocus*(profile==='motorcycle'?4.2:5.6)}
-    // Drone framing: close to the car on open roads, widen early for choices.
-    // Dense 3D building corridors get a gentler pitch and extra street context
-    // so the vehicle and upcoming road remain visible (not buried by facades).
     if(v2Drone&&!calibrating){
       const crowd=urban.close?Math.max(.25,Math.min(1,urban.density)):0;
       const smallScreen=vw<430;
@@ -791,8 +710,6 @@ function cameraMotionProfile(target,ts,dt){
   if(calibrating){const t=Math.max(0,Math.min(1,(ts-cameraCalibrationStartedAt)/(moto?880:1040))),e=t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;return{label:'calibrating',posTau:Math.max(moto?72:88,(moto?205:255)-(moto?122:150)*e),viewTau:Math.max(moto?82:100,(moto?235:300)-(moto?138:170)*e),bearingTau:Math.max(moto?88:118,(moto?245:350)-(moto?145:185)*e),centerEps:.07,zoomEps:.0035,bearingEps:moto?.13:.16}}
   const speed=Math.max(0,+target?.speed||0),intent=activeCameraIntent(ts),largeTurn=!!target?.junction?.large,turning=!!target?.junction?.decision,roundabout=!!target?.junction?.roundabout,arriving=!!target?.arrivalApproach,stopped=!!target?.stopped,instant=!!target?.instant&&ts-(cameraTargetContext?.updatedAt||ts)<420,preview=!!target?.previewing||intent==='preview',phase=target?.motion?.phase||'steady',rerouting=navCameraState===NAV_CAMERA_STATES.REROUTING;
   if(isV2DroneCamera()&&!preview){
-    // Time-based damping produces a continuous tracking shot instead of
-    // canceling/restarting easeTo animations at every simulated GPS tick.
     const maneuver=roundabout||largeTurn||turning;
     if(intent==='launch'||intent==='recenter')return{label:'v2-drone-launch',posTau:115,viewTau:285,bearingTau:240,centerEps:.065,zoomEps:.0028,bearingEps:.14};
     if(maneuver)return{label:'v2-drone-overview',posTau:135,viewTau:425,bearingTau:310,centerEps:.07,zoomEps:.0028,bearingEps:.16};
