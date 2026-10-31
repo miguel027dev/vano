@@ -123,7 +123,7 @@ async function calculateV1Original(base,origin,destination,vehicle,telemetry={},
   const get=async mode=>{
     const url=buildV1Url(base,origin,destination,mode,vehicle,telemetry,options);
     let response;
-    try{response=await fetcher(url,{headers:{Accept:'application/json','X-VANO-Client':'vano-v2-original-engine'},signal:AbortSignal.timeout(timeout)});}
+    try{response=await fetcher(url,{headers:{Accept:'application/json','X-VANO-Client':'vano-v2-original-engine',...(process.env.VANO_INTERNAL_BRIDGE_SECRET?.length>=32?{'X-VANO-Bridge-Key':process.env.VANO_INTERNAL_BRIDGE_SECRET}:{})},signal:AbortSignal.timeout(timeout)});}
     catch(e){throw Error(`Motor original indisponível (${mode}): ${e?.name==='TimeoutError'?'tempo limite excedido':e?.message||'falha de rede'}`);}
     if(!response.ok)throw Error(`Motor original recusou rota (${mode}, HTTP ${response.status}).`);
     const payload=await response.json();
