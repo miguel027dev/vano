@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {easeGpsPoint,routeTrace,smoothLiveRoadProgress,smoothLiveBearing} from './liveMotion.js';
+import {easeGpsPoint,predictFreeGpsVisual,routeTrace,smoothLiveRoadProgress,smoothLiveBearing} from './liveMotion.js';
 import {buildRouteTimeline, distanceOnRoute} from './routeAnimation.js';
+import {metersBetween} from './navigationMotion.js';
 import {readFileSync} from 'node:fs';
 const a=[-46.67,-23.58],b=[-46.669,-23.58],c=[-46.668,-23.58];
 test('GPS marker eases real updates, never extrapolates while stationary',()=>{
@@ -82,4 +83,31 @@ test('GPS camera and marker have one smoothed real-time path, without touching s
  assert.match(src,/roadMatch:visual\.current\.roadMatch\?\?null/);
  assert.match(src,/liveFollow\?\(motorcycle\?210:190\)/);
  assert.match(src,/point=sampleRoute\(timeline,state\.roadMeters\)\?\.point/);
+});
+
+test('free GPS puck continues visually for under a second while verified vehicle moves',()=>{
+ const previous={position:[-46.67,-23.58],sourceAt:100000};
+ const position=[-46.66990,-23.58];
+ const options={sourceAt:101000,speed:10,accuracy:7,heading:90};
+ const first=predictFreeGpsVisual(position,previous,{...options,now:101200});
+ const next=predictFreeGpsVisual(position,previous,{...options,now:101600});
+ const capped=predictFreeGpsVisual(position,previous,{...options,now:102600});
+ assert.ok(first[0]>position[0]&&next[0]>first[0], 'marker moves between sensor callbacks');
+ const longer=predictFreeGpsVisual(position,previous,{...options,now:109000});
+ assert.deepEqual(longer,capped,'GPS outage must freeze the visual pointer at the capped position');
+ assert.ok(metersBetween(position,next)<=7,'prediction is bounded to seven meters');
+});
+test('free GPS prediction refuses stationary, noisy, stale and contradictory fixes',()=>{
+ const previous={position:[-46.67,-23.58],sourceAt:100000};
+ const position=[-46.6699,-23.58];
+ const opts={sourceAt:101000,now:101500,speed:10,accuracy:7,heading:90};
+ for(const patch of [{speed:0},{accuracy:90},{heading:270},{sourceAt:null},
+   {sourceAt:100000},{speed:65}]){
+   assert.deepEqual(predictFreeGpsVisual(position,previous,{...opts,...patch}),position);
+ }
+});
+test('live map writes the animated vehicle with sub-decimeter continuity',()=>{
+ const source=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
+ assert.match(source,/predictFreeGpsVisual\(target,state\.previousRawFix/);
+ assert.match(source,/metersBetween\(state\.lastMarkerPoint,point\)>\.035/);
 });

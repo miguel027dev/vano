@@ -4,7 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import {CAMERA_STATES,blendAngle,blendPoint,cameraTarget,clamp,damp,metersBetween,nearestOnRoute,nextRouteBearing,shortestAngle,shouldFollowLocation,validPoint} from '../lib/navigationMotion';
 import {buildRouteTimeline,distanceOnRoute,nextManeuver,sampleRoute} from '../lib/routeAnimation';
 import {simulationPointerBearing} from '../lib/adminRouteSimulator.mjs';
-import {easeGpsPoint,routeTrace,smoothLiveRoadProgress,smoothLiveBearing} from '../lib/liveMotion.js';
+import {easeGpsPoint,predictFreeGpsVisual,routeTrace,smoothLiveRoadProgress,smoothLiveBearing} from '../lib/liveMotion.js';
 import {anticipateRoadProgress} from '../lib/liveGpsForecast.mjs';
 import {matchLiveRoadPosition,bearingAtDrivenProgress,shouldHoldVisualRoadLock} from '../lib/liveRoadPuck.mjs';
 import {planManeuverCamera} from '../lib/navigationCameraPlanner.js';
@@ -1088,6 +1088,15 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         state.playMeters=null;
         state.droneMeters=null;
         const geometry=route?.geometry||null;
+        if(state.lastRawFixCoords!==target||state.lastRawFixAt!==d.telemetry?.sourceAt){
+          const sourceAt=Number(d.telemetry?.sourceAt);
+          state.previousRawFix=Number.isFinite(sourceAt)&&Number.isFinite(state.lastRawFixAt)&&
+            sourceAt>state.lastRawFixAt&&sourceAt-state.lastRawFixAt<=3000&&
+            validPoint(state.lastRawFixCoords)
+            ?{position:state.lastRawFixCoords,sourceAt:state.lastRawFixAt}:null;
+          state.lastRawFixCoords=target;
+          state.lastRawFixAt=sourceAt;
+        }
         if(state.gpsMatchRaw!==target||state.gpsMatchGeometry!==geometry){
           const sameGeometry=state.gpsMatchGeometry===geometry;
           const previousMatch=sameGeometry?state.roadMatch:null;
@@ -1139,7 +1148,15 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           point=sampleRoute(timeline,state.roadMeters)?.point;
         }else{
           state.roadMeters=null;
-          point=easeGpsPoint(state.point,target,dt,{accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced});
+          const freeTarget=!d.simulationPreview&&!d.droneSimulation&&!reduced
+            ?predictFreeGpsVisual(target,state.previousRawFix,{
+              sourceAt:d.telemetry?.sourceAt,now:Date.now(),
+              speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
+              heading:d.telemetry?.heading
+            }):target;
+          point=easeGpsPoint(state.point,freeTarget,dt,{
+            accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,reducedMotion:reduced
+          });
         }
       }
       if(!validPoint(point))return;
@@ -1199,7 +1216,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       if(map&&backend.current==='mapbox'){
         const marker=map._vanoMarker?.current;
         if(marker){
-          if(!validPoint(state.lastMarkerPoint)||metersBetween(state.lastMarkerPoint,point)>.14){
+          if(!validPoint(state.lastMarkerPoint)||metersBetween(state.lastMarkerPoint,point)>.035){
             marker.setLngLat(point);
             state.lastMarkerPoint=point;
           }

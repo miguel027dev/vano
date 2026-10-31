@@ -91,7 +91,8 @@ test('road center matching is ONLY visual; GPS guidance and preview remain senso
  const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
  assert.match(map,/point=sampleRoute\(timeline,state\.roadMeters\)\?\.point/);
- assert.match(map,/point=easeGpsPoint\(state\.point,target,dt/);
+ assert.match(map,/point=easeGpsPoint\(state\.point,freeTarget,dt/);
+  assert.match(map,/predictFreeGpsVisual\(target,state\.previousRawFix/);
  assert.match(map,/const realDriving=d\.navigation&&!d\.simulationPreview&&!d\.droneSimulation/);
  assert.match(map,/preferLiveHeading:Boolean\(d\.navigation&&!d\.simulationPreview&&!d\.droneSimulation\)/);
  assert.match(page,/const result=evaluateGpsPosition\(p,lastGpsFix\.current\)/);
