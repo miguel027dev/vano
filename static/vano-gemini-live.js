@@ -26,7 +26,7 @@
       <label class="mavi-live-label">Voz
         <select class="mavi-live-voice">
           <option value="Kore">Kore</option>
-          <option value="Aoede">Aoede</option>
+          <option value="Aoede" selected>Aoede · padrão MAVI</option>
           <option value="Puck">Puck</option>
           <option value="Charon">Charon · informativa</option>
           <option value="Achird">Achird · amigável</option>
