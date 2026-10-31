@@ -1,0 +1,20 @@
+/* /v2-only administrator voice call. No modifications to map/navigation layers. */
+.mavi-live-trigger{position:fixed;z-index:2140;right:max(14px,env(safe-area-inset-right));bottom:calc(106px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:9px;background:#ed6b2a;color:white;border:1px solid #e7682c;border-radius:999px;padding:12px 17px;font:700 14px/1.2 Manrope,system-ui,sans-serif;box-shadow:0 10px 25px #2e1e183d;cursor:pointer}
+.mavi-live-panel{position:fixed;z-index:2141;right:max(12px,env(safe-area-inset-right));bottom:calc(164px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 24px));padding:18px;border-radius:20px;background:#fff;color:#27211f;border:1px solid #e7e1dd;box-shadow:0 20px 65px #221c1c3e;font:14px/1.45 Manrope,system-ui,sans-serif}
+.mavi-live-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mavi-live-heading strong{font-size:16px}
+.mavi-live-heading button{border:0;background:transparent;color:inherit;padding:5px;cursor:pointer;display:grid;place-items:center}
+.mavi-live-state{display:flex;align-items:center;gap:8px;font-weight:700;margin:14px 0 8px;color:#d05b22}
+.mavi-live-dot{width:9px;height:9px;border-radius:50%;background:#9da1a5;flex:none}
+.mavi-live-dot.active{background:#00a67c;box-shadow:0 0 0 4px #00a67c21}
+.mavi-live-caption{font-size:13px;color:#6f6560;margin:0 0 10px}
+.mavi-live-transcript{background:#f8f5f2;padding:10px 12px;border-radius:13px;min-height:78px;max-height:175px;overflow:auto;overflow-wrap:anywhere}
+.mavi-live-transcript p{margin:5px 0}
+.mavi-live-actions{display:flex;gap:10px;margin:15px 0}
+.mavi-live-actions button{display:flex;align-items:center;justify-content:center;gap:9px;border-radius:12px;font:700 13px/1.4 Manrope,system-ui,sans-serif;cursor:pointer;padding:11px 15px}
+.mavi-live-start{background:#ed6b2a;color:#fff;border:1px solid #ed6b2a;flex:1}
+.mavi-live-end{background:#2a2523;color:#fff;border:1px solid #2a2523;flex:1}
+.mavi-live-mute{background:#fff;color:#3d3430;border:1px solid #d6cec8;min-width:54px}
+.mavi-live-panel small{font-size:11px;color:#786e69;display:block}
+.mavi-live-panel button:focus-visible,.mavi-live-trigger:focus-visible{outline:3px solid #408fff;outline-offset:3px}
+@media(max-height:600px){.mavi-live-panel{bottom:60px;max-height:calc(100dvh - 80px);overflow:auto}}
