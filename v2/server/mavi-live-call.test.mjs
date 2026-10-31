@@ -86,9 +86,14 @@ test('only the administrator V2 mounts the call and endpoints check role and CSR
  assert.match(map,/adminV2RoadSigns&&<MaviLiveCall active=\{active\}\/>/);
  assert.ok(map.indexOf('<MaviLiveCall active={active}/>')<map.indexOf('circle-btn v95-tools-trigger'));
  assert.doesNotMatch(app,/<MaviLiveCall\/>/);
- assert.match(control,/onClick=\{\(\)=>connected\?dismiss\(\):startCall\(\)\}/);
- assert.match(control,/playMaviConnectChime\(ctx\)/);
- assert.match(control,/const delay=rapidEnds\.current/);
+ assert.match(control,/onClick=\{\(\)=>live\?endCall\(\):void startCall\(\)\}/);
+ assert.match(control,/playMaviDialSequence\(context,5\)/);
+ assert.doesNotMatch(control,/SpeechRecognition|webkitSpeechRecognition|createPortal|role="dialog"/);
+ assert.match(control,/getUserMedia\(/);
+ assert.match(control,/echoCancellation:true,noiseSuppression:true/);
+ assert.match(control,/s\.busy\|\|s\.ringing/);
+ assert.match(map,/navMode&&!adminV2RoadSigns&&<JevVoiceButton/);
+ assert.match(server,/pathname==='\/api\/admin\/mavi-live\/transcribe'/);
  assert.match(server,/pathname==='\/api\/admin\/mavi-live\/stream'/);
  assert.match(server,/isAdminAccount\(actor\)/);
  assert.match(server,/mavi-live-admin',12,60000/);
@@ -113,5 +118,39 @@ test('call connection chime plays only two brief tones',async()=>{
  assert.equal(started.length,2);
  assert.ok(started[1]>started[0]);
  const component=readFileSync(new URL('../src/components/MaviLiveCall.jsx',import.meta.url),'utf8');
- assert.ok(component.indexOf('playMaviConnectChime(ctx)')<component.indexOf('engine.onend=()=>'));
+ assert.match(component,/playMaviDialSequence\\(context,5\\)/);
+ assert.doesNotMatch(component,/SpeechRecognition|webkitSpeechRecognition/);
+});
+
+test('Portuguese live STT refuses arbitrary audio and never exposes API credentials',async()=>{
+ const {liveSttProvider,liveSttMime,transcribeMaviLiveAudio}=await import('./mavi-live-stt.mjs');
+ const provider=liveSttProvider({GROQ_API_KEY:'gsk_example_server_secret_123456789'});
+ assert.equal(provider.model,'whisper-large-v3-turbo');
+ assert.equal(liveSttProvider({}),null);
+ assert.deepEqual(liveSttMime('audio/webm;codecs=opus'),{mime:'audio/webm',ext:'webm'});
+ assert.equal(liveSttMime('text/plain'),null);
+ await assert.rejects(()=>transcribeMaviLiveAudio(new Uint8Array(3000),'text/plain',{provider}),/stt_media_unsupported/);
+ let used=0;
+ const text=await transcribeMaviLiveAudio(new Uint8Array(4000),'audio/webm',{
+  provider,fetcher:async(url,options)=>{
+   used++;
+   assert.ok(url.startsWith('https://api.groq.com/'));
+   assert.equal(options.headers.Authorization,'Bearer '+provider.apiKey);
+   assert.ok(options.body instanceof FormData);
+   return new Response(JSON.stringify({text:'Bom dia, MAVI!'}),{
+    status:200,headers:{'Content-Type':'application/json'}
+   });
+  }
+ });
+ assert.equal(text,'Bom dia, MAVI!');
+ assert.equal(used,1);
+});
+test('voice activity threshold detects speech but filters quiet echo/noise',async()=>{
+ const {micRms,voiceThreshold,shouldStartVoice}=await import('../src/lib/maviMicVAD.mjs');
+ assert.equal(micRms(new Uint8Array([128,128,128])),0);
+ assert.ok(micRms(new Uint8Array([0,255]))>.8);
+ assert.ok(voiceThreshold(.01)>.02);
+ assert.equal(shouldStartVoice(.01,.01,3),false);
+ assert.equal(shouldStartVoice(.12,.01,2),false);
+ assert.equal(shouldStartVoice(.12,.01,3),true);
 });
