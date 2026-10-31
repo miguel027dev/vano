@@ -7,6 +7,26 @@ from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
 
+# Escape untrusted spreadsheet cells, while leaving numeric values intact.
+def _csv_cell(value):
+    if isinstance(value, str):
+        trimmed = value.lstrip(" \\t\\r\\n\\v\\f\\ufeff")
+        if trimmed.startswith(("=", "+", "-", "@")) or value.startswith(("\\t", "\\r", "\\n")):
+            return "'" + value
+    return value
+
+
+class _FormulaSafeCSVWriter:
+    def __init__(self, stream):
+        self._writer = csv.writer(stream)
+
+    def writerow(self, row):
+        return self._writer.writerow([_csv_cell(cell) for cell in row])
+
+    def writerows(self, rows):
+        return self._writer.writerows([_csv_cell(cell) for cell in row] for row in rows)
+
+
 @app.route("/api/admin/simulation/authorize", methods=["POST"])
 @admin_required
 def api_admin_simulation_authorize():
@@ -318,7 +338,7 @@ def admin_finance_export_csv():
         """SELECT e.id,e.occurred_on,e.kind,e.status,e.amount_cents,e.category,e.description,e.counterparty,e.cost_center,e.payment_method,e.document_ref,a.name account_name,e.created_at,e.posted_at,e.voided_at,e.void_reason
            FROM finance_entries e JOIN finance_accounts a ON a.id=e.account_id ORDER BY e.occurred_on DESC,e.id DESC"""
     ).fetchall()
-    out=io.StringIO(); writer=csv.writer(out); writer.writerow(["id","data","tipo","status","valor_brl","categoria","descricao","contraparte","centro_custo","pagamento","documento","conta","criado_em","postado_em","estornado_em","motivo_estorno"])
+    out=io.StringIO(); writer=_FormulaSafeCSVWriter(out); writer.writerow(["id","data","tipo","status","valor_brl","categoria","descricao","contraparte","centro_custo","pagamento","documento","conta","criado_em","postado_em","estornado_em","motivo_estorno"])
     for r in rows:
         writer.writerow([r["id"],r["occurred_on"],r["kind"],r["status"],f"{int(r['amount_cents'] or 0)/100:.2f}",r["category"],r["description"],r["counterparty"],r["cost_center"],r["payment_method"],r["document_ref"],r["account_name"],r["created_at"],r["posted_at"],r["voided_at"],r["void_reason"]])
     response=app.response_class(out.getvalue(),mimetype="text/csv; charset=utf-8"); response.headers["Content-Disposition"]="attachment; filename=vano-financeiro.csv"; return response
@@ -331,7 +351,7 @@ def admin_finance_audit_export_csv():
         """SELECT f.id,f.created_at,f.actor_user_id,u.name actor_name,f.action,f.object_type,f.object_id,f.snapshot_sha256,f.snapshot_json
            FROM finance_audit_logs f LEFT JOIN users u ON u.id=f.actor_user_id ORDER BY f.id DESC"""
     ).fetchall()
-    out=io.StringIO(); writer=csv.writer(out); writer.writerow(["id","criado_em","ator_id","ator","acao","objeto_tipo","objeto_id","sha256_evento","snapshot_json"])
+    out=io.StringIO(); writer=_FormulaSafeCSVWriter(out); writer.writerow(["id","criado_em","ator_id","ator","acao","objeto_tipo","objeto_id","sha256_evento","snapshot_json"])
     for r in rows:
         writer.writerow([r["id"],r["created_at"],r["actor_user_id"],r["actor_name"] or "Sistema",r["action"],r["object_type"],r["object_id"],r["snapshot_sha256"],r["snapshot_json"]])
     response=app.response_class(out.getvalue(),mimetype="text/csv; charset=utf-8"); response.headers["Content-Disposition"]="attachment; filename=vano-financeiro-auditoria.csv"; return response
@@ -818,7 +838,7 @@ def admin_server_logs_csv(node_index):
            WHERE l.node_index=? ORDER BY l.id DESC LIMIT 10000""", (node_index,)
     ).fetchall()
     output = io.StringIO()
-    writer = csv.writer(output)
+    writer = _FormulaSafeCSVWriter(output)
     writer.writerow(["id", "data", "usuario", "email", "request_id", "modo", "perfil", "prefetch", "http", "sucesso", "latencia_ms", "erro"])
     for row in rows:
         writer.writerow([
