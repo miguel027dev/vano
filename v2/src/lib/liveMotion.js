@@ -32,7 +32,7 @@ export function predictFreeGpsVisual(position,previousFix,{sourceAt,now=Date.now
       !Number.isFinite(accuracy)||accuracy<0||accuracy>25)return position;
   const sampleSeconds=(sourceAt-previousFix.sourceAt)/1000;
   const age=now-sourceAt;
-  if(sampleSeconds<.35||sampleSeconds>3||age<80||age>1200)return position;
+  if(sampleSeconds<.35||sampleSeconds>3||age<80)return position;
   const travelled=metersBetween(previousFix.position,position);
   const measuredSpeed=travelled/sampleSeconds;
   if(travelled<1.5||measuredSpeed<.75||measuredSpeed>Math.min(45,speed*2+6))return position;
