@@ -185,7 +185,7 @@ export default function MaviLiveCall(){
  }
  if(!available)return null;
  const content=<>
-  <button className="mavi-live-trigger" onClick={()=>setOpen(v=>!v)} aria-expanded={open} aria-label="Abrir chamada de voz MAVI">
+  <button className="mavi-live-trigger" onClick={()=>open?closePanel():setOpen(true)} aria-expanded={open} aria-label="Abrir chamada de voz MAVI">
    <Phone size={17}/> MAVI · Ligar
   </button>
   {open&&<section className="mavi-live-panel" aria-label="Ligação experimental com a MAVI">
