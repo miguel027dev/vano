@@ -285,3 +285,6 @@ body.vano-v2 #adminSimV2Btn.running{
 #maviGeminiLab .mavi-live-footer{font-size:10px;line-height:1.5;color:#7b8895}
 @media(max-width:600px){#maviGeminiLab{right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 76px)}#maviGeminiLab .mavi-live-panel{max-height:calc(100dvh - 158px)}}
 @media(prefers-reduced-motion:reduce){#maviGeminiLab *{animation:none!important;transition:none!important}}
+
+/* Gemini Live V2 call quality instrumentation (admin only) */
+#maviGeminiLab .mavi-live-metrics{font-size:11px;line-height:1.5;color:#5a6672;margin:0;padding:9px 11px;border-radius:12px;background:#f0f3f5;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
