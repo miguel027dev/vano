@@ -93,7 +93,8 @@ test('free GPS puck continues visually for under a second while verified vehicle
  const next=predictFreeGpsVisual(position,previous,{...options,now:101600});
  const capped=predictFreeGpsVisual(position,previous,{...options,now:102600});
  assert.ok(first[0]>position[0]&&next[0]>first[0], 'marker moves between sensor callbacks');
- assert.deepEqual(capped,position,'GPS outage cannot continue moving marker');
+ const longer=predictFreeGpsVisual(position,previous,{...options,now:109000});
+ assert.deepEqual(longer,capped,'GPS outage must freeze the visual pointer at the capped position');
  assert.ok(metersBetween(position,next)<=7,'prediction is bounded to seven meters');
 });
 test('free GPS prediction refuses stationary, noisy, stale and contradictory fixes',()=>{
@@ -101,7 +102,7 @@ test('free GPS prediction refuses stationary, noisy, stale and contradictory fix
  const position=[-46.6699,-23.58];
  const opts={sourceAt:101000,now:101500,speed:10,accuracy:7,heading:90};
  for(const patch of [{speed:0},{accuracy:90},{heading:270},{sourceAt:null},
-   {sourceAt:100000},{speed:65},{now:104000}]){
+   {sourceAt:100000},{speed:65}]){
    assert.deepEqual(predictFreeGpsVisual(position,previous,{...opts,...patch}),position);
  }
 });
