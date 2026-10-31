@@ -30,6 +30,7 @@ export default function MaviLiveCall({active=true}){
  const mounted=useRef(false);
  const sessionRef=useRef(null);
  const counter=useRef(0);
+ const starting=useRef(false);
 
  const cancelSources=useCallback(s=>{
   if(!s)return;
@@ -78,7 +79,14 @@ export default function MaviLiveCall({active=true}){
    s.gateUntil=Date.now()+ECHO_TAIL_MS;
    s.busy=false;
    cancelSources(s);
-   if(s.recorder?.state==='recording')try{s.recorder.stop();}catch{/* already stopped */}
+   // Never submit a partially recorded utterance containing navigation voice.
+   const recording=s.recorder;
+   s.recorder=null;s.recording=false;s.chunks=[];s.loudFrames=0;
+   if(recording){
+    recording.onstop=null;recording.ondataavailable=null;recording.onerror=null;
+    if(recording.state!=='inactive')try{recording.stop();}catch{/* already stopped */}
+   }
+   mark(s,'listening');
   });
   return ()=>{
    mounted.current=false;ctrl.abort();release();endCall();
@@ -217,7 +225,10 @@ export default function MaviLiveCall({active=true}){
    void transcribe(s,blob);
   };
   try{rec.stop();}catch{
-   s.busy=false;mark(s,'listening');
+   rec.onstop=null;rec.ondataavailable=null;
+   s.recorder=null;s.chunks=[];s.recording=false;
+   s.busy=false;s.gateUntil=Date.now()+450;
+   mark(s,'listening');
   }
  }
  function startRecord(s,now){
@@ -229,7 +240,12 @@ export default function MaviLiveCall({active=true}){
    recorder.ondataavailable=e=>{
     if(s.active&&e.data?.size>0)s.chunks.push(e.data);
    };
-   recorder.onerror=()=>{s.recording=false;s.busy=false;mark(s,'listening');};
+   recorder.onerror=()=>{
+    recorder.onstop=null;recorder.ondataavailable=null;
+    try{if(recorder.state!=='inactive')recorder.stop();}catch{/* stopped */}
+    s.recorder=null;s.chunks=[];s.recording=false;s.busy=false;
+    s.gateUntil=Date.now()+500;mark(s,'listening');
+   };
    recorder.start(200);
    mark(s,'hearing');
   }catch{
@@ -262,22 +278,36 @@ export default function MaviLiveCall({active=true}){
  }
  async function startCall(){
   if(sessionRef.current){endCall();return;}
+  if(starting.current)return;
+  starting.current=true;
   setNotice('');
-  if(!capabilities?.enabled||!capabilities?.sttAvailable){
-   setNotice('A transcrição em português precisa estar configurada no servidor.');
-   return;
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio){setNotice('Áudio não suportado neste navegador.');starting.current=false;return;}
+  if(navigationAudioActive()){
+   setNotice('Espere a orientação de navegação terminar.');starting.current=false;return;
   }
+  // Unlock playback during the actual click, not after an awaited API request.
+  let context;
+  try{context=new Audio({latencyHint:'interactive'});void context.resume().catch(()=>{});}
+  catch{setNotice('Não foi possível iniciar o áudio.');starting.current=false;return;}
+  try{
+   // A config update must take effect even when /v2 was open before the key changed.
+   const latest=await api('/admin/mavi-live/capabilities');
+   if(!mounted.current){void context.close().catch(()=>{});return;}
+   setCapabilities(latest);
+   if(!latest?.enabled||!latest?.sttAvailable){
+    setNotice('A MAVI ainda não tem todos os provedores disponíveis no servidor.');
+    void context.close().catch(()=>{});return;
+   }
+  }catch{
+   if(mounted.current)setNotice('Não consegui verificar a sessão de voz. Atualize o login.');
+   void context.close().catch(()=>{});return;
+  }finally{starting.current=false;}
   const mime=preferredMime();
   if(!mime||!navigator.mediaDevices?.getUserMedia){
    setNotice('Seu navegador não oferece áudio contínuo compatível.');
-   return;
+   void context.close().catch(()=>{});return;
   }
-  const Audio=window.AudioContext||window.webkitAudioContext;
-  if(!Audio){setNotice('Áudio não suportado neste navegador.');return;}
-  if(navigationAudioActive()){setNotice('Espere a orientação de navegação terminar.');return;}
-  let context;
-  try{context=new Audio({latencyHint:'interactive'});void context.resume().catch(()=>{});}
-  catch{setNotice('Não foi possível iniciar o áudio.');return;}
   const s={
    id:++counter.current,active:true,context,stream:null,input:null,
    analyser:null,sample:null,mime,noiseFloor:.007,loudFrames:0,
