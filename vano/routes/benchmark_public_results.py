@@ -98,6 +98,11 @@ def _bench_published_payload():
     try:
         total, raw_rows, stats = _bench_public_records(where, params, page, size)
         rows = [_bench_metric(row) for row in raw_rows]
+        if source == "all":
+            # Internal and external baselines are not interchangeable.
+            # Keep individual records visible but suppress pooled differences.
+            for key in ("avg_minutes_saved", "avg_pct_saved", "median_minutes_saved"):
+                stats[key] = None
         available = True
     except Exception:
         # A new deployment may precede the additive schema migration. Fail
