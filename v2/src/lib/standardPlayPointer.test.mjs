@@ -63,7 +63,8 @@ test('fast Play marker is isolated from live GPS and separate V2 drone simulatio
   assert.match(map,/point=playPointer\?\.point/);
   assert.match(map,/state\.playMeters=playPointer\?\.progress\?\?null/);
   assert.match(map,/else if\(d\.droneSimulation&&timeline\.total>0&&Number\.isFinite\(simulationMeters\)\)/);
-  assert.match(map,/point=easeGpsPoint\(state\.point,target,dt/);
+  assert.match(map,/point=easeGpsPoint\(state\.point,freeTarget,dt/);
+  assert.match(map,/predictFreeGpsVisual\(target,state\.previousRawFix/);
   const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
   assert.match(page,/simCameraMode==='drone'&&Number\.isFinite\(simFrame\.pointerBearing\)\?simFrame\.pointerBearing:simFrame\.bearing/);
   assert.match(page,/simCameraMode==='drone'\?V2_DRONE_PLAYBACK_RATE:undefined/);
