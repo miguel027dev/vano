@@ -114,6 +114,17 @@ _vano_install(globals(), "vano.routes.personalization")
 from vano.services.voice_assistant import register_voice_assistant as _register_voice_assistant
 _register_voice_assistant(app, rate_limit=rate_limit, validate_csrf=validate_csrf)
 
+# Isolated admin preview: opt-in Sonic audio with uninterrupted speech recognition.
+from vano.services.voice_call_sonic import register_sonic_call as _register_sonic_call
+
+def _mavi_sonic_admin():
+    user = current_user()
+    return bool(user and user["role"] == "admin")
+
+_register_sonic_call(
+    app, rate_limit=rate_limit, validate_csrf=validate_csrf, is_admin=_mavi_sonic_admin
+)
+
 
 @app.after_request
 def authenticate_route_responses(response):
