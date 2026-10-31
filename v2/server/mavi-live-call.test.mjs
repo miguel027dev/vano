@@ -79,11 +79,39 @@ test('NDJSON stream emits text and PCM without leaking provider keys',async()=>{
 });
 
 test('only the administrator V2 mounts the call and endpoints check role and CSRF',()=>{
+ const map=readFileSync(new URL('../src/pages/MapPage.jsx',import.meta.url),'utf8');
  const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
+ const control=readFileSync(new URL('../src/components/MaviLiveCall.jsx',import.meta.url),'utf8');
  const server=readFileSync(new URL('./index.mjs',import.meta.url),'utf8');
- assert.match(app,/location\.pathname==='\/v2'&&user\?\.isAdmin===true&&<MaviLiveCall\/>/);
+ assert.match(map,/adminV2RoadSigns&&<MaviLiveCall active=\{active\}\/>/);
+ assert.ok(map.indexOf('<MaviLiveCall active={active}/>')<map.indexOf('circle-btn v95-tools-trigger'));
+ assert.doesNotMatch(app,/<MaviLiveCall\/>/);
+ assert.match(control,/onClick=\{\(\)=>connected\?dismiss\(\):startCall\(\)\}/);
+ assert.match(control,/playMaviConnectChime\(ctx\)/);
+ assert.match(control,/const delay=rapidEnds\.current/);
  assert.match(server,/pathname==='\/api\/admin\/mavi-live\/stream'/);
  assert.match(server,/isAdminAccount\(actor\)/);
  assert.match(server,/mavi-live-admin',12,60000/);
  assert.match(server,/protectedWrite\(req,res\)/);
+});
+
+test('call connection chime plays only two brief tones',async()=>{
+ const {playMaviConnectChime}=await import('../src/lib/maviCallAudio.mjs');
+ const started=[];
+ const context={
+  currentTime:0,destination:{},
+  createOscillator:()=>({
+   type:'',frequency:{setValueAtTime(){}},connect(){},disconnect(){},
+   start(time){started.push(time);},stop(){},onended:null
+  }),
+  createGain:()=>({
+   gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},
+   connect(){},disconnect(){}
+  })
+ };
+ playMaviConnectChime(context);
+ assert.equal(started.length,2);
+ assert.ok(started[1]>started[0]);
+ const component=readFileSync(new URL('../src/components/MaviLiveCall.jsx',import.meta.url),'utf8');
+ assert.ok(component.indexOf('playMaviConnectChime(ctx)')<component.indexOf('engine.onend='));
 });
