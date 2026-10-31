@@ -46,6 +46,7 @@ SEO_INDEXABLE_ENDPOINTS = {
     "index", "about", "sobre", "help_page", "privacy_policy", "terms_of_use",
     "what_is_vano", "seo_avoid_traffic", "seo_waze_alternative", "seo_fastest_route",
     "seo_google_maps_alternative", "seo_motorcycle_gps", "route_benchmark_page",
+    "benchmark_public_results_page",
     "account_delete_page",
     "beta_page", "contact_page", "press_page",
 }
@@ -63,6 +64,7 @@ SEO_CANONICAL_PATHS = {
     "seo_google_maps_alternative": "/alternativa-ao-google-maps",
     "seo_motorcycle_gps": "/gps-para-moto",
     "route_benchmark_page": "/benchmark-de-rotas",
+    "benchmark_public_results_page": "/benchmark-resultados",
     "account_delete_page": "/excluir-conta",
     "beta_page": "/testar",
     "contact_page": "/contato",
