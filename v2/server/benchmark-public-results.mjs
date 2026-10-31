@@ -23,7 +23,7 @@ export function validatedPublicBenchmarks(raw){
     if(!r||r.published!==true||r.publicPlacesOnly!==true) return null;
     const id=label(r.id),origin=label(r.origin),destination=label(r.destination);
     const category=label(r.category),source=label(r.reference?.source);
-    if(!/^[\w.:--]{4,90}$/.test(id)||seen.has(id)||!origin||!destination||!CATEGORIES.has(category)||!SOURCES.has(source))return null;
+    if(!/^[A-Za-z0-9_.:-]{4,90}$/.test(id)||seen.has(id)||!origin||!destination||!CATEGORIES.has(category)||!SOURCES.has(source))return null;
     const at=stamp(r.measuredAt),referenceAt=stamp(r.reference?.measuredAt),vanoAt=stamp(r.vano?.measuredAt);
     if(!at||!referenceAt||!vanoAt||Math.abs(Date.parse(referenceAt)-Date.parse(vanoAt))>900000)return null;
     const refEta=numeric(r.reference?.etaMin),vanoEta=numeric(r.vano?.etaMin);
