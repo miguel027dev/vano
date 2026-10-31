@@ -44,7 +44,7 @@ export async function transcribeMaviLiveAudio(bytes,mime,{provider=liveSttProvid
  if(!response.ok)throw Error('stt_provider_unavailable');
  const payload=await response.json().catch(()=>({}));
  const transcript=typeof payload.text==='string'?
-  payload.text.replace(/[\\u0000-\\u001f\\u007f]/g,' ').trim().slice(0,360):'';
+  payload.text.replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,360):'';
  if(transcript.length<2)throw Error('stt_no_speech');
  return transcript;
 }
