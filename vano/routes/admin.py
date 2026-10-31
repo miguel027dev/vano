@@ -10,8 +10,8 @@ del _vano_inject
 # Escape untrusted spreadsheet cells, while leaving numeric values intact.
 def _csv_cell(value):
     if isinstance(value, str):
-        trimmed = value.lstrip(" \\t\\r\\n\\v\\f\\ufeff")
-        if trimmed.startswith(("=", "+", "-", "@")) or value.startswith(("\\t", "\\r", "\\n")):
+        trimmed = value.lstrip(" \t\r\n\v\f\ufeff")
+        if trimmed.startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r", "\n")):
             return "'" + value
     return value
 
