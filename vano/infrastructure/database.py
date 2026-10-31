@@ -725,6 +725,46 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_devsync_agent_key_expiry ON devsync_agent_keys(expires_at,revoked_at);
         """)
 
+        # Public benchmark publications. Separate from personal route_history.
+        # Populated only by the operator's validated offline importer; public
+        # GET endpoints never generate or insert benchmark measurements.
+        db.executescript("""
+            CREATE TABLE IF NOT EXISTS benchmark_publications (
+                run_id TEXT PRIMARY KEY,
+                published INTEGER NOT NULL DEFAULT 0,
+                recorded_at TEXT NOT NULL,
+                category TEXT NOT NULL,
+                origin_label TEXT NOT NULL,
+                destination_label TEXT NOT NULL,
+                profile TEXT NOT NULL DEFAULT 'driving',
+                baseline_source TEXT NOT NULL,
+                baseline_eta_min REAL,
+                baseline_distance_km REAL,
+                baseline_route_id TEXT,
+                baseline_measured_at TEXT,
+                vano_mode TEXT NOT NULL,
+                vano_eta_min REAL,
+                vano_distance_km REAL,
+                vano_route_id TEXT,
+                vano_measured_at TEXT,
+                vano_provider TEXT,
+                latency_ms REAL,
+                traffic_score REAL,
+                safety_score REAL,
+                vano_score REAL,
+                evidence_url TEXT,
+                CHECK (published IN (0,1)),
+                CHECK (baseline_eta_min IS NULL OR baseline_eta_min >= 0),
+                CHECK (vano_eta_min IS NULL OR vano_eta_min >= 0)
+            );
+            CREATE INDEX IF NOT EXISTS idx_bench_public_time
+                ON benchmark_publications(published, recorded_at DESC, run_id DESC);
+            CREATE INDEX IF NOT EXISTS idx_bench_public_category
+                ON benchmark_publications(published, category, recorded_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_bench_public_source
+                ON benchmark_publications(published, baseline_source, recorded_at DESC);
+        """)
+
         # Additive migrations for existing PostgreSQL databases.
         user_columns = table_columns(db, "users")
         user_migrations = {
