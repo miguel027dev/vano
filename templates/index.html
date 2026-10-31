@@ -7,7 +7,7 @@
 {% block head %}
 {% if v2_preview|default(false) %}
 <meta name="robots" content="noindex,nofollow,noarchive">
-<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=mavi-duplex-20261030-r2">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=mavi-aoede-20261030-r3">
 {% endif %}
 
 <script>
@@ -561,6 +561,6 @@
 </script>
 
 {% if v2_preview|default(false) %}
-<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=mavi-duplex-20261030-r2"></script>
+<script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=mavi-aoede-20261030-r3"></script>
 {% endif %}
 {% endblock %}
