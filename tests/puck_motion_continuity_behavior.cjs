@@ -14,10 +14,10 @@ const second={lat:-23.55,lon:-46.6299,accuracy:6,speed:9};
 function verifyHelpers(source,start,end,update,predict){
   const a=source.indexOf(start),b=source.indexOf(end,a);
   assert.ok(a>=0&&b>a,'motion functions exist and preserve testable boundaries');
-  const ctx={hav,document:{visibilityState:'visible'}};
+  const ctx={hav,document:{visibilityState:'visible'},activeNav:null,selectedRoute:null,routeTotalGeometry:1,routePointAtDistance:()=>null};
   vm.createContext(ctx);
   vm.runInContext(`
-    let puckFreeVelocity=null,puckTargetUpdatedAt=0;
+    let puckFreeVelocity=null,puckTargetUpdatedAt=0,puckTargetPos=null;
     ${source.slice(a,b)}
     globalThis.testMotion={
       update:(a,b,dt)=>${update}(a,b,dt),
