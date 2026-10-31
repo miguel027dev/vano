@@ -22,7 +22,7 @@ for(const [route,canonical,heading] of [['','/mapa','Escolha seu caminho com mai
 }
 assert.ok(!sitemap.includes('<loc>'+site+'/</loc>'),'Redirecting root must not be listed in sitemap');
 assert.ok(sitemap.includes('<loc>'+site+'/mapa</loc>'),'Missing map in sitemap');
-const sitemapURLs=[...sitemap.matchAll(/<loc>([^<]+)<\\/loc>/g)].map(match=>match[1]);
+const sitemapURLs=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
 assert.deepEqual(sitemapURLs,[site+'/mapa',...PUBLIC_PAGES.map(p=>site+p.path)],'Sitemap must list unique canonical non-redirecting URLs');
 const mapHtml=fs.readFileSync(path.join(dist,'mapa','index.html'),'utf8');
 assert.ok(mapHtml.includes('href="/comparar-rotas"')&&mapHtml.includes('href="/rotas-em-sao-paulo"'),'Map should link to useful guides');
