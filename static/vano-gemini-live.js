@@ -94,9 +94,14 @@
     voiceEl.disabled = online || starting;
   }
   function stopAudio() {
-    for (const node of playing) { try { node.stop(); } catch (_) {} }
+    for (const node of playing) {
+      try { node.stop(); } catch (_) {}
+      try { node.disconnect(); } catch (_) {}
+    }
     playing.clear();
     nextPlayAt = 0;
+    liveMetrics.queuedMs = 0;
+    metricsLabel();
   }
   function playback(base64) {
     if (!context || context.state === 'closed' || !base64) return;
@@ -112,15 +117,30 @@
       if (s & 0x8000) s -= 65536;
       pcm[i] = s / 32768;
     }
-    if (nextPlayAt > context.currentTime + 5) { stopAudio(); }
+    // Never let stale downlink speech pile up for multiple seconds.
+    // Uplink stays independent while outgoing audio is queued.
+    if (nextPlayAt > context.currentTime + PLAYBACK_MAX_QUEUE_S) {
+      liveMetrics.dropped++;
+      metricsLabel();
+      return;
+    }
     const node = context.createBufferSource();
     node.buffer = audio;
     node.connect(context.destination);
-    node.onended = () => playing.delete(node);
+    node.onended = () => {
+      playing.delete(node);
+      try { node.disconnect(); } catch (_) {}
+    };
     playing.add(node);
-    nextPlayAt = Math.max(nextPlayAt, context.currentTime + 0.045);
+    nextPlayAt = Math.max(nextPlayAt, context.currentTime + PLAYBACK_START_BUFFER_S);
     node.start(nextPlayAt);
     nextPlayAt += audio.duration;
+    liveMetrics.received++;
+    liveMetrics.queuedMs = Math.round(Math.max(0, nextPlayAt - context.currentTime) * 1000);
+    if (lastUserTranscriptionAt && liveMetrics.firstAudioMs === null) {
+      liveMetrics.firstAudioMs = performance.now() - lastUserTranscriptionAt;
+    }
+    metricsLabel();
     if (!firstAudioRecorded) {
       firstAudioRecorded = true;
       status('MAVI respondendo por voz');
@@ -163,7 +183,8 @@
     } catch (_) { status('Resposta inesperada do serviço'); return; }
     if (message.setupComplete) {
       status('Conectado · pode falar com a MAVI');
-      audioStartedAt = performance.now();
+      liveMetrics.setupMs = performance.now() - sessionRequestStartedAt;
+      metricsLabel();
       await startCapture();
     }
     if (message.toolCall) onToolCall(message.toolCall);
@@ -171,9 +192,17 @@
     if (!content) return;
     if (content.interrupted) {
       stopAudio();
-      status('Ouvindo sua interrupção…');
+      liveMetrics.interruptions++;
+      liveMetrics.firstAudioMs = null;
+      lastUserTranscriptionAt = performance.now();
+      metricsLabel();
+      status('Interrompida · ouvindo você…');
     }
-    if (content.inputTranscription?.text) addLine('Você', content.inputTranscription.text);
+    if (content.inputTranscription?.text) {
+      addLine('Você', content.inputTranscription.text);
+      lastUserTranscriptionAt = performance.now();
+      liveMetrics.firstAudioMs = null;
+    }
     if (content.outputTranscription?.text) addLine('MAVI', content.outputTranscription.text);
     for (const part of content.modelTurn?.parts || []) {
       if (part.inlineData?.data && String(part.inlineData.mimeType || '').startsWith('audio/')) {
