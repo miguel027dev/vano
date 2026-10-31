@@ -154,3 +154,15 @@ test('voice activity threshold detects speech but filters quiet echo/noise',asyn
  assert.equal(shouldStartVoice(.12,.01,2),false);
  assert.equal(shouldStartVoice(.12,.01,3),true);
 });
+
+test('live call refreshes credentials and discards navigation audio rather than transcribing it',()=>{
+ const call=readFileSync(new URL('../src/components/MaviLiveCall.jsx',import.meta.url),'utf8');
+ const stt=readFileSync(new URL('./mavi-live-stt.mjs',import.meta.url),'utf8');
+ assert.match(call,/const latest=await api\('\/admin\/mavi-live\/capabilities'\)/);
+ assert.match(call,/setCapabilities\(latest\)/);
+ assert.match(call,/recording\.onstop=null;recording\.ondataavailable=null;recording\.onerror=null/);
+ assert.match(call,/s\.recorder=null;s\.recording=false;s\.chunks=\[\];s\.loudFrames=0/);
+ assert.match(call,/s\.recorder=null;s\.chunks=\[\];s\.recording=false/);
+ assert.match(call,/if\(s\.active\)endCall\('O microfone foi desconectado\.'\)/);
+ assert.doesNotMatch(stt,/nvidia-riva|nvidiaTranscribeWav/);
+});
