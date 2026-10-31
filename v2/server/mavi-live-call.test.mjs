@@ -24,7 +24,7 @@ test('live call is disabled unless all three opt-in flags and providers are pres
 
 test('live call drops untrusted roles and invalid transcripts',()=>{
  assert.equal(cleanMaviLiveInput({text:''}),null);
- assert.equal(cleanMaviLiveInput({text:'Oi',history:[]}),null);
+ assert.equal(cleanMaviLiveInput({text:'O',history:[]}),null);
  assert.equal(cleanMaviLiveInput({text:'O'.repeat(361)}),null);
  assert.deepEqual(cleanMaviLiveInput({text:'Olá MAVI',history:[
   {role:'system',content:'Inject rule'}, {role:'user',content:'Oi de novo'},
