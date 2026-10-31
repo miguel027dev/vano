@@ -3,6 +3,7 @@
  * Browser holds one getUserMedia track; sends bounded voice turns (not ambient
  * audio) to the existing Groq/OpenAI STT providers. Keys stay server-side.
  */
+import {nvidiaTranscribeWav} from './mavi-nvidia-asr.mjs';
 export const MAX_LIVE_AUDIO_BYTES=1_500_000;
 const SUPPORTED=new Map([
  ['audio/webm','webm'],['audio/ogg','ogg'],['audio/mp4','mp4'],
@@ -19,6 +20,11 @@ export function liveSttProvider(env=process.env){
   url:'https://api.openai.com/v1/audio/transcriptions',
   apiKey:openai,model:'whisper-1'
  };
+ const nvidia=String(env.NVIDIA_API_KEY||'').trim();
+ if(nvidia.length>12)return {
+  provider:'nvidia-riva',apiKey:nvidia,model:'whisper-large-v3',
+  language:'pt-BR',requiredMime:'audio/wav'
+ };
  return null;
 }
 export function liveSttMime(value){
@@ -31,6 +37,12 @@ export async function transcribeMaviLiveAudio(bytes,mime,{provider=liveSttProvid
  if(!format)throw Error('stt_media_unsupported');
  if(!bytes||bytes.byteLength<1800||bytes.byteLength>MAX_LIVE_AUDIO_BYTES)
   throw Error('stt_audio_size');
+ if(provider.provider==='nvidia-riva'){
+  if(format.mime!=='audio/wav')throw Error('asr_wav_required');
+  const transcript=await nvidiaTranscribeWav(bytes,provider.apiKey);
+  if(!transcript||transcript.length<2)throw Error('stt_no_speech');
+  return transcript.slice(0,360);
+ }
  const form=new FormData();
  form.set('file',new Blob([bytes],{type:format.mime}), 'mavi-turn.'+format.ext);
  form.set('model',provider.model);
