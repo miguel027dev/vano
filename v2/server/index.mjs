@@ -12,7 +12,9 @@ import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import {once} from 'node:events';
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
+const scryptAsync=promisify(scrypt);
 import { fileURLToPath } from 'node:url';
 import { places, demoRoutes, pointOK } from './routing.mjs';
 import { classifyJev, chooseJevProposal, jevRouteFingerprint } from '../src/lib/jevShared.mjs';
@@ -257,16 +259,16 @@ function createSession(userId) {
   db.sessions.push({ tokenHash: sha256(raw), userId, expires: now() + SESSION_MAX_AGE*1000, createdAt: stamp() });
   return raw;
 }
-function passwordHash(password, salt = hex(16)) { return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`; }
-function passwordMatches(password, stored) {
+async function passwordHash(password, salt = hex(16)) { return `${salt}:${(await scryptAsync(password, salt, 64)).toString('hex')}`; }
+async function passwordMatches(password, stored) {
   try {
     if (typeof password !== 'string' || password.length > 128) return false;
     const [salt, value] = stored.split(':');
-    const actual = scryptSync(password, salt, 64), expected = Buffer.from(value, 'hex');
+    const actual = await scryptAsync(password, salt, 64), expected = Buffer.from(value, 'hex');
     return expected.length === actual.length && timingSafeEqual(actual, expected);
   } catch { return false; }
 }
-const dummyHash = passwordHash(hex(20));
+const dummyHash = await passwordHash(hex(20));
 function remoteIP(req) {
   // Render ingress is private. Select a trusted right-hand proxy hop rather
   // than the client-controlled leftmost entry. Hop depth is configurable.
@@ -848,7 +850,7 @@ async function route(req, res) {
         if(db.users.some(x=>x.email===id.email)){
           failed('conta-existente');return;
         }
-        user={id:hex(12),name:id.name,email:id.email,googleSub:id.googleSub,passwordHash:passwordHash(newOAuthToken()),createdAt:stamp(),signupMethod:'google',verifiedAt:stamp(),verificationMethod:'google'};
+        user={id:hex(12),name:id.name,email:id.email,googleSub:id.googleSub,passwordHash:await passwordHash(newOAuthToken()),createdAt:stamp(),signupMethod:'google',verifiedAt:stamp(),verificationMethod:'google'};
         db.users.push(user);
         const chosen=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
         db.preferences.push({...prefFor(user.id,chosen),owner:user.id,language:chosen,languageConfirmed:false});
@@ -1580,7 +1582,7 @@ async function route(req, res) {
     if(!isEmail(em)||!validName(body.name)||!validPassword(body.password)) return err(res,400,'Informe nome, e-mail válido e senha exclusiva de 12 a 128 caracteres.');
     if(db.users.length>=50000) return err(res,503,'Limite de contas deste servidor atingido.');
     if(db.users.some(x=>x.email===em)) return err(res,409,'E-mail já cadastrado.');
-    const user={id:hex(12),name:cleanText(body.name,80),email:em,passwordHash:passwordHash(body.password),createdAt:stamp(),signupMethod:'email',verifiedAt:mailReady?null:stamp(),verificationMethod:mailReady?'pending':'dev'};
+    const user={id:hex(12),name:cleanText(body.name,80),email:em,passwordHash:await passwordHash(body.password),createdAt:stamp(),signupMethod:'email',verifiedAt:mailReady?null:stamp(),verificationMethod:mailReady?'pending':'dev'};
     db.users.push(user);
     const chosenLanguage=body.language||getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
     db.preferences=db.preferences.filter(x=>x.owner!==user.id);
@@ -1596,7 +1598,7 @@ async function route(req, res) {
     const body=await getBody(req),em=normEmail(body.email);
     if(!limitAccount(res,'login',em,8,900000))return;
     const user=db.users.find(x=>x.email===em);
-    if(!passwordMatches(body.password,user?.passwordHash||dummyHash)||!user)return err(res,401,'E-mail ou senha incorretos.');
+    if(!await passwordMatches(body.password,user?.passwordHash||dummyHash)||!user)return err(res,401,'E-mail ou senha incorretos.');
     if(!user.verifiedAt || (production && user.verificationMethod!=='email'))return err(res,403,'Confirme seu e-mail para acessar a conta.');
     adoptGuest(req,user.id);const raw=createSession(user.id);await persist();return json(res,200,{user:safeUser(user),csrfToken:csrfForSession(raw)}, {'Set-Cookie':setCookie('vano_session',raw,SESSION_MAX_AGE)});
   }
@@ -1622,7 +1624,7 @@ async function route(req, res) {
     const rec=db.emailTokens.find(x=>x.kind==='reset'&&x.tokenHash===sha256(b.token||'')&&x.expires>now());
     if(!rec)return err(res,400,'Link expirado ou inválido.');
     const user=db.users.find(x=>x.id===rec.userId);if(!user)return err(res,400,'Link inválido.');
-    user.passwordHash=passwordHash(b.password);user.verifiedAt=stamp();user.verificationMethod='email';db.sessions=db.sessions.filter(x=>x.userId!==user.id);
+    user.passwordHash=await passwordHash(b.password);user.verifiedAt=stamp();user.verificationMethod='email';db.sessions=db.sessions.filter(x=>x.userId!==user.id);
     db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);await persist();return json(res,200,{ok:true});
   }
   if (pathname === '/api/auth/logout' && req.method === 'POST') {
@@ -1644,7 +1646,7 @@ async function route(req, res) {
     const account=requireAccount(req,res);if(!account)return;
     if(!limits(req,res,'delete',4,3600000))return;
     const b=await getBody(req),rec=db.users.find(x=>x.id===account.id);
-    if(!passwordMatches(b.password,rec.passwordHash))return err(res,401,'Confirme sua senha atual para excluir a conta.');
+    if(!await passwordMatches(b.password,rec.passwordHash))return err(res,401,'Confirme sua senha atual para excluir a conta.');
     deleteUserRecords(db,account.id);
     await persist();return json(res,200,{ok:true},{'Set-Cookie':[setCookie('vano_session','',0),setCookie('vano_guest','',0)]});
   }
