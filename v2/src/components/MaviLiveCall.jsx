@@ -1,338 +1,352 @@
 import React,{useCallback,useEffect,useRef,useState} from 'react';
-import {createPortal} from 'react-dom';
-import {Phone,PhoneOff,Volume2,VolumeX,X,AudioLines} from 'lucide-react';
-import {api,fetchMaviLiveCallStream} from '../lib/api.js';
-import {onNavigationAudioStart,navigationAudioActive} from '../lib/maviAudioFocus.mjs';
-import {playMaviConnectChime} from '../lib/maviCallAudio.mjs';
+import {Phone,PhoneOff} from 'lucide-react';
+import {api,transcribeMaviLiveTurn,fetchMaviLiveCallStream} from '../lib/api.js';
+import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
+import {playMaviDialSequence} from '../lib/maviCallAudio.mjs';
+import {micRms,voiceThreshold,shouldStartVoice} from '../lib/maviMicVAD.mjs';
 import './MaviLiveCall.css';
 
-const compact=text=>String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
- .toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
-const browserRecognizer=()=>typeof window==='undefined'?null:
- (window.SpeechRecognition||window.webkitSpeechRecognition||null);
-
-/** Admin /v2 only. Audio and recognition are independent from GPS/navigation.
- * This remains a browser-STT preview, not a native WebRTC full-duplex call.
+const RING_MS=5000;
+const SILENCE_MS=850;
+const MAX_TURN_MS=10500;
+const ECHO_TAIL_MS=950;
+function preferredMime(){
+ if(typeof MediaRecorder==='undefined')return '';
+ return ['audio/webm;codecs=opus','audio/mp4','audio/webm','audio/ogg;codecs=opus']
+  .find(type=>MediaRecorder.isTypeSupported?.(type))||'';
+}
+/**
+ * V2-only, one persistent microphone track. No SpeechRecognition instances,
+ * repeated getUserMedia sessions, automatic mic prompts, or modal call panel.
+ *
+ * During MAVI playback microphone capture is gated to prevent feedback.
+ * This intentionally prioritizes reliable turn-taking over unverified
+ * simultaneous barge-in from the loudspeaker.
  */
 export default function MaviLiveCall({active=true}){
- const [ready,setReady]=useState(null);
- const [open,setOpen]=useState(false);
- const [connected,setConnected]=useState(false);
+ const [capabilities,setCapabilities]=useState(null);
  const [phase,setPhase]=useState('idle');
- const [detail,setDetail]=useState('');
- const [heard,setHeard]=useState('');
- const [reply,setReply]=useState('');
- const [muted,setMuted]=useState(false);
+ const [notice,setNotice]=useState('');
+ const mounted=useRef(false);
+ const sessionRef=useRef(null);
+ const counter=useRef(0);
 
- const mounted=useRef(false),call=useRef(false),round=useRef(0);
- const recognizer=useRef(null),recognizerRunning=useRef(false),restart=useRef(null);
- const rapidEnds=useRef(0),startedAt=useRef(0),fatal=useRef(false);
- const request=useRef(null),audio=useRef(null),sources=useRef(new Set()),head=useRef(0);
- const history=useRef([]),lastAssistant=useRef(''),lastAssistantAt=useRef(0);
- const recentFinal=useRef({text:'',at:0}),mutedRef=useRef(false);
- const phoneSession=useRef(0);
-
- const stopAudio=useCallback(()=>{
-  round.current+=1;
-  request.current?.abort();
-  request.current=null;
-  for(const source of [...sources.current]){
-   try{source.stop();}catch{/* source already stopped */}
+ const cancelSources=useCallback(s=>{
+  if(!s)return;
+  s.llm?.abort();s.llm=null;
+  s.transcribe?.abort();s.transcribe=null;
+  for(const node of s.sources){
+   try{node.stop();}catch{/* completed */}
   }
-  sources.current.clear();
-  head.current=audio.current?.currentTime||0;
+  s.sources.clear();
+  if(s.context)s.playhead=s.context.currentTime;
  },[]);
 
- const endCall=useCallback((message='Chamada encerrada')=>{
-  call.current=false;
-  phoneSession.current+=1;
-  clearTimeout(restart.current);restart.current=null;
-  stopAudio();
-  const engine=recognizer.current;
-  recognizer.current=null;
-  recognizerRunning.current=false;
-  if(engine){engine.onend=null;engine.onresult=null;engine.onerror=null;try{engine.abort();}catch{/* already stopped */}}
-  const ctx=audio.current;
-  audio.current=null;
-  if(ctx&&ctx.state!=='closed')void ctx.close().catch(()=>{});
-  if(mounted.current){
-   setConnected(false);setPhase('idle');setDetail(message);
+ const endCall=useCallback((reason='')=>{
+  const s=sessionRef.current;
+  counter.current++;
+  sessionRef.current=null;
+  if(s){
+   s.active=false;
+   clearTimeout(s.frameTimer);
+   clearTimeout(s.ringTimer);
+   try{s.stopRingtone?.();}catch{/* already ended */}
+   cancelSources(s);
+   if(s.recorder&&s.recorder.state!=='inactive'){
+    s.recorder.onstop=null;s.recorder.ondataavailable=null;
+    try{s.recorder.stop();}catch{/* inactive */}
+   }
+   for(const track of s.stream?.getTracks?.()||[])try{track.stop();}catch{/* already stopped */}
+   try{s.input?.disconnect();s.analyser?.disconnect();}catch{/* disconnected */}
+   if(s.context?.state!=='closed')void s.context?.close?.().catch(()=>{});
   }
- },[stopAudio]);
-
+  if(mounted.current){
+   setPhase('idle');
+   setNotice(reason);
+  }
+ },[cancelSources]);
  useEffect(()=>{
   mounted.current=true;
-  const controller=new AbortController();
-  api('/admin/mavi-live/capabilities',{signal:controller.signal})
-   .then(info=>{if(mounted.current)setReady(info?.enabled===true);})
-   .catch(()=>{if(mounted.current)setReady(false);});
+  const ctrl=new AbortController();
+  api('/admin/mavi-live/capabilities',{signal:ctrl.signal})
+   .then(config=>{if(mounted.current)setCapabilities(config);})
+   .catch(()=>{if(mounted.current)setCapabilities({enabled:false,sttAvailable:false});});
   const release=onNavigationAudioStart(()=>{
-   if(!call.current)return;
-   stopAudio();
-   if(mounted.current)setPhase('listening');
+   const s=sessionRef.current;
+   if(!s||!s.active)return;
+   // Route guidance always wins; never feed guidance speech back into STT.
+   s.gateUntil=Date.now()+ECHO_TAIL_MS;
+   s.busy=false;
+   cancelSources(s);
+   if(s.recorder?.state==='recording')try{s.recorder.stop();}catch{/* already stopped */}
   });
   return ()=>{
-   mounted.current=false;
-   controller.abort();release();endCall();
+   mounted.current=false;ctrl.abort();release();endCall();
   };
- },[endCall,stopAudio]);
+ },[endCall,cancelSources]);
+ useEffect(()=>{
+  if(!active&&sessionRef.current)endCall('Chamada encerrada ao sair da V2.');
+ },[active,endCall]);
 
- useEffect(()=>{if(!active&&call.current)endCall('Chamada pausada ao sair do mapa.');},[active,endCall]);
-
- function isAssistantEcho(transcript){
-  const said=compact(transcript),answer=compact(lastAssistant.current);
-  if(!said||!answer)return false;
-  if(answer.includes(said)&&said.length>=7)return true;
-  if(Date.now()-lastAssistantAt.current>1300&&sources.current.size===0)return false;
-  const words=said.split(' ').filter(w=>w.length>=4);
-  if(words.length<3)return false;
-  const hit=words.filter(word=>answer.split(' ').includes(word)).length;
-  return hit>=Math.ceil(words.length*0.7);
+ function mark(s,next){
+  if(!s.active||sessionRef.current!==s||!mounted.current)return;
+  setPhase(next);
  }
- function schedulePcm(encoded,turn){
-  if(!call.current||turn!==round.current||mutedRef.current||navigationAudioActive())return;
-  const ctx=audio.current;
-  if(!ctx||ctx.state==='closed')return;
-  let raw;
-  try{raw=atob(encoded);}catch{return;}
-  const count=Math.floor(raw.length/2);
-  if(!count||count>72000)return;
-  const audioBuffer=ctx.createBuffer(1,count,24000);
-  const floats=audioBuffer.getChannelData(0);
-  for(let i=0;i<count;i++){
-   let sample=raw.charCodeAt(i*2)|(raw.charCodeAt(i*2+1)<<8);
-   if(sample&32768)sample-=65536;
-   floats[i]=sample/32768;
+ function afterReply(s){
+  if(!s.active||sessionRef.current!==s||!s.finished||s.sources.size>0)return;
+  s.busy=false;s.finished=false;
+  s.gateUntil=Date.now()+ECHO_TAIL_MS;
+  mark(s,'listening');
+ }
+ function playAudio(s,pcm){
+  if(!s.active||!s.context||navigationAudioActive())return;
+  let bytes;
+  try{bytes=atob(pcm);}catch{return;}
+  const frames=Math.floor(bytes.length/2);
+  if(frames<1||frames>72000)return;
+  const buffer=s.context.createBuffer(1,frames,24000);
+  const channel=buffer.getChannelData(0);
+  for(let i=0;i<frames;i++){
+   let n=bytes.charCodeAt(i*2)|(bytes.charCodeAt(i*2+1)<<8);
+   if(n>32767)n-=65536;
+   channel[i]=n/32768;
   }
-  const source=ctx.createBufferSource();
-  source.buffer=audioBuffer;
-  source.connect(ctx.destination);
-  source.onended=()=>{
-   sources.current.delete(source);
-   try{source.disconnect();}catch{/* detached */}
-   if(call.current&&turn===round.current&&!sources.current.size&&mounted.current){
-    setPhase(request.current?'thinking':'listening');
-   }
+  const node=s.context.createBufferSource();
+  node.buffer=buffer;
+  node.connect(s.context.destination);
+  const at=Math.max(s.context.currentTime+.012,s.playhead);
+  s.playhead=at+buffer.duration;
+  s.sources.add(node);
+  node.onended=()=>{
+   s.sources.delete(node);
+   try{node.disconnect();}catch{/* disconnected */}
+   afterReply(s);
   };
-  const when=Math.max(ctx.currentTime+0.012,head.current);
-  sources.current.add(source);
-  head.current=when+audioBuffer.duration;
-  source.start(when);
-  lastAssistantAt.current=Date.now();
-  if(mounted.current)setPhase('speaking');
+  node.start(at);
+  mark(s,'speaking');
  }
- async function talk(transcript){
-  const text=String(transcript||'').trim().slice(0,360);
-  if(!call.current||text.length<2||isAssistantEcho(text))return;
-  const now=Date.now(),normalized=compact(text);
-  if(normalized===recentFinal.current.text&&now-recentFinal.current.at<1700)return;
-  recentFinal.current={text:normalized,at:now};
-  stopAudio();
-  const turn=round.current;
-  const previous=history.current.slice(-6);
-  history.current=[...previous,{role:'user',content:text}].slice(-6);
-  lastAssistant.current='';
-  if(mounted.current){setHeard(text);setReply('');setPhase('thinking');setDetail('');}
-  const ctrl=new AbortController();
-  request.current=ctrl;
-  let answer='',pending='',complete=false;
+ async function respond(s,userText){
+  if(!s.active||sessionRef.current!==s)return;
+  const transcript=String(userText||'').trim().slice(0,360);
+  if(transcript.length<2){s.busy=false;return;}
+  const previous=s.history.slice(-6);
+  s.history=[...previous,{role:'user',content:transcript}].slice(-6);
+  const ctrl=new AbortController();s.llm=ctrl;s.finished=false;
+  s.busy=true;
+  mark(s,'thinking');
+  let response='',partial='',completed=false;
   try{
-   const response=await fetchMaviLiveCallStream({text,history:previous},{signal:ctrl.signal});
-   const reader=response.body?.getReader();
-   if(!reader)throw Error('no_audio_stream');
+   const upstream=await fetchMaviLiveCallStream(
+    {text:transcript,history:previous},{signal:ctrl.signal});
+   const reader=upstream.body?.getReader();
+   if(!reader)throw Error('no_stream');
    const decoder=new TextDecoder();
-   const parse=line=>{
-    let packet;
-    try{packet=JSON.parse(line);}catch{return;}
-    if(turn!==round.current||!call.current)return;
-    if(packet.type==='text'&&typeof packet.delta==='string'){
-     answer=(answer+packet.delta).slice(0,420);
-     lastAssistant.current=answer;
-     lastAssistantAt.current=Date.now();
-     if(mounted.current)setReply(answer);
-    }else if(packet.type==='audio'&&typeof packet.pcm==='string'){
-     schedulePcm(packet.pcm,turn);
-    }else if(packet.type==='complete'){
-     complete=true;
-    }else if(packet.type==='error'){
-     if(mounted.current){setDetail('Resposta interrompida pelo serviço de voz.');setPhase('error');}
-    }
+   const receive=line=>{
+    if(!s.active||sessionRef.current!==s)return;
+    let item;try{item=JSON.parse(line);}catch{return;}
+    if(item.type==='text'&&typeof item.delta==='string')
+     response=(response+item.delta).slice(0,420);
+    if(item.type==='audio'&&typeof item.pcm==='string')playAudio(s,item.pcm);
+    if(item.type==='complete')completed=true;
+    if(item.type==='error')throw Error('tts_unavailable');
    };
-   while(call.current&&turn===round.current){
+   while(s.active&&!ctrl.signal.aborted){
     const {value,done}=await reader.read();
     if(done)break;
-    pending+=decoder.decode(value,{stream:true});
-    if(pending.length>300000)throw Error('stream_too_large');
-    let end;
-    while((end=pending.indexOf('\n'))>=0){
-     const line=pending.slice(0,end);pending=pending.slice(end+1);
-     if(line)parse(line);
+    partial+=decoder.decode(value,{stream:true});
+    if(partial.length>250000)throw Error('voice_stream_limit');
+    let point;
+    while((point=partial.indexOf('\n'))>=0){
+     const line=partial.slice(0,point);partial=partial.slice(point+1);
+     if(line)receive(line);
     }
    }
-   if(pending.trim()&&turn===round.current)parse(pending);
-   if(complete&&answer&&turn===round.current)history.current=[
-    ...history.current,{role:'assistant',content:answer}
-   ].slice(-6);
+   if(partial.trim()&&s.active)receive(partial);
+   if(completed&&response&&s.active){
+    s.history.push({role:'assistant',content:response});
+    s.history=s.history.slice(-6);
+   }
   }catch(error){
-   if(error.name!=='AbortError'&&turn===round.current&&mounted.current){
-    setPhase('error');setDetail('Não consegui responder agora. Pode falar novamente.');
-   }
+   if(s.active&&!ctrl.signal.aborted&&mounted.current)
+    setNotice('A resposta falhou. Pode falar novamente.');
   }finally{
-   if(turn===round.current){
-    request.current=null;
-    if(call.current&&!sources.current.size&&mounted.current)setPhase('listening');
-   }
+   if(!s.active||sessionRef.current!==s)return;
+   s.llm=null;s.finished=true;
+   afterReply(s);
   }
  }
- function beginListening(){
-  if(!call.current||!recognizer.current||recognizerRunning.current)return;
-  try{recognizer.current.start();}
-  catch(error){
-   if(error?.name!=='InvalidStateError'&&mounted.current){
-    setDetail('O reconhecimento de fala não iniciou.');
-   }
+ async function transcribe(s,blob){
+  if(!s.active||sessionRef.current!==s)return;
+  if(blob.size<1800||blob.size>1_500_000){
+   s.busy=false;s.gateUntil=Date.now()+350;mark(s,'listening');return;
   }
- }
- function startCall(){
-  if(call.current){setOpen(true);return;}
-  setOpen(true);
-  if(ready!==true){setDetail('A chamada ainda não está configurada no servidor.');return;}
-  const Recognizer=browserRecognizer();
-  const Context=window.AudioContext||window.webkitAudioContext;
-  if(!Recognizer||!Context){
-   setDetail('Este navegador não oferece reconhecimento contínuo de fala e áudio.');
-   return;
-  }
-  if(navigationAudioActive()){
-   setDetail('Conclua a orientação de navegação atual antes de iniciar.');
-   return;
-  }
+  const ctrl=new AbortController();
+  s.transcribe=ctrl;
+  mark(s,'transcribing');
   try{
-   const ctx=new Context({latencyHint:'interactive'});
-   audio.current=ctx;
-   // Autoplay unlocking must happen synchronously inside the button click.
-   void ctx.resume().catch(()=>{});
-   playMaviConnectChime(ctx);
-   const engine=new Recognizer();
-   engine.lang='pt-BR';
-   engine.continuous=true;
-   engine.interimResults=true;
-   engine.maxAlternatives=1;
-   recognizer.current=engine;
-   rapidEnds.current=0;startedAt.current=0;fatal.current=false;
-   lastAssistant.current='';history.current=[];recentFinal.current={text:'',at:0};
-   round.current+=1;phoneSession.current+=1;
-   const session=phoneSession.current;
-   engine.onstart=()=>{
-    if(!call.current||session!==phoneSession.current)return;
-    recognizerRunning.current=true;
-    startedAt.current=Date.now();
-    if(mounted.current){setPhase('listening');setDetail('');}
+   const transcript=await transcribeMaviLiveTurn(blob,{signal:ctrl.signal});
+   if(!s.active||sessionRef.current!==s)return;
+   s.transcribe=null;
+   await respond(s,transcript);
+  }catch(error){
+   if(!s.active||sessionRef.current!==s)return;
+   s.busy=false;s.gateUntil=Date.now()+450;
+   s.transcribe=null;
+   if(error.message!=='no_live_speech'&&mounted.current)
+    setNotice('Transcrição indisponível. Verifique o serviço de voz.');
+   mark(s,'listening');
+  }
+ }
+ function finishRecord(s){
+  if(!s.active||!s.recorder||s.recorder.state!=='recording')return;
+  const elapsed=Date.now()-s.captureStarted;
+  s.recording=false;
+  s.busy=true;
+  if(elapsed<430){
+   s.recorder.onstop=null;s.recorder.ondataavailable=null;
+   try{s.recorder.stop();}catch{/* stopped */}
+   s.recorder=null;s.busy=false;s.gateUntil=Date.now()+260;
+   mark(s,'listening');
+   return;
+  }
+  const rec=s.recorder;
+  rec.onstop=()=>{
+   if(!s.active||sessionRef.current!==s)return;
+   const blob=new Blob(s.chunks,{type:s.mime});
+   s.chunks=[];s.recorder=null;
+   void transcribe(s,blob);
+  };
+  try{rec.stop();}catch{
+   s.busy=false;mark(s,'listening');
+  }
+ }
+ function startRecord(s,now){
+  if(!s.active||s.busy||s.recorder||!s.mime)return;
+  try{
+   const recorder=new MediaRecorder(s.stream,{mimeType:s.mime,audioBitsPerSecond:48000});
+   s.recorder=recorder;s.chunks=[];s.captureStarted=now;
+   s.lastVoice=now;s.recording=true;s.loudFrames=0;
+   recorder.ondataavailable=e=>{
+    if(s.active&&e.data?.size>0)s.chunks.push(e.data);
    };
-   engine.onresult=event=>{
-    if(!call.current||session!==phoneSession.current)return;
-    for(let i=event.resultIndex;i<event.results.length;i++){
-     const result=event.results[i];
-     const utterance=result?.[0]?.transcript?.trim();
-     if(!utterance||isAssistantEcho(utterance))continue;
-     if(result.isFinal){void talk(utterance);continue;}
-     const words=compact(utterance).split(' ').filter(Boolean);
-     if(words.length>=3&&(request.current||sources.current.size)){
-      // Cancel once per interruption, not once for every interim character.
-      stopAudio();
-      if(mounted.current){setPhase('listening');setDetail('Pode continuar falando.');}
-     }
-    }
-   };
-   engine.onerror=event=>{
-    if(!call.current||session!==phoneSession.current)return;
-    const code=String(event?.error||'');
-    if(['not-allowed','service-not-allowed','audio-capture','network','language-not-supported'].includes(code)){
-     fatal.current=true;
-     endCall(code==='not-allowed'||code==='service-not-allowed'?
-      'Permita o acesso ao microfone para conversar.':
-      'Reconhecimento de voz indisponível neste navegador.');
-     if(mounted.current)setOpen(true);
-    }
-   };
-   engine.onend=()=>{
-    recognizerRunning.current=false;
-    if(!call.current||session!==phoneSession.current||fatal.current)return;
-    const elapsed=Date.now()-startedAt.current;
-    rapidEnds.current=elapsed<1200?rapidEnds.current+1:0;
-    if(rapidEnds.current>=3){
-     endCall('O navegador encerrou o reconhecimento repetidamente. Verifique o microfone.');
-     return;
-    }
-    const delay=rapidEnds.current?Math.min(2000,400*2**rapidEnds.current):300;
-    clearTimeout(restart.current);
-    restart.current=setTimeout(()=>{
-     if(call.current&&session===phoneSession.current)beginListening();
-    },delay);
-   };
-   call.current=true;
-   setConnected(true);setMuted(false);mutedRef.current=false;
-   setHeard('');setReply('');setPhase('connecting');setDetail('');
-   beginListening();
+   recorder.onerror=()=>{s.recording=false;s.busy=false;mark(s,'listening');};
+   recorder.start(200);
+   mark(s,'hearing');
   }catch{
-   endCall('Não foi possível abrir a chamada. Verifique o navegador.');
-   if(mounted.current)setOpen(true);
+   s.recorder=null;s.recording=false;s.busy=false;
+   if(mounted.current)setNotice('Não foi possível capturar sua voz.');
   }
  }
- function switchMute(){
-  mutedRef.current=!mutedRef.current;
-  setMuted(mutedRef.current);
-  if(mutedRef.current){
-   for(const source of [...sources.current])try{source.stop();}catch{/* ended */}
-   sources.current.clear();
-   head.current=audio.current?.currentTime||0;
+ function frame(s){
+  if(!s.active||sessionRef.current!==s)return;
+  const now=Date.now();
+  const blocked=now<s.gateUntil||s.busy||s.ringing||navigationAudioActive();
+  if(s.analyser){
+   s.analyser.getByteTimeDomainData(s.sample);
+   const level=micRms(s.sample);
+   if(!blocked){
+    const threshold=voiceThreshold(s.noiseFloor);
+    const isLoud=level>=threshold;
+    if(s.recording){
+     if(isLoud)s.lastVoice=now;
+     if(now-s.lastVoice>SILENCE_MS||now-s.captureStarted>MAX_TURN_MS)
+      finishRecord(s);
+    }else{
+     if(!isLoud)s.noiseFloor=s.noiseFloor*.965+level*.035;
+     s.loudFrames=isLoud?s.loudFrames+1:0;
+     if(shouldStartVoice(level,s.noiseFloor,s.loudFrames))startRecord(s,now);
+    }
+   }else s.loudFrames=0;
+  }
+  s.frameTimer=setTimeout(()=>frame(s),40);
+ }
+ async function startCall(){
+  if(sessionRef.current){endCall();return;}
+  setNotice('');
+  if(!capabilities?.enabled||!capabilities?.sttAvailable){
+   setNotice('A transcrição em português precisa estar configurada no servidor.');
+   return;
+  }
+  const mime=preferredMime();
+  if(!mime||!navigator.mediaDevices?.getUserMedia){
+   setNotice('Seu navegador não oferece áudio contínuo compatível.');
+   return;
+  }
+  const Audio=window.AudioContext||window.webkitAudioContext;
+  if(!Audio){setNotice('Áudio não suportado neste navegador.');return;}
+  if(navigationAudioActive()){setNotice('Espere a orientação de navegação terminar.');return;}
+  let context;
+  try{context=new Audio({latencyHint:'interactive'});void context.resume().catch(()=>{});}
+  catch{setNotice('Não foi possível iniciar o áudio.');return;}
+  const s={
+   id:++counter.current,active:true,context,stream:null,input:null,
+   analyser:null,sample:null,mime,noiseFloor:.007,loudFrames:0,
+   recorder:null,recording:false,chunks:[],captureStarted:0,lastVoice:0,
+   busy:false,finished:false,sources:new Set(),playhead:context.currentTime,
+   llm:null,transcribe:null,history:[],ringing:true,ringTimer:null,
+   frameTimer:null,gateUntil:Infinity,stopRingtone:null
+  };
+  sessionRef.current=s;
+  mark(s,'connecting');
+  try{
+   // ONE browser permission request per explicit call. Native permission UI
+   // cannot be bypassed; after permission the track stays open until hangup.
+   const stream=await navigator.mediaDevices.getUserMedia({
+    video:false,audio:{
+     channelCount:1,echoCancellation:true,noiseSuppression:true,
+     autoGainControl:true
+    }
+   });
+   if(!s.active||sessionRef.current!==s){
+    stream.getTracks().forEach(track=>track.stop());return;
+   }
+   s.stream=stream;
+   const input=context.createMediaStreamSource(stream);
+   const analyser=context.createAnalyser();
+   analyser.fftSize=1024;analyser.smoothingTimeConstant=.12;
+   input.connect(analyser);
+   s.input=input;s.analyser=analyser;s.sample=new Uint8Array(analyser.fftSize);
+   for(const track of stream.getTracks())track.onended=()=>{
+    if(s.active)endCall('O microfone foi desconectado.');
+   };
+   s.stopRingtone=playMaviDialSequence(context,5);
+   s.gateUntil=Date.now()+RING_MS+350;
+   s.ringTimer=setTimeout(()=>{
+    if(s.active&&sessionRef.current===s){
+     s.ringing=false;
+     mark(s,'listening');
+    }
+   },RING_MS);
+   mark(s,'ringing');
+   frame(s);
+  }catch(error){
+   if(sessionRef.current===s){
+    const reason=error?.name==='NotAllowedError'?
+     'Autorize o microfone nas permissões do navegador.':
+     'Não foi possível acessar o microfone.';
+    endCall(reason);
+   }else void context.close().catch(()=>{});
   }
  }
- function dismiss(){
-  endCall();setOpen(false);
- }
- const status=phase==='listening'?'Ouvindo você':phase==='thinking'?'Preparando resposta':
-  phase==='speaking'?'MAVI falando':phase==='connecting'?'Ligando...':
-  phase==='error'?'Problema na resposta':'Chamada de voz';
- const content=open&&createPortal(
-  <section className="mavi-live-panel" aria-label="Chamada de voz MAVI" role="dialog" aria-modal="false">
-   <header className="mavi-live-heading">
-    <div className="mavi-live-identity"><span className="mavi-live-avatar"><AudioLines size={22}/></span>
-     <span><strong>MAVI</strong><small>Assistente do VANO Maps</small></span>
-    </div>
-    <button type="button" className="mavi-live-close" aria-label="Fechar chamada" onClick={dismiss}><X size={19}/></button>
-   </header>
-   <div className="mavi-live-call-state" role="status" aria-live="polite">
-    <span className={connected?'mavi-live-dot active':'mavi-live-dot'}/>
-    <strong>{status}</strong>
-    {connected&&<span className="mavi-live-live-tag">AO VIVO</span>}
-   </div>
-   {detail&&<p className="mavi-live-detail">{detail}</p>}
-   <div className="mavi-live-transcript" aria-live="polite">
-    {heard&&<p className="mavi-live-said"><span>Você</span>{heard}</p>}
-    {reply&&<p className="mavi-live-answered"><span>MAVI</span>{reply}</p>}
-    {!heard&&!reply&&<p className="mavi-live-prompt">{connected?'Estou ouvindo. Pode falar naturalmente.':'Toque para iniciar sua conversa.'}</p>}
-   </div>
-   <footer className="mavi-live-actions">
-    <button type="button" className={connected?'mavi-live-end':'mavi-live-start'} onClick={connected?()=>endCall():startCall}>
-     {connected?<PhoneOff size={19}/>:<Phone size={19}/>}
-     {connected?'Encerrar':'Iniciar chamada'}
-    </button>
-    {connected&&<button type="button" className="mavi-live-mute" onClick={switchMute} aria-label={muted?'Ativar voz da MAVI':'Silenciar voz da MAVI'}>
-     {muted?<VolumeX size={20}/>:<Volume2 size={20}/>}
-    </button>}
-   </footer>
-   <p className="mavi-live-note">Teste exclusivo da V2. A MAVI pode ser interrompida. Prefira fones e nunca opere enquanto dirige.</p>
-  </section>,document.body
- );
+ const live=Boolean(sessionRef.current);
+ const label=live?(phase==='ringing'?'Chamando MAVI — toque para desligar':
+  phase==='speaking'?'MAVI respondendo — desligar':
+  'Chamada MAVI ativa — desligar'):'Ligar para MAVI';
  return <>
-  <button type="button" className={`circle-btn mavi-live-trigger ${connected?'is-connected':''}`}
-   onClick={()=>connected?dismiss():startCall()}
-   aria-label={connected?'Encerrar chamada com MAVI':'Ligar para MAVI'}
-   aria-expanded={open} title={connected?'Encerrar chamada MAVI':'Conversar com MAVI'}>
-   {connected?<PhoneOff size={21} strokeWidth={2.2}/>:<Phone size={21} strokeWidth={2.2}/>}
-   {connected&&<span className="mavi-live-ring" aria-hidden="true"/>}
+  <button type="button"
+   className={'circle-btn mavi-live-trigger '+(live?'is-connected ':'')+(phase==='ringing'?'is-ringing':'')}
+   title={label} aria-label={label} aria-pressed={live}
+   onClick={()=>live?endCall():void startCall()}>
+   {live?<PhoneOff size={21} strokeWidth={2.1}/>:<Phone size={21} strokeWidth={2.2}/>}
+   {live&&<span className="mavi-live-ring" aria-hidden="true"/>}
   </button>
-  {content}
+  <span className="mavi-live-sr-status" role="status" aria-live="polite">
+   {notice||(
+    phase==='ringing'?'Chamando MAVI.':
+    phase==='listening'?'Pode falar, a MAVI está ouvindo.':
+    phase==='speaking'?'MAVI respondendo.':''
+   )}
+  </span>
+  {notice&&<span className="mavi-live-inline-error" role="alert">{notice}</span>}
  </>;
 }
