@@ -1,5 +1,5 @@
 /** Visual smoothing only. Never turns route geometry or extrapolation into GPS telemetry. */
-import {blendPoint,metersBetween,validPoint} from './navigationMotion.js';
+import {bearingBetween,blendPoint,metersBetween,shortestAngle,validPoint} from './navigationMotion.js';
 
 export function easeGpsPoint(previous,incoming,elapsedMs,{accuracy=10,speed=0,reducedMotion=false}={}){
   if(!validPoint(incoming))return validPoint(previous)?previous:null;
@@ -16,10 +16,37 @@ export function easeGpsPoint(previous,incoming,elapsedMs,{accuracy=10,speed=0,re
   const moving=Number.isFinite(speed)&&speed>1.5;
   // Make the arrow catch up to genuine fresh fixes quickly. Hold slow/stopped
   // positions steady instead of chasing sub-meter GPS multipath.
-  const halfLife=reducedMotion?60:moving?(speed>=8?185:235):260;
+  const halfLife=reducedMotion?60:moving?(speed>=8?300:340):280;
   const next=blendPoint(previous,incoming,elapsedMs,halfLife);
   return metersBetween(next,incoming)<.35?incoming:next;
 }
+
+/** Visual-only continuation between two trustworthy GPS observations.
+ * It never modifies the GPS fix, route progress, navigation, or maneuver state.
+ * Stop after 850ms instead of continuing across a gap in sensor updates.
+ */
+export function predictFreeGpsVisual(position,previousFix,{sourceAt,now=Date.now(),speed,accuracy,heading}={}){
+  if(!validPoint(position)||!validPoint(previousFix?.position))return position;
+  if(!Number.isFinite(sourceAt)||!Number.isFinite(previousFix.sourceAt)||
+      !Number.isFinite(now)||!Number.isFinite(speed)||speed<1.2||speed>38||
+      !Number.isFinite(accuracy)||accuracy<0||accuracy>25)return position;
+  const sampleSeconds=(sourceAt-previousFix.sourceAt)/1000;
+  const age=now-sourceAt;
+  if(sampleSeconds<.35||sampleSeconds>3||age<80||age>1200)return position;
+  const travelled=metersBetween(previousFix.position,position);
+  const measuredSpeed=travelled/sampleSeconds;
+  if(travelled<1.5||measuredSpeed<.75||measuredSpeed>Math.min(45,speed*2+6))return position;
+  const travelHeading=bearingBetween(previousFix.position,position);
+  if(Number.isFinite(heading)&&heading>=0&&heading<=360&&
+      Math.abs(shortestAngle(travelHeading,heading))>40)return position;
+  const ahead=Math.min(7,speed*.85,measuredSpeed*.85,
+    Math.min(.85,age/1000)*Math.min(speed,measuredSpeed));
+  if(ahead<=.03)return position;
+  const alpha=ahead/travelled;
+  return [position[0]+(position[0]-previousFix.position[0])*alpha,
+          position[1]+(position[1]-previousFix.position[1])*alpha];
+}
+
 export function routeTrace(timeline,meters){
   if(!timeline?.points?.length||!Number.isFinite(timeline.total)||timeline.total<1)return [];
   const distance=Math.max(0,Math.min(timeline.total,meters));
