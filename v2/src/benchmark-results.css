@@ -1,0 +1,43 @@
+/* VANO Public Benchmark Results — isolated from map/layout styles */
+.pbr-page{min-height:100vh;background:#101112;color:#f7f5f2;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.pbr-page *{box-sizing:border-box}
+.pbr-container{width:min(1220px,calc(100% - 42px));margin:0 auto}
+.pbr-nav{height:83px;border-bottom:1px solid #272727;display:flex;align-items:center;justify-content:space-between;gap:20px}
+.pbr-nav a{text-decoration:none;color:inherit}
+.pbr-brand{font-size:19px;font-weight:900;letter-spacing:-1px;display:flex;align-items:center;gap:10px}.pbr-brand-muted{font-weight:520;color:#adacab;margin-left:5px}
+.pbr-brand-symbol{display:grid;place-items:center;width:36px;height:36px;background:#f59a62;color:#111;border-radius:11px;font-size:30px;line-height:1}
+.pbr-nav-actions{display:flex;align-items:center;gap:25px;font-size:13px;color:#b8b7b6;font-weight:650}
+.pbr-nav-actions a{display:inline-flex;align-items:center;gap:7px}
+.pbr-nav-map{border:1px solid #454242;border-radius:10px;padding:11px 15px;color:#fff!important}
+.pbr-crumb{display:flex;align-items:center;gap:12px;color:#858484;font-size:12px;padding:28px 0}.pbr-crumb a{color:#b5b3b1;text-decoration:none}.pbr-crumb span:last-child{color:#f5a875}
+.pbr-hero{padding:45px 0 85px;border-bottom:1px solid #2a2928}.pbr-eyebrow,.pbr-overline{color:#f9a66e;letter-spacing:.17em;font-weight:800;font-size:10px}.pbr-eyebrow{display:flex;align-items:center;gap:9px}
+.pbr-pulse{width:7px;height:7px;border-radius:50%;background:#f59a62;box-shadow:0 0 0 5px #f59a6220}
+.pbr-hero h1{font-size:clamp(36px,6.1vw,79px);font-weight:780;letter-spacing:-.065em;line-height:1.02;margin:23px 0 23px}
+.pbr-hero h1 em{font-style:normal;color:#f59a62}.pbr-hero p{font-size:16px;color:#afabaa;line-height:1.75;max-width:715px}
+.pbr-hero-actions{display:flex;gap:11px;flex-wrap:wrap;margin-top:29px}.pbr-primary,.pbr-secondary{display:inline-flex;align-items:center;justify-content:center;gap:12px;border-radius:12px;padding:14px 20px;text-decoration:none;font-size:13px;font-weight:800}
+.pbr-primary{background:#f59a62;color:#171210}.pbr-secondary{color:#f6f2ef;border:1px solid #48423f;background:#1c1b1a}
+.pbr-section-heading{display:flex;justify-content:space-between;align-items:end;gap:16px;margin:51px 0 20px}
+.pbr-section-heading h2,.pbr-card-heading h2{font-size:clamp(21px,3vw,31px);letter-spacing:-.04em;margin:9px 0 0}
+.pbr-json{color:#bfb7b3;text-decoration:none;display:flex;align-items:center;gap:9px;font-size:12px;padding:11px 13px;border:1px solid #3a3533;border-radius:10px}
+.pbr-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.pbr-metric{min-width:0;border:1px solid #34302e;background:linear-gradient(155deg,#202020,#171819);border-radius:16px;padding:21px;display:flex;flex-direction:column;align-items:flex-start}
+.pbr-metric-icon{height:38px;width:38px;display:grid;place-items:center;color:#f59a62;background:#f59a6217;border-radius:10px;margin-bottom:18px}
+.pbr-metric-label{font-size:10px;font-weight:750;letter-spacing:.08em;color:#aea8a5}.pbr-metric strong{font-size:clamp(21px,2.7vw,33px);letter-spacing:-.045em;margin:10px 0 4px;line-height:1.2}.pbr-metric small{font-size:11px;line-height:1.6;color:#aaa6a4}
+.pbr-maincard{border:1px solid #383331;border-radius:20px;background:#181919;margin:28px 0 22px;padding:25px;scroll-margin-top:24px}
+.pbr-card-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:15px}.pbr-card-heading p{font-size:12px;color:#a9a6a4;line-height:1.6;margin:10px 0 0}
+.pbr-status{color:#9ddbb5;display:inline-flex;align-items:center;gap:7px;font-size:11px;white-space:nowrap;background:#1e3428;border:1px solid #345540;border-radius:40px;padding:8px 11px}
+.pbr-filters{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;margin:27px 0 20px}
+.pbr-filters label{font-size:11px;font-weight:750;color:#bfb9b5;display:flex;flex-direction:column;gap:9px}
+.pbr-filters select{background:#232425;border:1px solid #46403b;border-radius:10px;padding:11px 13px;color:#f5f2f1;font:inherit;font-size:12px;height:44px;width:100%;min-width:0}
+.pbr-export{height:44px;display:flex;align-items:center;gap:8px;justify-content:center;border-radius:10px;border:1px solid #46403b;padding:0 16px;text-decoration:none;color:#ebe4e0;font-size:12px;font-weight:700}
+.pbr-disclaimer{font-size:12px;color:#ffcca6;background:#2d231d;border-left:3px solid #f59a62;padding:13px 15px;border-radius:5px}
+.pbr-empty{text-align:center;background:#1c1c1d;border:1px dashed #41403e;border-radius:16px;padding:53px 20px;display:flex;align-items:center;flex-direction:column;color:#b9b3af;gap:11px;line-height:1.6;font-size:13px}
+.pbr-empty-icon{width:64px;height:64px;border-radius:19px;display:grid;place-items:center;background:#f59a6210;color:#f6a271}
+.pbr-empty h3{font-size:21px;letter-spacing:-.03em;color:#f2efec;margin:0}.pbr-empty p{max-width:630px;margin:0;color:#aaa5a2}.pbr-empty a{display:flex;align-items:center;gap:6px;text-decoration:none;color:#ffb384;margin-top:9px;font-weight:730}
+.pbr-table-scroll{overflow-x:auto}.pbr-table-scroll table{border-collapse:collapse;width:100%;min-width:1010px}.pbr-table-scroll th{padding:13px 9px;border-bottom:1px solid #46403b;text-align:left;color:#aaa29e;font-size:10px;letter-spacing:.06em}.pbr-table-scroll td{padding:16px 9px;border-bottom:1px solid #393532;vertical-align:top;font-size:12px;color:#eee9e4;line-height:1.7}.pbr-table-scroll td strong{display:block}.pbr-table-scroll td small{display:block;color:#aaa09b;font-size:11px}.pbr-positive{color:#88d9aa}.pbr-negative{color:#f9a195}.pbr-neutral{color:#f4eadf}.pbr-dim{color:#8d8a87}
+.pbr-table-scroll details summary{cursor:pointer;color:#f6ad7d}.pbr-table-scroll details p{max-width:260px;font-size:11px}.pbr-table-scroll details a{display:flex;gap:4px;color:#f6ad7d}
+.pbr-pages{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:15px}.pbr-pages button{background:#2a2826;border:1px solid #44403a;color:#fff;padding:9px 12px;border-radius:9px;display:flex;align-items:center;gap:4px;cursor:pointer}.pbr-pages button:disabled{opacity:.4;cursor:default}
+.pbr-method{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin:20px 0 60px}.pbr-method article{padding:30px;border:1px solid #38332f;border-radius:19px;background:#1a1b1b}.pbr-method h2{font-size:23px;letter-spacing:-.04em;margin:14px 0}.pbr-method p{color:#aaa7a4;font-size:13px;line-height:1.8}.pbr-method b{color:#e9e4e0}.pbr-method a{display:inline-flex;align-items:center;gap:6px;color:#ffb385;font-size:13px;font-weight:750;text-decoration:none}.pbr-method small{display:block;font-size:11px;color:#8c8784;margin-top:14px}
+.pbr-footer{border-top:1px solid #31302f;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:26px 0 45px;font-size:15px;font-weight:800}.pbr-footer small{display:block;margin-top:5px;font-size:11px;color:#888582;font-weight:400}.pbr-footer b{font-weight:400;color:#d3cdca}.pbr-footer div{display:flex;flex-wrap:wrap;gap:21px}.pbr-footer a{color:#afa9a5;text-decoration:none;font-size:12px;font-weight:500}.pbr-sr{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:940px){.pbr-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pbr-filters{grid-template-columns:1fr 1fr}.pbr-method{grid-template-columns:1fr}}
+@media(max-width:600px){.pbr-container{width:min(100% - 24px,1220px)}.pbr-nav{height:65px}.pbr-nav-actions{gap:6px}.pbr-nav-actions>a:first-child{display:none}.pbr-nav-map{padding:8px 10px}.pbr-crumb{padding:18px 0}.pbr-hero{padding:24px 0 45px}.pbr-hero h1{font-size:clamp(34px,9vw,48px)}.pbr-hero p{font-size:14px}.pbr-section-heading{margin-top:35px;align-items:flex-start}.pbr-json{font-size:0;gap:4px;padding:10px}.pbr-json svg{width:16px}.pbr-stats{gap:8px}.pbr-metric{padding:14px}.pbr-metric strong{font-size:22px}.pbr-metric small{font-size:10px}.pbr-maincard{padding:14px}.pbr-card-heading{flex-direction:column}.pbr-filters{grid-template-columns:1fr}.pbr-export{width:100%}.pbr-empty{padding:32px 15px}.pbr-method article{padding:21px}.pbr-footer{align-items:flex-start;flex-direction:column}}
