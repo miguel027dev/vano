@@ -96,7 +96,20 @@ def api_route():
         rate_bucket = "route-benchmark" if benchmark_requested else ("route-prefetch" if prefetch_requested else "route")
         rate_limit_max = 120 if benchmark_requested else (36 if prefetch_requested else 30)
     route_user = session.get("user_id")
-    if not rate_limit(f"{rate_bucket}-ip", rate_limit_max, 60, shared=True):
+    # The internal Node gateway validates user limits, while the Python loopback
+    # peer otherwise collapses every V2 user into one 30/min rate-limit bucket.
+    # The secret is REQUIRED: remote clients cannot opt into this bypass by
+    # supplying X-VANO-Client or spoofing a forwarded IP header.
+    bridge_secret = os.environ.get("VANO_INTERNAL_BRIDGE_SECRET", "")
+    bridge_key = request.headers.get("X-VANO-Bridge-Key", "")
+    internal_bridge = bool(
+        not public_benchmark and
+        request.remote_addr in {"127.0.0.1", "::1"} and
+        request.headers.get("X-VANO-Client") == "vano-v2-original-engine" and
+        len(bridge_secret) >= 32 and
+        secrets.compare_digest(bridge_key.encode("utf-8"), bridge_secret.encode("utf-8"))
+    )
+    if not internal_bridge and not rate_limit(f"{rate_bucket}-ip", rate_limit_max, 60, shared=True):
         return jsonify({"ok": False, "error": "rate_limited", "message": "Muitos cálculos de rota. Aguarde um instante.", "retry_after_s": 60}), 429
     if route_user and not rate_limit(
         f"{rate_bucket}-user",
@@ -110,7 +123,7 @@ def api_route():
 
     trial_id = re.sub(r"[^A-Za-z0-9_-]", "", str(request.args.get("trial_id", "") or ""))[:64]
     existing_guest_trials = guest_trial_ids() if (not public_benchmark and not session.get("user_id")) else []
-    if not public_benchmark and not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
+    if not public_benchmark and not internal_bridge and not session.get("user_id") and guest_routes_remaining() <= 0 and (not trial_id or trial_id not in existing_guest_trials):
         return jsonify({
             "error": "Crie uma conta ou entre para continuar.",
             "code": "guest_route_limit_reached",

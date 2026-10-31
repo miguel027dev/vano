@@ -39,8 +39,10 @@ def _shared_rate_limit(bucket_key, limit, window):
     except Exception:
         if db is not None:
             db.rollback()
-        app.logger.exception("Shared security rate limiter unavailable")
-        return False
+        app.logger.exception("Shared security rate limiter unavailable; using already-enforced local throttle")
+        # rate_limit() has already checked and recorded this request locally.
+        # Database failure must not turn an outage into a global HTTP 429.
+        return True
 
 
 def rate_limit(key, limit=20, window=60, *, identity=None, include_ip=True, shared=False):
@@ -296,6 +298,7 @@ def inject_globals():
         "APP_NAME": APP_NAME,
         "vano_build_id": VANO_BUILD_ID,
         "csrf_token": csrf_token,
+        "csp_nonce": lambda: str(getattr(g, "csp_nonce", "") or ""),
         "current_year": datetime.now().year,
         "google_ready": google_ready(),
         "safety_level_from_score": safety_level_from_score if "safety_level_from_score" in globals() else None,

@@ -4,9 +4,29 @@ Extracted from the historical monolithic app.py without changing route bodies or
 business rules. Runtime dependencies are injected once during application startup.
 """
 from time import perf_counter
+from jinja2.ext import Extension
+
+
+class _TrustedTemplateNonceExtension(Extension):
+    """Add nonces to literal template tags BEFORE user data is rendered.
+
+    Never rewrite the final HTML response: an attacker-injected script must
+    not receive the browser's CSP nonce.
+    """
+    def preprocess(self, source, name, filename=None):
+        return re.sub(
+            r"<(script|style)\\b(?![^>]*\\bnonce\\s*=)",
+            lambda match: '<' + match.group(1) + ' nonce="{{ csp_nonce() }}"',
+            source, flags=re.IGNORECASE,
+        )
+
+
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
+
+# Nonces are inserted in trusted Jinja source, not in rendered responses.
+app.jinja_env.add_extension(_TrustedTemplateNonceExtension)
 
 @app.before_request
 def prepare_security_nonce():
@@ -129,26 +149,6 @@ def security_headers(response):
     if response.status_code == 429:
         response.headers.setdefault("Retry-After", "60")
 
-    # Add the request nonce to every rendered script tag. Static JS remains
-    # external; JSON-LD and small bootstraps are covered without unsafe-inline.
-    if nonce and response.mimetype == "text/html" and not response.direct_passthrough:
-        try:
-            html = response.get_data(as_text=True)
-            html = re.sub(
-                r"<script(?![^>]*\bnonce=)",
-                lambda match: f'<script nonce="{nonce}"',
-                html,
-                flags=re.IGNORECASE,
-            )
-            html = re.sub(
-                r"<style(?![^>]*\bnonce=)",
-                lambda match: f'<style nonce="{nonce}"',
-                html,
-                flags=re.IGNORECASE,
-            )
-            response.set_data(html)
-        except Exception:
-            app.logger.exception("CSP nonce injection failed")
     return response
 
 # -----------------------------

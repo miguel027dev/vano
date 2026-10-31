@@ -7,12 +7,17 @@ import threading
 import pytest
 
 
-def test_shared_limiter_fails_closed_when_database_unavailable(monkeypatch):
+def test_shared_limiter_falls_back_to_local_limit_when_database_unavailable(monkeypatch):
     from vano.security import auth
     def unavailable():
         raise RuntimeError('synthetic database outage')
     monkeypatch.setattr(auth, 'get_db', unavailable)
-    assert auth._shared_rate_limit('a' * 64, 5, 60) is False
+    monkeypatch.setattr(auth, 'RATE_BUCKETS', {})
+    # A database outage must not create a global 429; local per-worker
+    # throttling still blocks attempts beyond the allowed request count.
+    assert auth.rate_limit('db-down-test', 2, 60, shared=True, include_ip=False) is True
+    assert auth.rate_limit('db-down-test', 2, 60, shared=True, include_ip=False) is True
+    assert auth.rate_limit('db-down-test', 2, 60, shared=True, include_ip=False) is False
 
 
 @pytest.mark.skipif(not os.environ.get('TEST_DATABASE_URL'), reason='PostgreSQL integration runs in CI')

@@ -6,6 +6,7 @@ business rules. Runtime dependencies are injected once during application startu
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
+import socket
 
 def _ensure_node_config_table():
     global _NODE_CONFIG_TABLE_READY
@@ -190,6 +191,26 @@ def _node_config_row(index):
     except Exception:
         app.logger.exception("Could not load node %s configuration", index)
         return None
+
+
+def _validate_node_target_dns(target):
+    """Reject local/reserved addresses and unsafe redirect destinations.
+
+    Note: DNS is resolved again by requests; strict egress firewall rules are
+    still required for complete DNS-rebinding protection.
+    """
+    if VANO_ALLOW_HTTP_NODES:
+        return
+    parsed = urlparse(target)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError("Destino do node precisa usar HTTPS público.")
+    addresses = socket.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
+    if not addresses:
+        raise ValueError("DNS do node não retornou endereços.")
+    for addr in addresses:
+        ip = ipaddress.ip_address(addr[4][0])
+        if not ip.is_global:
+            raise ValueError("Node resolveu endereço de rede não pública.")
 
 
 def _normalize_node_url(value):
@@ -407,7 +428,8 @@ def _probe_configured_node(config, active_users=0):
     body = {}
     try:
         target = config["url"] + (config["health_path"] if str(config["health_path"]).startswith("/") else "/" + str(config["health_path"]))
-        resp = _NODE_HTTP.get(target, timeout=(1.8, VANO_NODE_CHECK_TIMEOUT), headers={"User-Agent": "VANO MAPS-Central-Health/91", "Accept": "application/json"})
+        _validate_node_target_dns(target)
+        resp = _NODE_HTTP.get(target, timeout=(1.8, VANO_NODE_CHECK_TIMEOUT), headers={"User-Agent": "VANO MAPS-Central-Health/91", "Accept": "application/json"}, allow_redirects=False)
         status = int(resp.status_code)
         http_ok = 200 <= status < 400
         healthy = http_ok
@@ -928,7 +950,8 @@ def _call_route_node(cfg, job_payload, prefetch, headers, timeout_override=None,
         configured_timeout = max(3.0, float(cfg.get("route_timeout_s") or VANO_NODE_ROUTE_TIMEOUT))
         route_timeout = max(configured_timeout, float(timeout_override or 0))
         route_timeout = min(VANO_HEAVY_ROUTE_TIMEOUT_MAX if timeout_override else 45.0, route_timeout)
-        resp = _NODE_HTTP.post(target, json=body, headers=headers, timeout=(connect_timeout, route_timeout))
+        _validate_node_target_dns(target)
+        resp = _NODE_HTTP.post(target, json=body, headers=headers, timeout=(connect_timeout, route_timeout), allow_redirects=False)
         attempt["status"] = int(resp.status_code)
         attempt["latency_ms"] = int((time.perf_counter() - started) * 1000)
         try:
