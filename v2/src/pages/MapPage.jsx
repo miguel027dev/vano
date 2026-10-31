@@ -27,6 +27,7 @@ import {readOffline,writeOffline,deleteOffline,validTrip} from '../lib/offlineSt
 import {spokenCue} from '../lib/offlineGuidance';
 import {speakNavigationVoice,stopNavigationVoice} from '../lib/navigationVoice.js';
 import JevVoiceButton from '../components/JevVoiceButton.jsx';
+import MaviLiveCall from '../components/MaviLiveCall.jsx';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {acquireNavigationAudioFocus} from '../lib/maviAudioFocus.mjs';
 import {jevRouteFingerprint} from '../lib/jevShared.mjs';
@@ -1319,6 +1320,7 @@ export default function MapPage({active=true}){
          {simActive?<Square size={19}/>:<Play size={20}/>}
        </button>}
        </div>}
+       {adminV2RoadSigns&&<MaviLiveCall active={active}/>}
        {adminV2RoadSigns&&!immersiveV2&&<button type="button" className={`circle-btn v95-tools-trigger ${v2ToolsOpen?'is-active':''}`}
          aria-label={v2ToolsOpen?'Fechar ferramentas V2':'Abrir ferramentas de teste V2'}
          title={v2ToolsOpen?'Fechar ferramentas':'Ferramentas'}
