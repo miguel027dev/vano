@@ -61,6 +61,24 @@ export async function fetchMaviLiveCallStream(input,{signal}={}){
  return response;
 }
 
+/**
+ * V2 admin live STT: raw recorded voice turn. The microphone never leaves the
+ * browser as a continuously hot endpoint. Only VAD-bounded audio is uploaded.
+ */
+export async function transcribeMaviLiveTurn(blob,{signal}={}){
+ if(!(blob instanceof Blob)||blob.size<1800||blob.size>1_500_000)throw Error('invalid_live_audio');
+ const token=await initializeCsrf();
+ const response=await fetch(BASE+'/admin/mavi-live/transcribe',{
+  method:'POST',credentials:'include',signal,
+  headers:{'Content-Type':blob.type||'audio/webm','X-VANO-CSRF':token},
+  body:blob
+ });
+ if(!response.ok)throw Error('live_transcription_unavailable');
+ const data=await response.json();
+ if(typeof data?.text!=='string'||data.text.trim().length<2)throw Error('no_live_speech');
+ return data.text.trim().slice(0,360);
+}
+
 /** Legacy whole-blob fallback for browsers without MediaSource MP3 support. */
 export async function fetchMaviAudio(ticket,{signal}={}){
  const response=await fetchMaviAudioStream(ticket,{signal});
