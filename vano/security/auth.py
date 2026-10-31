@@ -39,8 +39,10 @@ def _shared_rate_limit(bucket_key, limit, window):
     except Exception:
         if db is not None:
             db.rollback()
-        app.logger.exception("Shared security rate limiter unavailable")
-        return False
+        app.logger.exception("Shared security rate limiter unavailable; using already-enforced local throttle")
+        # rate_limit() has already checked and recorded this request locally.
+        # Database failure must not turn an outage into a global HTTP 429.
+        return True
 
 
 def rate_limit(key, limit=20, window=60, *, identity=None, include_ip=True, shared=False):
