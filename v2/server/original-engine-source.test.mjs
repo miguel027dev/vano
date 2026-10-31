@@ -8,7 +8,7 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
-// Git blob SHA1, not a bare file SHA1. Python engine sources remain pinned.\n// Dependency lock deliberately updated to patched certifi 2026.10.19 (PYSEC-2026-4320).
+// Git blob SHA1, not a bare file SHA1. Python engine sources remain pinned.\n// Dependency lock updated to patched certifi 2026.10.19 and Brotli 1.2.1 (PYSEC-2026-4322).
 const expected={
  'app.py':'aebccf0c0e428b5ccb6e57d9bba7929f10d9f229',
  'vano/services/routing.py':'ea9b0befd7f578fd4a9c91efff5c513a4afd224e',
@@ -23,7 +23,7 @@ const expected={
  'db_backend.py':'1adc9049befe648071c03c91589f447e8d792954',
  'vano/config.py':'e65a3f2948959989bd19bf5b4f5189ae9623eac7',
  'mobile_routes.py':'903db9421d0aacfc12e5cf851cc1f0ae3d5d4885',
- 'requirements.lock':'221df6d594a4ee1a1d41647dc888d45f8422ec17'
+ 'requirements.lock':'42c7f5606d6b2fa2497f3ffa3c0e74fd45808a95'
 };
 const embedded=fs.existsSync(path.join(root,'app.py'));
 test('embedded VANO original Python engine has exact audited Git blobs', {skip:!embedded},()=>{
