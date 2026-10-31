@@ -200,7 +200,7 @@
 (() => {
   if (!/^\/v2\/?$/i.test(location.pathname) || window.VANO_BOOT?.isAdmin !== true) return;
   const script = document.createElement('script');
-  script.src = '/static/vano-gemini-live-v2.js?v=20261030';
+  script.src = '/static/vano-gemini-live.js?v=20261030';
   script.defer = true;
   document.head.appendChild(script);
 })();
