@@ -465,11 +465,11 @@ function paintUserMarker(p){
 function stopPuckAnimation(){if(puckFrame!==null){cancelAnimationFrame(puckFrame);puckFrame=null}puckMotionLastTs=0}
 function resetPuckMotionModel(){puckRouteAlong=null;puckRouteVelocity=0;puckRouteTargetAlong=null;puckRouteTargetSpeed=0;puckRouteFixAt=0}
 function updatePuckRouteModel(next,now,{instant=false}={}){
-  const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length&&Number.isFinite(+next?._distanceAlong);if(!navOn){if(next?._routeSnapped===false)resetPuckMotionModel();return false}
+  const navOn=!!activeNav?.classList.contains('show')&&!!selectedRoute?.geometry?.coordinates?.length&&next?._routeSnapped!==false&&Number.isFinite(+next?._distanceAlong);if(!navOn){if(next?._routeSnapped===false)resetPuckMotionModel();return false}
   let along=Math.max(0,Math.min(routeTotalGeometry-1,+next._distanceAlong||0)),gpsSpeed=Number.isFinite(+next.speed)?Math.max(0,+next.speed):0;
   if(instant||!Number.isFinite(puckRouteAlong)){puckRouteAlong=along;puckRouteVelocity=gpsSpeed;puckRouteTargetAlong=along;puckRouteTargetSpeed=gpsSpeed;puckRouteFixAt=now;return true}
   const dtFix=puckRouteFixAt?Math.max(.12,Math.min(3,(now-puckRouteFixAt)/1000)):0,previousTarget=Number.isFinite(puckRouteTargetAlong)?puckRouteTargetAlong:along;let measured=dtFix>0?Math.max(0,(along-previousTarget)/dtFix):0;if(!Number.isFinite(measured)||measured>65)measured=0;
-  const inferred=measured>.18?(gpsSpeed>.18?gpsSpeed*.68+measured*.32:measured):gpsSpeed;puckRouteTargetSpeed=Math.max(0,Math.min(60,Number.isFinite(inferred)?inferred:0));
+  const movingConfirmed=gpsSpeed>.45||(next._moving===true&&measured>.75);const inferred=movingConfirmed?(measured>.18?(gpsSpeed>.18?gpsSpeed*.68+measured*.32:measured):gpsSpeed):0;puckRouteTargetSpeed=Math.max(0,Math.min(60,Number.isFinite(inferred)?inferred:0));
   if(Number.isFinite(puckRouteAlong)&&along<puckRouteAlong&&puckRouteAlong-along<9)along=puckRouteAlong;puckRouteTargetAlong=along;puckRouteFixAt=now;return true
 }
 // Predict only a small part of the interval between real GPS fixes. The GPS
