@@ -8,6 +8,9 @@
 {% if v2_preview|default(false) %}
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link rel="stylesheet" href="{{ url_for('static', filename='vano-v2.css') }}?v=v2-sim-20261017-r1">
+{% if current_user and current_user['role']=='admin' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-sonic-call.css') }}?v={{ vano_build_id }}">
+{% endif %}
 {% endif %}
 
 <script>
@@ -562,5 +565,8 @@
 
 {% if v2_preview|default(false) %}
 <script defer src="{{ url_for('static', filename='vano-v2.js') }}?v=v2-sim-20261017-r1"></script>
+{% if current_user and current_user['role']=='admin' %}
+<script defer src="{{ url_for('static', filename='vano-sonic-call.js') }}?v={{ vano_build_id }}"></script>
+{% endif %}
 {% endif %}
 {% endblock %}
