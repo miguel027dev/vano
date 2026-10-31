@@ -31,6 +31,7 @@ import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
 import {maviLiveStatus,cleanMaviLiveInput,streamMaviLiveCall} from './mavi-live-call.mjs';
 import {liveSttProvider,liveSttMime,MAX_LIVE_AUDIO_BYTES,transcribeMaviLiveAudio} from './mavi-live-stt.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
+import {publicBenchmarkPayload} from './benchmark-public-results.mjs';
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
 import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffic.mjs';
@@ -506,6 +507,11 @@ async function route(req, res) {
   const pathname = u.pathname;
   if((pathname.startsWith('/api/admin/dev-sync')||pathname.startsWith('/api/agent/dev-sync')) &&
       await devSync.handle(req,res,pathname))return;
+  // Audited publications only, no customer trip data, route calls or writes.
+  if(pathname==='/api/benchmark/v1/results'&&req.method==='GET'){
+    if(!limits(req,res,'public-benchmark-results',30,60000))return;
+    return json(res,200,publicBenchmarkPayload({query:u.searchParams}),{'Cache-Control':'public, max-age=120'});
+  }
   // Public agent/human benchmarking: same real route engine, no account, no writes.
   if((pathname==='/api/benchmark/v1/capabilities'||pathname==='/.well-known/vano-benchmark.json')&&req.method==='GET'){
     const enabled=process.env.VANO_PUBLIC_BENCHMARK_ENABLED!=='0';
