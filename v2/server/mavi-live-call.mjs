@@ -14,8 +14,14 @@ const MAX_REPLY=420;
 const MAX_AUDIO=2_000_000;
 const TIMEOUT_MS=35000;
 
+// Dedicated preview flags: never enable existing public MAVI voice adapters.
+function liveProviders(env){
+ const nvidia=maviNvidiaConfig({...env,VANO_MAVI_NVIDIA_ENABLED:'1'});
+ const sonic=maviCartesiaConfig({...env,VANO_MAVI_CARTESIA_ENABLED:'1'});
+ return {nvidia,sonic};
+}
 export function maviLiveStatus(env=process.env){
- const nvidia=maviNvidiaConfig(env),sonic=maviCartesiaConfig(env);
+ const {nvidia,sonic}=liveProviders(env);
  return {
   enabled:env.VANO_MAVI_LIVE_CALL_ENABLED==='1'&&nvidia.enabled&&sonic.enabled,
   speechInput:'browser',
@@ -72,8 +78,7 @@ const textSystem=[
 export async function streamMaviLiveCall(res,input,{
  fetcher=fetch,env=process.env,onLog=()=>{}
 }={}){
- const nvidia=maviNvidiaConfig(env);
- const sonic=maviCartesiaConfig(env);
+ const {nvidia,sonic}=liveProviders(env);
  const abort=new AbortController();
  const timeout=setTimeout(()=>abort.abort(),TIMEOUT_MS);
  const closed=()=>abort.abort();
