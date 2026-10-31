@@ -1,4 +1,4 @@
-/* Capture mono speech from the browser and deliver PCM16 at 16 kHz.
+/* Capture 20ms mono PCM16 frames at 16 kHz independent of playback.
    Render and microphone contents are never written to storage or console. */
 class VanoGeminiPcmProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -6,7 +6,7 @@ class VanoGeminiPcmProcessor extends AudioWorkletProcessor {
     this.phase = 0;
     this.accumulated = 0;
     this.count = 0;
-    this.output = new Int16Array(640);
+    this.output = new Int16Array(320);
     this.offset = 0;
   }
   process(inputs) {
@@ -27,7 +27,7 @@ class VanoGeminiPcmProcessor extends AudioWorkletProcessor {
       if (this.offset === this.output.length) {
         const buffer = this.output.buffer;
         this.port.postMessage(buffer, [buffer]);
-        this.output = new Int16Array(640);
+        this.output = new Int16Array(320);
         this.offset = 0;
       }
     }
