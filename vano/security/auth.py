@@ -298,6 +298,7 @@ def inject_globals():
         "APP_NAME": APP_NAME,
         "vano_build_id": VANO_BUILD_ID,
         "csrf_token": csrf_token,
+        "csp_nonce": lambda: str(getattr(g, "csp_nonce", "") or ""),
         "current_year": datetime.now().year,
         "google_ready": google_ready(),
         "safety_level_from_score": safety_level_from_score if "safety_level_from_score" in globals() else None,
