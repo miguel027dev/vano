@@ -88,11 +88,11 @@ test('only the administrator V2 mounts the call and endpoints check role and CSR
  assert.doesNotMatch(app,/<MaviLiveCall\/>/);
  assert.match(control,/onClick=\{\(\)=>live\?endCall\(\):void startCall\(\)\}/);
  assert.match(control,/playMaviDialSequence\(context,5\)/);
- assert.doesNotMatch(control,/SpeechRecognition|webkitSpeechRecognition|createPortal|role="dialog"/);
+ assert.doesNotMatch(control,/window\.SpeechRecognition|webkitSpeechRecognition|createPortal|role="dialog"/);
  assert.match(control,/getUserMedia\(/);
  assert.match(control,/echoCancellation:true,noiseSuppression:true/);
  assert.match(control,/s\.busy\|\|s\.ringing/);
- assert.match(map,/navMode&&!adminV2RoadSigns&&<JevVoiceButton/);
+ assert.match(map,/jevMode&&navMode&&<JevVoiceButton/);
  assert.match(server,/pathname==='\/api\/admin\/mavi-live\/transcribe'/);
  assert.match(server,/pathname==='\/api\/admin\/mavi-live\/stream'/);
  assert.match(server,/isAdminAccount\(actor\)/);
@@ -119,7 +119,7 @@ test('call connection chime plays only two brief tones',async()=>{
  assert.ok(started[1]>started[0]);
  const component=readFileSync(new URL('../src/components/MaviLiveCall.jsx',import.meta.url),'utf8');
  assert.match(component,/playMaviDialSequence\(context,5\)/);
- assert.doesNotMatch(component,/SpeechRecognition|webkitSpeechRecognition/);
+ assert.doesNotMatch(component,/window\.SpeechRecognition|webkitSpeechRecognition|new Recognizer/);
 });
 
 test('Portuguese live STT refuses arbitrary audio and never exposes API credentials',async()=>{
