@@ -1148,7 +1148,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           point=sampleRoute(timeline,state.roadMeters)?.point;
         }else{
           state.roadMeters=null;
-          const freeTarget=d.navigation&&!d.simulationPreview&&!d.droneSimulation&&!reduced
+          const freeTarget=!d.simulationPreview&&!d.droneSimulation&&!reduced
             ?predictFreeGpsVisual(target,state.previousRawFix,{
               sourceAt:d.telemetry?.sourceAt,now:Date.now(),
               speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
