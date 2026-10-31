@@ -219,22 +219,32 @@
   }
   async function startCapture() {
     if (!context || !stream || socket?.readyState !== WebSocket.OPEN) return;
-    await context.audioWorklet.addModule('/static/vano-gemini-pcm-worklet.js?v=20261030');
+    await context.audioWorklet.addModule('/static/vano-gemini-pcm-worklet.js?v=20261030-duplex');
+    if (!context || context.state === 'closed' || !stream || socket?.readyState !== WebSocket.OPEN) return;
     source = context.createMediaStreamSource(stream);
     worklet = new AudioWorkletNode(context, 'vano-gemini-pcm');
     silent = context.createGain();
     silent.gain.value = 0;
     worklet.port.onmessage = event => {
-      if (muted || socket?.readyState !== WebSocket.OPEN || socket.bufferedAmount > 250000) return;
-      send({realtimeInput: {audio: {
+      // Independent uplink: do not wait for downlink audio to finish.
+      if (muted || socket?.readyState !== WebSocket.OPEN) return;
+      if (socket.bufferedAmount > UPSTREAM_BACKPRESSURE_BYTES) {
+        liveMetrics.dropped++;
+        if (liveMetrics.dropped % 25 === 1) metricsLabel();
+        return;
+      }
+      if (send({realtimeInput: {audio: {
         mimeType: 'audio/pcm;rate=16000',
         data: bytesToBase64(event.data)
-      }}});
+      }}})) {
+        liveMetrics.sent++;
+        if (liveMetrics.sent % 25 === 0) metricsLabel();
+      }
     };
     source.connect(worklet);
     worklet.connect(silent);
     silent.connect(context.destination);
-    status('Ouvindo…');
+    status('Chamada ativa · ouvindo…');
   }
   async function stopSession() {
     if (closing) return;
@@ -250,7 +260,7 @@
     context = null;
     nextPlayAt = 0; muted = false; starting = false;
     firstAudioRecorded = false;
-    muteBtn.textContent = 'Silenciar';
+    muteBtn.textContent = 'Silenciar mic';
     controls(false);
     status('Conversa encerrada');
     closing = false;
@@ -258,14 +268,20 @@
   async function startSession() {
     if (starting || socket) return;
     starting = true; closing = false; controls(false); status('Solicitando microfone…');
+    liveMetrics = {sent:0,dropped:0,received:0,interruptions:0,queuedMs:0,setupMs:null,firstAudioMs:null};
+    lastUserTranscriptionAt = 0;
+    sessionRequestStartedAt = 0;
+    metricsLabel();
     try {
       if (!navigator.mediaDevices?.getUserMedia || !window.AudioWorkletNode) {
         throw new Error('Navegador sem suporte a áudio em tempo real.');
       }
-      stream = await navigator.mediaDevices.getUserMedia({audio: {
+      const acquiredStream = await navigator.mediaDevices.getUserMedia({audio: {
         echoCancellation: true, noiseSuppression: true, autoGainControl: true,
         channelCount: 1
       }});
+      if (!starting || closing) { acquiredStream.getTracks().forEach(t => t.stop()); return; }
+      stream = acquiredStream;
       context = new AudioContext({latencyHint: 'interactive'});
       await context.resume();
       status('Autenticando sessão temporária…');
@@ -282,6 +298,7 @@
           : 'Não foi possível criar sessão (HTTP ' + response.status + ').');
       }
       status('Conectando ao Gemini Live…');
+      sessionRequestStartedAt = performance.now();
       socket = new WebSocket('wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained?access_token=' + encodeURIComponent(payload.token));
       socket.addEventListener('open', () => {
         const systemText = 'Você é MAVI, a assistente do VANO Maps, em um laboratório privado de voz no mapa V2. Fale sempre em português brasileiro, com naturalidade, sem respostas longas. Você pode conversar continuamente e aceitar interrupções. Para saber o que está no mapa, use get_vano_map_context. Não invente GPS, trânsito, ETA, incidentes ou rotas. Não altere a rota, não inicie navegação, não envie denúncias ou SOS. Quando pedirem mudança de rota, explique que este laboratório ainda precisa da confirmação na interface. Respeite a segurança na condução: não estimule a interação com a tela enquanto dirige.';
@@ -292,7 +309,11 @@
           speechConfig: {voiceConfig: {prebuiltVoiceConfig: {voiceName: voiceEl.value}}},
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          realtimeInputConfig: {automaticActivityDetection: {}},
+          realtimeInputConfig: {automaticActivityDetection: {
+            disabled: false,
+            prefixPaddingMs: 80,
+            silenceDurationMs: 300
+          }},
           tools: [{functionDeclarations: [{
             name: 'get_vano_map_context',
             description: 'Lê apenas o estado visível do mapa VANO V2, sem alterar navegação ou acessar dados externos.',
@@ -327,15 +348,16 @@
   stopBtn.addEventListener('click', stopSession);
   muteBtn.addEventListener('click', () => {
     muted = !muted;
-    muteBtn.textContent = muted ? 'Reativar' : 'Silenciar';
+    muteBtn.textContent = muted ? 'Ativar mic' : 'Silenciar mic';
     if (muted) send({realtimeInput: {audioStreamEnd: true}});
-    status(muted ? 'Microfone silenciado' : 'Ouvindo…');
+    status(muted ? 'Microfone silenciado' : 'Chamada ativa · ouvindo…');
   });
   window.addEventListener('pagehide', () => { stopSession().catch(() => {}); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && socket) stopSession().catch(() => {});
   });
 
+  metricsLabel();
   fetch('/api/admin/gemini-live/capabilities', {credentials: 'same-origin'})
     .then(response => response.ok ? response.json() : Promise.reject())
     .then(data => {
