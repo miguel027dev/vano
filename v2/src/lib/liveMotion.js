@@ -16,7 +16,7 @@ export function easeGpsPoint(previous,incoming,elapsedMs,{accuracy=10,speed=0,re
   const moving=Number.isFinite(speed)&&speed>1.5;
   // Make the arrow catch up to genuine fresh fixes quickly. Hold slow/stopped
   // positions steady instead of chasing sub-meter GPS multipath.
-  const halfLife=reducedMotion?60:moving?(speed>=8?300:340):280;
+  const halfLife=reducedMotion?60:moving?(speed>=8?185:235):260;
   const next=blendPoint(previous,incoming,elapsedMs,halfLife);
   return metersBetween(next,incoming)<.35?incoming:next;
 }
