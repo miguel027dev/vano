@@ -1583,6 +1583,8 @@ async function route(req, res) {
     if(db.users.length>=50000) return err(res,503,'Limite de contas deste servidor atingido.');
     if(db.users.some(x=>x.email===em)) return err(res,409,'E-mail já cadastrado.');
     const user={id:hex(12),name:cleanText(body.name,80),email:em,passwordHash:await passwordHash(body.password),createdAt:stamp(),signupMethod:'email',verifiedAt:mailReady?null:stamp(),verificationMethod:mailReady?'pending':'dev'};
+    // Recheck after awaiting scrypt: concurrent signups can pass the first check.
+    if(db.users.some(x=>x.email===em))return err(res,409,'E-mail já cadastrado.');
     db.users.push(user);
     const chosenLanguage=body.language||getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1').language;
     db.preferences=db.preferences.filter(x=>x.owner!==user.id);
@@ -1624,6 +1626,9 @@ async function route(req, res) {
     const rec=db.emailTokens.find(x=>x.kind==='reset'&&x.tokenHash===sha256(b.token||'')&&x.expires>now());
     if(!rec)return err(res,400,'Link expirado ou inválido.');
     const user=db.users.find(x=>x.id===rec.userId);if(!user)return err(res,400,'Link inválido.');
+    // Reserve the one-time token before the asynchronous password derivation.
+    // A concurrent request cannot redeem it while scrypt runs.
+    db.emailTokens=db.emailTokens.filter(x=>x!==rec);
     user.passwordHash=await passwordHash(b.password);user.verifiedAt=stamp();user.verificationMethod='email';db.sessions=db.sessions.filter(x=>x.userId!==user.id);
     db.emailTokens=db.emailTokens.filter(x=>x.userId!==user.id);await persist();return json(res,200,{ok:true});
   }
