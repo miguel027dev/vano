@@ -26,6 +26,7 @@ import {isMaviTalkTurn,maviTalkFallback,limitedMaviTalkHistory} from '../src/lib
 import {retrieveMaviKnowledge} from './mavi-grounding.mjs';
 import {maviElevenConfig,maviSpeechText,fetchMaviVoice,MAVI_VOICE_MAX_BYTES,MAVI_VOICE_TICKET_MS} from './mavi-elevenlabs.mjs';
 import {maviCartesiaConfig,fetchMaviCartesiaVoice} from './mavi-cartesia.mjs';
+import {maviLiveStatus,cleanMaviLiveInput,streamMaviLiveCall} from './mavi-live-call.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
@@ -1045,6 +1046,29 @@ async function route(req, res) {
     const lon=Number(u.searchParams.get('lng')),lat=Number(u.searchParams.get('lat'));
     const proximity=u.searchParams.has('lng')&&u.searchParams.has('lat')&&pointOK([lon,lat])?[lon,lat]:null;
     return json(res,200,await search(u.searchParams.get('q'),lang,proximity));
+  }
+  // Experimental MAVI phone-style conversation: NEVER available on /mapa.
+  // Both handlers require a real administrator session, not a guest token.
+  if(pathname==='/api/admin/mavi-live/capabilities'&&req.method==='GET'){
+    const actor=userSession(req)?.user;
+    if(!actor)return err(res,401,'Faça login para testar a MAVI.');
+    if(!isAdminAccount(actor))return err(res,403,'Somente administradores.');
+    return json(res,200,maviLiveStatus());
+  }
+  if(pathname==='/api/admin/mavi-live/stream'&&req.method==='POST'){
+    const actor=userSession(req)?.user;
+    if(!actor)return err(res,401,'Faça login para testar a MAVI.');
+    if(!isAdminAccount(actor))return err(res,403,'Somente administradores.');
+    if(!protectedWrite(req,res))return;
+    if(!limits(req,res,'mavi-live-admin',12,60000))return;
+    if(!limitAccount(res,'mavi-live-admin',String(actor.id),48,900000))return;
+    if(!maviLiveStatus().enabled)return err(res,503,'Chamada Sonic não configurada.');
+    const input=cleanMaviLiveInput(await getBody(req));
+    if(!input)return err(res,400,'Fala ou histórico inválidos.');
+    return await streamMaviLiveCall(res,input,{
+      onLog:result=>console.info('MAVI live',result.ok?'ok':'unavailable',
+        result.ok?Math.round(result.latencyMs)+'ms':result.reason)
+    });
   }
   if(pathname==='/api/v2/assistant/audio-capabilities'&&req.method==='GET'){
     return json(res,200,{serverTranscription:!!jevSttProvider(),maxAudioBytes:2500000,maxAudioSeconds:12});
