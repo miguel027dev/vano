@@ -47,6 +47,20 @@ export async function fetchMaviAudioStream(ticket,{signal}={}){
  return response;
 }
 
+/** /v2 admin MAVI conversation: streaming NDJSON, never a public text-to-audio proxy. */
+export async function fetchMaviLiveCallStream(input,{signal}={}){
+ const csrf=await initializeCsrf();
+ const response=await fetch(BASE+'/admin/mavi-live/stream',{
+  method:'POST',credentials:'include',signal,
+  headers:{'Content-Type':'application/json','X-VANO-CSRF':csrf},
+  body:JSON.stringify(input)
+ });
+ if(!response.ok||!response.body)throw Error('mavi_live_unavailable');
+ if(!(response.headers.get('content-type')||'').startsWith('application/x-ndjson'))
+  throw Error('mavi_live_invalid_stream');
+ return response;
+}
+
 /** Legacy whole-blob fallback for browsers without MediaSource MP3 support. */
 export async function fetchMaviAudio(ticket,{signal}={}){
  const response=await fetchMaviAudioStream(ticket,{signal});
