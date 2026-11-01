@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 
-export const emptyData = () => ({ users: [], sessions: [], favorites: [], history: [], reports: [], preferences: [], routines: [], usedProofs: [], emailTokens: [], oauthStates: [], intelligence: [], intelligenceNavigation: [] });
+export const emptyData = () => ({ users: [], sessions: [], favorites: [], history: [], reports: [], preferences: [], routines: [], usedProofs: [], emailTokens: [], oauthStates: [], intelligence: [], intelligenceNavigation: [], benchmarkResults: [] });
 export function openStore(filename) {
   const file = path.resolve(filename);
   const dir = path.dirname(file);
