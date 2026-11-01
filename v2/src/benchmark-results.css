@@ -5,7 +5,7 @@
 .pbr-nav{height:83px;border-bottom:1px solid #272727;display:flex;align-items:center;justify-content:space-between;gap:20px}
 .pbr-nav a{text-decoration:none;color:inherit}
 .pbr-brand{font-size:19px;font-weight:900;letter-spacing:-1px;display:flex;align-items:center;gap:10px}.pbr-brand-muted{font-weight:520;color:#adacab;margin-left:5px}
-.pbr-brand-symbol{display:grid;place-items:center;width:36px;height:36px;background:#f59a62;color:#111;border-radius:11px;font-size:30px;line-height:1}
+.pbr-brand-logo{display:block;width:36px;height:36px;object-fit:contain;flex-shrink:0}
 .pbr-nav-actions{display:flex;align-items:center;gap:25px;font-size:13px;color:#b8b7b6;font-weight:650}
 .pbr-nav-actions a{display:inline-flex;align-items:center;gap:7px}
 .pbr-nav-map{border:1px solid #454242;border-radius:10px;padding:11px 15px;color:#fff!important}
