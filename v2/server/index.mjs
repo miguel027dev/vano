@@ -1859,7 +1859,8 @@ if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.
 // The scheduled job shares the persistent server store, but never touches users' routes.
 // Results are published as soon as a verified measurement is saved; no deploy per run.
 if(production&&store.persistent===true&&process.env.VANO_DISABLE_AUTOSTART!=='1'&&
-   process.env.VANO_PUBLIC_BENCHMARK_ENABLED!=='0'&&process.env.VANO_BENCHMARK_AUTO_PUBLISH!=='0'){
+   process.env.VANO_PUBLIC_BENCHMARK_ENABLED!=='0'&&process.env.VANO_BENCHMARK_AUTO_PUBLISH!=='0'&&
+    process.env.VANO_BENCHMARK_PUBLICATION_LICENSE_CONFIRMED==='1'){
   startScheduledPublicBenchmarks({db,persist,directions});
   console.info('[VANO benchmark] automatic publication enabled for SP peak slots.');
 }
