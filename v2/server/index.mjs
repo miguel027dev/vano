@@ -518,7 +518,18 @@ async function route(req, res) {
   // Read-only public results: validated curated entries plus verified scheduled runs.
   if(pathname==='/api/benchmark/v1/results'&&req.method==='GET'){
     if(!limits(req,res,'public-benchmark-results',30,60000))return;
-    return json(res,200,publicBenchmarkPayload({query:u.searchParams,records:process.env.VANO_BENCHMARK_PUBLICATION_LICENSE_CONFIRMED==='1'?db.benchmarkResults:[]}),{'Cache-Control':'no-store'});
+    const canPublish=process.env.VANO_BENCHMARK_PUBLICATION_LICENSE_CONFIRMED==='1';
+    const payload=publicBenchmarkPayload({query:u.searchParams,records:canPublish?db.benchmarkResults:[]});
+    return json(res,200,{
+      ...payload,
+      publication:{
+        status:canPublish?'enabled':'pending_provider_rights',
+        allowsProviderMetrics:canPublish,
+        explanation:canPublish
+          ? 'Medições autorizadas e validadas podem aparecer no histórico público.'
+          : 'Medições de rotas não podem ser armazenadas ou divulgadas até confirmar os direitos dos provedores. Testes executados não são necessariamente resultados publicáveis.'
+      }
+    },{'Cache-Control':'no-store'});
   }
   // Public agent/human benchmarking: same real route engine, no account, no writes.
   if((pathname==='/api/benchmark/v1/capabilities'||pathname==='/.well-known/vano-benchmark.json')&&req.method==='GET'){
