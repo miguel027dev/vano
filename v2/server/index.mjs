@@ -170,6 +170,13 @@ const persist = async opts => {
   pruneGuestRecords(db,time);
   await store.save(opts);
 };
+// Do not retain or serve provider-derived routing metrics without explicit
+// contractual rights for storage and public redistribution.
+if(process.env.VANO_BENCHMARK_PUBLICATION_LICENSE_CONFIRMED!=='1'&&db.benchmarkResults.length){
+  db.benchmarkResults=[];
+  await persist({backup:false});
+  console.warn('[VANO benchmark] prior unlicensed route snapshots purged.');
+}
 // Invalidate legacy plaintext sessions once, without leaving a plaintext backup.
 let migrated = false;
 if (db.sessions.some(s => Object.hasOwn(s, 'token') || !s.tokenHash)) {
@@ -511,7 +518,7 @@ async function route(req, res) {
   // Read-only public results: validated curated entries plus verified scheduled runs.
   if(pathname==='/api/benchmark/v1/results'&&req.method==='GET'){
     if(!limits(req,res,'public-benchmark-results',30,60000))return;
-    return json(res,200,publicBenchmarkPayload({query:u.searchParams,records:db.benchmarkResults}),{'Cache-Control':'no-store'});
+    return json(res,200,publicBenchmarkPayload({query:u.searchParams,records:process.env.VANO_BENCHMARK_PUBLICATION_LICENSE_CONFIRMED==='1'?db.benchmarkResults:[]}),{'Cache-Control':'no-store'});
   }
   // Public agent/human benchmarking: same real route engine, no account, no writes.
   if((pathname==='/api/benchmark/v1/capabilities'||pathname==='/.well-known/vano-benchmark.json')&&req.method==='GET'){
