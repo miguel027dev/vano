@@ -22,11 +22,14 @@ export default function BenchmarkResultsPage(){
    setLoading(true);setError('');
    const params=new URLSearchParams({source:filters.source,period:filters.period,page:String(filters.page)});
    if(filters.category)params.set('category',filters.category);
-   fetch('/api/benchmark/v1/results?'+params,{signal:controller.signal,headers:{Accept:'application/json'}})
+   const refresh=()=>fetch('/api/benchmark/v1/results?'+params,{signal:controller.signal,cache:'no-store',headers:{Accept:'application/json'}})
     .then(async r=>{if(!r.ok)throw Error('O servidor não retornou os dados do benchmark.');return r.json()})
-    .then(data=>{setReport(data);setLoading(false)})
+    .then(data=>{setReport(data);setError('');setLoading(false)})
     .catch(e=>{if(e.name!=='AbortError'){setError(e.message||'Erro ao carregar');setLoading(false)}});
-   return()=>controller.abort();
+   void refresh();
+   // Show newly published server measurements without requiring a page reload.
+   const poll=window.setInterval(()=>{if(!document.hidden)void refresh();},60000);
+   return()=>{window.clearInterval(poll);controller.abort();};
  },[filters]);
  useEffect(()=>{document.title='Resultados de benchmark | VANO Maps';},[]);
  const change=(name,value)=>setFilters(x=>({...x,[name]:value,page:1}));
