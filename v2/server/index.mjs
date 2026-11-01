@@ -32,6 +32,7 @@ import {maviLiveStatus,cleanMaviLiveInput,streamMaviLiveCall} from './mavi-live-
 import {liveSttProvider,liveSttMime,MAX_LIVE_AUDIO_BYTES,transcribeMaviLiveAudio} from './mavi-live-stt.mjs';
 import {benchmarkCapabilities,benchmarkScenarios,parseBenchmarkParams,summarizeBenchmark,PUBLIC_BENCHMARK_RATE} from './benchmark.mjs';
 import {publicBenchmarkPayload} from './benchmark-public-results.mjs';
+import {startScheduledPublicBenchmarks} from './benchmark-autopublish.mjs';
 import {etaConsoleReport} from './route-eta-diagnostics.mjs';
 import {tomTomFlowAudit} from './tomtom-flow-audit.mjs';
 import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffic.mjs';
@@ -507,10 +508,10 @@ async function route(req, res) {
   const pathname = u.pathname;
   if((pathname.startsWith('/api/admin/dev-sync')||pathname.startsWith('/api/agent/dev-sync')) &&
       await devSync.handle(req,res,pathname))return;
-  // Audited publications only, no customer trip data, route calls or writes.
+  // Read-only public results: validated curated entries plus verified scheduled runs.
   if(pathname==='/api/benchmark/v1/results'&&req.method==='GET'){
     if(!limits(req,res,'public-benchmark-results',30,60000))return;
-    return json(res,200,publicBenchmarkPayload({query:u.searchParams}),{'Cache-Control':'public, max-age=120'});
+    return json(res,200,publicBenchmarkPayload({query:u.searchParams,records:db.benchmarkResults}),{'Cache-Control':'no-store'});
   }
   // Public agent/human benchmarking: same real route engine, no account, no writes.
   if((pathname==='/api/benchmark/v1/capabilities'||pathname==='/.well-known/vano-benchmark.json')&&req.method==='GET'){
@@ -1855,6 +1856,13 @@ const host=process.env.API_HOST||'127.0.0.1';
  // Do not accept public bind addresses outside the trusted Render runtime.
  if(production && !['127.0.0.1','::1','localhost'].includes(host) && !(renderWeb && host==='0.0.0.0')) throw Error('O backend de produção deve ficar privado ou protegido pelo proxy HTTPS do Render.');
 if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
+// The scheduled job shares the persistent server store, but never touches users' routes.
+// Results are published as soon as a verified measurement is saved; no deploy per run.
+if(production&&store.persistent===true&&process.env.VANO_DISABLE_AUTOSTART!=='1'&&
+   process.env.VANO_PUBLIC_BENCHMARK_ENABLED!=='0'&&process.env.VANO_BENCHMARK_AUTO_PUBLISH!=='0'){
+  startScheduledPublicBenchmarks({db,persist,directions});
+  console.info('[VANO benchmark] automatic publication enabled for SP peak slots.');
+}
 // Warm the actual worldwide OSM camera catalog once on Render startup.
 // This is nonblocking: a slow or down provider never delays the API or routing.
 // The result is logged as public aggregate counts, never individual locations.
