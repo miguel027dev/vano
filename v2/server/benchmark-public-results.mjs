@@ -1,7 +1,7 @@
 /**
  * Public benchmark results contract — curated, non-personal measurements.
- * This does NOT execute, mutate or auto-publish the route benchmark endpoint.
- * Publication requires changing the audited public dataset in a reviewed commit.
+ * A separate single-instance scheduler records verified VANO-only route comparisons.
+ * Public GET requests remain strictly read-only and never trigger route calculations.
  */
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
@@ -43,7 +43,7 @@ export function validatedPublicBenchmarks(raw){
     };
   }).filter(Boolean).sort((a,b)=>b.measuredAt.localeCompare(a.measuredAt)||a.id.localeCompare(b.id));
 }
-export function publicBenchmarkPayload({query=new URLSearchParams(),now=new Date()}={}){
+export function publicBenchmarkPayload({query=new URLSearchParams(),now=new Date(),records=[]}={}){
   let source=query.get('source')||'vano_fastest',category=query.get('category')||'',period=query.get('period')||'30d',page=Number(query.get('page')||1);
   if(!SOURCES.has(source)&&source!=='all')source='vano_fastest';
   if(!CATEGORIES.has(category))category='';
@@ -51,7 +51,7 @@ export function publicBenchmarkPayload({query=new URLSearchParams(),now=new Date
   if(!Number.isSafeInteger(page)||page<1)page=1;
   page=Math.min(10000,page);
   const raw=JSON.parse(fs.readFileSync(dataPath,'utf8'));
-  const rows=validatedPublicBenchmarks(raw?.records||[]);
+  const rows=validatedPublicBenchmarks([...(raw?.records||[]),...(Array.isArray(records)?records:[])].slice(-2000));
   const cutoff=period==='all'?null:now.getTime()-(period==='7d'?7:30)*86400000;
   const filtered=rows.filter(r=>(source==='all'||r.reference.source===source)&&(!category||r.category===category)&&(!cutoff||Date.parse(r.measuredAt)>=cutoff));
   const eta=filtered.map(r=>r.delta.etaMin).filter(n=>n!==null),pct=filtered.map(r=>r.delta.etaPercent).filter(n=>n!==null);
@@ -65,8 +65,8 @@ export function publicBenchmarkPayload({query=new URLSearchParams(),now=new Date
     records:filtered.slice((page-1)*25,page*25),
     units:{eta:'minutes',distance:'kilometers',latency:'milliseconds'},
     interpretation:'Delta equals reference minus VANO. Positive means lower predicted ETA or shorter distance for VANO, not proven real-world arrival.',
-    provenance:'Only reviewed, explicitly published, non-personal runs. VANO fastest is an internal baseline, not Google Maps.',
-    limitations:['Benchmark endpoint does not store history automatically.','Estimated arrival times are not observed travel times.',
+    provenance:'Reviewed records and verified automatic VANO-only comparisons. VANO fastest is an internal baseline, NOT Google Maps.',
+    limitations:['Scheduled public VANO comparisons are recorded separately from on-demand, read-only laboratory requests.','Estimated arrival times are not observed travel times.',
       'Traffic and safety signals are not safety guarantees.','Different reference providers are not pooled into one ETA average.']
   };
 }
