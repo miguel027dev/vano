@@ -86,8 +86,8 @@ export function startScheduledPublicBenchmarks({db,persist,directions,logger=con
     }finally{busy=false;}
   }
   // Startup recovery only inside the first ten minutes of a configured slot.
-  void tick().catch(()=>logger.warn('[VANO benchmark] scheduler tick failed.'));
+  const ready=tick().catch(()=>logger.warn('[VANO benchmark] scheduler tick failed.'));
   const timer=setInterval(()=>{void tick().catch(()=>logger.warn('[VANO benchmark] scheduler tick failed.'));},pollMs);
   timer.unref?.();
-  return {stop(){clearInterval(timer);},runCheck:tick};
+  return {stop(){clearInterval(timer);},runCheck:tick,ready};
 }
