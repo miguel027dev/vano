@@ -140,6 +140,7 @@ def test_admin_beta_retest_status_persists_without_marking_resolved(intake, monk
     monkeypatch.setattr(public, 'get_db', public_db)
     monkeypatch.setattr(public, 'validate_csrf', lambda: True)
     monkeypatch.setattr(public, 'rate_limit', lambda *args, **kwargs: True)
+    monkeypatch.setattr(public, 'audit', lambda *args, **kwargs: None)
     with runtime.app.test_request_context('/admin/beta/1', method='POST',
             data={'status': 'ready_for_retest', 'resolution': 'Ajuste aplicado em RC-1, aguardando reteste.'},
             base_url='https://localhost'):
