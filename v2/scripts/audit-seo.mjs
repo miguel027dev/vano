@@ -14,7 +14,7 @@ const machine=fs.readFileSync(path.join(dist,'llms.txt'),'utf8');
 assert.equal(new Set(PUBLIC_PATHS).size,PUBLIC_PATHS.length,'duplicate public routes');
 assert.equal(new Set(PUBLIC_PAGES.map(p=>p.title)).size,PUBLIC_PAGES.length,'duplicate titles');
 assert.ok(robots.includes('Sitemap:'));assert.ok(machine.includes('# VANO Maps'));
-for(const [route,canonical,heading] of [['','/mapa','Escolha seu caminho com mais contexto'],['inicio','/mapa','Escolha seu caminho com mais contexto'],['mapa','/mapa','Mapa e rotas VANO']]){
+for(const [route,canonical,heading] of [['','/mapa','Escolha seu caminho com mais contexto'],['inicio','/mapa','Escolha seu caminho com mais contexto'],['mapa','/mapa','VANO Maps: abra o mapa e planeje sua rota']]){
  const content=fs.readFileSync(path.join(dist,route,'index.html'),'utf8');
  assert.ok(content.includes('<h1>'+heading+'</h1>'),'Missing crawlable entry: '+route);
  assert.ok(content.includes('rel="canonical" href="'+site+canonical+'"'),'Bad entry canonical: '+route);
@@ -25,6 +25,9 @@ assert.ok(sitemap.includes('<loc>'+site+'/mapa</loc>'),'Missing map in sitemap')
 const sitemapURLs=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
 assert.deepEqual(sitemapURLs,[site+'/mapa',...PUBLIC_PAGES.map(p=>site+p.path)],'Sitemap must list unique canonical non-redirecting URLs');
 const mapHtml=fs.readFileSync(path.join(dist,'mapa','index.html'),'utf8');
+assert.ok(mapHtml.includes('<title>VANO Maps — GPS, Rotas e Trânsito Online</title>'),'Primary map title must lead with VANO Maps');
+assert.ok(mapHtml.includes('content="Abra o VANO Maps para pesquisar endereços'),'Primary map description must introduce the map');
+assert.ok(mapHtml.includes('href="/mapa">Abrir VANO Maps'),'Primary map should offer a clear entry action');
 assert.ok(mapHtml.includes('href="/comparar-rotas"')&&mapHtml.includes('href="/rotas-em-sao-paulo"'),'Map should link to useful guides');
 assert.ok(mapHtml.includes('property="og:image"')&&mapHtml.includes('name="twitter:image"'),'Map must have sharing metadata');
 assert.ok(mapHtml.includes('"@type":"WebApplication"'),'Map must identify its app in structured data');
@@ -42,6 +45,7 @@ for(const page of PUBLIC_PAGES){
   assert.ok(content.includes('property="og:image"')&&content.includes('name="twitter:card"'),'Missing sharing metadata: '+route);
   assert.ok(content.includes('"@type":"Organization"'),'Missing publisher data: '+route);
   assert.ok(content.includes('href="/termos-de-uso"'),'Missing legal navigation: '+route);
+  assert.ok(content.includes('href="/mapa"'),'Public content should link to the main map: '+route);
   assert.equal(pageForPath(route)?.path,page.path);
  }
 }
