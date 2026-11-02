@@ -20,7 +20,7 @@ export function LegalDocumentPage({page}){
  return <main className="v51-legal" id="conteudo" role="main">
   <div className="v51-legal-shell">
    <nav className="v51-legal-breadcrumb" aria-label="Caminho da página">
-    <Link to="/inicio" aria-label="VANO Maps — início">VANO <span>Maps</span></Link>
+    <Link to="/mapa" aria-label="VANO Maps — abrir mapa">VANO <span>Maps</span></Link>
     <ChevronRight size={15} aria-hidden="true"/>
     <Link to="/termos-de-uso">Informações legais</Link>
     <ChevronRight size={15} aria-hidden="true"/>
@@ -71,7 +71,7 @@ export function LegalDocumentPage({page}){
     <div><span className="v51-legal-endcap-label">PRECISA DE AJUDA?</span><h2>Clareza em cada caminho.</h2><p>Consulte as orientações do VANO, tire dúvidas e saiba onde encontrar informações sobre sua conta.</p></div>
     <div className="v51-legal-endcap-actions"><Link to="/contato">Canais de contato <ArrowRight size={17}/></Link><Link to="/ajuda">Central de ajuda <ArrowRight size={17}/></Link></div>
    </section>
-   <footer className="v51-legal-footer"><Link to="/inicio"><Map size={16}/> VANO Maps</Link><span>Informação, privacidade e segurança.</span><Link to="/mapa">Voltar ao mapa <ArrowLeft size={15}/></Link></footer>
+   <footer className="v51-legal-footer"><Link to="/mapa"><Map size={16}/> VANO Maps</Link><span>Informação, privacidade e segurança.</span><Link to="/mapa">Voltar ao mapa <ArrowLeft size={15}/></Link></footer>
   </div>
  </main>;
 }
