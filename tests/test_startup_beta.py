@@ -104,7 +104,9 @@ def test_public_metadata_and_private_admin_boundary():
 def test_feedback_text_is_escaped_for_admin():
     with runtime.app.test_request_context('/admin/beta', base_url='https://localhost'):
         html = runtime.render_template('admin_beta.html',rows=[{'id':1,'category':'bug','created_at':'2026-10-10T00:00',
-          'message':'<script>alert(1)</script>','device':'','app_version':'','email':'','status':'pending','resolution':'<svg onload=alert(1)>'}])
+          'message':'<script>alert(1)</script>','device':'','app_version':'','email':'','status':'pending','resolution':'<svg onload=alert(1)>'}],
+          status_labels=public.BETA_FEEDBACK_STATUSES,
+          status_totals=dict.fromkeys(public.BETA_FEEDBACK_STATUSES, 0))
     assert '<script>alert(1)</script>' not in html
     assert '&lt;script&gt;alert(1)&lt;/script&gt;' in html
 
