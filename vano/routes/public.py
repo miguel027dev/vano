@@ -42,6 +42,18 @@ def press_page():
     return render_template("press.html")
 
 
+@app.route("/beta")
+def beta_public_alias():
+    """Keep the beta entry URL stable without creating a second canonical page."""
+    return redirect(url_for("beta_page"), code=302)
+
+
+@app.route("/feedback")
+def beta_feedback_alias():
+    """Send testers straight to the existing protected intake form."""
+    return redirect(url_for("beta_page") + "#feedback", code=302)
+
+
 @app.route("/testar", methods=["GET", "POST"])
 def beta_page():
     """Real beta feedback, private intake, no fabricated tester participation."""
@@ -87,11 +99,27 @@ def beta_page():
     return redirect(url_for("beta_page") + "#feedback")
 
 
+# The status reflects real work, not automatic approval or inferred tester activity.
+BETA_FEEDBACK_STATUSES = {
+    "pending": "Pendente",
+    "investigating": "Em investigação",
+    "ready_for_retest": "Pronto para reteste",
+    "resolved": "Concluído e validado",
+}
+
+
 @app.route("/admin/beta")
 @admin_required
 def admin_beta_feedback():
-    rows = get_db().execute("SELECT * FROM beta_feedback ORDER BY created_at DESC LIMIT 300").fetchall()
-    return render_template("admin_beta.html", rows=rows)
+    db = get_db()
+    rows = db.execute("SELECT * FROM beta_feedback ORDER BY created_at DESC LIMIT 300").fetchall()
+    status_totals = dict.fromkeys(BETA_FEEDBACK_STATUSES, 0)
+    for item in db.execute("SELECT status, COUNT(*) AS total FROM beta_feedback GROUP BY status").fetchall():
+        if item["status"] in status_totals:
+            status_totals[item["status"]] = int(item["total"])
+    return render_template("admin_beta.html", rows=rows,
+                           status_totals=status_totals,
+                           status_labels=BETA_FEEDBACK_STATUSES)
 
 
 @app.route("/admin/beta/<int:feedback_id>", methods=["POST"])
@@ -103,7 +131,7 @@ def admin_beta_update(feedback_id):
         abort(429)
     status = str(request.form.get("status") or "")
     resolution = str(request.form.get("resolution") or "").strip()
-    if status not in {"pending", "investigating", "resolved"} or len(resolution) > 1200:
+    if status not in BETA_FEEDBACK_STATUSES or len(resolution) > 1200:
         abort(400)
     if status == "resolved" and not resolution:
         flash("Descreva a correção ou conclusão para manter o histórico verificável.", "warning")
