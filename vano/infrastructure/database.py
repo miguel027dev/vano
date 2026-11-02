@@ -277,7 +277,7 @@ def init_db():
                 email TEXT NOT NULL DEFAULT '',
                 device TEXT NOT NULL DEFAULT '',
                 app_version TEXT NOT NULL DEFAULT '',
-                status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','investigating','resolved')),
+                status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','investigating','ready_for_retest','resolved')),
                 resolution TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
@@ -726,6 +726,19 @@ def init_db():
         """)
 
         # Additive migrations for existing PostgreSQL databases.
+        # Existing production databases retain the old CHECK even when the
+        # CREATE TABLE statement above changes. Upgrade it only when needed.
+        beta_status_check = db.execute(
+            "SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint "
+            "WHERE conrelid='beta_feedback'::regclass AND conname='beta_feedback_status_check'"
+        ).fetchone()
+        if not beta_status_check or "ready_for_retest" not in beta_status_check["definition"]:
+            db.execute("ALTER TABLE beta_feedback DROP CONSTRAINT IF EXISTS beta_feedback_status_check")
+            db.execute(
+                "ALTER TABLE beta_feedback ADD CONSTRAINT beta_feedback_status_check "
+                "CHECK(status IN ('pending','investigating','ready_for_retest','resolved'))"
+            )
+
         user_columns = table_columns(db, "users")
         user_migrations = {
             "google_sub": "ALTER TABLE users ADD COLUMN google_sub TEXT",
