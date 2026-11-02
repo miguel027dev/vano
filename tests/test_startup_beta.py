@@ -104,6 +104,50 @@ def test_public_metadata_and_private_admin_boundary():
 def test_feedback_text_is_escaped_for_admin():
     with runtime.app.test_request_context('/admin/beta', base_url='https://localhost'):
         html = runtime.render_template('admin_beta.html',rows=[{'id':1,'category':'bug','created_at':'2026-10-10T00:00',
-          'message':'<script>alert(1)</script>','device':'','app_version':'','email':'','status':'pending','resolution':'<svg onload=alert(1)>'}])
+          'message':'<script>alert(1)</script>','device':'','app_version':'','email':'','status':'pending','resolution':'<svg onload=alert(1)>'}],
+          status_labels=public.BETA_FEEDBACK_STATUSES,
+          status_totals=dict.fromkeys(public.BETA_FEEDBACK_STATUSES, 0))
     assert '<script>alert(1)</script>' not in html
     assert '&lt;script&gt;alert(1)&lt;/script&gt;' in html
+
+
+def test_beta_entry_aliases_point_to_the_single_protected_form():
+    client = runtime.app.test_client()
+    beta = client.get('/beta', base_url='https://localhost')
+    feedback = client.get('/feedback', base_url='https://localhost')
+    assert beta.status_code == 302 and beta.location.endswith('/testar')
+    assert feedback.status_code == 302 and feedback.location.endswith('/testar#feedback')
+    assert client.get('/testar', base_url='https://localhost').status_code == 200
+
+
+def test_admin_beta_dashboard_counts_only_real_feedback(intake):
+    client, db, data = intake
+    assert post(client, data).status_code == 302
+    db.execute("INSERT INTO beta_feedback(submission_id,category,message,email,device,app_version,status,resolution,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
+               ('another-id', 'bug', 'GPS salta ao iniciar uma rota.', '', '', '', 'ready_for_retest',
+                'Corrigido na versão QA; aguarda validação em aparelho.', runtime.utcnow_iso(), runtime.utcnow_iso()))
+    db.commit()
+    with runtime.app.test_request_context('/admin/beta', base_url='https://localhost'):
+        html = public.admin_beta_feedback.__wrapped__()
+    assert 'Progresso dos feedbacks' in html
+    assert 'Pronto para reteste' in html
+    assert 'Contagens calculadas dos relatos recebidos' in html
+    assert html.count('class="page-title">1</p>') == 2
+
+
+def test_admin_beta_retest_status_persists_without_marking_resolved(intake, monkeypatch):
+    client, db, data = intake
+    post(client, data)
+    public_db = lambda: db
+    monkeypatch.setattr(public, 'get_db', public_db)
+    monkeypatch.setattr(public, 'validate_csrf', lambda: True)
+    monkeypatch.setattr(public, 'rate_limit', lambda *args, **kwargs: True)
+    monkeypatch.setattr(public, 'audit', lambda *args, **kwargs: None)
+    with runtime.app.test_request_context('/admin/beta/1', method='POST',
+            data={'status': 'ready_for_retest', 'resolution': 'Ajuste aplicado em RC-1, aguardando reteste.'},
+            base_url='https://localhost'):
+        response = public.admin_beta_update.__wrapped__(1)
+    row = db.execute('SELECT status,resolution FROM beta_feedback WHERE id=1').fetchone()
+    assert response.status_code == 302
+    assert row['status'] == 'ready_for_retest'
+    assert 'aguardando reteste' in row['resolution']
