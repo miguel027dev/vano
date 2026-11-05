@@ -91,7 +91,7 @@
     }
   }
 
-  function switchView(name, shouldUpdateHistory = true) {
+  function switchView(name, shouldUpdateHistory = true, scroll = true) {
     const routes = name === 'routes';
     if (dash) dash.hidden = routes;
     if (routeView) routeView.hidden = !routes;
@@ -105,7 +105,7 @@
       history.replaceState(history.state, '', routes ? '#acompanhar-rotas' : '#dashboard');
     }
     if (routes) initMap();
-    window.scrollTo({top:0,behavior:reduceMotion()?'auto':'smooth'});
+    if (scroll) window.scrollTo({top:0,behavior:reduceMotion()?'auto':'smooth'});
   }
 
   navButtons.forEach(button => button.addEventListener('click', event => {
@@ -138,6 +138,6 @@
     el.setAttribute('aria-label', (el.dataset.label || 'Métrica') + ': ' + values[i].toLocaleString('pt-BR'));
   });
 
-  if (location.hash === '#acompanhar-rotas') switchView('routes',false);
-  else switchView('dashboard',false);
+  if (location.hash === '#acompanhar-rotas') switchView('routes',false,false);
+  else switchView('dashboard',false,false);
 })();
