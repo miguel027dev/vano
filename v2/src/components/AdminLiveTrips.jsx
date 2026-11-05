@@ -1,11 +1,12 @@
 import React,{useEffect,useRef,useState} from 'react';
 import mapboxgl from 'mapbox-gl';
+import {VANO_ATLAS_BLACK_STYLE} from '../lib/mapLayers';
 import {ArrowLeft, Crosshair, MapPin, Navigation, Users} from 'lucide-react';
 import {api} from '../lib/api';
 import '../admin-live-trips.css';
 
 const empty=()=>({type:'FeatureCollection',features:[]});
-export default function AdminLiveTrips({onClose}){
+export default function AdminLiveTrips({onClose,embedded=false}){
  const [trips,setTrips]=useState([]),[error,setError]=useState(''),[selected,setSelected]=useState(null),[mapReady,setMapReady]=useState(false);
  const [profile,setProfile]=useState(null),[profileError,setProfileError]=useState(''),[analysis,setAnalysis]=useState(''),[analysisBusy,setAnalysisBusy]=useState(false);
  const container=useRef(null),map=useRef(null),fitted=useRef(false),tripsRef=useRef([]);
@@ -16,18 +17,18 @@ export default function AdminLiveTrips({onClose}){
   if(!token){setError('Mapa indisponível: token Mapbox não configurado.');return;}
   mapboxgl.accessToken=token;
   let instance;
-  try{instance=new mapboxgl.Map({container:container.current,style:'mapbox://styles/mapbox/dark-v11',center:[-46.65,-23.56],zoom:10,pitch:55,bearing:-15,antialias:true,attributionControl:true});}
+  try{instance=new mapboxgl.Map({container:container.current,style:VANO_ATLAS_BLACK_STYLE,center:[-46.65,-23.56],zoom:10,pitch:55,bearing:-15,antialias:true,attributionControl:true});}
   catch{setError('Não foi possível abrir o mapa 3D neste dispositivo.');return;}
   map.current=instance;
   instance.on('load',()=>{
    const layers=instance.getStyle().layers||[];
    const before=layers.find(l=>l.type==='symbol'&&l.layout?.['text-field'])?.id;
-   if(instance.getSource('composite'))instance.addLayer({id:'live-buildings',source:'composite','source-layer':'building',type:'fill-extrusion',minzoom:14,filter:['==','extrude','true'],paint:{'fill-extrusion-color':'#30353d','fill-extrusion-height':['coalesce',['get','height'],0],'fill-extrusion-base':['coalesce',['get','min_height'],0],'fill-extrusion-opacity':0.85}},before);
+   if(instance.getSource('composite')&&!layers.some(l=>l.type==='fill-extrusion'))instance.addLayer({id:'live-buildings',source:'composite','source-layer':'building',type:'fill-extrusion',minzoom:14,filter:['==','extrude','true'],paint:{'fill-extrusion-color':'#30353d','fill-extrusion-height':['coalesce',['get','height'],0],'fill-extrusion-base':['coalesce',['get','min_height'],0],'fill-extrusion-opacity':0.85}},before);
    instance.addSource('live-routes',{type:'geojson',data:empty()});
-   instance.addLayer({id:'live-routes-line',type:'line',source:'live-routes',paint:{'line-color':'#70aaff','line-width':4,'line-opacity':0.8},layout:{'line-join':'round','line-cap':'round'}});
+   instance.addLayer({id:'live-routes-line',type:'line',source:'live-routes',paint:{'line-color':'#f59a62','line-width':4,'line-opacity':0.8},layout:{'line-join':'round','line-cap':'round'}});
    instance.addSource('live-points',{type:'geojson',data:empty()});
-   instance.addLayer({id:'live-points-halo',type:'circle',source:'live-points',paint:{'circle-radius':15,'circle-color':'#6da7ff','circle-opacity':0.18}});
-   instance.addLayer({id:'live-points-core',type:'circle',source:'live-points',paint:{'circle-radius':6,'circle-color':'#8bbaff','circle-stroke-color':'#ffffff','circle-stroke-width':2}});
+   instance.addLayer({id:'live-points-halo',type:'circle',source:'live-points',paint:{'circle-radius':15,'circle-color':'#ffb27b','circle-opacity':0.18}});
+   instance.addLayer({id:'live-points-core',type:'circle',source:'live-points',paint:{'circle-radius':6,'circle-color':'#f59a62','circle-stroke-color':'#ffffff','circle-stroke-width':2}});
    instance.on('click','live-points-core',e=>{const id=e.features?.[0]?.properties?.id;if(id)setSelected(id);});
    instance.on('mouseenter','live-points-core',()=>{instance.getCanvas().style.cursor='pointer';});
    instance.on('mouseleave','live-points-core',()=>{instance.getCanvas().style.cursor='';});
@@ -61,7 +62,7 @@ export default function AdminLiveTrips({onClose}){
  function focusAll(){const m=map.current;if(!m||!tripsRef.current.length)return;const bounds=new mapboxgl.LngLatBounds();tripsRef.current.forEach(t=>bounds.extend(t.coords));m.fitBounds(bounds,{padding:100,maxZoom:15,pitch:55,bearing:-15,duration:800});setSelected(null);}
  function focusTrip(trip){setSelected(trip.id);map.current?.flyTo({center:trip.coords,zoom:16,pitch:60,duration:900,essential:false});}
  const current=trips.find(t=>t.id===selected);
- return <section className="alt-overlay" role="dialog" aria-modal="true" aria-label="Mapa de viagens em andamento">
+ return <section className={'alt-overlay'+(embedded?' alt-embedded':'')} role={embedded?'region':'dialog'} aria-modal={embedded?undefined:'true'} aria-label="Mapa de viagens em andamento">
   <div ref={container} className="alt-map" aria-label="Mapa 3D das viagens"/>
   <header className="alt-toolbar"><button className="alt-glass alt-back" type="button" onClick={onClose}><ArrowLeft size={18}/> <span>Voltar</span></button><div className="alt-title"><span className="alt-live-dot"/><div><strong>Viagens em andamento</strong><small>Mapa ao vivo</small></div></div><button className="alt-glass alt-all" type="button" onClick={focusAll} disabled={!trips.length}><Crosshair size={17}/> <span>Ver todos</span></button></header>
   <div className="alt-status"><Users size={15}/><span>{trips.length} {trips.length===1?'viagem ativa':'viagens ativas'}</span><span className="alt-status-divider"/>Atualização a cada 5 s</div>
