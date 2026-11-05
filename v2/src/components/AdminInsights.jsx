@@ -34,7 +34,9 @@ function Split({rows,empty='Ainda não há registros neste intervalo.'}){return 
 function EmptyList({children}){return <p className="vai-empty">{children||'Nenhum registro disponível.'}</p>}
 export default function AdminInsights({stats,users,offset,busy,filter,setFilter,refresh,visible=true}){
  const [active,setActive]=useState('overview');
- const [motionActive,setMotionActive]=useState(false);
+ const [motionActive,setMotionActive]=useState(()=>
+  visible && (typeof window==='undefined'||!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+ );
  const playedSections=useRef(new Set());
  // Animate an administrative view only on its first visible entrance.
  // Refreshes and repeated navigation never make operational data jump around.
