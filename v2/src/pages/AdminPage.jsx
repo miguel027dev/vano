@@ -4,7 +4,7 @@ import {
  Activity,AlertTriangle,ArrowLeft,ArrowUpRight,CalendarDays,CheckCircle2,
  ChevronLeft,ChevronRight,Clock3,Database,Globe2,LockKeyhole,Mail,MessageSquareText,
  RefreshCcw,Route,Search,ShieldCheck,Users,UserRoundCheck,X,
- LayoutDashboard,MapPinned,ChartNoAxesCombined,Settings2,Sparkles,Compass
+ LayoutDashboard,MapPinned,ChartNoAxesCombined,Settings2,Sparkles,Compass,Headset,FlaskConical
 } from 'lucide-react';
 import {api} from '../lib/api';
 import {useVano} from '../context';
@@ -14,6 +14,30 @@ import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
 import AdminInsights from '../components/AdminInsights';
 import AdminEtaConsole from '../components/AdminEtaConsole';
 const AdminLiveTrips=lazy(()=>import('../components/AdminLiveTrips'));
+const IntelligencePage=lazy(()=>import('./IntelligencePage'));
+const DevSyncPage=lazy(()=>import('./DevSyncPage'));
+const SupportInboxPage=lazy(()=>import('./SupportInboxPage'));
+const SettingsPage=lazy(()=>import('./SettingsPage').then(mod=>({default:mod.SettingsPage})));
+const AdminOccurrences=lazy(()=>import('../components/AdminOccurrences'));
+const ADMIN_SECTIONS=new Set(['dashboard','routes','training','intelligence','incidents','devsync','indicators','support','settings','map']);
+const sectionForHash=()=>{
+ const value=typeof window==='undefined'?'':window.location.hash.slice(1);
+ const canonical={'acompanhar-rotas':'routes','ocorrencias':'incidents','atendimento':'support','configuracoes':'settings','indicadores':'indicators','mapa':'map','treinamento':'training'}[value]||value;
+ return ADMIN_SECTIONS.has(canonical)?canonical:'dashboard';
+};
+const sectionHash={routes:'acompanhar-rotas',incidents:'ocorrencias',support:'atendimento',settings:'configuracoes',indicators:'indicadores',map:'mapa',training:'treinamento'};
+const SECTION_HEADERS={
+ dashboard:['Painel de controle','Indicadores, operação, infraestrutura e atividade da plataforma.'],
+ routes:['Acompanhar rotas','Mapa 3D original do VANO e viagens ativas autorizadas.'],
+ training:['Treinamento e diagnóstico','Ferramentas de simulação e investigação de rotas.'],
+ intelligence:['VANO Intelligence','Chat de análise operacional com informações reais e fontes agregadas.'],
+ incidents:['Ocorrências','Relatos registrados, estados de verificação e fila operacional.'],
+ devsync:['DevSync','Tarefas, agentes, decisões e comunicação de desenvolvimento.'],
+ indicators:['Indicadores','Dados de uso, rotas e desempenho agregado.'],
+ support:['Atendimento','Solicitações, respostas e protocolos do VANO.'],
+ settings:['Configurações','Preferências de experiência e da conta.'],
+ map:['Mapa principal','O mapa de navegação dentro da área administrativa.']
+};
 
 const num=value=>typeof value==='number'&&Number.isFinite(value)?value.toLocaleString('pt-BR'):'—';
 const shortDate=value=>{
@@ -61,7 +85,8 @@ function SourceBreakdown({stats}){
 export default function AdminPage(){
  const {user,loading}=useVano();
  const [showLegacy,setShowLegacy]=useState(false);
- const [showLiveTrips,setShowLiveTrips]=useState(()=>typeof window!=='undefined'&&window.location.hash==='#acompanhar-rotas');
+ const [activeSection,setActiveSection]=useState(sectionForHash);
+ const showLiveTrips=activeSection==='routes';
  const [stats,setStats]=useState(null),[users,setUsers]=useState(null),[failure,setFailure]=useState(''),
   [busy,setBusy]=useState(false),[offset,setOffset]=useState(0),[filter,setFilter]=useState('');
  async function refresh(page=offset){
@@ -74,8 +99,19 @@ export default function AdminPage(){
   finally{setBusy(false);}
  }
  useEffect(()=>{if(user?.isAdmin)refresh(0);else{setStats(null);setUsers(null);}},[user?.isAdmin]);
- useEffect(()=>{const sync=()=>setShowLiveTrips(window.location.hash==='#acompanhar-rotas');window.addEventListener('hashchange',sync);return()=>window.removeEventListener('hashchange',sync)},[]);
- const openArea=area=>{const routes=area==='routes';setShowLiveTrips(routes);if(typeof window!=='undefined')window.history.replaceState(window.history.state,'',routes?'#acompanhar-rotas':'#dashboard');};
+ useEffect(()=>{const sync=()=>setActiveSection(sectionForHash());window.addEventListener('hashchange',sync);return()=>window.removeEventListener('hashchange',sync)},[]);
+ const openArea=area=>{
+  const next=ADMIN_SECTIONS.has(area)?area:'dashboard';
+  setActiveSection(next);
+  if(typeof window!=='undefined'){
+   window.history.replaceState(window.history.state,'','#'+(sectionHash[next]||next));
+   window.scrollTo({top:0,behavior:'instant'});
+  }
+ };
+ const SectionLink=({area,icon:Icon,children})=><button type="button"
+  className={'vanu-control-link'+(activeSection===area?' is-selected':'')}
+  aria-current={activeSection===area?'page':undefined} onClick={()=>openArea(area)}>
+  <Icon size={18}/>{children}</button>;
  const integration=stats?.integrations||{};
  const visibleUsers=useMemo(()=>{
   const q=filter.trim().toLocaleLowerCase('pt-BR');
