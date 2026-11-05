@@ -3,6 +3,7 @@
 Extracted from the historical monolithic app.py without changing route bodies or
 business rules. Runtime dependencies are injected once during application startup.
 """
+from vano.services.signal_eta import apply_signal_eta_payload
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
@@ -326,6 +327,19 @@ def _public_benchmark_payload(payload, cache_hit=False):
 
 
 def _finish_route_payload(payload, cache_key, prefetch_requested, trial_id, slat, slon, elat, elon, mode, cache_hit=False):
+    # Even when a Route Node is on an older build, normalize semaforo metadata.
+    rows = payload.get("routes") or []
+    for row in rows:
+        apply_signal_eta_payload(row)
+    if mode == "fastest" and rows:
+        fastest = min(rows, key=lambda r: float(r.get("duration") or 10**12))
+        if str(payload.get("selected_id")) != str(fastest.get("id")):
+            payload["selected_id"] = fastest.get("id")
+            for row in rows:
+                badges = [b for b in (row.get("badges") or []) if b != "fastest"]
+                if row is fastest:
+                    badges.append("fastest")
+                row["badges"] = badges
     _route_result_cache_put(cache_key, payload)
     result = copy.deepcopy(payload)
     mobile_compact = (
