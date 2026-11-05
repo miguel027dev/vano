@@ -6,6 +6,7 @@ import {createLimiter,cleanText,reportPublic} from './security.mjs';
 import {parseBBox} from './map-public-data.mjs';
 import {isReportType,reportType,publicReportsInBBox,recordReportFeedback,metersApart} from '../src/lib/communityReports.js';
 import {partnerOpenAPI} from './partner-openapi.mjs';
+import {partnerPlace,partnerAddress} from '../src/lib/partnerInputs.mjs';
 
 export const PARTNER_BASE='/api/partner/v1';
 export const PARTNER_SCOPES=['map:read','places:read','routes:read','traffic:read','pois:read','context:read','benchmarks:read','transit:read','reports:read','reports:write'];
@@ -58,6 +59,15 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
   return {body:b,key:k};
  }
  const ref=(k,type,data)=>seal({type,partner:k.id,version:k.version,expires:clock()+TTL,...data});
+ async function resolvePlace(k,value,proximity=null){
+  const direct=partnerPlace(value);if(direct)return direct;
+  if(typeof value?.place_id==='string'){scope(k,'places:read');return partnerPlace(own(value.place_id,'place',k).place);}
+  const query=partnerAddress(value);if(!query)fail(422,'INVALID_COORDINATES','Envie coordenadas, place_id ou endereço.');
+  scope(k,'places:read');quota('places:'+k.id,120);
+  const result=await services.search(query,'pt-BR',proximity,{limit:10});const first=result.map(partnerPlace).find(Boolean);
+  if(!first)fail(422,'ADDRESS_NOT_FOUND','Endereço não encontrado. Inclua número, bairro e cidade.');
+  return {...first,resolved:true};
+ }
  function own(raw,type,k){const x=open(raw,type);if(x.key.id!==k.id)fail(404,'REFERENCE_NOT_FOUND','Referência inválida.');return x.body;}
  function scope(k,s){if(!k.scopes.includes(s))fail(403,'SCOPE_REQUIRED','Permissão não concedida: '+s);}
  function quota(name,max){const result=limiter(name,max,60000);if(!result.allowed){const e=new PartnerError(429,'RATE_LIMITED','Limite temporário atingido.');e.retryAfter=result.retryAfter;throw e;}}
@@ -178,14 +188,14 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
     scope(k,'map:read');
     const baseCsp=headers['Content-Security-Policy']||"default-src 'self'; object-src 'none'; base-uri 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.mapbox.com; connect-src 'self' https://*.mapbox.com; worker-src 'self' blob:";
     const csp=baseCsp.split(';').filter(x=>!x.trim().startsWith('frame-ancestors')).join(';')+'; frame-ancestors '+k.origins.join(' ');
-    const custom={...headers,'Content-Security-Policy':csp,'Referrer-Policy':'strict-origin','Permissions-Policy':'camera=(), microphone=(), geolocation=(), payment=()'};
+    const custom={...headers,'Content-Security-Policy':csp,'Referrer-Policy':'strict-origin','Permissions-Policy':'camera=(), microphone=(), geolocation=(self), payment=()'};
     delete custom['X-Frame-Options'];
     // The main document DENY policy is replaced only for this explicit embed page.
     res.writeHead(200,{...custom,'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','X-Robots-Tag':'noindex, nofollow'});
     res.end(services.embedHTML());return true;
    }
    if(p===PARTNER_BASE+'/docs'&&req.method==='GET'){
-    page(res,'VANO API para parceiros','<link rel="stylesheet" href="/partner-ui.css"><main><h1>API de parceiros VANO Maps</h1><p>Base: <code>'+PARTNER_BASE+'</code>. Credenciais são criadas pelo administrador em <a href="/integracoes">Integrações</a>.</p><h2>Primeiros passos</h2><ol><li>Guarde a chave no backend.</li><li>Consulte GET /capabilities.</li><li>Pesquise com GET /places/search?q=Paulista.</li><li>Calcule com POST /routes.</li><li>Crie POST /map-sessions e carregue embed_url num iframe.</li></ol><p>Use Authorization: Bearer SUA_CHAVE e Content-Type: application/json. A chave permanente não deve ser usada no navegador.</p><pre>{"origin":{"lat":-23.5615,"lng":-46.6557},\n "destination":{"lat":-23.5874,"lng":-46.6597},\n "mode":"car","profile":"fastest","alternatives":1}</pre><p>GeoJSON usa [longitude, latitude]. Distâncias em metros; tempos em segundos. As métricas são convertidas da precisão oferecida pelo motor VANO.</p><h2>Mapa completo no parceiro sem iframe</h2><p>O backend cria POST /map-sessions com allowed_origin igual à origem exata do parceiro. Encaminhe somente data ao navegador. A resposta contém browser_token, sdk_url e api_base. O token temporário permite busca e rotas no navegador com CORS controlado, respeitando as permissões da chave.</p><pre>const session = await fetch("/api/vano/session").then(r =&gt; r.json());\nconst { mount } = await import(session.sdk_url);\nconst mapa = await mount(document.querySelector("#mapa"), { session });\nmapa.setOrigin({ lng: -46.6557, lat: -23.5615, name: "Origem" });</pre><p>O elemento #mapa deve ter altura, por exemplo 600px. O componente inclui ícones e camadas do VANO, busca de origem e destino, alternativas, orientações, temas e visualização 3D. Quem já carrega embed_url recebe o novo mapa ao recarregar com uma sessão válida. A busca também aceita /search?q=...&amp;lat=...&amp;lng=...&amp;limit=30, com items, results, coords e place_id na resposta. Não garante todos os endereços existentes, pois depende da cobertura dos provedores.</p><p>Para SDK nativo, autorize o domínio do VANO em script-src, style-src e connect-src, os serviços públicos Mapbox necessários, workers blob e as origens do parceiro nas restrições do token público Mapbox, se existirem. A chave permanente continua no backend. O SDK renova tokens de 5 minutos até o prazo máximo da sessão de 2 horas; use onSessionExpired para pedir uma nova sessão ao próprio backend depois disso.</p><h2>Validade e limites</h2><p>Referências duram 5 minutos. Recuperar route_id recalcula o trajeto. Limites por parceiro: 60 chamadas/minuto, 10 cálculos/minuto; até 2 cálculos simultâneos no serviço. Consulte capabilities para as condições disponíveis.</p><p>O iframe usa token temporário no fragmento da URL. A chave permanente fica no backend. O token temporário também deve ser protegido. Recrie a sessão após a expiração.</p><p>401: chave inválida. 403: permissão ausente. 410: referência expirada. 422: entrada inválida ou sem rota. 429: respeite Retry-After. 503: provedor indisponível. Preserve meta.request_id ao pedir suporte.</p><p>Trânsito e pontos de interesse dependem dos provedores. Fonte indisponível não significa área sem ocorrências. Voz, contas pessoais e diagnósticos administrativos não fazem parte desta API.</p><p><a href="'+PARTNER_BASE+'/openapi.json">Contrato OpenAPI com todos os endpoints e campos</a></p></main>');return true;
+    page(res,'VANO API para parceiros','<link rel="stylesheet" href="/partner-ui.css"><main><h1>API de parceiros VANO Maps</h1><p>Base: <code>'+PARTNER_BASE+'</code>. Credenciais são criadas pelo administrador em <a href="/integracoes">Integrações</a>.</p><h2>Primeiros passos</h2><ol><li>Guarde a chave no backend.</li><li>Consulte GET /capabilities.</li><li>Pesquise com GET /places/search?q=Paulista.</li><li>Calcule com POST /routes.</li><li>Crie POST /map-sessions e carregue embed_url num iframe.</li></ol><p>Use Authorization: Bearer SUA_CHAVE e Content-Type: application/json. A chave permanente não deve ser usada no navegador.</p><pre>{"origin":{"lat":-23.5615,"lng":-46.6557},\n "destination":{"lat":-23.5874,"lng":-46.6597},\n "mode":"car","profile":"fastest","alternatives":1}</pre><p>GeoJSON usa [longitude, latitude]. Distâncias em metros; tempos em segundos. As métricas são convertidas da precisão oferecida pelo motor VANO.</p><h2>Mapa completo no parceiro sem iframe</h2><p>O backend cria POST /map-sessions com allowed_origin igual à origem exata do parceiro. Encaminhe somente data ao navegador. A resposta contém browser_token, sdk_url e api_base. O token temporário permite busca e rotas no navegador com CORS controlado, respeitando as permissões da chave.</p><pre>const session = await fetch("/api/vano/session").then(r =&gt; r.json());\nconst { mount } = await import(session.sdk_url);\nconst mapa = await mount(document.querySelector("#mapa"), { session });\nmapa.setOrigin({ lng: -46.6557, lat: -23.5615, name: "Origem" });</pre><p>O elemento #mapa deve ter altura, por exemplo 600px. O componente exibe o mapa com ícones e camadas do VANO, sem card duplicado por padrão. Envie o endereço digitado no parceiro com await mapa.setDestination(endereco); a origem vem do GPS autorizado ou de mapa.setOrigin(posicao). Use controls:true somente para ativar o painel opcional. O centro do mapa nunca é a localização do usuário. Em iframe, inclua allow="geolocation" e delegue essa permissão na política do parceiro, ou envie a posição por vano:set-origin. POST /routes também aceita destination em texto e origem real. Sem origem retorna LOCATION_REQUIRED. Quem já carrega embed_url recebe o novo mapa ao recarregar com uma sessão válida. A busca também aceita /search?q=...&amp;lat=...&amp;lng=...&amp;limit=30, com items, results, coords e place_id na resposta. Não garante todos os endereços existentes, pois depende da cobertura dos provedores.</p><p>Para SDK nativo, autorize o domínio do VANO em script-src, style-src e connect-src, os serviços públicos Mapbox necessários, workers blob e as origens do parceiro nas restrições do token público Mapbox, se existirem. A chave permanente continua no backend. O SDK renova tokens de 5 minutos até o prazo máximo da sessão de 2 horas; use onSessionExpired para pedir uma nova sessão ao próprio backend depois disso.</p><h2>Validade e limites</h2><p>Referências duram 5 minutos. Recuperar route_id recalcula o trajeto. Limites por parceiro: 60 chamadas/minuto, 10 cálculos/minuto; até 2 cálculos simultâneos no serviço. Consulte capabilities para as condições disponíveis.</p><p>O iframe usa token temporário no fragmento da URL. A chave permanente fica no backend. O token temporário também deve ser protegido. Recrie a sessão após a expiração.</p><p>401: chave inválida. 403: permissão ausente. 410: referência expirada. 422: entrada inválida ou sem rota. 429: respeite Retry-After. 503: provedor indisponível. Preserve meta.request_id ao pedir suporte.</p><p>Trânsito e pontos de interesse dependem dos provedores. Fonte indisponível não significa área sem ocorrências. Voz, contas pessoais e diagnósticos administrativos não fazem parte desta API.</p><p><a href="'+PARTNER_BASE+'/openapi.json">Contrato OpenAPI com todos os endpoints e campos</a></p></main>');return true;
    }
    if(p===PARTNER_BASE+'/openapi.json'&&req.method==='GET'){
     res.writeHead(200,{...headers,'Content-Type':'application/json; charset=utf-8','Cache-Control':'public, max-age=300'});res.end(JSON.stringify(partnerOpenAPI(origin)));return true;
@@ -195,7 +205,7 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
     if(!b)fail(403,'BROWSER_SESSION_REQUIRED','Use o token temporário de map-sessions.');
     scope(k,'map:read');quota('map-load:'+k.id,90);
     const route=b.route?await calculated(k,b.route.spec,{choice:b.route.choice}):null;
-    payload(res,200,{center:b.center,zoom:b.zoom,markers:b.markers,theme:b.theme,routes:route?.routes||[],mapbox_public_token:services.mapToken(),expires_at:new Date(b.expires).toISOString(),allowed_origin:b.allowed_origin||k.origins[0],api_base:origin+PARTNER_BASE,stylesheets:services.stylesheets?.()||[],features:{search:k.scopes.includes('places:read'),directions:k.scopes.includes('routes:read'),icons:true,traffic:true},styles:{light:origin+'/mapbox/vano-atlas-light.json',dark:origin+'/mapbox/vano-atlas-black.json'}},requestId);return true;
+    payload(res,200,{center:b.center,origin:b.origin||null,destination:b.destination||null,query:b.query||null,controls:b.controls===true,auto_locate:b.auto_locate!==false,zoom:b.zoom,markers:b.markers,theme:b.theme,routes:route?.routes||[],mapbox_public_token:services.mapToken(),expires_at:new Date(b.expires).toISOString(),session_until:b.session_until?new Date(b.session_until).toISOString():new Date(b.expires).toISOString(),allowed_origin:b.allowed_origin||k.origins[0],api_base:origin+PARTNER_BASE,stylesheets:services.stylesheets?.()||[],features:{search:k.scopes.includes('places:read'),directions:k.scopes.includes('routes:read'),icons:true,traffic:true},styles:{light:origin+'/mapbox/vano-atlas-light.json',dark:origin+'/mapbox/vano-atlas-black.json'}},requestId);return true;
    }
    const k=authenticate(req),base=PARTNER_BASE;
    if(p===base+'/map-sessions/renew'&&req.method==='POST'){
@@ -219,7 +229,16 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
      search_limit:30,browser_sessions:{enabled:true,token_ttl_s:300,max_session_s:7200,requests_per_minute_per_token:180,sdk_url:origin+'/sdk/vano-map.js',renew_endpoint:base+'/map-sessions/renew'},
      excluded:['personal_accounts','voice','admin_diagnostics'],...services.capabilities?.()},requestId);return true;
    }
-   if(p===base+'/routes'&&req.method==='POST'){const spec=parsePartnerRoute(await readBody(req));payload(res,200,await calculated(k,spec),requestId);return true;}
+   if(p===base+'/routes'&&req.method==='POST'){
+    scope(k,'routes:read');const body=await readBody(req);
+    fields(body,['origin','location','current_location','destination','address','query','destination_address','mode','profile','alternatives','waypoints','avoid','departure_at','language']);
+    const inputOrigin=body.origin??body.location??body.current_location??req.vanoPartnerSession?.origin;
+    if(!inputOrigin)fail(422,'LOCATION_REQUIRED','Envie a origem real do usuário. O centro do mapa não é usado como localização.');
+    const from=await resolvePlace(k,inputOrigin),to=await resolvePlace(k,body.destination??body.address??body.query??body.destination_address,from.coords);
+    const {location:_location,current_location:_current,address:_address,query:_query,destination_address:_dest,...options}=body;
+    const spec=parsePartnerRoute({...options,origin:{lat:from.lat,lng:from.lng},destination:{lat:to.lat,lng:to.lng}});
+    payload(res,200,{...await calculated(k,spec),resolved_origin:from,resolved_destination:to},requestId);return true;
+   }
    const routeMatch=new RegExp('^'+base+'/routes/([A-Za-z0-9_-]+)(/recalculate)?$').exec(p);
    if(routeMatch){
     const b=own(routeMatch[1],'route',k);
@@ -260,15 +279,19 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
    }
    if(p===base+'/map-sessions'&&req.method==='POST'){
     if(req.vanoPartnerSession)fail(403,'SERVER_KEY_REQUIRED','Novas sessões devem ser criadas pelo backend do parceiro.');
-    scope(k,'map:read');const b=await readBody(req);fields(b,['allowed_origin','center','zoom','markers','route_id','theme']);
+    scope(k,'map:read');const b=await readBody(req);fields(b,['allowed_origin','center','origin','destination','query','controls','auto_locate','zoom','markers','route_id','theme']);
     if(!k.origins.includes(b.allowed_origin))fail(403,'ORIGIN_NOT_REGISTERED','Origem não cadastrada para o parceiro.');
     const center=point(b.center),zoom=int(b.zoom,0,20,14),theme=b.theme??'light';
+    for(const key of ['controls','auto_locate'])if(b[key]!==undefined&&typeof b[key]!=='boolean')fail(422,'INVALID_OPTION','Envie controles e localização como booleanos.');
+    const initialOrigin=b.origin===undefined?null:await resolvePlace(k,b.origin,center);
+    let initialDestination=null;if(b.destination!==undefined){const direct=partnerPlace(b.destination);initialDestination=direct||partnerAddress(b.destination);if(!initialDestination&&typeof b.destination?.place_id==='string')initialDestination=await resolvePlace(k,b.destination,initialOrigin?.coords||center);if(!initialDestination)fail(422,'INVALID_DESTINATION','Destino inválido.');}
+    const query=b.query===undefined?null:text(b.query,2,200);
     if(!['light','dark'].includes(theme))fail(422,'INVALID_THEME','Tema inválido.');
     if(!Array.isArray(b.markers??[])||(b.markers??[]).length>10)fail(422,'INVALID_MARKERS','Use até 10 marcadores.');
     const markers=(b.markers??[]).map(m=>{fields(m,['id','lat','lng','label']);const coords=point(m);return {id:text(m.id,1,50),coords,label:text(m.label,1,80)};});
     let route=null;if(b.route_id){scope(k,'routes:read');const r=own(b.route_id,'route',k);route={spec:r.spec,choice:r.choice};}
     const sessionUntil=clock()+2*60*60*1000;
-    const session=ref(k,'map',{center,zoom,markers,theme,route,allowed_origin:b.allowed_origin,session_until:sessionUntil});
+    const session=ref(k,'map',{center,origin:initialOrigin,destination:initialDestination,query,controls:b.controls===true,auto_locate:b.auto_locate!==false,zoom,markers,theme,route,allowed_origin:b.allowed_origin,session_until:sessionUntil});
     payload(res,201,{session_id:hash(session).slice(0,24),embed_url:origin+'/embed/'+k.id+'#session='+session,browser_token:session,api_base:origin+PARTNER_BASE,sdk_url:origin+'/sdk/vano-map.js',expires_at:new Date(clock()+TTL).toISOString(),session_until:new Date(sessionUntil).toISOString()},requestId);return true;
    }
    if(p===base+'/reports'&&req.method==='GET'){

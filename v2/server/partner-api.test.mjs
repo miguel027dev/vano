@@ -145,3 +145,16 @@ test('browser tokens renew until their original deadline and remain revocable',a
   s.db.partnerKeys[0].active=false;assert.equal((await s.call(base+'/map-sessions/renew','POST',undefined,headers)).status,401);
  }finally{await s.close();}
 });
+test('external controls receive real origin configuration, text destinations and server-side address resolution',async()=>{
+ const s=await setup();try{
+  const created=await s.call(base+'/map-sessions','POST',{allowed_origin:'https://social.example',center:sample.destination,origin:{coords:{latitude:sample.origin.lat,longitude:sample.origin.lng}},destination:'Rua do parceiro',auto_locate:true});
+  assert.equal(created.status,201);const auth={Authorization:'Bearer '+created.json.data.browser_token,Origin:'https://social.example'};
+  const initial=await s.call(base+'/map-session-data','GET',undefined,auth);assert.equal(initial.status,200);assert.equal(initial.json.data.controls,false);assert.equal(initial.json.data.auto_locate,true);assert.deepEqual(initial.json.data.origin.coords,[-46.6557,-23.5615]);assert.equal(initial.json.data.destination,'Rua do parceiro');
+  const route=await s.call(base+'/routes','POST',{query:'Rua do parceiro'},auth);assert.equal(route.status,200);assert.deepEqual(s.calls[0][0],[-46.6557,-23.5615]);assert.equal(s.searchCalls.at(-1)[0],'Rua do parceiro');assert.deepEqual(s.searchCalls.at(-1)[2],[-46.6557,-23.5615]);
+  const plain=await s.call(base+'/map-sessions','POST',{allowed_origin:'https://social.example',center:sample.destination});
+  const emptyAuth={Authorization:'Bearer '+plain.json.data.browser_token};
+  const empty=await s.call(base+'/map-session-data','GET',undefined,emptyAuth);assert.equal(empty.json.data.origin,null);assert.equal(empty.json.data.controls,false);
+  const missing=await s.call(base+'/routes','POST',{destination:sample.destination},emptyAuth);assert.equal(missing.status,422);assert.equal(missing.json.error.code,'LOCATION_REQUIRED');
+  const shell=await s.call(new URL(created.json.data.embed_url).pathname);assert.match(shell.headers.get('permissions-policy'),/geolocation=\(self\)/);
+ }finally{await s.close();}
+});

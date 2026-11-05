@@ -54,14 +54,14 @@ Pode usar um `route_id` válido para desenhar um trajeto. A chave precisa de `ma
 ```html
 <iframe src="URL_RECEBIDA_EM_EMBED_URL"
   title="Mapa do evento" width="100%" height="420"
-  loading="lazy" referrerpolicy="no-referrer"></iframe>
+  allow="geolocation" loading="lazy" referrerpolicy="no-referrer"></iframe>
 ```
 
 Inserir a URL por propriedade DOM ou binding seguro do framework. O token temporário fica no fragmento da URL, que não é enviado como caminho da requisição. O iframe o remove da barra de endereço, usa-o em uma chamada ao próprio VANO e não depende de cookies de terceiros. Proteger também essa URL; não registrar tokens em analytics. O único token de provedor exposto ao mapa é a credencial pública Mapbox, necessária à renderização.
 
 A origem deve coincidir exatamente com o cadastro: protocolo, host e porta. A página de embed envia CSP `frame-ancestors` com as origens cadastradas; o restante do site continua com sua política de bloqueio de frames. Se a rede social usa CSP, deve permitir o domínio retornado na embed_url em `frame-src`. Os demais domínios de autenticação e serviço devem ser tratados conforme o endereço efetivamente retornado pelo VANO.
 
-Tokens duram 5 minutos e são renovados pelo componente até 2 horas por sessão, com até 10 marcadores, zoom de 0 a 20 e temas `light` ou `dark`. Depois do prazo máximo da sessão, o mapa mostra um aviso. O parceiro pede outra sessão ao seu backend e recarrega o iframe; preserve o destino e peça uma rota nova se a referência antiga expirou. A geolocalização é solicitada pela rede social com consentimento, não pelo iframe. Há créditos Mapbox e OpenStreetMap no mapa; não ocultá-los.
+Tokens duram 5 minutos e são renovados pelo componente até 2 horas por sessão, com até 10 marcadores, zoom de 0 a 20 e temas `light` ou `dark`. Depois do prazo máximo da sessão, o mapa mostra um aviso. O parceiro pede outra sessão ao seu backend e recarrega o iframe; preserve o destino e peça uma rota nova se a referência antiga expirou. O SDK solicita localização automaticamente quando não recebeu origem. O iframe precisa de allow="geolocation" e delegação pela política do pai; o parceiro também pode enviar a localização já autorizada. Há créditos Mapbox e OpenStreetMap no mapa; não ocultá-los.
 
 ## Serviços publicados
 
@@ -139,7 +139,7 @@ Os testes cobrem autenticação, scopes, CSRF, isolamento entre parceiros, rota�
 
 ## Mapa completo e SDK nativo sem iframe
 
-A versão 1.1 inclui as mesmas camadas de ícones e pontos públicos usadas pelo VANO: hospitais, combustível, estacionamento, radares, sinalização, POIs e ocorrências dos provedores, conforme sua cobertura. O mapa incorporado inclui pesquisa de origem e destino, carro/moto/caminhada, alternativas, instruções, tema claro/escuro e inclinação 3D. Os clientes que já usam embed_url recebem o mapa atualizado com uma sessão válida; quem implementou um mapa próprio deve montar o SDK ou consumir e desenhar as camadas.
+A versão 1.2 inclui as mesmas camadas de ícones e pontos públicos usadas pelo VANO: hospitais, combustível, estacionamento, radares, sinalização, POIs e ocorrências dos provedores, conforme sua cobertura. Por padrão exibe somente o mapa, sem o card de busca e Minha localização: os controles são do parceiro. O painel completo permanece opcional com controls=true. Os clientes que já usam embed_url recebem o mapa atualizado com uma sessão válida; quem implementou um mapa próprio deve montar o SDK ou consumir e desenhar as camadas.
 
 O backend continua criando POST /map-sessions com a chave permanente e allowed_origin do parceiro. Encaminhe o objeto data da resposta ao frontend. Além de embed_url, ele contém browser_token, api_base, sdk_url, expires_at e session_until. Não encaminhar a chave permanente.
 
@@ -153,8 +153,12 @@ const mapa = await mount(document.querySelector('#mapa'), {
   onSessionExpired: () => fetch('/api/vano/session').then(r => r.json()),
   onEvent: event => console.log(event.type)
 });
-mapa.setOrigin({lng: -46.6557, lat: -23.5615, name: 'Origem'});
-// mapa.setDestination({lng, lat, name});
+// Se o parceiro já obteve o GPS, envie posição real; caso contrário, o SDK solicita.
+// await mapa.setOrigin(posicaoDoNavegador);
+// No envio do formulário que já existe no parceiro:
+// await mapa.setDestination(campoEndereco.value); // resolve e calcula automaticamente
+// Ou envie o resultado escolhido em mapa.search: {lng, lat, name, place_id}.
+// await mapa.update({location: posicaoDoNavegador, address: campoEndereco.value});
 // await mapa.calculate();
 // await mapa.search('Avenida Paulista');
 // mapa.destroy(); // ao desmontar a tela
@@ -170,4 +174,17 @@ GET /map-data?service=map-features&bbox=... fornece o payload normalizado da cam
 
 Se o parceiro usa CSP, precisa permitir o domínio VANO nos módulos, estilos e conexões e as fontes Mapbox necessárias ao renderizador; workers precisam de blob. Se houver restrições por URL no token público Mapbox, a origem do parceiro precisa estar permitida para usar o SDK nativo. O embed continua renderizando sob a origem VANO e é alternativa para esse caso.
 
-No iframe, o pai pode fornecer a origem por postMessage com type=vano:set-origin e place={lng,lat,name}; destino usa vano:set-destination; cálculo usa vano:calculate. O mapa verifica origin e source. O botão Minha localização solicita permissão apenas após interação e envia vano:request-location para o pai; não é feito rastreamento de localização em segundo plano.
+No iframe, envie mensagens para a origem exata do VANO, após `vano:ready`. O pai recebe `vano:request-location` e pode responder com a localização já autorizada. O SDK aceita `GeolocationPosition`, `{lat,lng}`, `{coords:[lng,lat]}` e `[lng,lat]`. O centro é só enquadramento, nunca origem do usuário. Não se usa localização por IP como GPS. Se a permissão for negada, o evento `location-status` indica `permission-required`; solicite autorização pelo fluxo do parceiro ou peça uma origem explícita.
+
+```js
+const vanoOrigin = new URL(session.embed_url).origin;
+iframe.contentWindow.postMessage({type:'vano:set-origin', place:{lat, lng}}, vanoOrigin);
+iframe.contentWindow.postMessage({type:'vano:set-destination', address: enderecoDigitado}, vanoOrigin);
+// Também aceita place com o resultado selecionado; o cálculo é automático.
+// Para atualizar em conjunto:
+iframe.contentWindow.postMessage({type:'vano:update', state:{origin:{lat,lng}, destination:enderecoDigitado}}, vanoOrigin);
+```
+
+No backend, POST /routes aceita `{origin:{lat,lng}, destination:"endereço completo"}` ou `query`/`address` no lugar de destination. A origem também pode vir de `location`, `current_location` ou da sessão; uma requisição HTTP não descobre o GPS sozinha. Sem origem real retorna 422 LOCATION_REQUIRED. Endereços em texto requerem places:read e são resolvidos pela primeira sugestão real com viés da origem. Para endereços ambíguos, mostre `mapa.search(texto)` no formulário existente e envie o resultado escolhido. A resposta inclui resolved_origin e resolved_destination para confirmação. Alterações de endereço invalidam rotas anteriores e respostas atrasadas não substituem seleções novas.
+
+Eventos SDK em onEvent (type sem prefixo) e iframe (type com vano:): ready, location-status, location, location-address, place-selected, routes, error e search-results. Não faça log de coordenadas pessoais ou tokens em produção. O acesso direto ao GPS exige HTTPS, permissão do usuário e políticas compatíveis. Para iframe, use allow="geolocation"; se o parceiro define Permissions-Policy, deve delegar também a https://vanomaps.online. Uma política restritiva do pai não pode ser anulada pelo VANO.
