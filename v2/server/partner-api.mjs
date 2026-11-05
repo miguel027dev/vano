@@ -205,7 +205,7 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
     if(!b)fail(403,'BROWSER_SESSION_REQUIRED','Use o token temporário de map-sessions.');
     scope(k,'map:read');quota('map-load:'+k.id,90);
     const route=b.route?await calculated(k,b.route.spec,{choice:b.route.choice}):null;
-    payload(res,200,{center:b.center,origin:b.origin||null,destination:b.destination||null,query:b.query||null,controls:b.controls===true,auto_locate:b.auto_locate!==false,zoom:b.zoom,markers:b.markers,theme:b.theme,routes:route?.routes||[],mapbox_public_token:services.mapToken(),expires_at:new Date(b.expires).toISOString(),session_until:b.session_until?new Date(b.session_until).toISOString():new Date(b.expires).toISOString(),allowed_origin:b.allowed_origin||k.origins[0],api_base:origin+PARTNER_BASE,stylesheets:services.stylesheets?.()||[],features:{search:k.scopes.includes('places:read'),directions:k.scopes.includes('routes:read'),icons:partnerMapServices(k.scopes).includes('map-features'),radars:k.scopes.includes('radars:read'),traffic_signals:k.scopes.includes('signals:read'),road_signs:k.scopes.includes('signs:read'),pois:k.scopes.includes('pois:read'),traffic:k.scopes.includes('traffic:read')},allowed_map_services:partnerMapServices(k.scopes),styles:{light:origin+'/mapbox/vano-atlas-light.json',dark:origin+'/mapbox/vano-atlas-black.json'}},requestId);return true;
+    payload(res,200,{center:b.center,origin:b.origin||null,destination:b.destination||null,query:b.query||null,controls:b.controls===true,auto_locate:b.auto_locate!==false,zoom:b.zoom,markers:b.markers,theme:b.theme,routes:route?.routes||[],mapbox_public_token:services.mapToken(),expires_at:new Date(b.expires).toISOString(),session_until:b.session_until?new Date(b.session_until).toISOString():new Date(b.expires).toISOString(),allowed_origin:b.allowed_origin||k.origins[0],api_base:origin+PARTNER_BASE,stylesheets:services.stylesheets?.()||[],features:{search:k.scopes.includes('places:read'),directions:k.scopes.includes('routes:read'),icons:partnerMapServices(k.scopes).includes('map-features'),radars:k.scopes.includes('radars:read'),traffic_signals:k.scopes.includes('signals:read'),road_signs:k.scopes.includes('signs:read'),pois:k.scopes.includes('pois:read'),traffic:k.scopes.includes('traffic:read')},allowed_map_services:partnerMapServices(k.scopes),layer_scopes:k.scopes.filter(x=>['pois:read','radars:read','signals:read','signs:read','reports:read'].includes(x)),styles:{light:origin+'/mapbox/vano-atlas-light.json',dark:origin+'/mapbox/vano-atlas-black.json'}},requestId);return true;
    }
    const k=authenticate(req),base=PARTNER_BASE;
    if(p===base+'/map-sessions/renew'&&req.method==='POST'){
@@ -220,6 +220,9 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
     const needed=MAP_SERVICE_SCOPE[name];if(needed)scope(k,needed);
     const bbox=parseBBox(u.searchParams.get('bbox'),.3,.3);if(!bbox)fail(422,'INVALID_BBOX','Área inválida; máximo 0.3 graus.');
     quota('map-feed:'+k.id+':'+name,120);
+    if(name==='map-features'&&!partnerMapServices(k.scopes).includes(name)){
+     payload(res,200,{features:[],available:true,notice:'Camadas desabilitadas para esta credencial.'},requestId);return true;
+    }
     const result=await read(bbox);
     payload(res,200,name==='map-features'?{...result,features:filterPartnerMapFeatures(result.features,k.scopes)}:result,requestId);return true;
    }
