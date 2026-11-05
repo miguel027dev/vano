@@ -1,0 +1,20 @@
+/* VANO partner embed: allow gestures to reach the Mapbox canvas.
+   This stylesheet is intentionally scoped to /embed only. */
+body.vano-route-embed-entry.vano-map-surface .ws-app #map,
+body.vano-route-embed-entry.vano-map-surface .ws-app #map .mapboxgl-canvas-container,
+body.vano-route-embed-entry.vano-map-surface .ws-app #map canvas.mapboxgl-canvas {
+  pointer-events: auto !important;
+}
+body.vano-route-embed-entry.vano-map-surface .ws-app #map .mapboxgl-canvas-container,
+body.vano-route-embed-entry.vano-map-surface .ws-app #map canvas.mapboxgl-canvas {
+  touch-action: none !important;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Visual-only layers must never capture a drag, tap or pinch intended for the map. */
+body.vano-route-embed-entry.vano-map-surface .ws-app .map-mood-fade,
+body.vano-route-embed-entry.vano-map-surface .ws-app .map-vignette,
+body.vano-route-embed-entry.vano-map-surface .ws-app .ambient-halo,
+body.vano-route-embed-entry.vano-map-surface .ws-app .road-mood-hint {
+  pointer-events: none !important;
+}
