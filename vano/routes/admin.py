@@ -639,7 +639,7 @@ def admin_dashboard():
     except Exception:
         pass
     recent_routes = db.execute(
-        """SELECT rh.id,rh.origin_label,rh.destination_label,rh.mode,rh.distance_m,rh.duration_s,rh.safety_score,rh.created_at,
+        """SELECT rh.id,rh.origin_label,rh.destination_label,rh.origin_lat,rh.origin_lon,rh.destination_lat,rh.destination_lon,rh.mode,rh.distance_m,rh.duration_s,rh.safety_score,rh.created_at,
                   COALESCE(u.name,'Visitante') user_name
            FROM route_history rh LEFT JOIN users u ON u.id=rh.user_id
            ORDER BY rh.created_at DESC LIMIT 8"""
@@ -684,6 +684,8 @@ def admin_dashboard():
         "admin.html", stats=stats, extra=extra, reports=reports, recent_routes=recent_routes,
         infra=infra, categories=CATEGORY_META, dispatch_ops=dispatch_ops, product_metrics=product_metrics,
         recent_dispatch_failures=recent_dispatch_failures, recent_audit=recent_audit,
+        mapbox_token=MAPBOX_ACCESS_TOKEN if mapbox_ready() else "",
+        mapbox_style=url_for("vano_mapbox_style", mode="black"),
     )
 
 
