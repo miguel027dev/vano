@@ -27,7 +27,7 @@ test('first real GPS camera placement is immediate, with no animated flight from
  assert.match(center,/motion\.current\?\.recenter/);
 });
 test('initial GPS wait does not put a giant warning banner over search',()=>{
- assert.match(page,/!validPoint\(origin\)&&gpsStatus!=='checking'&&<div className="gps-banner"/);
+ assert.match(page,/!validPoint\(origin\)&&locationState.showRecovery&&<div className="gps-banner"/);
  assert.match(page,/!pickOriginMode&&<div className="v31-location-card"/);
  assert.match(page,/className="map-search v31-search"/);
 });

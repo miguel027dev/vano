@@ -18,6 +18,7 @@ import {planStandardPlayPointer} from '../lib/standardPlayPointer.mjs';
 import {syncV2BuildingVisibility,discardV2BuildingVisibility} from '../lib/v2BuildingVisibility.mjs';
 import {planMotorcycleCamera} from '../lib/motorcycleCamera.js';
 import {computeSafeViewport} from '../lib/safeViewport.js';
+import {attachSearchMapArea} from '../lib/searchMapArea.js';
 import {STATIC_ROUTE_DASH_PATTERN,STATIC_LEAFLET_DASH,sameRouteShapeReferences} from '../lib/routeFlow.js';
 import {v2RouteStrokePaint,v2RouteStrokePixels,V2_ROUTE_CASING_COLOR,shouldHighlightSelectedRoute} from '../lib/v2RouteStroke.mjs';
 import {notifyNative} from '../lib/nativeShell';
@@ -496,7 +497,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false,userCoords,focusMode=false,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null,poiVisible=null}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false,userCoords,focusMode=false,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null,poiVisible=null,onSearchAreaChange=null}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -522,7 +523,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
   useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[poiVisible]);
   const visibleRoadCards=roadCards&&!focusMode;
-  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,focusMode,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards:visibleRoadCards,routeTraffic,poiVisible,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,focusMode,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards:visibleRoadCards,routeTraffic,poiVisible,onSearchAreaChange,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false,styleRecoveryAt=0;const initial=coord(latest.current.userCoords);
@@ -715,6 +716,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       root.current?.addEventListener('wheel',leafletWheelHandler,{passive:true});
       map.on('click',e=>{if(latest.current.pickingOrigin)latest.current.onPickOrigin?.([e.latlng.lng,e.latlng.lat]);});
     }
+    const detachSearchArea=attachSearchMapArea(map,root.current,{leaflet:backend.current==='leaflet',
+      getState:()=>latest.current,onArea:point=>latest.current.onSearchAreaChange?.(point)});
     const refreshRouteTrafficMarkers=()=>syncRouteTrafficMarkers(map,backend.current,backend.current==='mapbox'?mapboxgl:L,latest.current);
     map.on('zoomend',refreshRouteTrafficMarkers);
     // Collision decisions depend on screen projection. A finished pan/zoom
@@ -834,7 +837,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     }
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;clearTimeout(streetCardTimer);
+    return()=>{deleted=true;detachSearchArea();clearTimeout(streetCardTimer);
      map.off('zoomend',refreshRouteTrafficMarkers);map.off('moveend',refreshPrivateSigns);
      if(backend.current==='mapbox'){
        map.off('idle',scheduleVisibleCards);map.off('moveend',scheduleVisibleCards);map.off('style.load',scheduleVisibleCards);

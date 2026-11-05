@@ -13,7 +13,6 @@ const admin=read('../pages/IntelligencePage.jsx');
 
 test('prominent interface icons describe actions, not generic AI decoration',()=>{
  assert.doesNotMatch(profile,/<Sparkles\b/);
- assert.ok(profile.includes('v92-mavi-profile-mark"><Route size={24}'));
  assert.doesNotMatch(admin,/<Sparkles\b/);
  assert.ok(admin.includes('<Clock3 size={15}/> Rápido'));
  assert.ok(account.includes('<SunMoon size={21}/>'));

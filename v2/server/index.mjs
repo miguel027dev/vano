@@ -3,6 +3,9 @@
  * This small local store is deliberately NOT a multi-instance database.
  */
 import http from 'node:http';
+import {createSupportTicket,supportStatus,supportInbox,replySupport,pruneSupport} from './support.mjs';
+import {createHelpAssistant,helpAiAvailable} from './help-assistant.mjs';
+const helpAssistant=createHelpAssistant();
 import {createPartnerAPI,PartnerError} from './partner-api.mjs';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
 import {compareLightingInventory} from './safe-routing/lighting-grid.mjs';
@@ -40,7 +43,9 @@ import {createRouteTrafficGateway,parseRouteTrafficRequest} from './route-traffi
 import {createTrafficMemoryReader,assessTrafficMemory} from './traffic-memory.mjs';
 import {createSptransOlhoVivo} from './sptrans-olhovivo.mjs';
 import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
-import { queryPlaces } from './search-provider.mjs';
+import { queryPlaces,hasExplicitForeignLocation,isBrazilianCep } from './search-provider.mjs';
+import {mergeSearchResults} from './search-utils.mjs';
+import {searchProximity,createNearbySuggestions} from './search-region.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import {createRouteFailover} from './route-failover.mjs';
@@ -169,8 +174,15 @@ const persist = async opts => {
   // Unverified incident reports expire after 30 days; verified community data after 180 days.
   db.reports=db.reports.filter(x=>new Date(x.createdAt).getTime()>(time-(x.status==='verificado'?180:30)*86400000));
   pruneGuestRecords(db,time);
+  pruneSupport(db,time);
   await store.save(opts);
 };
+// Expired support is purged on startup, hourly and on every persisted write.
+if(pruneSupport(db))await persist({backup:false});
+const supportRetentionTimer=setInterval(()=>{
+  if(pruneSupport(db))void persist({backup:false}).catch(()=>console.warn('VANO suporte: limpeza não persistida.'));
+},3600000);
+supportRetentionTimer.unref?.();
 // Do not retain or serve provider-derived routing metrics without explicit
 // contractual rights for storage and public redistribution.
 if(process.env.VANO_BENCHMARK_PUBLICATION_LICENSE_CONFIRMED!=='1'&&db.benchmarkResults.length){
@@ -407,32 +419,21 @@ async function search(query,language='pt-BR',proximity=null) {
   if(text.length<2)return [];
   const access=process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
   if(!access){
-    if(production)throw new HttpError(503,'A busca de endereços está temporariamente indisponível.');
-    return places.filter(x=>x.name.toLocaleLowerCase().includes(text.toLocaleLowerCase())).slice(0,6);
+    throw new HttpError(503,'A busca de endereços está temporariamente indisponível.');
   }
+  const searchProximity=hasExplicitForeignLocation(text)?null:proximity;
   // Parallel TomTom Search complements existing Mapbox place coverage.
   // No TomTom credentials, endpoints or logs are exposed to the browser.
   const [primary,secondary]=await Promise.all([
    queryPlaces(text,{token:access,language,proximity}).catch(()=>({results:[],providerOk:false})),
-   (!/^\\d{5}-?\\d{3}$/.test(text)&&process.env[TOMTOM_ENV_NAME])
-    ?searchTomTomPlaces(text,{key:process.env[TOMTOM_ENV_NAME],proximity})
+   (!isBrazilianCep(text)&&process.env[TOMTOM_ENV_NAME])
+    ?searchTomTomPlaces(text,{key:process.env[TOMTOM_ENV_NAME],proximity:searchProximity})
     :Promise.resolve([])
   ]);
   if(!primary.providerOk&&!secondary.length)throw new HttpError(503,'O serviço de endereços não respondeu. Tente novamente.');
-  const merged=[...(primary.results||[])];
-  for(const item of secondary){
-   // Merge identical named POIs within 75 m; independent neighboring shops remain.
-   const key=String(item.name||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim();
-   const duplicated=merged.some(x=>{
-    if(String(x.name||'').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim()!==key)return false;
-    const dx=(x.coords[0]-item.coords[0])*111320*Math.cos(item.coords[1]*Math.PI/180);
-    const dy=(x.coords[1]-item.coords[1])*110540;
-    return Math.hypot(dx,dy)<=75;
-   });
-   if(!duplicated)merged.push(item);
-  }
-  return merged.slice(0,16);
+  return mergeSearchResults([primary.results||[],secondary],text,searchProximity);
 }
+const nearbySuggestions=createNearbySuggestions(search);
 const resilientOriginalRouting=createRouteFailover({
   cooldownMs:45_000,
   onFallback:e=>console.warn('VANO routing fallback: original engine failed; using verified Mapbox API candidate calculation.',e?.message||String(e))
@@ -945,8 +946,7 @@ async function route(req, res) {
       adoptGuest(req,user.id); // Preserve authorship of reports made before Google sign-in.
       if(record.native){const code=nativeGrants.issue(user.id,record.native);await persist();res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':mobileCallback(record.native.state,code),'Set-Cookie':drop});res.end();return;}
       const raw=createSession(user.id);await persist();
-      const complete=prefFor(user.id).onboardingComplete;
-      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':complete?'/mapa':'/personalizar','Set-Cookie':[drop,setCookie('vano_session',raw,SESSION_MAX_AGE)]});res.end();return;
+      res.writeHead(302,{...headers,'Cache-Control':'no-store','Location':'/mapa','Set-Cookie':[drop,setCookie('vano_session',raw,SESSION_MAX_AGE)]});res.end();return;
     }catch(e){console.error('Google OAuth falhou:',e?.message||String(e));failed();return;}
   }
   if (pathname === '/api/auth/verify' && req.method === 'GET') {
@@ -965,6 +965,32 @@ async function route(req, res) {
     return json(res,200,{ok:true,cookieName:'vano_session',sessionToken:raw,maxAge:SESSION_MAX_AGE,next:'/mapa'});
   }
   if (req.method !== 'GET' && !protectedWrite(req,res)) return;
+  if((pathname==='/api/support'||pathname==='/api/support/status')&&req.method==='POST'){
+    if(!limits(req,res,pathname==='/api/support'?'support-create':'support-status',pathname==='/api/support'?3:20,pathname==='/api/support'?3600000:60000))return;
+    try{
+      if(pruneSupport(db))await persist();
+      const body=await getBody(req);
+      const result=pathname==='/api/support'?createSupportTicket(db,body):supportStatus(db,body.receipt);
+      if(pathname==='/api/support')await persist();
+      return json(res,pathname==='/api/support'?201:200,result,{'Cache-Control':'no-store'});
+    }catch(error){return err(res,error.status||503,error.status?error.message:'Não foi possível consultar o suporte. Tente novamente.');}
+  }
+  if((pathname==='/api/admin/support'&&req.method==='GET')||(/^\/api\/admin\/support\/[a-f0-9]{24}\/reply$/.test(pathname)&&req.method==='POST')){
+    const session=userSession(req);if(!session)return err(res,401,'Entre para acessar o suporte administrativo.');
+    if(!isAdminAccount(session.user))return err(res,403,'Suporte restrito à administração.');
+    if(!limits(req,res,'support-admin',30,60000))return;
+    try{
+      if(pruneSupport(db))await persist();
+      if(req.method==='GET')return json(res,200,{tickets:supportInbox(db,Date.now(),{offset:u.searchParams.get('offset')}),total:db.supportTickets.length}, {'Cache-Control':'no-store'});
+      const body=await getBody(req);const result=replySupport(db,pathname.split('/')[4],body.reply);await persist();return json(res,200,result,{'Cache-Control':'no-store'});
+    }catch(error){return err(res,error.status||503,error.status?error.message:'Não foi possível atualizar o suporte.');}
+  }
+  if(pathname==='/api/help/status'&&req.method==='GET')return json(res,200,{aiAvailable:helpAiAvailable()}, {'Cache-Control':'no-store'});
+  if(pathname==='/api/help/ask'&&req.method==='POST'){
+    if(!limits(req,res,'help-assistant',12,60000))return;
+    try{return json(res,200,await helpAssistant(await getBody(req)));}
+    catch(error){return err(res,error.status||503,error.status===400?error.message:'A ajuda está indisponível. Tente novamente.');}
+  }
   if(!production && !secured && /^\/api\/(auth\/(login|signup|forgot|reset|resend-verification)|profile)/.test(pathname)){
     const hostname = String(req.headers.host||'').split(':')[0];
     if(!['localhost','127.0.0.1','[::1]'].includes(hostname))return err(res,426,'Para usar contas pelo celular, habilite HTTPS confiável.');
@@ -1106,7 +1132,12 @@ async function route(req, res) {
     return json(res,200,{...result,events:[...result.events,...quake.events],
       sources:[...result.sources,quake.source]}, {'Cache-Control':'public, max-age=90'});
   }
-  if (pathname === '/api/places' && req.method === 'GET') return json(res,200,places);
+  if (pathname === '/api/places' && req.method === 'GET') {
+    if(!limits(req,res,'search',90,60000))return;
+    const proximity=searchProximity(u.searchParams);
+    const language=normalizeLocale(u.searchParams.get('lang'))||'pt-BR';
+    return json(res,200,await nearbySuggestions(proximity,language));
+  }
   // Address lookup only after location permission; no coordinates are persisted.
   // A strict request limit prevents GPS jitter from exhausting provider quotas.
   if (pathname === '/api/reverse' && req.method === 'GET') {
@@ -1132,8 +1163,7 @@ async function route(req, res) {
     if (!limits(req,res,'search',90,60000)) return;
     const detected=getLocaleSuggestion(req.headers,process.env.VANO_TRUST_GEO_HEADERS==='1');
     const lang=normalizeLocale(u.searchParams.get('lang'))||prefFor(owner(req),detected.language).language;
-    const lon=Number(u.searchParams.get('lng')),lat=Number(u.searchParams.get('lat'));
-    const proximity=u.searchParams.has('lng')&&u.searchParams.has('lat')&&pointOK([lon,lat])?[lon,lat]:null;
+    const proximity=searchProximity(u.searchParams);
     return json(res,200,await search(u.searchParams.get('q'),lang,proximity));
   }
   // Experimental MAVI phone-style conversation: NEVER available on /mapa.
@@ -1691,10 +1721,10 @@ async function route(req, res) {
     const body=await getBody(req),em=normEmail(body.email);
     if (!limitAccount(res,'signup',em,3,3600000)) return;
     if(body.language!==undefined&&!LANGUAGES.has(body.language))return err(res,400,'Idioma inválido.');
-    if(!isEmail(em)||!validName(body.name)||!validPassword(body.password)) return err(res,400,'Informe nome, e-mail válido e senha exclusiva de 12 a 128 caracteres.');
+    if(!isEmail(em)||(body.name!==undefined&&body.name!==''&&!validName(body.name))||!validPassword(body.password)) return err(res,400,'Informe e-mail válido e senha exclusiva de 12 a 128 caracteres.');
     if(db.users.length>=50000) return err(res,503,'Limite de contas deste servidor atingido.');
     if(db.users.some(x=>x.email===em)) return err(res,409,'E-mail já cadastrado.');
-    const user={id:hex(12),name:cleanText(body.name,80),email:em,passwordHash:await passwordHash(body.password),createdAt:stamp(),signupMethod:'email',verifiedAt:mailReady?null:stamp(),verificationMethod:mailReady?'pending':'dev'};
+    const user={id:hex(12),name:cleanText(body.name,80)||'Viajante',email:em,passwordHash:await passwordHash(body.password),createdAt:stamp(),signupMethod:'email',verifiedAt:mailReady?null:stamp(),verificationMethod:mailReady?'pending':'dev'};
     // Recheck after awaiting scrypt: concurrent signups can pass the first check.
     if(db.users.some(x=>x.email===em))return err(res,409,'E-mail já cadastrado.');
     db.users.push(user);

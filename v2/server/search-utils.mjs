@@ -1,9 +1,9 @@
 /** Deterministic search ordering: main named place before shops inside it. */
-export const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+export const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^\p{L}\p{N}]+/gu,' ').trim().replace(/\s+/g,' ');
 export const postalDigits = value => String(value || '').replace(/\D/g,'');
 /** Optional user-location bias breaks relevance ties; it never filters
  * remote results (including adjacent countries) out of the list. */
-export function rankSearchResults(items, query, proximity=null) {
+export function rankSearchResults(items, query, proximity=null, limit=10) {
   const q=fold(query), digits=postalDigits(query), isCep=/^\d{5}-?\d{3}$/.test(String(query||'').trim());
   const seen=new Set();
   return (Array.isArray(items)?items:[]).filter(item=>{
@@ -16,9 +16,12 @@ export function rankSearchResults(items, query, proximity=null) {
     const words=q.split(' ').filter(Boolean);
     const both=fold(item.name+' '+item.address);
     const hasAll=words.length>1&&words.every(word=>both.split(' ').includes(word));
+    const acronym=q.length>=2&&q.length<=6&&(
+      String(item.name).split(/[^\p{L}\p{N}]+/u).some(word=>fold(word)===q&&word===word.toUpperCase())||
+      n.split(' ').filter(word=>!['de','da','do','das','dos','e','the','of'].includes(word)).map(word=>word[0]).join('')===q);
     const match=isCep && postalDigits(item.name)===digits ? 0
       : isCep && postalDigits(item.name+' '+item.address).includes(digits) ? 1
-      : n===q ? 0
+      : n===q || acronym ? 0
       : n.startsWith(q) ? 1
       : n.includes(q) ? 2
       : words.every(word=>n.includes(word)) ? 3
@@ -34,5 +37,23 @@ export function rankSearchResults(items, query, proximity=null) {
       distance=6371*2*Math.asin(Math.sqrt(h));
     }
     return {item,index,match,distance};
-  }).sort((a,b)=>a.match-b.match||a.distance-b.distance||a.index-b.index).map(x=>x.item).slice(0,10);
+  }).sort((a,b)=>a.match-b.match||a.distance-b.distance||a.index-b.index).map(x=>x.item).slice(0,Math.max(1,Math.min(32,limit)));
+}
+
+/** Providers complement one another: merge before the final relevance cut.
+ * Matching names within 75 m describe the same POI; neighboring businesses stay.
+ */
+export function mergeSearchResults(groups,query,proximity=null,limit=16){
+ const merged=[];
+ for(const item of groups.flat()){
+  if(!item||!Array.isArray(item.coords)||!item.coords.every(Number.isFinite))continue;
+  const duplicate=merged.some(existing=>{
+   if(fold(existing.name)!==fold(item.name))return false;
+   const dx=(existing.coords[0]-item.coords[0])*111320*Math.cos(item.coords[1]*Math.PI/180);
+   const dy=(existing.coords[1]-item.coords[1])*110540;
+   return Math.hypot(dx,dy)<=75;
+  });
+  if(!duplicate)merged.push(item);
+ }
+ return rankSearchResults(merged,query,proximity,limit);
 }
