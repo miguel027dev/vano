@@ -87,7 +87,7 @@ export default function AdminPage(){
   <LockKeyhole size={36}/><span>ÁREA RESTRITA</span><h1>Console VANO</h1>
   <p>Área exclusiva de administradores autorizados e verificados.</p>
   <Link to={user?'/perfil':'/entrar'}>{user?'Voltar ao perfil':'Entrar com minha conta'} <ArrowUpRight size={17}/></Link>
- </div></div></div></div></main>;
+ </div></main>;
  return <main className="v3-admin vanu-admin-page" id="conteudo">
  <div className="vanu-control-frame">
   <aside className="vanu-control-sidebar" aria-label="Centro de controle do VANO">
@@ -219,5 +219,5 @@ export default function AdminPage(){
    </section>
   </>}
   </>}
- </div></main>;
+ </div></div></div></div></main>;
 }
