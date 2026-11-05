@@ -12,12 +12,12 @@ const sample={origin:{lat:-23.5615,lng:-46.6557},destination:{lat:-23.5874,lng:-
 async function setup(options={}){
  const db=emptyData(),key='vp_'+'a'.repeat(16)+'_'+'b'.repeat(64),other='vp_'+'c'.repeat(16)+'_'+'d'.repeat(64);
  let tick=Date.now(),saves=0,failSave=false,calls=[],searchCalls=[];
- db.partnerKeys=[{id:'a'.repeat(16),keyHash:hash(key),version:1,active:true,name:'Social',origins:['https://social.example'],scopes:['map:read','places:read','routes:read','reports:read','reports:write','traffic:read']},{id:'c'.repeat(16),keyHash:hash(other),version:1,active:true,name:'Other',origins:['https://other.example'],scopes:['map:read','places:read','routes:read']}];
+ db.partnerKeys=[{id:'a'.repeat(16),keyHash:hash(key),version:1,active:true,name:'Social',origins:['https://social.example'],scopes:['map:read','places:read','routes:read','reports:read','reports:write','traffic:read','pois:read']},{id:'c'.repeat(16),keyHash:hash(other),version:1,active:true,name:'Other',origins:['https://other.example'],scopes:['map:read','places:read','routes:read']}];
  const route={id:'fast',distance:4.2,duration:13,geometry:{type:'LineString',coordinates:[[-46.6557,-23.5615],[-46.6597,-23.5874]]},steps:[{instruction:'Siga na avenida',distance:4200}],verifiedSafety:false};
  const api=createPartnerAPI({db,persist:async()=>{saves++;if(failSave)throw Error('private db secret');},secret:'test-only-partner-crypto-secret',origin:'https://vano.example',production:true,persistent:true,clock:()=>tick,
   headers:{'X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; frame-ancestors 'none'"},
   admin:req=>req.headers['x-test-admin']==='yes',csrfGuard:(req,res)=>{if(req.headers['x-test-csrf']==='yes')return true;res.writeHead(403);res.end('{}');return false;},
-  services:{directions:async(...args)=>{calls.push(args);return options.result||{source:'real-fixture',routes:[route,{...route,id:'safe',duration:15,geometry:{type:'LineString',coordinates:[[-46.6557,-23.5615],[-46.65,-23.58],[-46.6597,-23.5874]]}}]};},search:async(...args)=>{searchCalls.push(args);return options.searchResults||[{name:'Lugar',address:'Rua 1',coords:[-46.65,-23.56],category:'local'}];},reverse:async()=>({found:true,address:{street:'Rua 1'}}),mapToken:()=> 'pk.public',routingReady:()=>true,embedHTML:()=>'<html>map</html>',mapRead:{'map-features':async()=>({features:[{id:'real-fixture',type:'hospital',coords:[-46.65,-23.56],name:'Hospital',source:'OpenStreetMap'}]})},read:{traffic:{scope:'traffic:read',bbox:true,run:async()=>({available:false,features:[]})}}}
+  services:{directions:async(...args)=>{calls.push(args);return options.result||{source:'real-fixture',routes:[route,{...route,id:'safe',duration:15,geometry:{type:'LineString',coordinates:[[-46.6557,-23.5615],[-46.65,-23.58],[-46.6597,-23.5874]]}}]};},search:async(...args)=>{searchCalls.push(args);return options.searchResults||[{name:'Lugar',address:'Rua 1',coords:[-46.65,-23.56],category:'local'}];},reverse:async()=>({found:true,address:{street:'Rua 1'}}),mapToken:()=> 'pk.public',routingReady:()=>true,embedHTML:()=>'<html>map</html>',mapRead:{'map-features':async()=>({features:[{id:'real-fixture',type:'hospital',coords:[-46.65,-23.56],name:'Hospital',source:'OpenStreetMap'},...['radar','semaforo','lombada','relato-acidente'].map(type=>({id:'fixture-'+type,type,coords:[-46.65,-23.56],source:'OpenStreetMap'}))]}),'map-radars':async()=>({features:[{type:'radar',coords:[-46.65,-23.56]}]})},read:{traffic:{scope:'traffic:read',bbox:true,run:async()=>({available:false,features:[]})}}}
  });
  const server=http.createServer(async(req,res)=>{if(!await api.handle(req,res)){res.writeHead(404);res.end();}});
  server.listen(0,'127.0.0.1');await once(server,'listening');const origin='http://127.0.0.1:'+server.address().port;
@@ -156,5 +156,55 @@ test('external controls receive real origin configuration, text destinations and
   const empty=await s.call(base+'/map-session-data','GET',undefined,emptyAuth);assert.equal(empty.json.data.origin,null);assert.equal(empty.json.data.controls,false);
   const missing=await s.call(base+'/routes','POST',{destination:sample.destination},emptyAuth);assert.equal(missing.status,422);assert.equal(missing.json.error.code,'LOCATION_REQUIRED');
   const shell=await s.call(new URL(created.json.data.embed_url).pathname);assert.match(shell.headers.get('permissions-policy'),/geolocation=\(self\)/);
+ }finally{await s.close();}
+});
+
+test('admin chooses functions per HTTPS domain; restricted key and browser see only allowed layers',async()=>{
+ const s=await setup();
+ try{
+  const admin={'X-Test-Admin':'yes','X-Test-Csrf':'yes'};
+  const catalog=await s.call('/api/admin/partner-keys','GET',undefined,admin);
+  assert.equal(catalog.status,200);
+  assert.ok(catalog.json.data.scope_catalog.find(x=>x.id==='signals:read'));
+  const grant=await s.call('/api/admin/partner-keys','POST',{
+   name:'Signals partner',origins:['https://signals.example'],scopes:['map:read','signals:read']
+  },admin);
+  assert.equal(grant.status,201);
+  const key=grant.json.data.api_key;
+  const auth={Authorization:'Bearer '+key};
+  const bbox='-46.68,-23.59,-46.63,-23.54';
+  assert.equal((await s.call(base+'/routes','POST',sample,auth)).status,403);
+  assert.equal((await s.call(base+'/places/search?q=Rua','GET',undefined,auth)).status,403);
+  assert.equal((await s.call(base+'/map-data?service=map-radars&bbox='+bbox,'GET',undefined,auth)).status,403);
+  assert.equal((await s.call(base+'/map-data?service=places/tomtom&bbox='+bbox,'GET',undefined,auth)).status,404);
+  const map=await s.call(base+'/map-data?service=map-features&bbox='+bbox,'GET',undefined,auth);
+  assert.equal(map.status,200);
+  assert.deepEqual(map.json.data.features.map(x=>x.type),['semaforo']);
+  const created=await s.call(base+'/map-sessions','POST',{
+   allowed_origin:'https://signals.example',center:sample.origin,theme:'dark'
+  },auth);
+  assert.equal(created.status,201);
+  const browser={Authorization:'Bearer '+created.json.data.browser_token,Origin:'https://signals.example'};
+  const session=await s.call(base+'/map-session-data','GET',undefined,browser);
+  assert.equal(session.status,200);
+  assert.equal(session.json.data.theme,'dark');
+  assert.ok(session.json.data.styles.light.includes('vano-atlas-light'));
+  assert.ok(session.json.data.styles.dark.includes('vano-atlas-black'));
+  assert.deepEqual(session.json.data.allowed_map_services,['map-features']);
+  assert.deepEqual(session.json.data.layer_scopes,['signals:read']);
+  assert.equal((await s.call(base+'/map-data?service=map-features&bbox='+bbox,'GET',undefined,browser)).json.data.features.length,1);
+  assert.equal((await s.call(base+'/map-sessions','POST',{allowed_origin:'https://other.example',center:sample.origin},auth)).status,403);
+  assert.equal((await s.call(base+'/map-session-data','GET',undefined,{...browser,Origin:'https://other.example'})).status,403);
+  assert.equal((await s.call(base+'/capabilities','GET',undefined,{Authorization:key,Origin:'https://signals.example'})).status,403);
+ }finally{await s.close();}
+});
+test('new key defaults to standard map, route and road overlays, but not community writes',async()=>{
+ const s=await setup();try{
+  const admin={'X-Test-Admin':'yes','X-Test-Csrf':'yes'};
+  const r=await s.call('/api/admin/partner-keys','POST',{name:'Default partner',origins:['https://default.example']},admin);
+  assert.equal(r.status,201);
+  for(const permission of ['map:read','places:read','routes:read','radars:read','signals:read','signs:read','pois:read'])
+   assert.ok(r.json.data.scopes.includes(permission),permission);
+  assert.ok(!r.json.data.scopes.includes('reports:write'));
  }finally{await s.close();}
 });
