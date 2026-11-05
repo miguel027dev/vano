@@ -43,3 +43,13 @@ test('Japanese and Arabic destination names retain exact relevance across region
   {id:'cairo',name:'القاهرة',coords:[31.23,30.04]}],'القاهرة',[55.27,25.2]);
  assert.equal(arabic[0].id,'cairo');
 });
+
+test('landmark initialism beats closer advertisements and shops mentioning that landmark',()=>{
+ const results=rankSearchResults([
+  {id:'rental',name:'BV0122 | Localizacao Imbativel, 02 quartos ao lado MASP!',coords:[-46.65472014,-23.56136231]},
+  {id:'restaurant',name:'A Baianeira-MASP',coords:[-46.655396,-23.561811]},
+  {id:'museum',name:'Museu de Arte de São Paulo-MASP',coords:[-46.655621,-23.561097]},
+  {id:'other',name:'Masp',coords:[-46.67428,-23.60546]}
+ ],'MASP',[-46.65,-23.56]);
+ assert.equal(results[0].id,'museum');
+});

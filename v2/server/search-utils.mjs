@@ -16,9 +16,10 @@ export function rankSearchResults(items, query, proximity=null, limit=10) {
     const words=q.split(' ').filter(Boolean);
     const both=fold(item.name+' '+item.address);
     const hasAll=words.length>1&&words.every(word=>both.split(' ').includes(word));
-    const acronym=q.length>=2&&q.length<=6&&(
-      String(item.name).split(/[^\p{L}\p{N}]+/u).some(word=>fold(word)===q&&word===word.toUpperCase())||
-      n.split(' ').filter(word=>!['de','da','do','das','dos','e','the','of'].includes(word)).map(word=>word[0]).join('')===q);
+    // A nearby business mentioning a landmark is not that landmark.
+    const entityWords=n.split(' ').filter(word=>!['de','da','do','das','dos','e','the','of'].includes(word));
+    if(entityWords.length>1&&entityWords.at(-1)===q)entityWords.pop();
+    const acronym=q.length>=2&&q.length<=6&&entityWords.map(word=>word[0]).join('')===q;
     const match=isCep && postalDigits(item.name)===digits ? 0
       : isCep && postalDigits(item.name+' '+item.address).includes(digits) ? 1
       : n===q || acronym ? 0
