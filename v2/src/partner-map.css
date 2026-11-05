@@ -1,0 +1,1 @@
+html,body,#map{margin:0;width:100%;height:100%;font-family:system-ui,sans-serif}#status{position:absolute;top:12px;left:12px;right:60px;z-index:2;padding:10px 14px;background:#fff;border-radius:10px;box-shadow:0 2px 12px #0002;font-size:14px;color:#18202a}#status[hidden]{display:none}.mapboxgl-popup-content{font-family:system-ui,sans-serif}

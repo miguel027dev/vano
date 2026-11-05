@@ -3,6 +3,7 @@
  * This small local store is deliberately NOT a multi-instance database.
  */
 import http from 'node:http';
+import {createPartnerAPI,PartnerError} from './partner-api.mjs';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
 import {compareLightingInventory} from './safe-routing/lighting-grid.mjs';
 import {compareInfrastructure} from './safe-routing/context-grid.mjs';
@@ -509,6 +510,66 @@ function requestHTTPS(req, res) {
 }
 const devSync=createDevSync({db,persist,json,err,getBody,protectedWrite,userSession,isAdminAccount,limits,
   persistent:store.persistent===true});
+const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persistent:store.persistent===true,headers,
+ enabled:process.env.VANO_PARTNER_API_ENABLED!=='0',
+ admin:req=>isAdminAccount(userSession(req)?.user),csrfGuard:protectedWrite,
+ services:{
+  routingReady:()=>Boolean(process.env.VANO_V1_API_URL||process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN),
+  mapToken:()=>process.env.VITE_MAPBOX_PUBLIC_TOKEN||'',
+  embedHTML:()=>fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8'),
+  reportPublished:record=>reportStreams.publish(record),
+  capabilities:()=>({transit_enabled:process.env.VANO_TRANSIT_ENABLED==='1',
+   safety_notice:'Safe é uma preferência de cálculo, não uma garantia de segurança.',
+   metrics_precision:'Distância e duração convertidas dos quilômetros e minutos oferecidos pelo motor.'}),
+  directions:async(...args)=>{
+   let result=await directions(...args);
+   if(process.env.VANO_SAFE_VERIFIED_ROUTING_ENABLED!=='false')result=applySafeVerifiedReportRanking(result,db.reports,{});
+   else if(result?.safeCandidatePool)delete result.safeCandidatePool;
+   if(args[2]!=='a-pe'&&process.env[TOMTOM_ENV_NAME]?.trim()){
+    const points=routeCorridorPoints(result);
+    if(points.length)result=rankTomTomSafeAlternative(result,cachedTomTomRouteIncidents(points,process.env[TOMTOM_ENV_NAME]),{});
+   }
+   return result;
+  },
+  search:async(...args)=>{
+   if(!(process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN))throw new PartnerError(503,'SEARCH_UNAVAILABLE','Busca real indisponível.');
+   return search(...args);
+  },
+  reverse:async coords=>{
+   const access=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
+   if(!access)throw new PartnerError(503,'GEOCODER_UNAVAILABLE','Endereços indisponíveis.');
+   const request=new URL('https://api.mapbox.com/search/geocode/v6/reverse');
+   for(const [key,value]of Object.entries({longitude:coords[0],latitude:coords[1],language:'pt-BR',access_token:access}))request.searchParams.set(key,String(value));
+   const response=await fetch(request,{headers:{Accept:'application/json'},signal:AbortSignal.timeout(6500)});
+   if(!response.ok)throw new PartnerError(503,'GEOCODER_UNAVAILABLE','Endereços indisponíveis.');
+   const address=normalizedReverseAddress(await response.json());return {found:Boolean(address),address};
+  },
+  transitPlan:async body=>{
+   if(process.env.VANO_TRANSIT_ENABLED!=='1')throw new PartnerError(403,'FEATURE_NOT_ENABLED','Transporte público não habilitado.');
+   if(!body?.origin||!body?.destination||!pointOK([body.origin.lng,body.origin.lat])||!pointOK([body.destination.lng,body.destination.lat])||Object.keys(body).some(x=>!['origin','destination'].includes(x)))throw new PartnerError(422,'INVALID_COORDINATES','Origem e destino inválidos.');
+   try{return await planTransitTrip({origin:[body.origin.lng,body.origin.lat],destination:[body.destination.lng,body.destination.lat]},{regions:transitRegions()});}
+   catch(e){if(e instanceof TransitError)throw new PartnerError(e.status===400?422:e.status,'TRANSIT_UNAVAILABLE','Não foi possível planejar nesta região.');throw e;}
+  },
+  read:{
+   traffic:{scope:'traffic:read',bbox:true,run:async bbox=>({
+    official:await configuredPublicTraffic(bbox,{url:process.env.VANO_TRAFFIC_OFFICIAL_GEOJSON_URL||'',token:process.env.VANO_TRAFFIC_OFFICIAL_TOKEN||''}),
+    tomtom:tomtomSnapshot(bbox,process.env[TOMTOM_ENV_NAME]||'')
+   })},
+   pois:{scope:'pois:read',bbox:true,run:async(bbox,query)=>{
+    const category=query.get('category');if(category&&!/^[a-z0-9-]{1,50}$/.test(category))throw new PartnerError(422,'INVALID_CATEGORY','Categoria inválida.');
+    const [osm,tomtom]=await Promise.all([queryPublicMap(bbox),tomtomPoiSnapshot(bbox,process.env[TOMTOM_ENV_NAME]||'')]);
+    return {features:[...(osm.features||[]),...(tomtom.features||[])].filter(x=>!category||x.type===category).slice(0,180),sources:[...(osm.sources||[]),...(tomtom.sources||[])],notice:'Inclui pontos de interesse e infraestrutura mapeada; cobertura não exaustiva.'};
+   }},
+   radars:{scope:'pois:read',bbox:true,run:bbox=>queryPublicRadars(bbox)},
+   context:{scope:'context:read',bbox:true,run:async bbox=>{
+    if(process.env.VANO_GLOBAL_CONTEXT_ENABLED==='0')return {events:[],disabled:true};
+    const context=await queryGlobalContext(bbox),quake=seismicSnapshot(bbox);return {...context,events:[...context.events,...quake.events],sources:[...context.sources,quake.source]};
+   }},
+   'road-events':{scope:'context:read',bbox:true,run:bbox=>{const regional=keylessRegionalSnapshot(bbox),official=officialRoadSnapshot(bbox);return {...regional,features:[...official.features,...regional.features].slice(0,100),sources:[...official.sources,...regional.sources]};}},
+   benchmarks:{scope:'benchmarks:read',run:(_bbox,query)=>publicBenchmarkPayload({query,records:process.env.VANO_BENCHMARK_PUBLICATION_LICENSE_CONFIRMED==='1'?db.benchmarkResults:[]})},
+   'transit/capabilities':{scope:'transit:read',run:()=>transitCapabilities(process.env.VANO_TRANSIT_ENABLED==='1'?transitRegions():[])}
+  }
+ }});
 function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ownerId?1:0),0)<max; }
 async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
@@ -1834,6 +1895,10 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     catch { return err(res,400,'URL inválida.'); }
     const requestPath=parsedRequestUrl.pathname;
     recordOperationalEvent(runtimeMetrics,{path:requestPath,method,userAgent:req.headers['user-agent'],accept:req.headers.accept});
+    if(requestPath.startsWith('/api/partner/v1')||requestPath.startsWith('/api/admin/partner-keys')||requestPath==='/integracoes'||requestPath.startsWith('/embed/')){
+      await store.assertHealthy?.();
+      if(await partnerAPI.handle(req,res,parsedRequestUrl))return;
+    }
     if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'||requestPath==='/.well-known/vano-benchmark.json'){
       await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
