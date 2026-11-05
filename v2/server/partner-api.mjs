@@ -7,10 +7,10 @@ import {parseBBox} from './map-public-data.mjs';
 import {isReportType,reportType,publicReportsInBBox,recordReportFeedback,metersApart} from '../src/lib/communityReports.js';
 import {partnerOpenAPI} from './partner-openapi.mjs';
 import {partnerPlace,partnerAddress} from '../src/lib/partnerInputs.mjs';
+import {PARTNER_SCOPE_CATALOG,PARTNER_SCOPES,DEFAULT_PARTNER_SCOPES,MAP_SERVICE_SCOPE,partnerMapServices,filterPartnerMapFeatures} from './partner-map-scopes.mjs';
 
 export const PARTNER_BASE='/api/partner/v1';
-export const PARTNER_SCOPES=['map:read','places:read','routes:read','traffic:read','pois:read','context:read','benchmarks:read','transit:read','reports:read','reports:write'];
-export const DEFAULT_PARTNER_SCOPES=PARTNER_SCOPES.filter(x=>x!=='reports:write');
+export {PARTNER_SCOPES,DEFAULT_PARTNER_SCOPES};
 const MODES={car:'carro',motorcycle:'moto',walking:'a-pe'};
 const hash=x=>createHash('sha256').update(String(x)).digest('hex');
 const equal=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.length===b.length&&timingSafeEqual(Buffer.from(a),Buffer.from(b));
@@ -147,12 +147,12 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
    if(p==='/integracoes'){
     if(!admin(req))fail(403,'ADMIN_REQUIRED','Entre na conta administrativa do VANO para gerenciar integrações.');
     if(req.method!=='GET')fail(405,'METHOD_NOT_ALLOWED','Método não permitido.');
-    page(res,'VANO Integrações','<link rel="stylesheet" href="/partner-ui.css"><main><h1>Integrações VANO</h1><p>Crie uma chave por parceiro. Ela aparece uma única vez e deve ficar no backend do parceiro.</p><form id="key-form"><label>Nome do parceiro<input id="name" required minlength="2" maxlength="80"></label><label>Origem HTTPS da rede social<input id="origin" placeholder="https://social.example" required></label><button>Criar chave de leitura</button></form><pre id="result" role="status"></pre><h2>Chaves cadastradas</h2><div id="keys"></div><p><a href="'+PARTNER_BASE+'/docs">Guia da API</a> · <a href="'+PARTNER_BASE+'/openapi.json">OpenAPI</a></p></main><script type="module" src="/partner-admin.js"></script>');return true;
+    page(res,'VANO Integrações','<link rel="stylesheet" href="/partner-ui.css"><main><h1>Integrações VANO</h1><p>Crie uma chave por parceiro. Ela aparece uma única vez e deve ficar no backend do parceiro.</p><form id="key-form"><label>Nome do parceiro<input id="name" required minlength="2" maxlength="80" placeholder="Ex.: Vybz"></label><label>Domínio HTTPS autorizado<input id="origin" type="url" placeholder="https://app.exemplo.com" required></label><p>O domínio autoriza o navegador a receber tokens temporários. A chave permanente deve permanecer no backend parceiro.</p><fieldset id="partner-permissions"><legend>Permissões desta credencial</legend><p>Habilite somente as funções necessárias. Mapa VANO Branco/Preto e camadas de radar, semáforos e sinalização vêm selecionados no padrão.</p><div id="scope-options" role="group" aria-label="Permissões da API"></div></fieldset><button type="submit">Gerar chave com permissões</button></form><pre id="result" role="status"></pre><h2>Chaves cadastradas</h2><div id="keys"></div><p><a href="'+PARTNER_BASE+'/docs">Guia da API</a> · <a href="'+PARTNER_BASE+'/openapi.json">OpenAPI</a></p></main><script type="module" src="/partner-admin.js"></script>');return true;
    }
    if(p.startsWith('/api/admin/partner-keys')){
     if(!admin(req))fail(403,'ADMIN_REQUIRED','Acesso administrativo necessário.');
     quota('partner-admin',20);
-    if(req.method==='GET'&&p==='/api/admin/partner-keys'){payload(res,200,{items:db.partnerKeys.map(publicKey)},requestId);return true;}
+    if(req.method==='GET'&&p==='/api/admin/partner-keys'){payload(res,200,{items:db.partnerKeys.map(publicKey),scope_catalog:PARTNER_SCOPE_CATALOG,default_scopes:DEFAULT_PARTNER_SCOPES},requestId);return true;}
     if(!csrfGuard(req,res))return true;
     if(production&&!persistent)fail(503,'PERSISTENT_STORAGE_REQUIRED','Gestão de chaves exige banco persistente em produção.');
     if(req.method==='POST'&&p==='/api/admin/partner-keys'){
@@ -205,7 +205,7 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
     if(!b)fail(403,'BROWSER_SESSION_REQUIRED','Use o token temporário de map-sessions.');
     scope(k,'map:read');quota('map-load:'+k.id,90);
     const route=b.route?await calculated(k,b.route.spec,{choice:b.route.choice}):null;
-    payload(res,200,{center:b.center,origin:b.origin||null,destination:b.destination||null,query:b.query||null,controls:b.controls===true,auto_locate:b.auto_locate!==false,zoom:b.zoom,markers:b.markers,theme:b.theme,routes:route?.routes||[],mapbox_public_token:services.mapToken(),expires_at:new Date(b.expires).toISOString(),session_until:b.session_until?new Date(b.session_until).toISOString():new Date(b.expires).toISOString(),allowed_origin:b.allowed_origin||k.origins[0],api_base:origin+PARTNER_BASE,stylesheets:services.stylesheets?.()||[],features:{search:k.scopes.includes('places:read'),directions:k.scopes.includes('routes:read'),icons:true,traffic:true},styles:{light:origin+'/mapbox/vano-atlas-light.json',dark:origin+'/mapbox/vano-atlas-black.json'}},requestId);return true;
+    payload(res,200,{center:b.center,origin:b.origin||null,destination:b.destination||null,query:b.query||null,controls:b.controls===true,auto_locate:b.auto_locate!==false,zoom:b.zoom,markers:b.markers,theme:b.theme,routes:route?.routes||[],mapbox_public_token:services.mapToken(),expires_at:new Date(b.expires).toISOString(),session_until:b.session_until?new Date(b.session_until).toISOString():new Date(b.expires).toISOString(),allowed_origin:b.allowed_origin||k.origins[0],api_base:origin+PARTNER_BASE,stylesheets:services.stylesheets?.()||[],features:{search:k.scopes.includes('places:read'),directions:k.scopes.includes('routes:read'),icons:partnerMapServices(k.scopes).includes('map-features'),radars:k.scopes.includes('radars:read'),traffic_signals:k.scopes.includes('signals:read'),road_signs:k.scopes.includes('signs:read'),pois:k.scopes.includes('pois:read'),traffic:k.scopes.includes('traffic:read')},allowed_map_services:partnerMapServices(k.scopes),layer_scopes:k.scopes.filter(x=>['pois:read','radars:read','signals:read','signs:read','reports:read'].includes(x)),styles:{light:origin+'/mapbox/vano-atlas-light.json',dark:origin+'/mapbox/vano-atlas-black.json'}},requestId);return true;
    }
    const k=authenticate(req),base=PARTNER_BASE;
    if(p===base+'/map-sessions/renew'&&req.method==='POST'){
@@ -216,10 +216,15 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
    }
    if(p===base+'/map-data'&&req.method==='GET'){
     scope(k,'map:read');const name=u.searchParams.get('service'),read=services.mapRead?.[name];
-    if(typeof read!=='function')fail(404,'MAP_SERVICE_NOT_FOUND','Serviço de mapa não disponível.');
+    if(typeof read!=='function'||!Object.hasOwn(MAP_SERVICE_SCOPE,name))fail(404,'MAP_SERVICE_NOT_FOUND','Serviço de mapa não disponível.');
+    const needed=MAP_SERVICE_SCOPE[name];if(needed)scope(k,needed);
     const bbox=parseBBox(u.searchParams.get('bbox'),.3,.3);if(!bbox)fail(422,'INVALID_BBOX','Área inválida; máximo 0.3 graus.');
     quota('map-feed:'+k.id+':'+name,120);
-    payload(res,200,await read(bbox),requestId);return true;
+    if(name==='map-features'&&!partnerMapServices(k.scopes).includes(name)){
+     payload(res,200,{features:[],available:true,notice:'Camadas desabilitadas para esta credencial.'},requestId);return true;
+    }
+    const result=await read(bbox);
+    payload(res,200,name==='map-features'?{...result,features:filterPartnerMapFeatures(result.features,k.scopes)}:result,requestId);return true;
    }
    if(p===base+'/capabilities'&&req.method==='GET'){
     payload(res,200,{partner_id:k.id,scopes:k.scopes,modes:Object.keys(MODES),profiles:{car:['fastest','safe'],motorcycle:['fastest','safe'],walking:['fastest']},
@@ -330,7 +335,8 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
    if(service&&req.method==='GET'){
     scope(k,service.scope);quota('read:'+k.id+':'+serviceName,20);
     let bbox;if(service.bbox){bbox=parseBBox(u.searchParams.get('bbox'));if(!bbox)fail(422,'INVALID_BBOX','Área inválida; máximo 0.065 × 0.055 graus.');}
-    payload(res,200,await service.run(bbox,u.searchParams),requestId);return true;
+    const result=await service.run(bbox,u.searchParams);
+    payload(res,200,serviceName==='pois'?{...result,features:filterPartnerMapFeatures(result.features,k.scopes)}:result,requestId);return true;
    }
    if(p===base+'/transit/plan'&&req.method==='POST'){
     scope(k,'transit:read');quota('transit:'+k.id,6);payload(res,200,await services.transitPlan(await readBody(req)),requestId);return true;

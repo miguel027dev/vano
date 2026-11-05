@@ -7,6 +7,7 @@ import {createSupportTicket,supportStatus,supportInbox,replySupport,pruneSupport
 import {createHelpAssistant} from './help-assistant.mjs';
 const helpAssistant=createHelpAssistant();
 import {createPartnerAPI,PartnerError} from './partner-api.mjs';
+import {ROAD_SIGN_TYPES} from './partner-map-scopes.mjs';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
 import {compareLightingInventory} from './safe-routing/lighting-grid.mjs';
 import {compareInfrastructure} from './safe-routing/context-grid.mjs';
@@ -573,7 +574,9 @@ const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persisten
     const [osm,tomtom]=await Promise.all([queryPublicMap(bbox),tomtomPoiSnapshot(bbox,process.env[TOMTOM_ENV_NAME]||'')]);
     return {features:[...(osm.features||[]),...(tomtom.features||[])].filter(x=>!category||x.type===category).slice(0,180),sources:[...(osm.sources||[]),...(tomtom.sources||[])],notice:'Inclui pontos de interesse e infraestrutura mapeada; cobertura não exaustiva.'};
    }},
-   radars:{scope:'pois:read',bbox:true,run:bbox=>queryPublicRadars(bbox)},
+   radars:{scope:'radars:read',bbox:true,run:bbox=>queryPublicRadars(bbox)},
+    signals:{scope:'signals:read',bbox:true,run:async bbox=>{const r=await queryPublicMap(bbox);return {...r,features:(r.features||[]).filter(x=>x.type==='semaforo')};}},
+    signs:{scope:'signs:read',bbox:true,run:async bbox=>{const r=await queryPublicMap(bbox);return {...r,features:(r.features||[]).filter(x=>ROAD_SIGN_TYPES.includes(x.type))};}},
    context:{scope:'context:read',bbox:true,run:async bbox=>{
     if(process.env.VANO_GLOBAL_CONTEXT_ENABLED==='0')return {events:[],disabled:true};
     const context=await queryGlobalContext(bbox),quake=seismicSnapshot(bbox);return {...context,events:[...context.events,...quake.events],sources:[...context.sources,quake.source]};

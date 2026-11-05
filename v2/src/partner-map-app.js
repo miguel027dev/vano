@@ -6,6 +6,7 @@ import {attachPublicMapOverlay} from './lib/mapPublicOverlay.js';
 import {createPartnerSessionClient} from './lib/partnerSessionClient.mjs';
 import {arrivalMarkerSvg} from './lib/arrivalMarker.js';
 import {partnerPlace,resolvePartnerPlace,locatePartnerUser} from './lib/partnerInputs.mjs';
+import {filterPartnerMapFeatures} from '../server/partner-map-scopes.mjs';
 const valid=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<=90;
 
 /** Same map/search application in the hosted embed and native SDK. */
@@ -126,7 +127,14 @@ export async function mountPartnerMap(container,{session,apiBase,token,onEvent=(
   if(routes[0]?.geometry?.coordinates?.length){const points=routes[0].geometry.coordinates;originPoint={coords:points[0],name:'Origem do trajeto'};destination={coords:points.at(-1),name:'Destino do trajeto'};$('[data-field="origin"]').value=originPoint.name;$('[data-field="destination"]').value=destination.name;}
   $('[data-action="theme"]').onclick=()=>{theme=theme==='dark'?'light':'dark';root.dataset.mapAppearance=theme;map.setStyle(data.styles[theme]);};
   $('[data-action="tilt"]').onclick=()=>map.easeTo({pitch:map.getPitch()>10?0:50,duration:350});
-  map.on('style.load',()=>draw());map.once('load',()=>{show('');for(const m of data.markers)new mapboxgl.Marker({color:'#f2762b'}).setLngLat(m.coords).setPopup(new mapboxgl.Popup().setText(m.label)).addTo(map);overlay=attachPublicMapOverlay(map,'mapbox',()=>false,p=>void setDestination(p),()=>false,()=>null,{request:client.overlayRequest});if(routes.length)draw(true);notify('ready',{features:data.features,external_controls:$('.vano-partner-panel').hidden});});
+  map.on('style.load',()=>draw());map.once('load',()=>{show('');for(const m of data.markers)new mapboxgl.Marker({color:'#f2762b'}).setLngLat(m.coords).setPopup(new mapboxgl.Popup().setText(m.label)).addTo(map);const enabledServices=new Set(data.allowed_map_services||[]);
+   const overlayRequest=(path,options)=>{
+    const service=new URL(path,'https://map.invalid').pathname.replace(/^\/api\//,'');
+    return enabledServices.has(service)?client.overlayRequest(path,options):Promise.resolve({ok:true,status:200,json:async()=>({features:[],available:true})});
+   };
+   overlay=enabledServices.length?attachPublicMapOverlay(map,'mapbox',()=>false,p=>void setDestination(p),()=>false,()=>null,{
+    request:overlayRequest,featureAllowed:item=>filterPartnerMapFeatures([item],data.layer_scopes||[]).length>0
+   }):null;if(routes.length)draw(true);notify('ready',{features:data.features,external_controls:$('.vano-partner-panel').hidden});});
   if(!data.features.search)for(const input of root.querySelectorAll('input'))input.disabled=true;$('[data-action="route"]').disabled=!data.features.directions;schedule(data);if(window.parent!==window)window.addEventListener('message',onMessage);
   if(initialOrigin)await setOrigin(initialOrigin,{calculate:false});
   else if(autoLocate??data.auto_locate??true)void locate().then(()=>{if(destination&&autoRoute)void calculate();}).catch(error);

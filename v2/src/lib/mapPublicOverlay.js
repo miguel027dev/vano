@@ -89,7 +89,7 @@ function popupBody(item,onSelect){
  }
  return wrapper;
 }
-export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPickPlace=null,getHideSignals=()=>false,getPoiVisible=()=>null,{request=fetch}={}){
+export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPickPlace=null,getHideSignals=()=>false,getPoiVisible=()=>null,{request=fetch,featureAllowed=()=>true}={}){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
  let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,radarRetryTimer=null,radarRetryCount=0,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,chargeKey='',chargeReadAt=0,chargeDisabled=false,chargeController=null,chargeTimer=null,overtureKey='',overtureReadAt=0,overtureDisabled=false,overtureController=null,overtureTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
@@ -209,7 +209,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
      if(Math.abs(other.coords[0]-lon)<step&&Math.abs(other.coords[1]-lat)<step){duplicate=true;break;}
    if(!duplicate){combined.push(item);seen.add(item.id);addIndex(item);}
   }
-  items=dedupePublicFeatureSources(combined).filter(item=>item.type!=='radar'||radarDisplayAllowed(item.coords));
+  items=dedupePublicFeatureSources(combined).filter(item=>featureAllowed(item)&&(item.type!=='radar'||radarDisplayAllowed(item.coords)));
   map._vanoSyncPrivateRoadSigns?.();
  }
  function updateVectorPoi(){
