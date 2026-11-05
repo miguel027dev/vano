@@ -72,7 +72,7 @@ import {rankTomTomSafeAlternative,routeCorridorPoints} from './tomtom-route-rank
 import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './global-live-context.mjs';
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
-import {isAdminAccount,adminMetrics,adminUsers,recordOperationalEvent} from './admin.mjs';
+import {isAdminAccount,adminMetrics,adminUsers,adminReportList,recordOperationalEvent} from './admin.mjs';
 import {createDevSync} from './devsync.mjs';
 import {INTELLIGENCE_TOOLS,recordRouteDecision,recordNavigationOutcome,intelligenceSnapshot,askIntelligence} from './intelligence.mjs';
 import {historicalIntelligence,HISTORICAL_SOURCES} from './intelligence-history.mjs';
@@ -882,7 +882,7 @@ async function route(req, res) {
     try{await persist();}catch{return err(res,503,'Não foi possível registrar o evento.');}
     return json(res,200,{ok:true});
   }
-  if ((pathname === '/api/admin' || pathname === '/api/admin/users' || pathname === '/api/admin/safe-routing/storage') && req.method === 'GET') {
+  if (['/api/admin','/api/admin/users','/api/admin/reports','/api/admin/safe-routing/storage'].includes(pathname) && req.method === 'GET') {
     const session=userSession(req);
     if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
     if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
@@ -895,6 +895,7 @@ async function route(req, res) {
       catch{return json(res,503,{available:false,reason:'snapshot-verification-failed',usedForRouting:false});}
     }
     if(pathname==='/api/admin/users')return json(res,200,adminUsers(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit')}));
+    if(pathname==='/api/admin/reports')return json(res,200,adminReportList(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit'),status:u.searchParams.get('status')}),{'Cache-Control':'no-store'});
     return json(res,200,adminMetrics(db,runtimeMetrics,{now:Date.now(),startedAt:startupMs,status:{google:googleReady,mapbox:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,v1Router:!!process.env.VANO_V1_API_URL,email:mailReady,persistentDb:store.persistent===true,storage:store.persistent?'PostgreSQL (vano_v2.app_state)':'JSON da instância atual — dados podem desaparecer com reinícios no Render Free'}}));
   }
   if (pathname === '/api/bootstrap' && req.method === 'GET') {
