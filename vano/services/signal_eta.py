@@ -115,3 +115,38 @@ def signal_eta_fields(route):
         "signal_eta_method": str(data.get("signal_eta_method") or "unavailable"),
         "signal_eta_confidence": str(data.get("signal_eta_confidence") or "unavailable"),
     }
+
+
+
+def apply_signal_eta_payload(route):
+    """Normalize Route Node response rows at the Central without new API calls.
+
+    Workers may still run an older build. Their public road_controls already
+    carry Mapbox signal positions, so Central can expose identical ETA
+    metadata (and the tiny non-live fallback correction) for every client.
+    Existing enriched rows are left untouched to prevent double adjustment.
+    """
+    if not isinstance(route, dict):
+        return route
+    if route.get("signal_eta_method"):
+        return route
+    controls = route.get("road_controls") or []
+    intersections = [
+        {"traffic_signal": True, "location": [point.get("lon"), point.get("lat")]}
+        for point in controls[:500]
+        if isinstance(point, dict) and point.get("type") == "traffic_signal"
+    ]
+    probe = {
+        "duration": route.get("duration"),
+        # A missing worker profile must not invent a non-live correction.
+        "_profile_used": route.get("routing_profile_used") or "driving-traffic",
+        "legs": [{"steps": [{"intersections": intersections}]}],
+    }
+    apply_signal_eta(probe)
+    if not probe.get("_signal_eta"):
+        return route
+    route.update(signal_eta_fields(probe))
+    if route["signal_eta_adjustment_s"]:
+        route["duration"] = probe["duration"]
+        route["duration_min"] = round(float(probe["duration"]) / 60.0, 1)
+    return route

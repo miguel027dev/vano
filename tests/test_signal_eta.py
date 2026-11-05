@@ -140,3 +140,57 @@ def test_navigation_eta_band_reads_signal_uncertainty():
     compact = (root / "vano" / "services" / "route_cache.py").read_text(encoding="utf-8")
     assert "signal_eta_uncertainty_s" in frontend
     assert "signal_eta_uncertainty_s" in compact
+
+
+def test_central_normalizes_legacy_route_node_without_double_count(monkeypatch):
+    from vano.services.signal_eta import apply_signal_eta_payload
+    monkeypatch.setenv("VANO_SIGNAL_ETA_ENABLED", "1")
+    row = {
+        "id": 2,
+        "duration": 900,
+        "duration_min": 15,
+        "routing_profile_used": "driving-traffic",
+        "road_controls": [
+            {"type": "traffic_signal", "lon": -46.7, "lat": -23.5},
+            {"type": "traffic_signal", "lon": -46.7, "lat": -23.5},
+            {"type": "speed_camera", "lon": -46.69, "lat": -23.51},
+            {"type": "traffic_signal", "lon": -46.69, "lat": -23.51},
+        ],
+    }
+    apply_signal_eta_payload(row)
+    assert row["signal_count"] == 2
+    assert row["duration"] == 900
+    assert row["signal_eta_method"] == "mapbox-traffic-included"
+    once = copy.deepcopy(row)
+    apply_signal_eta_payload(row)
+    assert row == once
+
+
+def test_central_nonlive_legacy_worker_updates_eta(monkeypatch):
+    from vano.services.signal_eta import apply_signal_eta_payload
+    monkeypatch.setenv("VANO_SIGNAL_ETA_ENABLED", "1")
+    row = {
+        "duration": 600,
+        "duration_min": 10,
+        "routing_profile_used": "driving",
+        "road_controls": [
+            {"type": "traffic_signal", "lon": -46.7, "lat": -23.5},
+        ],
+    }
+    apply_signal_eta_payload(row)
+    assert row["duration"] == 604
+    assert row["duration_min"] == round(604 / 60, 1)
+    assert row["duration_provider_s"] == 600
+
+
+def test_unknown_worker_profile_does_not_invent_fallback_traffic_delay(monkeypatch):
+    from vano.services.signal_eta import apply_signal_eta_payload
+    monkeypatch.setenv("VANO_SIGNAL_ETA_ENABLED", "1")
+    row = {
+        "duration": 900,
+        "road_controls": [{"type": "traffic_signal", "lon": -46.7, "lat": -23.5}],
+    }
+    apply_signal_eta_payload(row)
+    assert row["signal_count"] == 1
+    assert row["signal_eta_adjustment_s"] == 0
+    assert row["duration"] == 900
