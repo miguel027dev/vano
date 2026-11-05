@@ -7,12 +7,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_embed_assets_are_isolated_to_the_embed_endpoint():
     base = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
     assert "{% if vano_endpoint == 'embed_entry' %}" in base
-    assert "vano-embed-touch.css" in base
+    assert "vano-embed-touch.css" not in base
     assert "vano-embed-touch.js" in base
 
 
 def test_embed_visual_layers_do_not_intercept_map_touches():
-    css = (ROOT / "static" / "vano-embed-touch.css").read_text(encoding="utf-8")
+    css = (ROOT / "static" / "vano-foundation.css").read_text(encoding="utf-8")
     assert "body.vano-route-embed-entry.vano-map-surface" in css
     assert "touch-action: none !important" in css
     assert "pointer-events: auto !important" in css
