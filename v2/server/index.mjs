@@ -4,7 +4,7 @@
  */
 import http from 'node:http';
 import {createSupportTicket,supportStatus,supportInbox,replySupport,pruneSupport} from './support.mjs';
-import {createHelpAssistant,helpAiAvailable} from './help-assistant.mjs';
+import {createHelpAssistant} from './help-assistant.mjs';
 const helpAssistant=createHelpAssistant();
 import {createPartnerAPI,PartnerError} from './partner-api.mjs';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
@@ -985,7 +985,6 @@ async function route(req, res) {
       const body=await getBody(req);const result=replySupport(db,pathname.split('/')[4],body.reply);await persist();return json(res,200,result,{'Cache-Control':'no-store'});
     }catch(error){return err(res,error.status||503,error.status?error.message:'Não foi possível atualizar o suporte.');}
   }
-  if(pathname==='/api/help/status'&&req.method==='GET')return json(res,200,{aiAvailable:helpAiAvailable()}, {'Cache-Control':'no-store'});
   if(pathname==='/api/help/ask'&&req.method==='POST'){
     if(!limits(req,res,'help-assistant',12,60000))return;
     try{return json(res,200,await helpAssistant(await getBody(req)));}

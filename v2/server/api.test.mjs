@@ -382,9 +382,7 @@ test('public help answers locally with CSRF and exposes no account context',asyn
   await account.call('/api/bootstrap');
   const unsafe=await fetch(server.origin+'/api/help/ask',{method:'POST',headers:{'Content-Type':'application/json',Cookie:account.cookie},body:JSON.stringify({question:'Como recuperar senha?'})});
   assert.equal(unsafe.status,403);
-  const status=await account.call('/api/help/status');
-  assert.equal(status.status,200);assert.deepEqual(Object.keys(status.data),['aiAvailable']);assert.equal(typeof status.data.aiAvailable,'boolean');
-  const response=await account.call('/api/help/ask','POST',{question:'Como recuperar senha?',useAI:false});
+  const response=await account.call('/api/help/ask','POST',{question:'Como recuperar senha?'});
   assert.equal(response.status,200);assert.equal(response.data.source,'local');assert.match(response.data.answer,/Recuperar senha/);
   const invalid=await account.call('/api/help/ask','POST',{question:'x'.repeat(601)});assert.equal(invalid.status,400);
  }finally{await server.stop();}
