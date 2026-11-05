@@ -1,10 +1,11 @@
 
-import React,{useMemo,useState} from 'react';
+import React,{useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {
   Activity,AlertTriangle,BarChart3,CheckCircle2,Clock3,Database,Globe2,
   LockKeyhole,MousePointerClick,RefreshCw,Route,Server,ShieldCheck,Smartphone,Users
 } from 'lucide-react';
 import SafeRoutingTestPanel from './SafeRoutingTestPanel';
+import {CountUp,DailyRouteTrend} from './AdminMotionCharts';
 import '../admin-insights.css';
 
 const sections=[
@@ -16,9 +17,14 @@ const sections=[
 ];
 const format=v=>Number.isFinite(Number(v))&&v!==null&&v!==undefined?Number(v).toLocaleString('pt-BR'):'—';
 const when=x=>{const d=new Date(x||'');return Number.isFinite(+d)?d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—'};
-function Card({label,value,note,icon:Icon}){return <article className="vai-metric">
-  <div><span>{label}</span><Icon size={18}/></div><strong>{format(value)}</strong><small>{note}</small>
- </article>}
+const DashboardMotion=React.createContext(false);
+function Card({label,value,note,icon:Icon}){
+ const active=useContext(DashboardMotion);
+ return <article className="vai-metric">
+  <div><span>{label}</span><Icon size={18}/></div>
+  <strong><CountUp value={value} active={active}/></strong><small>{note}</small>
+ </article>;
+}
 function Box({title,eyebrow,info,children,className=''}){return <section className={'vai-card '+className}>
  <header><small>{eyebrow}</small><h2>{title}</h2>{info&&<p>{info}</p>}</header><div className="vai-card-body">{children}</div>
  </section>}
@@ -26,8 +32,24 @@ function Split({rows,empty='Ainda não há registros neste intervalo.'}){return 
  {rows.map((row,i)=><div className="vai-stat-row" key={i}><span>{row[0]}</span><strong>{row[1]}</strong></div>)}
  </div>:<p className="vai-empty">{empty}</p>}
 function EmptyList({children}){return <p className="vai-empty">{children||'Nenhum registro disponível.'}</p>}
-export default function AdminInsights({stats,users,offset,busy,filter,setFilter,refresh}){
+export default function AdminInsights({stats,users,offset,busy,filter,setFilter,refresh,visible=true}){
  const [active,setActive]=useState('overview');
+ const [motionActive,setMotionActive]=useState(false);
+ const playedSections=useRef(new Set());
+ // Animate an administrative view only on its first visible entrance.
+ // Refreshes and repeated navigation never make operational data jump around.
+ useEffect(()=>{
+  if(!visible||playedSections.current.has(active)){
+   setMotionActive(false);return;
+  }
+  playedSections.current.add(active);
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+   setMotionActive(false);return;
+  }
+  let frame=requestAnimationFrame(()=>setMotionActive(true));
+  const timer=setTimeout(()=>setMotionActive(false),1450);
+  return()=>{cancelAnimationFrame(frame);clearTimeout(timer);};
+ },[active,visible]);
  const matching=useMemo(()=>{
   const q=String(filter||'').trim().toLocaleLowerCase('pt-BR');
   return (users?.items||[]).filter(u=>!q||[u.name,u.email,u.signupMethod].some(x=>String(x||'').toLocaleLowerCase('pt-BR').includes(q)));
@@ -36,7 +58,7 @@ export default function AdminInsights({stats,users,offset,busy,filter,setFilter,
  const ops=stats.operationCounts||[];
  const platforms=stats.platformPageLoads||[];
  const peak=Math.max(1,...(stats.routesByDay||[]).map(x=>x.total||0));
- return <div className="vai-insights">
+ return <DashboardMotion.Provider value={motionActive}><div className="vai-insights" data-animate={motionActive?'true':'false'}>
    <nav className="vai-tabs" aria-label="Seções do administrador">
     {sections.map(s=>{const Icon=s.icon;return <button key={s.id} type="button" className={active===s.id?'active':''}
       aria-current={active===s.id?'page':undefined} onClick={()=>setActive(s.id)}>
@@ -50,10 +72,13 @@ export default function AdminInsights({stats,users,offset,busy,filter,setFilter,
      <Card label="Rotas salvas" value={stats.routesTotal} note="Histórico persistido" icon={Route}/>
      <Card label="Chamadas de rota" value={stats.routeRequests} note="Desde o início desta instância" icon={Globe2}/>
     </div>
+    <Box className="vai-full vai-trend-panel" title="Crescimento do histórico de rotas" eyebrow="TENDÊNCIA · ÚLTIMOS SETE DIAS" info="Série observada, dia após dia, com os registros persistidos pelo servidor.">
+      <DailyRouteTrend days={stats.routesByDay||[]} animate={motionActive}/>
+    </Box>
     <div className="vai-layout">
      <Box title="Atividade de trajetos" eyebrow="ÚLTIMOS SETE DIAS" info="Viagens gravadas no histórico, não cada solicitação de cálculo.">
-       {(stats.routesByDay||[]).length?<div className="vai-bars" role="img" aria-label="Gráfico de rotas salvas por dia">
-         {(stats.routesByDay||[]).map(r=><div key={r.day} title={r.day+': '+r.total+' rotas'}>
+       {(stats.routesByDay||[]).length?<div className="vai-bars" data-animate={motionActive?'true':'false'} role="img" aria-label="Gráfico de rotas salvas por dia, baseado no histórico persistido">
+         {(stats.routesByDay||[]).map((r,index)=><div key={r.day} style={{'--vai-index':index}} title={r.day+': '+r.total+' rotas'}>
           <b>{format(r.total)}</b><span style={{height:Math.max(3,Math.round((r.total||0)/peak*120))+'px'}}/><small>{r.day.slice(5)}</small>
          </div>)}
         </div>:<EmptyList/>}
@@ -181,5 +206,5 @@ export default function AdminInsights({stats,users,offset,busy,filter,setFilter,
     </div>
     <section className="vai-safe-test"><SafeRoutingTestPanel/></section>
    </>}
-  </div>;
+  </div></DashboardMotion.Provider>;
 }
