@@ -190,7 +190,6 @@
   {% endif %}
   <link rel="stylesheet" href="{{ url_for('static', filename='vano-foundation.css') }}?v={{ vano_build_id }}">
   {% if vano_endpoint == 'embed_entry' %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='vano-embed-touch.css') }}?v={{ vano_build_id }}">
   <script defer src="{{ url_for('static', filename='vano-embed-touch.js') }}?v={{ vano_build_id }}"></script>
   {% endif %}
 </head>
