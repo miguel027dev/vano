@@ -15,7 +15,7 @@ test('VANU admin preserves real metrics, sections, and admin permission gate',()
  assert.match(admin,/showLegacy/);
  assert.match(admin,/vanu-control-frame/);
  assert.match(admin,/vanu-control-sidebar/);
- assert.match(admin,/vanu-dashboard-panel" hidden=\{showLiveTrips\}/);
+ assert.match(admin,/vanu-dashboard-panel" hidden=\{activeSection/);
 });
 
 test('route view reuses real monitored journeys and preserves the navigation sidebar',()=>{
