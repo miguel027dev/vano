@@ -1,0 +1,105 @@
+/* VANO /admin integrated modules — single persistent dashboard shell. */
+.vanu-admin-page .vanu-control-mark{padding:0;overflow:hidden;background:linear-gradient(135deg,#3c2620,#f59a6255);border:1px solid #f5b28e55;box-shadow:0 7px 24px #be623d35}
+.vanu-admin-page .vanu-control-mark img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 8px #0007)}
+.vanu-admin-page .vanu-control-link .vanu-external-mark{margin-left:auto;width:13px;height:13px;opacity:.65}
+.vanu-admin-page .vanu-control-sidebar nav button{font-family:inherit}
+.vanu-admin-page .vanu-section-mount{min-width:0;margin:2px 0 18px;animation:vanuModuleReveal .3s ease-out both}
+.vanu-admin-page .vanu-section-mount>main{max-width:none!important;width:100%!important;min-width:0;margin:0!important;min-height:0!important;padding:0!important;background:transparent!important;box-shadow:none!important}
+.vanu-admin-page .vanu-section-mount :is(h1,h2,h3){letter-spacing:-.035em}
+.vanu-admin-page .vanu-section-mount :is(a,button,input,textarea,select):focus-visible{outline:2px solid #f7af7d!important;outline-offset:2px!important}
+@keyframes vanuModuleReveal{from{opacity:.5;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+
+/* AI: Chat-first composition built on the existing authorized backend. */
+.vanu-admin-page .vanu-ai-focus .vint-wrap{color:#f4e9e2!important;--orange:#f59a62!important}
+.vanu-admin-page .vanu-ai-focus :is(.vint-heading,.vint-stats,.vint-archive,.vint-left){display:none!important}
+.vanu-admin-page .vanu-ai-focus .vint-columns{display:block!important;width:100%;margin:0!important}
+.vanu-admin-page .vanu-ai-focus .vint-ai{width:100%;min-width:0;display:flex;flex-direction:column;gap:15px;min-height:660px;padding:clamp(18px,2.4vw,28px);border-radius:22px;border:1px solid rgba(255,207,169,.30)!important;background:radial-gradient(ellipse 43% 35% at 80% 0%,rgba(244,143,72,.16),transparent 78%),linear-gradient(146deg,rgba(62,46,48,.88),rgba(19,17,19,.95))!important;box-shadow:inset 0 1px #ffffff1c,0 20px 60px #0004}
+.vanu-admin-page .vanu-ai-focus .vint-ai:before{height:1px;background:linear-gradient(90deg,transparent,#f59a62,#fff1cf55,transparent)}
+.vanu-admin-page .vanu-ai-focus .vint-ai .vint-panel-title{order:0;margin:0;padding:0}
+.vanu-admin-page .vanu-ai-focus .vint-ai .vint-panel-title h2{font-size:clamp(22px,2.7vw,30px);color:#fdf1e9!important;margin:7px 0}
+.vanu-admin-page .vanu-ai-focus .vint-ai>p:not(.vint-foot){order:1;color:#cdb9ad;font-size:12px;margin:0;line-height:1.6}
+.vanu-admin-page .vanu-ai-focus .vint-suggestions{order:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.vanu-admin-page .vanu-ai-focus .vint-suggestions button{min-height:65px;border:1px solid #ffd0a32d;background:#ffffff0a;color:#e9d7cd;font-size:11px;line-height:1.5;border-radius:13px;padding:12px;transition:transform .22s,border-color .22s}
+.vanu-admin-page .vanu-ai-focus .vint-suggestions button:hover{background:#f59a621a;border-color:#f59a6266;color:#fff}
+.vanu-admin-page .vanu-ai-focus .vint-mode-row{order:3;margin:0;display:flex;flex-wrap:wrap;gap:9px}
+.vanu-admin-page .vanu-ai-focus .vint-mode-row button{background:#ffffff10;border:1px solid #ffffff24;border-radius:12px;color:#ddd0c7;padding:11px 13px}
+.vanu-admin-page .vanu-ai-focus .vint-mode-row button.selected{background:linear-gradient(115deg,#bd653a66,#f39b5b2d);border-color:#f5a87285;color:#fff}
+.vanu-admin-page .vanu-ai-focus .vint-chat{order:4;flex:1;min-height:280px;max-height:560px;overflow-y:auto;overscroll-behavior:contain;padding:17px!important;background:#100e12a8!important;border:1px solid #ffceb329!important;border-radius:15px}
+.vanu-admin-page .vanu-ai-focus .vint-chat-turn{max-width:min(92%,800px)}
+.vanu-admin-page .vanu-ai-focus .vint-chat-ai{background:#ffffff0d;border:1px solid #ffe4d221}
+.vanu-admin-page .vanu-ai-focus .vint-chat-user{background:linear-gradient(118deg,#b75e32,#8f492b);border:1px solid #f5a87270}
+.vanu-admin-page .vanu-ai-focus .vint-ai form{order:5;display:grid;gap:9px;margin:0;border:1px solid #ffdbbd30;background:#241b1dba;border-radius:15px;padding:13px}
+.vanu-admin-page .vanu-ai-focus .vint-ai label{font-size:10px;color:#f3d6c6;margin:0}
+.vanu-admin-page .vanu-ai-focus .vint-ai textarea{background:#181316;color:#fff;border:1px solid #f5bb9b3b;border-radius:10px;padding:13px;font-size:12px;line-height:1.5;resize:vertical;min-height:80px}
+.vanu-admin-page .vanu-ai-focus .vint-ai textarea::placeholder{color:#a99a91}
+.vanu-admin-page .vanu-ai-focus .vint-ai .vint-submit{background:linear-gradient(105deg,#f2a36e,#d46a35);color:#1d100b;border-color:#ffbf90;min-height:42px;box-shadow:0 9px 20px #d16f3530}
+.vanu-admin-page .vanu-ai-focus .vint-ai .vint-foot{order:6;color:#a69589;margin:0;font-size:10px}
+.vanu-admin-page .vanu-ai-focus :is(.vint-chat-loading,.vint-empty,.vint-chat-controls span){color:#c9b8ac}
+.vanu-admin-page .vanu-ai-focus .vint-chat-meta button{color:#ffbd92}
+
+/* DevSync remains fully interactive: credentials, tasks and refresh. */
+.vanu-admin-page .vanu-devsync-area .ds2-root{
+ --ds2-bg:#221a1d;--ds2-panel:#181315;--ds2-copy:#f8ece4;--ds2-muted:#b9a69b;--ds2-line:rgba(255,219,192,.20);--ds2-orange:#f59a62;
+ background:transparent!important;color:#f8ece4!important;
+}
+.vanu-admin-page .vanu-devsync-area .ds2-top{background:linear-gradient(120deg,rgba(65,46,46,.7),rgba(27,22,25,.8));border:1px solid #ffdab72d;padding:23px;border-radius:20px}
+.vanu-admin-page .vanu-devsync-area .ds2-top :is(h1,h2){color:#fbf2ed!important}
+.vanu-admin-page .vanu-devsync-area .ds2-top p{color:#c0b0a7}
+.vanu-admin-page .vanu-devsync-area .ds2-head-actions a[href="/admin"]{display:none}
+.vanu-admin-page .vanu-devsync-area .ds2-panel,.vanu-admin-page .vanu-devsync-area .ds2-stats>div{border-color:#ffcfad2c!important;background:linear-gradient(145deg,rgba(61,45,46,.76),rgba(23,20,22,.92))!important;box-shadow:inset 0 1px #ffffff14,0 13px 32px #0003!important}
+.vanu-admin-page .vanu-devsync-area :is(.ds2-panel h2,.ds2-stats strong,.ds2-panel-head h2,.ds2-panel strong){color:#f8e9df}
+.vanu-admin-page .vanu-devsync-area :is(.ds2-panel p,.ds2-stats span,.ds2-panel small){color:#c7b4aa}
+.vanu-admin-page .vanu-devsync-area :is(input,textarea,select){color:#f8ece4!important;background:#181315!important;border-color:#ffffff30!important}
+.vanu-admin-page .vanu-devsync-area .ds2-head-actions button{color:#f7e5d9;background:#ffffff10}
+
+/* Support, settings and the existing components share a dark, readable surface. */
+.vanu-admin-page .vanu-section-mount .content-page{margin-left:0!important;max-width:none!important;width:100%!important;padding:5px!important;background:none!important;color:#f2e6df!important;min-height:0!important}
+.vanu-admin-page .vanu-section-mount .content-page :is(h1,h2,h3,strong){color:#f6e9e2}
+.vanu-admin-page .vanu-section-mount .content-page :is(p,small,span,label){color:inherit}
+.vanu-admin-page .vanu-section-mount .content-page :is(.support-contact,.support-response,.settings-card,.form-panel,.list-card,.section,.notice,.info-card,.settings-line){border-color:#ffd8ba2c!important;background:linear-gradient(140deg,rgba(59,47,48,.72),rgba(23,20,21,.9))!important;color:#f0e2d9!important;box-shadow:inset 0 1px #ffffff12!important}
+.vanu-admin-page .vanu-section-mount .content-page .page-header{border:1px solid #ffd6b72a;background:linear-gradient(115deg,#433033,#292125);border-radius:17px;padding:20px;margin:0 0 15px}
+.vanu-admin-page .vanu-section-mount .content-page .support-contact{padding:clamp(16px,2vw,25px);border-radius:20px}
+.vanu-admin-page .vanu-support-area .support-contact>a[href="/admin"]{display:none}
+.vanu-admin-page .vanu-section-mount .content-page :is(input,textarea,select){background:#20191a!important;color:#f3e4da!important;border:1px solid #ffd0b63d!important}
+.vanu-admin-page .vanu-section-mount .content-page :is(button,.support-secondary){border:1px solid #f3bb9861;background:#f59a6224;color:#f9dec9;border-radius:10px}
+.vanu-admin-page .vanu-section-mount .content-page :is(button,.support-secondary):hover{background:#f59a6245}
+.vanu-admin-page .vanu-section-mount .content-page a{color:#ffbf97}
+.vanu-admin-page .vanu-section-mount .content-page .segment button.active{background:#ce7344;color:#fff}
+.vanu-admin-page .vanu-section-mount .content-page .switch.on{background:#cc7d4f}
+
+/* Occurrences with category and privacy-safe summary, no invented verification. */
+.vanu-module-heading{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px 24px;margin:0 0 14px;border-radius:19px;background:linear-gradient(125deg,#61443d72,#241b1ede);border:1px solid #ffd3ae2b}
+.vanu-module-heading h2{color:#fff;font-size:clamp(20px,2.3vw,28px);margin:9px 0 5px}
+.vanu-module-heading p{color:#baa9a0;font-size:12px;line-height:1.6;margin:0;max-width:640px}
+.vanu-module-heading :is(a,button){display:inline-flex;align-items:center;gap:8px;flex:none;border-radius:11px;border:1px solid #f5a9775b;background:#f59a6224;color:#f5d6bd;padding:11px 13px;font-size:11px;text-decoration:none;cursor:pointer}
+.vanu-incident-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 13px}
+.vanu-incident-kpis article{border-radius:16px;border:1px solid #ffdab72f;padding:21px;background:linear-gradient(135deg,#563b3e88,#21191dcf);display:grid;gap:10px;box-shadow:inset 0 1px #ffffff1d}
+.vanu-incident-kpis article svg{color:#ffaa76}.vanu-incident-kpis article small{color:#d3b9aa;font-size:11px}.vanu-incident-kpis article strong{font-size:clamp(25px,3vw,39px);line-height:1;color:#fff;letter-spacing:-.04em}
+.vanu-glass-module{border-radius:20px;border:1px solid #ffd8bb2b;background:linear-gradient(135deg,#4032348a,#171518e8);box-shadow:inset 0 1px #ffffff17,0 15px 40px #0003;padding:18px}
+.vanu-module-toolbar,.vanu-incident-footer{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.vanu-incident-tabs{display:flex;flex-wrap:wrap;gap:7px}
+.vanu-incident-tabs button,.vanu-incident-footer button{display:inline-flex;align-items:center;gap:7px;border:1px solid #ffffff2b;background:#ffffff0a;color:#ddd0c8;border-radius:10px;padding:9px 12px;font-size:11px;cursor:pointer}
+.vanu-incident-tabs button.is-selected{background:#f59a622e;border-color:#f59a6288;color:#fff}
+.vanu-incident-count,.vanu-incident-footer{color:#baa79d;font-size:10px}
+.vanu-incident-list{display:grid;gap:6px;margin:16px 0}
+.vanu-incident-row{display:flex;align-items:flex-start;gap:13px;background:#ffffff08;border:1px solid #ffffff13;border-radius:13px;padding:16px}
+.vanu-incident-icon{width:38px;height:38px;display:grid;place-items:center;color:#f5ad82;background:#f59a6220;border-radius:12px;flex:none}
+.vanu-incident-body{flex:1;min-width:0}.vanu-incident-body strong{color:#fff;font-size:13px}.vanu-incident-body p{color:#d2c1b7;line-height:1.55;font-size:12px;overflow-wrap:anywhere;margin:6px 0}.vanu-incident-body small{color:#a9988f;font-size:10px}
+.vanu-incident-state{white-space:nowrap;display:inline-flex;align-items:center;gap:5px;color:#efc18d;background:#f59a621e;border:1px solid #f59a623c;border-radius:20px;padding:6px 9px;font-size:10px}
+.vanu-incident-state.is-verified{background:#3b9a6530;color:#a7e5bd;border-color:#73c98f43}
+.vanu-module-error{background:#9e30303a;border:1px solid #ff979766;color:#f9d6d6;padding:13px;border-radius:12px}
+.vanu-module-empty{text-align:center;color:#c9b0a1;padding:36px 10px}
+.vanu-incident-footer{padding-top:15px;border-top:1px solid #ffffff13}
+.vanu-incident-footer>div{display:flex;gap:8px}
+.vanu-incident-footer button:disabled{opacity:.36;cursor:default}
+.vanu-incident-note{display:flex;align-items:flex-start;gap:7px;font-size:10px;line-height:1.6;color:#b9a69d;margin:15px 5px}
+.vanu-incident-note svg{flex:none;color:#e5ad89}
+
+/* Main VANO Map: isolated app inside the workspace, no navigation-shell exit. */
+.vanu-map-embed{min-width:0;border:1px solid #ffd5b72e;background:#211c1e;border-radius:22px;padding:10px;box-shadow:0 15px 50px #0005}
+.vanu-map-embed .vanu-module-heading{margin:0 0 10px;padding:14px 16px}
+.vanu-map-embed iframe{display:block;width:100%;height:min(77dvh,880px);min-height:540px;border:0;border-radius:15px;background:#151417;touch-action:auto}
+.vanu-training-area{display:grid;gap:15px}
+@media(max-width:1050px){.vanu-admin-page .vanu-ai-focus .vint-suggestions{grid-template-columns:1fr}.vanu-admin-page .vanu-devsync-area .ds2-layout{grid-template-columns:1fr}}
+@media(max-width:700px){.vanu-incident-kpis{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.vanu-incident-kpis article{padding:13px}.vanu-incident-kpis article strong{font-size:24px}.vanu-incident-kpis article small{font-size:9px}.vanu-module-heading{align-items:flex-start;flex-direction:column;padding:15px}.vanu-incident-row{flex-wrap:wrap}.vanu-incident-state{margin-left:48px}.vanu-admin-page .vanu-ai-focus .vint-ai{padding:16px;min-height:600px}.vanu-admin-page .vanu-ai-focus .vint-chat{min-height:230px}.vanu-map-embed iframe{height:73dvh;min-height:450px}}
+@media(prefers-reduced-motion:reduce){.vanu-admin-page .vanu-section-mount{animation:none!important}.vanu-admin-page .vanu-section-mount *{transition:none!important;scroll-behavior:auto!important}}
