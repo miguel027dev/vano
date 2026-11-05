@@ -8,6 +8,7 @@
   <url><loc>__PUBLIC_SITE_URL__/alternativa-ao-google-maps</loc><lastmod>2026-10-03</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/gps-para-moto</loc><lastmod>2026-10-03</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/benchmark-de-rotas</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>__PUBLIC_SITE_URL__/benchmark-resultados</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/sobre</loc><lastmod>2026-10-10</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>__PUBLIC_SITE_URL__/help</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
