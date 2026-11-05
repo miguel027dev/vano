@@ -3,6 +3,7 @@
 Extracted from the historical monolithic app.py without changing route bodies or
 business rules. Runtime dependencies are injected once during application startup.
 """
+from vano.services.signal_eta import apply_signal_eta, signal_eta_fields
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
@@ -368,6 +369,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
     for route in routes:
         route["_profile_used"] = used_profile
         route["_provider"] = "mapbox"
+        apply_signal_eta(route)
     _route_cache_put(cache_key, routes)
     return routes
 
@@ -421,6 +423,8 @@ def mapbox_routes_via(points, depart_at="now", start_bearing=None, start_speed=N
         raise RuntimeError(data.get("message") or "Não foi possível atualizar a rota atual.")
     route = data["routes"][0]
     route["_profile_used"] = used
+    route["_provider"] = "mapbox"
+    apply_signal_eta(route)
     return route
 
 
@@ -1137,6 +1141,7 @@ def fast_route_payload(route, idx, travel_profile="driving"):
         "quiet_score": 0, "vano_score": 0,
         **{k: v for k, v in traffic.items() if k != "traffic_points"},
         **road,
+        **signal_eta_fields(route),
     }
 
 
