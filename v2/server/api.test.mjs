@@ -352,3 +352,62 @@ test('production Android alias supports login and route validation while retaini
   assert.equal((await a.call('/api/route','POST',{}, {...headers,'Sec-Fetch-Site':'cross-site'})).status,403);
  }finally{await s.stop();}
 });
+
+test('minimal email signup keeps password validation and allows naming the account later',async()=>{
+ const server=await start(),account=client(server.origin);
+ try{
+  await account.call('/api/bootstrap');
+  const weak=await account.call('/api/auth/signup','POST',{email:'minimal@example.test',password:'short'});
+  assert.equal(weak.status,400);
+  const signup=await account.call('/api/auth/signup','POST',{email:'minimal@example.test',password:'ExclusivePassword2026!'});
+  assert.equal(signup.status,201);assert.equal(signup.data.user.name,'Viajante');
+  assert.equal((await account.call('/api/profile','PATCH',{name:'Nome escolhido depois'})).status,200);
+  assert.equal((await account.call('/api/bootstrap')).data.user.name,'Nome escolhido depois');
+ }finally{await server.stop();}
+});
+test('confirmation resend returns the same message for registered and unknown emails',async()=>{
+ const server=await start(),account=client(server.origin);
+ try{
+  await account.call('/api/bootstrap');
+  await account.call('/api/auth/signup','POST',{email:'resend@example.test',password:'ExclusivePassword2026!'});
+  const known=await account.call('/api/auth/resend-verification','POST',{email:'resend@example.test'});
+  const unknown=await account.call('/api/auth/resend-verification','POST',{email:'unknown@example.test'});
+  assert.equal(known.status,200);assert.equal(unknown.status,200);assert.deepEqual(known.data,unknown.data);
+ }finally{await server.stop();}
+});
+
+test('public help answers locally with CSRF and exposes no account context',async()=>{
+ const server=await start(),account=client(server.origin);
+ try{
+  await account.call('/api/bootstrap');
+  const unsafe=await fetch(server.origin+'/api/help/ask',{method:'POST',headers:{'Content-Type':'application/json',Cookie:account.cookie},body:JSON.stringify({question:'Como recuperar senha?'})});
+  assert.equal(unsafe.status,403);
+  const response=await account.call('/api/help/ask','POST',{question:'Como recuperar senha?'});
+  assert.equal(response.status,200);assert.equal(response.data.source,'local');assert.match(response.data.answer,/Recuperar senha/);
+  const invalid=await account.call('/api/help/ask','POST',{question:'x'.repeat(601)});assert.equal(invalid.status,400);
+ }finally{await server.stop();}
+});
+
+test('support requires CSRF and admin boundaries, hashes receipts and persists in-app replies',async()=>{
+ const salt='support-test-salt',password='SupportTestPassword2026!';
+ const fixture={users:[{id:'support-admin',name:'Admin',email:'miguelpinxs@gmail.com',passwordHash:`${salt}:${scryptSync(password,salt,64).toString('hex')}`,verifiedAt:new Date().toISOString(),verificationMethod:'email'}]};
+ const server=await start({},fixture),guest=client(server.origin),admin=client(server.origin),member=client(server.origin);
+ try{
+  await guest.call('/api/bootstrap');await admin.call('/api/bootstrap');await member.call('/api/bootstrap');
+  const noCsrf=await fetch(server.origin+'/api/support',{method:'POST',headers:{'Content-Type':'application/json',Cookie:guest.cookie},body:JSON.stringify({topic:'conta',message:'Preciso de ajuda com minha conta.'})});assert.equal(noCsrf.status,403);
+  assert.equal((await guest.call('/api/admin/support')).status,401);
+  await member.call('/api/auth/signup','POST',{email:'support-member@example.test',password});assert.equal((await member.call('/api/admin/support')).status,403);
+  const created=await guest.call('/api/support','POST',{topic:'conta',message:'Preciso de ajuda com minha conta.',email:'reply@example.test'});assert.equal(created.status,201);assert.match(created.data.receipt,/^[a-f0-9]{64}$/);
+  const file=JSON.parse(await fs.readFile(path.join(server.tmp,'store.json'),'utf8'));assert.ok(file.supportTickets[0].receiptHash);assert.equal(JSON.stringify(file).includes(created.data.receipt),false);
+  const waiting=await guest.call('/api/support/status','POST',{receipt:created.data.receipt});assert.equal(waiting.data.status,'aberto');assert.equal(waiting.data.email,undefined);assert.equal(waiting.data.message,undefined);
+  assert.equal((await guest.call('/api/support/status','POST',{receipt:'0'.repeat(64)})).status,404);
+  assert.equal((await admin.call('/api/auth/login','POST',{email:'miguelpinxs@gmail.com',password})).status,200);
+  const inbox=await admin.call('/api/admin/support');assert.equal(inbox.status,200);assert.equal(inbox.data.tickets[0].receiptHash,undefined);
+  const id=inbox.data.tickets[0].id;
+  assert.equal((await member.call(`/api/admin/support/${id}/reply`,'POST',{reply:'Resposta indevida'})).status,403);
+  assert.equal((await admin.call(`/api/admin/support/${id}/reply`,'POST',{reply:'Use Minha conta para ajustar seu nome.'})).status,200);
+  const answered=await guest.call('/api/support/status','POST',{receipt:created.data.receipt});assert.equal(answered.data.status,'respondido');assert.match(answered.data.reply,/Minha conta/);
+  for(let i=0;i<2;i++)assert.equal((await guest.call('/api/support','POST',{topic:'mapa',message:'Outro problema na tela do mapa.'})).status,201);
+  assert.equal((await guest.call('/api/support','POST',{topic:'mapa',message:'Outro problema na tela do mapa.'})).status,429);
+ }finally{await server.stop();}
+});

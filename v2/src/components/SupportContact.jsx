@@ -1,0 +1,23 @@
+import React,{useRef,useState} from 'react';
+import {post} from '../lib/api';
+import './SupportContact.css';
+export const SUPPORT_LABELS={acesso:'Acesso e login',mapa:'Mapa e navegação',conta:'Minha conta',privacidade:'Privacidade e dados',outro:'Outro assunto'};
+export default function SupportContact(){
+ const receiptInput=useRef(null);const [copyMessage,setCopyMessage]=useState('');
+ const [topic,setTopic]=useState('acesso'),[message,setMessage]=useState(''),[email,setEmail]=useState(''),[receipt,setReceipt]=useState(''),[code,setCode]=useState(''),[result,setResult]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ async function create(event){event.preventDefault();setBusy(true);setError('');try{const data=await post('/support',{topic,message,email});setReceipt(data.receipt);setCopyMessage('');setCode(data.receipt);setMessage('');setEmail('');setResult(null);}catch(ex){setError(ex.message);}finally{setBusy(false);}}
+ async function copyReceipt(){try{await navigator.clipboard.writeText(receipt);setCopyMessage('Código copiado. Guarde-o em um local seguro.');}catch{receiptInput.current?.focus();receiptInput.current?.select();setCopyMessage('Código selecionado. Use a opção Copiar do seu aparelho.');}}
+ async function track(event){event.preventDefault();setBusy(true);setError('');setResult(null);try{setResult(await post('/support/status',{receipt:code.trim()}));}catch(ex){setError(ex.message);}finally{setBusy(false);}}
+ return <section className="support-contact" aria-labelledby="support-contact-title">
+  <header><span>SUPORTE NO VANO</span><h2 id="support-contact-title">Envie sua solicitação.</h2><p>Uma pessoa da equipe pode responder aqui no aplicativo. Guarde o código para acompanhar; não enviamos respostas por e-mail. Sem prazo de resposta garantido.</p><p>Não envie senha, códigos de acesso, localização precisa ou documentos. Solicitações não alteram sua conta, recuperam acesso ou excluem dados automaticamente. Os registros ficam disponíveis por até 90 dias.</p></header>
+  {!receipt?<form onSubmit={create} aria-busy={busy}>
+   <label htmlFor="support-topic">Assunto</label><select id="support-topic" value={topic} onChange={e=>setTopic(e.target.value)}>{Object.entries(SUPPORT_LABELS).map(([id,label])=><option value={id} key={id}>{label}</option>)}</select>
+   <label htmlFor="support-message">O que aconteceu?</label><textarea id="support-message" required minLength={10} maxLength={2000} rows={5} value={message} onChange={e=>setMessage(e.target.value)} placeholder="Descreva a tela, o problema e o que esperava acontecer."/>
+   <label htmlFor="support-email">E-mail para referência (opcional)</label><input id="support-email" type="email" maxLength={254} autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/><small>Opcional: a resposta fica no protocolo abaixo, sem envio externo.</small>
+   <button disabled={busy} type="submit">{busy?'Enviando…':'Enviar solicitação'}</button>
+  </form>:<div className="support-receipt" role="status"><h3>Solicitação recebida.</h3><p>Guarde este código completo. Ele permite consultar a resposta sem entrar na conta. Quem tiver o código poderá ler a resposta; não o compartilhe. Se perdê-lo, não é possível recuperar esta consulta por e-mail.</p><label htmlFor="support-receipt">Seu código de acompanhamento</label><input ref={receiptInput} id="support-receipt" readOnly value={receipt} onFocus={e=>e.target.select()}/><button type="button" onClick={copyReceipt}>Copiar código</button><small role="status">{copyMessage||'Copie o código e guarde em um local seguro.'}</small><button type="button" className="support-secondary" onClick={()=>setReceipt('')}>Nova solicitação</button></div>}
+  <section className="support-track" aria-labelledby="support-track-title"><h3 id="support-track-title">Acompanhar solicitação</h3><form onSubmit={track}><label htmlFor="support-code">Código completo</label><input id="support-code" autoComplete="off" required minLength={64} maxLength={64} value={code} onChange={e=>setCode(e.target.value.replace(/\s/g,'').toLowerCase())} autoCapitalize="none" spellCheck={false}/><button disabled={busy} type="submit">{busy?'Consultando…':'Consultar resposta'}</button></form>
+   {result&&<div className="support-response" role="status"><strong>{SUPPORT_LABELS[result.topic]||'Solicitação'} · {result.status==='respondido'?'Respondido':'Aguardando resposta'}</strong><p>{result.reply||'Sua solicitação está na fila. Volte a consultar com este código. Não há prazo garantido de resposta.'}</p></div>}
+  </section>{error&&<p role="alert">{error}</p>}
+ </section>;
+}

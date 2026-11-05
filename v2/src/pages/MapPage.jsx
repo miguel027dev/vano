@@ -11,6 +11,8 @@ import {maviIncidentOffer} from '../lib/maviIncidentFollowup.mjs';
 import {metersApart} from '../lib/communityReports.js';
 import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
+import {historyDestination} from '../lib/historyPresentation.mjs';
+import {locationSummary} from '../lib/locationSummary.mjs';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {startGpsSession} from '../lib/gpsSession';
 import {readWarmGps,saveWarmGps} from '../lib/gpsWarmStart.js';
@@ -53,7 +55,7 @@ import {useRouteTraffic} from '../lib/useRouteTraffic.js';
 import {RouteTrafficCard} from '../components/RouteTraffic.jsx';
 const shortcuts=[{name:'Casa', icon:Home},{name:'Trabalho',icon:BriefcaseBusiness},{name:'Rotina',icon:Clock3},{name:'Restaurantes',icon:Utensils},{name:'Hospitais',icon:Cross}];
 export default function MapPage({active=true}){
-  const {user,preferences,favorites,saveTrip,savePreference,report,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
+  const {user,preferences,favorites,history,saveTrip,savePreference,report,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/mapa'||location.pathname==='/v2';
   const b1User=location.pathname==='/mapa';
   // Experiment is available ONLY in the role-gated administrator route.
@@ -106,7 +108,7 @@ export default function MapPage({active=true}){
   }
   useEffect(()=>{const flush=()=>syncMeasuredDistance(true);window.addEventListener('pagehide',flush);return()=>{window.removeEventListener('pagehide',flush);flush();};},[]);
   useEffect(()=>{if(!active)syncMeasuredDistance(true);},[active]);
-  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[maviPendingStop,setMaviPendingStop]=useState(null),[maviResuming,setMaviResuming]=useState(false),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[routeError,setRouteError]=useState(''),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
+  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[searchViewport,setSearchViewport]=useState(null),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[maviPendingStop,setMaviPendingStop]=useState(null),[maviResuming,setMaviResuming]=useState(false),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[routeError,setRouteError]=useState(''),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
@@ -239,7 +241,7 @@ export default function MapPage({active=true}){
     };
   },[navMode]);
 
-  useEffect(()=>{api('/places').then(setAllPlaces).catch(()=>{});},[]);
+
   useEffect(()=>{
     if(!pointMenu&&!editor)return;
     function key(e){if(e.key==='Escape'){setPointMenu(null);setEditor(null);}}
@@ -254,6 +256,7 @@ export default function MapPage({active=true}){
   const usingManual=validPoint(manualCoords);
   manualCoordsRef.current=manualCoords;
   const hasLiveGPS=validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'&&hasRecentGpsFix(lastGpsFix.current,Date.now(),35000);
+  const locationState=locationSummary({status:gpsStatus,fix:lastGpsFix.current,displayCoords,manualCoords,manualLabel,address:currentAddress});
   // Public maneuver plaques require a verified, recent GPS position and a
   // real route. Admin /v2 retains its separate simulation preview.
   const visibleRoadSigns=navigationRoadSigns&&(adminV2RoadSigns||
@@ -405,7 +408,16 @@ export default function MapPage({active=true}){
   },[userCoords?.[0],userCoords?.[1],navMode,language]);
   useEffect(()=>()=>addressController.current?.abort(),[]);
   // Rounded search bias avoids restarting provider requests on each GPS reading.
-  const searchBias=searchGeoBias(userCoords,{gpsGranted:gpsStatus==='granted',manual:usingManual});
+  const searchBias=searchGeoBias(userCoords,{gpsGranted:gpsStatus==='granted'||gpsStatus==='approximate',manual:usingManual,fixAt:lastGpsFix.current?.sourceAt,manualCoords,viewport:searchViewport});
+  useEffect(()=>{
+    setAllPlaces([]);
+    if(!searchBias||(!searchOpen&&!editor))return;
+    const controller=new AbortController();
+    api('/places?lang='+encodeURIComponent(language)+searchBias,{signal:controller.signal})
+      .then(items=>{if(!controller.signal.aborted)setAllPlaces(Array.isArray(items)?items:[]);})
+      .catch(()=>{});
+    return()=>controller.abort();
+  },[searchBias,language,searchOpen,editor]);
   useEffect(()=>{
     if(!searchOpen){setSearchBusy(false);return;}
     const term=query.trim();
@@ -569,11 +581,13 @@ export default function MapPage({active=true}){
     setQuery(s.name==='Restaurantes'?'restaurante':'hospital');setSearchOpen(true);setTimeout(()=>searchInput.current?.focus(),70);
   }
   useEffect(()=>{
-    const id=new URLSearchParams(location.search).get('destination');
-    if(!id || handledDestination.current===id)return;
-    const found=favorites.find(x=>x.id===id);
-    if(found){handledDestination.current=id;pick(found);}
-  },[location.search,favorites]);
+    const params=new URLSearchParams(location.search);
+    const trip=params.get('trip'),id=params.get('destination');
+    const key=trip?'trip:'+trip:id;
+    if(!key||handledDestination.current===key)return;
+    const found=trip?historyDestination(history,trip):favorites.find(x=>x.id===id);
+    if(found){handledDestination.current=key;pick(found);}
+  },[location.search,favorites,history]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
   // Local private /v2 playback. Sampled coordinates never enter real GPS callbacks,
   // server routes, report submissions, saved journeys or actual telemetry.
@@ -1203,7 +1217,7 @@ export default function MapPage({active=true}){
   })).filter(lane=>lane.symbols.length):[];
 
   return <div ref={mapPageRef} data-map-appearance={selectedAppearance} className={`map-page ${adminV2RoadSigns?'v95-premium-v2':''} ${immersiveV2?'v94-v2-focus':''} ${sheetOpen?'has-sheet':''} ${navMode?'in-navigation':''} ${navMode&&routeVehicle==='moto'?'is-moto-navigation':''} ${!navMode&&dest&&!sheetOpen&&!searchOpen?'has-collapsed-route':''}`}>
-    <VanoMap poiVisible={preferences?.poiVisible} routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} focusMode={immersiveV2} v2Experience={location.pathname==='/v2'} readableRouteStroke={location.pathname==='/mapa'||location.pathname==='/v2'} privateRoadSigns={visibleRoadSigns} roadCards={jevMode&&import.meta.env.VITE_VISIBLE_STREET_CARDS!=='0'} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
+    <VanoMap poiVisible={preferences?.poiVisible} onSearchAreaChange={setSearchViewport} routeTraffic={adminV2RoadSigns&&routeVehicle!=='a-pe'?routeTraffic:null} active={active} simulationPreview={simActive} droneSimulation={simActive&&simCameraMode==='drone'} focusMode={immersiveV2} v2Experience={location.pathname==='/v2'} readableRouteStroke={location.pathname==='/mapa'||location.pathname==='/v2'} privateRoadSigns={visibleRoadSigns} roadCards={jevMode&&import.meta.env.VITE_VISIBLE_STREET_CARDS!=='0'} userCoords={simPosition||displayCoords||origin} gpsCoords={simPosition||userCoords} manualOrigin={simActive?null:usingManual?manualCoords:null} destination={dest} awaitingInitialGps={gpsStatus==='checking'&&!validPoint(displayCoords)&&!validPoint(origin)} previewRoute={visibleMaviPreview?.route||null} previewFocus={focusMaviPreview} guidance={shownGuidance} routes={routeData?.routes} selectedRoute={choice} navigation={navMode} controller={mapControl} layer={layer} appearance={selectedAppearance} trafficEnabled={trafficEnabled} onTrafficStatus={setTrafficStatus} telemetry={simTelemetry||telemetry} vehicle={routeVehicle} pickingOrigin={pickOriginMode} onPickOrigin={chooseOrigin} onPublicPlaceSelect={pick}/>
     {adminV2RoadSigns&&roadAuditOpen&&<RoadAuditPanel onClose={()=>setRoadAuditOpen(false)}/>}
     {adminV2RoadSigns&&routeVehicle!=='a-pe'&&route&&!navMode&&!sheetOpen&&!searchOpen&&<div className="v81-traffic-preview"><RouteTrafficCard traffic={routeTraffic}/></div>}
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
@@ -1259,22 +1273,20 @@ export default function MapPage({active=true}){
       <p>Toque em qualquer rua no mapa para marcar seu ponto de partida.</p>
       <div className="gps-actions"><button onClick={()=>setPickOriginMode(false)}>{t('Cancelar')}</button><button className="gps-primary" onClick={()=>requestGPS(true)}>{t('Tentar GPS')}</button></div>
     </div>}
-    {!navMode&&!searchOpen&&!pickOriginMode&&!validPoint(origin)&&gpsStatus!=='checking'&&<div className="gps-banner" role="status">
-      <div className="gps-banner-heading"><AlertTriangle size={19}/><strong>{t(gpsStatus==='checking'?'Buscando sua localização…':'Localização indisponível')}</strong></div>
-      <p>{gpsStatus==='checking'?'Você também pode escolher de onde sair.':gpsMessage||'Não conseguimos acessar seu GPS neste navegador.'}</p>
+    {!navMode&&!searchOpen&&!pickOriginMode&&!validPoint(origin)&&locationState.showRecovery&&<div className="gps-banner" role="status">
+      <div className="gps-banner-heading"><AlertTriangle size={19}/><strong>{t(locationState.recoveryTitle||'Localização indisponível')}</strong></div>
+      <p>{gpsMessage||'Não conseguimos acessar seu GPS neste navegador.'}</p>
       <div className="gps-actions"><button onClick={()=>requestGPS(true)}>{t('Tentar novamente')}</button><button className="gps-primary" onClick={()=>setPickOriginMode(true)}>{t('Escolher origem no mapa')}</button></div>
     </div>}
     {!navMode&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
-    {searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t('Sugestões próximas')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':searchError?searchError:query.trim().length<2?'Digite um lugar, rua ou CEP.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
+    {searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t(searchBias?locationState.live?'Sugestões próximas de você':'Nesta área do mapa':'Buscar um destino')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':searchError?searchError:query.trim().length<2?searchBias?'Digite um lugar, rua ou CEP.':'Busque sua cidade ou um destino, ou escolha uma área no mapa.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
     {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{editorError||t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
-    {!navMode&&!sheetOpen&&!searchOpen&&!pickOriginMode&&<div className="v31-location-card" role="status" aria-label="Estado da sua localização">
+    {!navMode&&!sheetOpen&&!searchOpen&&!locationState.showRecovery&&!pickOriginMode&&<div className="v31-location-card" role="status" aria-label="Estado da sua localização">
       <span className="v31-location-symbol" aria-hidden="true"><LocateFixed size={18} strokeWidth={1.9}/></span>
       <span className="v31-location-copy">
-        <span className="v31-location-eyebrow"><span className={hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?'v31-gps-dot is-live':'v31-gps-dot'}/>
-          {hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?telemetry.accuracy>100?'Localização aproximada':'Sua localização':validPoint(displayCoords)?'Última localização':'Sua localização'}
-        </span>
-        <strong title={hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?currentAddress?.street||'':''}>{hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?currentAddress?.street||'Identificando endereço…':validPoint(displayCoords)?'Último ponto conhecido':gpsStatus==='denied'?'Localização desativada':'Buscando localização…'}</strong>
-        <small>{hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)?currentAddress?.detail||'Endereço atualizado pelo GPS':validPoint(displayCoords)?gpsStatus==='denied'?'GPS desativado · última posição salva':'Atualizando GPS · posição salva':gpsStatus==='checking'?'Localizando seu dispositivo…':'Ative o GPS ou escolha a origem'}</small>
+        <span className="v31-location-eyebrow"><span className={locationState.live?'v31-gps-dot is-live':'v31-gps-dot'}/>{t(locationState.label)}</span>
+        <strong title={locationState.live?currentAddress?.street||'':''}>{t(locationState.title)}</strong>
+        <small>{t(locationState.detail)}</small>
       </span>
     </div>}
     {adminV2RoadSigns&&simConfirmOpen&&<div className="v76-sim-confirm-backdrop" role="presentation" onClick={()=>setSimConfirmOpen(false)}>

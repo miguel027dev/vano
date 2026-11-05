@@ -52,8 +52,9 @@ test('location card stays rendered during GPS checking and remains recognizable'
  const css=readFileSync(new URL('../v31-map-address.css',import.meta.url),'utf8');
  assert.match(page,/&&!pickOriginMode&&<div className="v31-location-card"/);
  assert.doesNotMatch(page,/validPoint\(userCoords\)\|\|gpsStatus!=='checking'/);
- assert.match(page,/Atualizando GPS · posição salva/);
- assert.match(page,/Último ponto conhecido/);
+ const summary=readFileSync(new URL('./locationSummary.mjs',import.meta.url),'utf8');
+ assert.match(summary,/Atualizando GPS · posição salva/);
+ assert.match(summary,/Último ponto conhecido/);
  assert.match(css,/width:min\(357px,calc\(100vw/);
  assert.match(css,/ - 105px\)\);/);
 });
