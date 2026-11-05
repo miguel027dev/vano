@@ -185,7 +185,10 @@ export default function AdminPage(){
   {activeSection==='map'&&<section className="vanu-map-embed" aria-label="Mapa principal VANO">
    <div className="vanu-module-heading"><div><span className="vanu-control-eyebrow">VANO ATLAS · MAPA PRINCIPAL</span>
     <h2>Mapa completo e interativo</h2><p>O aplicativo de navegação original, sem sair do painel administrativo.</p></div>
-    <Link to="/mapa" target="_blank" rel="noopener">Tela inteira <ArrowUpRight size={16}/></Link></div>
+    <div className="vanu-map-external-actions">
+     <Link to="/mapa" target="_blank" rel="noopener">Tela inteira <ArrowUpRight size={16}/></Link>
+     <Link to="/v2" target="_blank" rel="noopener">Entrar no mapa de administrador <ArrowUpRight size={16}/></Link>
+    </div></div>
    <iframe title="Mapa principal VANO" src="/mapa" allow="geolocation; fullscreen" loading="lazy"/>
   </section>}
   <div className="vanu-dashboard-panel" hidden={activeSection!=='dashboard'&&activeSection!=='indicators'}>
