@@ -1,5 +1,12 @@
 /* VANO Control Center · admin-only visual system. No changes to navigation map engine. */
 :root { --vano-admin-orange:#f59a62; --vano-admin-amber:#ffbc83; --vano-admin-ink:#f7f3f0; --vano-admin-sub:#b6a9a2; --vano-admin-stroke:rgba(255,213,184,.12); }
+@layer vanoTheme {
+  body.vano-route-admin-dashboard.vano-admin-surface {
+    --ui-bg:#0d0b0b;--ui-ink:#f7f3f0;--ui-muted:#b6a9a2;--ui-surface:#1c1719;--ui-raised:#241b1a;--ui-line:#4d3329;
+    background:radial-gradient(ellipse 55% 40% at 12% 15%,rgba(203,102,46,.16),transparent 75%),radial-gradient(ellipse 55% 45% at 96% 100%,rgba(145,66,28,.20),transparent 70%),#0d0b0b!important;
+    color:#f7f3f0!important;
+  }
+}
 body.vano-route-admin-dashboard.vano-admin-surface {
   background:radial-gradient(ellipse 55% 40% at 12% 15%,rgba(203,102,46,.16),transparent 75%),radial-gradient(ellipse 55% 45% at 96% 100%,rgba(145,66,28,.20),transparent 70%),#0d0b0b!important;
   color:var(--vano-admin-ink)!important; min-height:100dvh;
@@ -155,7 +162,7 @@ body.vano-route-admin-dashboard .vano-skip-link:focus{z-index:9000}
 .vano-map-card-head h2{font-size:16px!important;margin:0}
 .vano-map-tags{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .vano-map-tag{padding:6px 9px;border:1px solid #f9c49c3b;background:#281d1b;color:#e8c5ad;border-radius:20px;font-size:10px}
-#adminRouteMap{width:100%;min-height:540px;flex:1;border-radius:15px;background:radial-gradient(ellipse at center,#33241f,#121215);overflow:hidden;touch-action:pan-x pan-y}
+#adminRouteMap{width:100%;min-height:540px;flex:1;border-radius:15px;background:radial-gradient(ellipse at center,#33241f,#121215);overflow:hidden;touch-action:none}
 #adminRouteMap .mapboxgl-ctrl-group{background:#1b1517dd;border:1px solid #f59a6233;box-shadow:0 8px 25px #0005}
 #adminRouteMap .mapboxgl-ctrl-group button .mapboxgl-ctrl-icon{filter:invert(1)}
 #adminRouteMap .mapboxgl-control-container .mapboxgl-ctrl-attrib{background:#201b1dbb;color:#ddd2ca}
