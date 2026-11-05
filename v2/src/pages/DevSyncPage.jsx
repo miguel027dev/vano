@@ -14,7 +14,7 @@ const getLease=id=>{try{return sessionStorage.getItem(leaseKey(id))||''}catch{re
 const setLease=(id,v)=>{try{if(v)sessionStorage.setItem(leaseKey(id),v);else sessionStorage.removeItem(leaseKey(id))}catch{}};
 const fresh={title:'',area:'gps',scope:'',branch:'',model:'',actor:'Console VANO',summary:''};
 
-export default function DevSyncPage(){
+export default function DevSyncPage({embedded=false}){
  const {user,loading}=useVano();
  const [snapshot,setSnapshot]=useState(null),[keys,setKeys]=useState([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[working,setWorking]=useState(false);
  const [task,setTask]=useState(fresh),[event,setEvent]=useState({actor:'Console VANO',kind:'progress',taskId:'',body:''});
@@ -90,7 +90,7 @@ export default function DevSyncPage(){
  const promptForAgent=useMemo(()=>`Argon: use a central VANO DevSync em https://vanu-73xu.onrender.com/admin/dev-sync. Leia GET /api/agent/dev-sync/handoff com seu token privado guardado no ambiente (Authorization: Bearer VANO_DEVSYNC_TOKEN); crie uma tarefa, assuma a área antes de editar, registre progress/decision/blocker via POST /api/agent/dev-sync/events e finalize com PR, testes e pendências. Não inicie mudanças se receber HTTP 409. Nunca inclua credenciais em logs ou conversas.`,[]);
  if(loading)return <main className="ds2-root"><p>Verificando acesso…</p></main>;
  if(!user?.isAdmin)return <main className="ds2-root ds2-locked"><LockKeyhole size={34}/><h1>Área administrativa</h1><p>Disponível somente para a conta administrativa verificada.</p><Link to="/admin">Voltar</Link></main>;
- return <main className="ds2-root" id="conteudo" data-testid="devsync-admin">
+ return <main className={'ds2-root'+(embedded?' ds2-inline':'')} id={embedded?undefined:'conteudo'} data-testid="devsync-admin">
   <header className="ds2-top"><div>
    <div className="ds2-eyebrow"><span className="ds2-led"/> VANO OPERATIONS · PRIVADO</div>
    <h1>DevSync<span>.</span></h1>
