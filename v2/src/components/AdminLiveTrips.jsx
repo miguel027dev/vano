@@ -44,9 +44,9 @@ export default function AdminLiveTrips({onClose}){
   const points={type:'FeatureCollection',features:trips.map(t=>({type:'Feature',properties:{id:t.id},geometry:{type:'Point',coordinates:t.coords}}))};
   const routes={type:'FeatureCollection',features:trips.filter(t=>(t.route||t.trail)?.length>1).map(t=>({type:'Feature',properties:{id:t.id},geometry:{type:'LineString',coordinates:t.route||t.trail}}))};
   m.getSource('live-points')?.setData(points);m.getSource('live-routes')?.setData(routes);
-  if(trips.length&&!fitted.current){const bounds=new mapboxgl.LngLatBounds();trips.forEach(t=>bounds.extend(t.coords));m.fitBounds(bounds,{padding:100,maxZoom:15,duration:0});fitted.current=true;}
+  if(trips.length&&!fitted.current){const bounds=new mapboxgl.LngLatBounds();trips.forEach(t=>bounds.extend(t.coords));m.fitBounds(bounds,{padding:100,maxZoom:15,pitch:55,bearing:-15,duration:0});fitted.current=true;}
  },[trips,mapReady]);
- function focusAll(){const m=map.current;if(!m||!tripsRef.current.length)return;const bounds=new mapboxgl.LngLatBounds();tripsRef.current.forEach(t=>bounds.extend(t.coords));m.fitBounds(bounds,{padding:100,maxZoom:15,duration:800});setSelected(null);}
+ function focusAll(){const m=map.current;if(!m||!tripsRef.current.length)return;const bounds=new mapboxgl.LngLatBounds();tripsRef.current.forEach(t=>bounds.extend(t.coords));m.fitBounds(bounds,{padding:100,maxZoom:15,pitch:55,bearing:-15,duration:800});setSelected(null);}
  function focusTrip(trip){setSelected(trip.id);map.current?.flyTo({center:trip.coords,zoom:16,pitch:60,duration:900,essential:false});}
  const current=trips.find(t=>t.id===selected);
  return <section className="alt-overlay" role="dialog" aria-modal="true" aria-label="Mapa de viagens em andamento">
