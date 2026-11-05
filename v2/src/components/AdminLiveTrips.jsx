@@ -7,7 +7,9 @@ import '../admin-live-trips.css';
 const empty=()=>({type:'FeatureCollection',features:[]});
 export default function AdminLiveTrips({onClose}){
  const [trips,setTrips]=useState([]),[error,setError]=useState(''),[selected,setSelected]=useState(null),[mapReady,setMapReady]=useState(false);
+ const [profile,setProfile]=useState(null),[profileError,setProfileError]=useState(''),[analysis,setAnalysis]=useState(''),[analysisBusy,setAnalysisBusy]=useState(false);
  const container=useRef(null),map=useRef(null),fitted=useRef(false),tripsRef=useRef([]);
+ const selectedRef=useRef(null);selectedRef.current=selected;
  tripsRef.current=trips;
  useEffect(()=>{
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
@@ -34,6 +36,16 @@ export default function AdminLiveTrips({onClose}){
   return()=>{instance.remove();map.current=null;};
  },[]);
  useEffect(()=>{
+  let alive=true;setProfile(null);setProfileError('');setAnalysis('');setAnalysisBusy(false);
+  if(selected)api('/admin/live-trips/'+encodeURIComponent(selected)).then(data=>{if(alive)setProfile(data);}).catch(()=>{if(alive)setProfileError('Não foi possível carregar a ficha. A viagem pode ter encerrado.');});
+  return()=>{alive=false;};
+ },[selected]);
+ async function analyze(){
+  if(!selected||analysisBusy)return;const id=selected;setAnalysisBusy(true);setAnalysis('');
+  try{const result=await api('/admin/live-trips/'+encodeURIComponent(id)+'/analysis',{method:'POST',body:{}});if(selectedRef.current===id)setAnalysis(result.answer);}
+  catch(e){if(selectedRef.current===id)setAnalysis(e.message||'Análise indisponível.');}finally{if(selectedRef.current===id)setAnalysisBusy(false);}
+ }
+ useEffect(()=>{
   let alive=true,busy=false;
   const refresh=async()=>{if(busy)return;busy=true;try{const data=await api('/admin/live-trips');if(alive){setTrips(data.trips||[]);setError('');}}catch{if(alive)setError('Não foi possível atualizar as viagens. Tentando novamente.');}finally{busy=false;}};
   void refresh();const timer=setInterval(refresh,5000);
@@ -54,7 +66,13 @@ export default function AdminLiveTrips({onClose}){
   <header className="alt-toolbar"><button className="alt-glass alt-back" type="button" onClick={onClose}><ArrowLeft size={18}/> <span>Voltar</span></button><div className="alt-title"><span className="alt-live-dot"/><div><strong>Viagens em andamento</strong><small>Mapa ao vivo</small></div></div><button className="alt-glass alt-all" type="button" onClick={focusAll} disabled={!trips.length}><Crosshair size={17}/> <span>Ver todos</span></button></header>
   <div className="alt-status"><Users size={15}/><span>{trips.length} {trips.length===1?'viagem ativa':'viagens ativas'}</span><span className="alt-status-divider"/>Atualização a cada 5 s</div>
   {error&&<p className="alt-error" role="alert">{error}</p>}
-  {current&&<aside className="alt-detail"><button type="button" className="alt-detail-close" onClick={()=>setSelected(null)} aria-label="Fechar detalhes">×</button><span className="alt-detail-icon"><Navigation size={18}/></span><small>VIAGEM SELECIONADA</small><h2>{current.user?.name||'Visitante'}</h2><p><MapPin size={14}/> Atualizado às {new Date(current.updatedAt).toLocaleTimeString('pt-BR')}</p><p>{Math.round(current.meters)} m percorridos · precisão {Math.round(current.accuracy)} m</p><p>{current.route?'Rota planejada em azul':'Aguardando rota planejada'}</p></aside>}
+  {current&&<aside className="alt-detail alt-profile"><button type="button" className="alt-detail-close" onClick={()=>setSelected(null)} aria-label="Fechar detalhes">×</button><span className="alt-detail-icon"><Navigation size={18}/></span><small>VIAGEM SELECIONADA</small><h2>{current.user?.name||'Visitante'}</h2><p><MapPin size={14}/> Atualizado às {new Date(current.updatedAt).toLocaleTimeString('pt-BR')}</p><p>{Math.round(current.meters)} m percorridos · precisão {Math.round(current.accuracy)} m</p><p>{current.route?'Rota planejada em azul':'Aguardando rota planejada'}</p>
+   {profileError&&<p role="alert">{profileError}</p>}
+   {!profile&&!profileError&&<p role="status">Carregando ficha…</p>}
+   {profile&&<><div className="alt-profile-heading">Informações</div><dl className="alt-profile-grid"><dt>Conta</dt><dd>{profile.account?.email||'Visitante'}</dd><dt>Veículo atual</dt><dd>{profile.current.vehicle||'Não registrado'}</dd><dt>Estilo atual</dt><dd>{profile.current.routeType==='fast'?'Rápida':profile.current.routeType==='safe'?'Segura':'Não registrado'}</dd><dt>Preferência</dt><dd>{profile.preferences.preferredRoute==='fast'?'Rápida':profile.preferences.preferredRoute==='safe'?'Segura':'Não registrada'}</dd><dt>Rotas salvas</dt><dd>{profile.summary.count}</dd><dt>Estilos escolhidos</dt><dd>{profile.summary.safe} seguras · {profile.summary.fast} rápidas</dd></dl>
+   <div className="alt-profile-heading">Histórico de rotas</div><div className="alt-table-wrap">{profile.history.length?<table><thead><tr><th>Data</th><th>Destino</th><th>Estilo</th><th>Distância</th></tr></thead><tbody>{profile.history.map((h,i)=><tr key={i}><td>{h.createdAt?new Date(h.createdAt).toLocaleDateString('pt-BR'):'—'}</td><td>{h.destination}</td><td>{h.routeType==='safe'?'Segura':h.routeType==='fast'?'Rápida':'—'}</td><td>{Number.isFinite(h.distance)?`${h.distance.toFixed(1)} km`:'—'}</td></tr>)}</tbody></table>:<p>Nenhum histórico de conta disponível.</p>}</div><p className="alt-profile-note">{profile.notice}</p>
+   <div className="alt-profile-heading">Análise NVIDIA</div><p className="alt-profile-note">A análise envia apenas indicadores resumidos, sem nome, e-mail ou coordenadas.</p><button type="button" className="alt-analysis-button" onClick={analyze} disabled={analysisBusy}>{analysisBusy?'Analisando…':'Analisar esta viagem'}</button>{analysis&&<p className="alt-analysis-text" role="status">{analysis}</p>}</>}
+  </aside>}
   <nav className="alt-trip-list" aria-label="Viagens ativas">{trips.map(t=><button className={'alt-trip'+(selected===t.id?' is-active':'')} key={t.id} type="button" onClick={()=>focusTrip(t)}><span className="alt-trip-dot"/><span><strong>{t.user?.name||'Visitante'}</strong><small>{new Date(t.updatedAt).toLocaleTimeString('pt-BR')}</small></span></button>)}{!trips.length&&!error&&<div className="alt-empty">Nenhuma viagem em andamento</div>}</nav>
  </section>;
 }

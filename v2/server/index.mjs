@@ -5,6 +5,7 @@
 import http from 'node:http';
 import {createSupportTicket,supportStatus,supportInbox,replySupport,pruneSupport} from './support.mjs';
 import {createAdminLiveTrips} from './admin-live-trips.mjs';
+import {tripProfile,analyzeTripProfile} from './admin-trip-profile.mjs';
 import {createHelpAssistant} from './help-assistant.mjs';
 const helpAssistant=createHelpAssistant();
 import {createPartnerAPI,PartnerError} from './partner-api.mjs';
@@ -592,6 +593,19 @@ function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ow
 async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
+  const liveProfile=pathname.match(/^\/api\/admin\/live-trips\/([a-f0-9]{16})(\/analysis)?$/);
+  if(liveProfile&&((!liveProfile[2]&&req.method==='GET')||(liveProfile[2]&&req.method==='POST'))){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Autenticação obrigatória.');
+    if(!isAdminAccount(session.user))return err(res,403,'Área exclusiva da administração.');
+    if(!limits(req,res,'live-trip-profile',30,60000))return;
+    if(liveProfile[2]&&(!protectedWrite(req,res)||!limits(req,res,'live-trip-analysis',4,60000)))return;
+    const profile=tripProfile(adminLiveTrips.get(liveProfile[1]),db);
+    if(!profile)return err(res,404,'Viagem não está mais disponível.');
+    if(!liveProfile[2])return json(res,200,profile,{'Cache-Control':'no-store'});
+    try{return json(res,200,await analyzeTripProfile(profile),{'Cache-Control':'no-store'});}
+    catch(e){return err(res,e?.status===503?503:502,e?.status===503?'NVIDIA não configurada no servidor.':'Análise temporariamente indisponível.');}
+  }
   if((pathname==='/api/admin/live-trips'||pathname.startsWith('/api/live-navigation/'))&&process.env.VANO_ADMIN_LIVE_TRIPS_ENABLED==='0')return err(res,404,'Recurso indisponível.');
   if(pathname==='/api/admin/live-trips'&&req.method==='GET'){
     const session=userSession(req);

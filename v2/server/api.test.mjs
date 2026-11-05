@@ -36,6 +36,22 @@ function client(origin){
  };
 }
 const coords=[-46.6557,-23.5615];
+test('live trip profile is admin-only and associates history server-side',async()=>{
+ const salt='salt123',password='SenhaMuitoForte123!';
+ const fixture={users:[{id:'profile-admin',name:'Admin',email:'miguelpinxs@gmail.com',passwordHash:`${salt}:${scryptSync(password,salt,64).toString('hex')}`,verifiedAt:new Date().toISOString(),verificationMethod:'email'}],history:[{id:'one',owner:'profile-admin',destination:{name:'Local'},routeType:'safe',distance:4,duration:8,createdAt:new Date().toISOString()}]};
+ const s=await start({},fixture),admin=client(s.origin),guest=client(s.origin);
+ try{
+  await admin.call('/api/bootstrap');await guest.call('/api/bootstrap');
+  assert.equal((await admin.call('/api/auth/login','POST',{email:'miguelpinxs@gmail.com',password})).status,200);
+  const token='b'.repeat(64);
+  assert.equal((await admin.call('/api/live-navigation/update','POST',{token,coords,accuracy:10,meters:0,routeType:'fast',vehicle:'carro'})).status,200);
+  const list=await admin.call('/api/admin/live-trips');assert.equal(list.status,200);
+  const id=list.data.trips[0].id;assert.equal(list.data.trips[0].ownerId,undefined);
+  assert.equal((await guest.call('/api/admin/live-trips/'+id)).status,401);
+  const profile=await admin.call('/api/admin/live-trips/'+id);assert.equal(profile.status,200);assert.equal(profile.data.history.length,1);assert.equal(profile.data.current.routeType,'fast');
+  assert.equal((await guest.call('/api/admin/live-trips/'+id+'/analysis','POST',{})).status,401);
+ }finally{await s.stop();}
+},{timeout:30000});
 test('live navigation accepts guest updates but restricts location reads',async()=>{
  const s=await start(),guest=client(s.origin);
  try{
