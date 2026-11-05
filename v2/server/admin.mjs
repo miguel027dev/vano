@@ -118,7 +118,8 @@ export function adminUsers(data,{offset=0,limit=25}={}){
  */
 export function adminReportList(data,{offset=0,limit=25,status='all'}={}){
  const safeOffset=Math.min(100000,Math.max(0,Number.parseInt(offset,10)||0));
- const safeLimit=Math.min(50,Math.max(1,Number.parseInt(limit,10)||25));
+ const parsedLimit=Number.parseInt(limit,10);
+ const safeLimit=Math.min(50,Math.max(1,Number.isFinite(parsedLimit)?parsedLimit:25));
  const validStatus=['all','verificado','nao_verificado'].includes(status)?status:'all';
  const rows=(Array.isArray(data?.reports)?data.reports:[])
   .filter(r=>r&&['verificado','nao_verificado'].includes(r.status)&&
