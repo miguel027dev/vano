@@ -3,11 +3,13 @@ import {Link} from 'react-router-dom';
 import {
  Activity,AlertTriangle,ArrowLeft,ArrowUpRight,CalendarDays,CheckCircle2,
  ChevronLeft,ChevronRight,Clock3,Database,Globe2,LockKeyhole,Mail,MessageSquareText,
- RefreshCcw,Route,Search,ShieldCheck,Users,UserRoundCheck,X
+ RefreshCcw,Route,Search,ShieldCheck,Users,UserRoundCheck,X,
+ LayoutDashboard,MapPinned,ChartNoAxesCombined,Settings2,Sparkles,Compass
 } from 'lucide-react';
 import {api} from '../lib/api';
 import {useVano} from '../context';
 import '../admin-console.css';
+import '../admin-vanu-glass.css';
 import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
 import AdminInsights from '../components/AdminInsights';
 import AdminEtaConsole from '../components/AdminEtaConsole';
@@ -59,7 +61,7 @@ function SourceBreakdown({stats}){
 export default function AdminPage(){
  const {user,loading}=useVano();
  const [showLegacy,setShowLegacy]=useState(false);
- const [showLiveTrips,setShowLiveTrips]=useState(false);
+ const [showLiveTrips,setShowLiveTrips]=useState(()=>typeof window!=='undefined'&&window.location.hash==='#acompanhar-rotas');
  const [stats,setStats]=useState(null),[users,setUsers]=useState(null),[failure,setFailure]=useState(''),
   [busy,setBusy]=useState(false),[offset,setOffset]=useState(0),[filter,setFilter]=useState('');
  async function refresh(page=offset){
@@ -72,6 +74,8 @@ export default function AdminPage(){
   finally{setBusy(false);}
  }
  useEffect(()=>{if(user?.isAdmin)refresh(0);else{setStats(null);setUsers(null);}},[user?.isAdmin]);
+ useEffect(()=>{const sync=()=>setShowLiveTrips(window.location.hash==='#acompanhar-rotas');window.addEventListener('hashchange',sync);return()=>window.removeEventListener('hashchange',sync)},[]);
+ const openArea=area=>{const routes=area==='routes';setShowLiveTrips(routes);if(typeof window!=='undefined')window.history.replaceState(window.history.state,'',routes?'#acompanhar-rotas':'#dashboard');};
  const integration=stats?.integrations||{};
  const visibleUsers=useMemo(()=>{
   const q=filter.trim().toLocaleLowerCase('pt-BR');
@@ -83,23 +87,60 @@ export default function AdminPage(){
   <LockKeyhole size={36}/><span>ÁREA RESTRITA</span><h1>Console VANO</h1>
   <p>Área exclusiva de administradores autorizados e verificados.</p>
   <Link to={user?'/perfil':'/entrar'}>{user?'Voltar ao perfil':'Entrar com minha conta'} <ArrowUpRight size={17}/></Link>
- </div></main>;
- return <main className="v3-admin" id="conteudo"><div className="v3-admin-inner">
+ </div></div></div></div></main>;
+ return <main className="v3-admin vanu-admin-page" id="conteudo">
+ <div className="vanu-control-frame">
+  <aside className="vanu-control-sidebar" aria-label="Centro de controle do VANO">
+   <Link to="/admin" className="vanu-control-brand" onClick={()=>openArea('dashboard')}>
+    <span className="vanu-control-mark"><Route size={25} strokeWidth={2.6}/></span><span><b>VANO</b><small>CONTROL CENTER</small></span>
+   </Link>
+   <div className="vanu-control-nav-label">PAINEL ADMINISTRATIVO</div>
+   <nav aria-label="Navegação administrativa" className="vanu-control-nav">
+    <button type="button" className={'vanu-control-link'+(!showLiveTrips?' is-selected':'')} aria-current={!showLiveTrips?'page':undefined} onClick={()=>openArea('dashboard')}><LayoutDashboard size={18}/> Dashboard</button>
+    <button type="button" className={'vanu-control-link'+(showLiveTrips?' is-selected':'')} aria-current={showLiveTrips?'page':undefined} onClick={()=>openArea('routes')}><MapPinned size={18}/> Acompanhar rotas</button>
+    <Link to="/admin/intelligence" className="vanu-control-link"><Sparkles size={18}/> VANO Intelligence</Link>
+    <Link to="/benchmark-de-rotas" className="vanu-control-link"><ChartNoAxesCombined size={18}/> Benchmark</Link>
+    <Link to="/relatar" className="vanu-control-link"><AlertTriangle size={18}/> Ocorrências</Link>
+    <Link to="/admin/dev-sync" className="vanu-control-link"><MessageSquareText size={18}/> DevSync</Link>
+   </nav>
+   <div className="vanu-control-nav-label vanu-control-group-label">OPERAÇÃO E CONTA</div>
+   <nav aria-label="Ferramentas de operação" className="vanu-control-nav">
+    <button className="vanu-control-link" type="button" onClick={()=>{openArea('dashboard');window.setTimeout(()=>document.getElementById('vanuAdminInsights')?.scrollIntoView({behavior:'smooth'}),50)}}><Activity size={18}/> Indicadores</button>
+    <Link to="/admin/suporte" className="vanu-control-link"><Mail size={18}/> Atendimento</Link>
+    <Link to="/configuracoes" className="vanu-control-link"><Settings2 size={18}/> Configurações</Link>
+   </nav>
+   <div className="vanu-control-bottom">
+    <Link to="/mapa" className="vanu-control-link"><Compass size={18}/> Mapa principal</Link>
+    <div className="vanu-control-presence"><span className="vanu-control-status-dot"/> Ambiente administrativo<small>VANO Maps · v2</small></div>
+   </div>
+  </aside>
+  <div className="vanu-control-content"><div className="v3-admin-inner">
   <header className="v3-admin-heading">
    <div><span className="v3-admin-overline"><ShieldCheck size={16}/> ADMINISTRAÇÃO · VANO MAPS</span>
-    <h1>Painel de controle<span className="v44-head-dot">.</span></h1>
-    <p>Contas, operação e atividade da plataforma.</p></div>
+    <h1>{showLiveTrips?'Acompanhar rotas':'Painel de controle'}<span className="v44-head-dot">.</span></h1>
+    <p>{showLiveTrips?'Mapa 3D original do VANO e viagens ativas autorizadas.':'Indicadores, operação, infraestrutura e atividade da plataforma.'}</p></div>
    <div className="v44-admin-header-actions"><Link to="/admin/suporte" className="v44-admin-back"><MessageSquareText size={17}/> Atendimento e protocolos</Link><Link to="/admin/dev-sync" className="v44-admin-back" style={{background:"#f3965c",color:"#23170f",borderColor:"#f3965c",fontWeight:800}}><MessageSquareText size={17}/> Chat · Tarefas · Progresso</Link><Link to="/admin/intelligence" className="v44-admin-back"><Activity size={17}/> VANO Intelligence</Link><Link to="/v2" className="v44-admin-back"><Route size={17}/> Entrar no mapa de administrador</Link><Link to="/perfil" className="v44-admin-back"><ArrowLeft size={17}/> Perfil</Link>
     <button onClick={()=>refresh(0)} type="button" disabled={busy}><RefreshCcw size={17} className={busy?'v44-refreshing':''}/>{busy?'Atualizando…':'Atualizar'}</button></div>
   </header>
   {failure&&<p className="v3-admin-error" role="alert">Não foi possível carregar o console: {failure}</p>}
-  <button type="button" onClick={()=>setShowLiveTrips(v=>!v)} aria-expanded={showLiveTrips} style={{marginBottom:16}}>{showLiveTrips?'Fechar acompanhamento':'Acompanhar viagens ao vivo'}</button>
-  {showLiveTrips&&<Suspense fallback={<div role="status">Abrindo mapa…</div>}><AdminLiveTrips onClose={()=>setShowLiveTrips(false)}/></Suspense>}
+  {showLiveTrips&&<section className="vanu-route-view" aria-label="Acompanhar rotas no mapa 3D">
+    <div className="vanu-route-view-head"><div><span className="vanu-control-eyebrow">VISÃO OPERACIONAL · MAPA 3D</span><h2>Monitoramento de viagens</h2><p>Interaja com o mapa, selecione viagens e consulte os dados atualizados a cada 5 segundos.</p></div><span className="vanu-route-refresh"><span className="vanu-control-status-dot"/>5 s · atualização</span></div>
+    <Suspense fallback={<div className="vanu-map-loading" role="status">Preparando o mapa 3D…</div>}><AdminLiveTrips embedded onClose={()=>openArea('dashboard')}/></Suspense>
+   </section>}
+  <div className="vanu-dashboard-panel" hidden={showLiveTrips}>
+  <section className="vanu-admin-hero" aria-label="Resumo de operações">
+   <div className="vanu-hero-main"><span className="vanu-control-eyebrow">PLATAFORMA · VISÃO GERAL</span><h2>Operação em<br/><em>movimento.</em></h2><p>O pulso do VANO em uma central de controle, com métricas reais e visualização de operações.</p><button type="button" className="vanu-hero-action" onClick={()=>openArea('routes')}>Acompanhar rotas <ArrowUpRight size={18}/></button></div>
+   <div className="vanu-hero-stats" aria-label="Estatísticas reais do VANO">
+     <div><strong>{num(stats?.usersTotal)}</strong><span>Contas cadastradas</span></div>
+     <div><strong>{num(stats?.routes24h)}</strong><span>Rotas nas últimas 24h</span></div>
+     <div><strong>{num(stats?.reports24h)}</strong><span>Ocorrências nas últimas 24h</span></div>
+   </div>
+  </section>
   <AdminEtaConsole/>
   {showLegacy&&<SafeRoutingTestPanel/>}
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
   {stats&&<>
-   <AdminInsights stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh}/>
+   <div id="vanuAdminInsights"><AdminInsights stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh}/></div>
    <div className="v90-classic-toggle"><button type="button" onClick={()=>setShowLegacy(v=>!v)} aria-expanded={showLegacy}>{showLegacy?'Ocultar console anterior':'Abrir console clássico'}</button><span>O painel anterior continua disponível para diagnóstico e rollback visual.</span></div>
    {showLegacy&&<>
    <section className="v3-kpi-grid" aria-label="Indicadores gerais">
