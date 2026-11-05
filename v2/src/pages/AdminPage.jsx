@@ -128,35 +128,40 @@ export default function AdminPage(){
  <div className="vanu-control-frame">
   <aside className="vanu-control-sidebar" aria-label="Centro de controle do VANO">
    <Link to="/admin" className="vanu-control-brand" onClick={()=>openArea('dashboard')}>
-    <span className="vanu-control-mark"><Route size={25} strokeWidth={2.6}/></span><span><b>VANO</b><small>CONTROL CENTER</small></span>
+    <span className="vanu-control-mark"><img src="/vano-logo-original.webp" width="42" height="42" alt=""/></span><span><b>VANO</b><small>CONTROL CENTER</small></span>
    </Link>
    <div className="vanu-control-nav-label">PAINEL ADMINISTRATIVO</div>
    <nav aria-label="Navegação administrativa" className="vanu-control-nav">
-    <button type="button" className={'vanu-control-link'+(!showLiveTrips?' is-selected':'')} aria-current={!showLiveTrips?'page':undefined} onClick={()=>openArea('dashboard')}><LayoutDashboard size={18}/> Dashboard</button>
-    <button type="button" className={'vanu-control-link'+(showLiveTrips?' is-selected':'')} aria-current={showLiveTrips?'page':undefined} onClick={()=>openArea('routes')}><MapPinned size={18}/> Acompanhar rotas</button>
-    <Link to="/admin/intelligence" className="vanu-control-link"><Sparkles size={18}/> VANO Intelligence</Link>
-    <Link to="/benchmark-de-rotas" className="vanu-control-link"><ChartNoAxesCombined size={18}/> Benchmark</Link>
-    <Link to="/relatar" className="vanu-control-link"><AlertTriangle size={18}/> Ocorrências</Link>
-    <Link to="/admin/dev-sync" className="vanu-control-link"><MessageSquareText size={18}/> DevSync</Link>
+    <SectionLink area="dashboard" icon={LayoutDashboard}>Dashboard</SectionLink>
+    <SectionLink area="routes" icon={MapPinned}>Acompanhar rotas</SectionLink>
+    <SectionLink area="training" icon={FlaskConical}>Treinamento</SectionLink>
+    <SectionLink area="intelligence" icon={Sparkles}>VANO Intelligence</SectionLink>
+    <Link to="/benchmark-de-rotas" className="vanu-control-link"><ChartNoAxesCombined size={18}/> Benchmark <ArrowUpRight className="vanu-external-mark" size={13}/></Link>
+    <SectionLink area="incidents" icon={AlertTriangle}>Ocorrências</SectionLink>
+    <SectionLink area="devsync" icon={MessageSquareText}>DevSync</SectionLink>
    </nav>
    <div className="vanu-control-nav-label vanu-control-group-label">OPERAÇÃO E CONTA</div>
    <nav aria-label="Ferramentas de operação" className="vanu-control-nav">
-    <button className="vanu-control-link" type="button" onClick={()=>{openArea('dashboard');window.setTimeout(()=>document.getElementById('vanuAdminInsights')?.scrollIntoView({behavior:'smooth'}),50)}}><Activity size={18}/> Indicadores</button>
-    <Link to="/admin/suporte" className="vanu-control-link"><Mail size={18}/> Atendimento</Link>
-    <Link to="/configuracoes" className="vanu-control-link"><Settings2 size={18}/> Configurações</Link>
+    <SectionLink area="indicators" icon={Activity}>Indicadores</SectionLink>
+    <SectionLink area="support" icon={Headset}>Atendimento</SectionLink>
+    <SectionLink area="settings" icon={Settings2}>Configurações</SectionLink>
    </nav>
    <div className="vanu-control-bottom">
-    <Link to="/mapa" className="vanu-control-link"><Compass size={18}/> Mapa principal</Link>
+    <SectionLink area="map" icon={Compass}>Mapa principal</SectionLink>
     <div className="vanu-control-presence"><span className="vanu-control-status-dot"/> Ambiente administrativo<small>VANO Maps · v2</small></div>
    </div>
   </aside>
   <div className="vanu-control-content"><div className="v3-admin-inner">
   <header className="v3-admin-heading">
    <div><span className="v3-admin-overline"><ShieldCheck size={16}/> ADMINISTRAÇÃO · VANO MAPS</span>
-    <h1>{showLiveTrips?'Acompanhar rotas':'Painel de controle'}<span className="v44-head-dot">.</span></h1>
-    <p>{showLiveTrips?'Mapa 3D original do VANO e viagens ativas autorizadas.':'Indicadores, operação, infraestrutura e atividade da plataforma.'}</p></div>
-   <div className="v44-admin-header-actions"><Link to="/admin/suporte" className="v44-admin-back"><MessageSquareText size={17}/> Atendimento e protocolos</Link><Link to="/admin/dev-sync" className="v44-admin-back" style={{background:"#f3965c",color:"#23170f",borderColor:"#f3965c",fontWeight:800}}><MessageSquareText size={17}/> Chat · Tarefas · Progresso</Link><Link to="/admin/intelligence" className="v44-admin-back"><Activity size={17}/> VANO Intelligence</Link><Link to="/v2" className="v44-admin-back"><Route size={17}/> Entrar no mapa de administrador</Link><Link to="/perfil" className="v44-admin-back"><ArrowLeft size={17}/> Perfil</Link>
-    <button onClick={()=>refresh(0)} type="button" disabled={busy}><RefreshCcw size={17} className={busy?'v44-refreshing':''}/>{busy?'Atualizando…':'Atualizar'}</button></div>
+    <h1>{SECTION_HEADERS[activeSection][0]}<span className="v44-head-dot">.</span></h1>
+    <p>{SECTION_HEADERS[activeSection][1]}</p></div>
+   <div className="v44-admin-header-actions">
+     <button type="button" onClick={()=>openArea('devsync')}><MessageSquareText size={17}/> DevSync</button>
+     <button type="button" onClick={()=>openArea('intelligence')}><Sparkles size={17}/> Intelligence</button>
+     <button type="button" onClick={()=>openArea('map')}><Compass size={17}/> Mapa</button>
+     <button onClick={()=>refresh(0)} type="button" disabled={busy}><RefreshCcw size={17} className={busy?'v44-refreshing':''}/>{busy?'Atualizando…':'Atualizar'}</button>
+    </div>
   </header>
   {failure&&<p className="v3-admin-error" role="alert">Não foi possível carregar o console: {failure}</p>}
   {showLiveTrips&&<section className="vanu-route-view" aria-label="Acompanhar rotas no mapa 3D">
