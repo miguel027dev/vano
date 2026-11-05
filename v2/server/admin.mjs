@@ -111,3 +111,26 @@ export function adminUsers(data,{offset=0,limit=25}={}){
  const recent=users.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
  return {total:users.length,offset:safeOffset,limit:safeLimit,items:recent.slice(safeOffset,safeOffset+safeLimit).map(u=>({id:u.id,name:String(u.name||'').slice(0,80),email:String(u.email||'').slice(0,180),createdAt:u.createdAt||null,verified:Boolean(u.verifiedAt),googleLinked:Boolean(u.googleSub),signupMethod:signupMethod(u),activity:userActivity(u)}))};
 }
+
+/**
+ * Read-only admin incident queue. Return only operational metadata.
+ * Never expose a reporter's account ID, exact GPS position or vote secrets.
+ */
+export function adminReportList(data,{offset=0,limit=25,status='all'}={}){
+ const safeOffset=Math.min(100000,Math.max(0,Number.parseInt(offset,10)||0));
+ const safeLimit=Math.min(50,Math.max(1,Number.parseInt(limit,10)||25));
+ const validStatus=['all','verificado','nao_verificado'].includes(status)?status:'all';
+ const rows=(Array.isArray(data?.reports)?data.reports:[])
+  .filter(r=>r&&['verificado','nao_verificado'].includes(r.status)&&
+    (validStatus==='all'||r.status===validStatus))
+  .sort((a,b)=>(Date.parse(b.createdAt||'')||0)-(Date.parse(a.createdAt||'')||0));
+ return {
+  total:rows.length,offset:safeOffset,limit:safeLimit,status:validStatus,
+  items:rows.slice(safeOffset,safeOffset+safeLimit).map(r=>({
+   id:String(r.id||'').slice(0,32),
+   type:String(r.type||'').slice(0,36),
+   description:String(r.description||'').replace(/[\\u0000-\\u001f\\u007f]/g,'').slice(0,150),
+   status:r.status,createdAt:r.createdAt||null,expiresAt:r.expiresAt||null
+  }))
+ };
+}
