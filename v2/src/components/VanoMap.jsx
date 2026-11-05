@@ -335,7 +335,7 @@ function motionController(map,latest,status){
       const scene=sampleStandardPlayScene(d,route,now);
       const regular=realCameraDistance(d,route,base,now);
       return planV1CloseChase({
-        enabled:true,base:regular,position:d.motionCoords||d.gpsCoords,
+        enabled:true,cameraV3:import.meta.env.VITE_VANO_CAMERA_V3!=='0',base:regular,position:d.motionCoords||d.gpsCoords,
         markerBearing:d.motionBearing,maneuver:d.guidance,route,vehicle:d.vehicle,
         compactViewport:viewport.compact,reducedMotion:reduced,
         speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,viewport,

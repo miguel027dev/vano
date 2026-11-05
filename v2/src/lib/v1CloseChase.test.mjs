@@ -13,12 +13,11 @@ const options={enabled:true,base,position,vehicle:'carro',speed:12,
   route:{geometry:{type:'LineString',coordinates:[position,[-46.689,-23.58]]},
     steps:[{type:'on ramp',modifier:'slight right'}]}};
 
-test('public V1 uses V2 follow camera with a closer zoom and identical pitch/animation',()=>{
+test('public camera uses physical position and safe padding with a wider highway view',()=>{
   const regular=planStandardSimulationCamera(options);
   const close=planV1CloseChase(options);
-  assert.ok(close.zoom>regular.zoom+.4);
-  assert.ok(close.zoom<=18.9);
-  assert.equal(close.pitch,regular.pitch);
+  assert.ok(close.zoom<regular.zoom);
+  assert.ok(close.pitch>=38&&close.pitch<=48);
   assert.deepEqual(close.center,position);
   assert.equal(close.bearing,regular.bearing);
   assert.deepEqual(close.cameraPadding,regular.cameraPadding);
@@ -35,8 +34,27 @@ test('close follow never fabricates a GPS location or fights unreliable telemetr
   assert.strictEqual(planV1CloseChase({...options,reducedMotion:true}),base);
   const highway=planV1CloseChase({...options,speed:30});
   const regularHighway=planStandardSimulationCamera({...options,speed:30});
-  assert.ok(highway.zoom>regularHighway.zoom);
-  assert.ok(highway.zoom-regularHighway.zoom<.35);
+  assert.ok(highway.zoom<regularHighway.zoom);
+  assert.ok(highway.zoom<planV1CloseChase({...options,speed:4}).zoom);
+});
+
+test('highway exit widens the view and the rollback restores the former framing',()=>{
+ const highway=planV1CloseChase({...options,speed:28});
+ const exit=planV1CloseChase({...options,speed:28,maneuver:{kind:'off ramp',distance:200}});
+ assert.ok(exit.zoom<highway.zoom);
+ assert.ok(exit.pitch<highway.pitch);
+ const old=planV1CloseChase({...options,speed:28,cameraV3:false});
+ assert.ok(old.zoom>highway.zoom);
+});
+
+test('marker is anchored in the measured safe area for common device sizes',()=>{
+ for(const height of [568,640,844,932]){
+  const top=150,bottom=180,visibleHeight=height-top-bottom;
+  const view={padding:{top,bottom,left:20,right:20},visibleHeight,markerRadius:42};
+  const result=planV1CloseChase({...options,viewport:view});
+  const y=(result.cameraPadding.top+height-result.cameraPadding.bottom)/2;
+  assert.ok(y>=top+42&&y<=height-bottom-42,`height ${height}`);
+ }
 });
 
 test('both route screens display stronger, provider-only direction arrows',()=>{
