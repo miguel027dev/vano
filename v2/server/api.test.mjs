@@ -36,6 +36,17 @@ function client(origin){
  };
 }
 const coords=[-46.6557,-23.5615];
+test('live navigation accepts guest updates but restricts location reads',async()=>{
+ const s=await start(),guest=client(s.origin);
+ try{
+  await guest.call('/api/bootstrap');
+  const token='a'.repeat(64),fix={token,coords,accuracy:10,meters:22};
+  assert.equal((await guest.call('/api/admin/live-trips')).status,401);
+  assert.equal((await guest.call('/api/live-navigation/update','POST',fix,{Origin:'https://evil.example'})).status,403);
+  assert.equal((await guest.call('/api/live-navigation/update','POST',fix)).status,200);
+  assert.equal((await guest.call('/api/live-navigation/stop','POST',{token})).status,200);
+ }finally{await s.stop();}
+},{timeout:30000});
 test('walking is accepted by the route API and does not fall through to the driving engine',async()=>{
  const s=await start({MAPBOX_SECRET_TOKEN:'',VITE_MAPBOX_PUBLIC_TOKEN:'',VANO_V1_API_URL:'https://unused.invalid'}),a=client(s.origin);
  try{

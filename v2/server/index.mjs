@@ -4,6 +4,7 @@
  */
 import http from 'node:http';
 import {createSupportTicket,supportStatus,supportInbox,replySupport,pruneSupport} from './support.mjs';
+import {createAdminLiveTrips} from './admin-live-trips.mjs';
 import {createHelpAssistant} from './help-assistant.mjs';
 const helpAssistant=createHelpAssistant();
 import {createPartnerAPI,PartnerError} from './partner-api.mjs';
@@ -156,6 +157,7 @@ if(process.env.VANO_REQUIRE_POSTGRES==='1' && !process.env.DATABASE_URL)throw Er
 const store = process.env.DATABASE_URL ? await openPostgresStore(process.env.DATABASE_URL) : openStore(file);
 console.info('VANO V2 storage:',store.kind||'json-ephemeral');
 const db = store.data;
+const adminLiveTrips=createAdminLiveTrips();
 let intelligenceSaveTimer=null;
 function scheduleIntelligenceSave(){
  if(intelligenceSaveTimer!==null)return;
@@ -590,6 +592,21 @@ function listCap(list, ownerId, max) { return list.reduce((n,x)=>n+(x.owner===ow
 async function route(req, res) {
   const u = new URL(req.url,'http://localhost');
   const pathname = u.pathname;
+  if((pathname==='/api/admin/live-trips'||pathname.startsWith('/api/live-navigation/'))&&process.env.VANO_ADMIN_LIVE_TRIPS_ENABLED==='0')return err(res,404,'Recurso indisponível.');
+  if(pathname==='/api/admin/live-trips'&&req.method==='GET'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta.');
+    if(!isAdminAccount(session.user))return err(res,403,'Área exclusiva da administração.');
+    if(!limits(req,res,'admin-live-trips',30,60000))return;
+    return json(res,200,{trips:adminLiveTrips.list()},{'Cache-Control':'no-store'});
+  }
+  if((pathname==='/api/live-navigation/update'||pathname==='/api/live-navigation/stop')&&req.method==='POST'){
+    if(!protectedWrite(req,res)||!limits(req,res,'live-navigation',180,60000))return;
+    const body=await getBody(req);
+    const ok=pathname.endsWith('/stop')?adminLiveTrips.stop(body.token):adminLiveTrips.update(body,userSession(req)?.user);
+    if(!ok)return err(res,400,'Atualização inválida.');
+    return json(res,200,{ok:true},{'Cache-Control':'no-store'});
+  }
   if((pathname.startsWith('/api/admin/dev-sync')||pathname.startsWith('/api/agent/dev-sync')) &&
       await devSync.handle(req,res,pathname))return;
   // Read-only public results: validated curated entries plus verified scheduled runs.

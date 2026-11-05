@@ -11,6 +11,7 @@ import {maviIncidentOffer} from '../lib/maviIncidentFollowup.mjs';
 import {metersApart} from '../lib/communityReports.js';
 import MotorcycleIcon from '../components/MotorcycleIcon';
 import {nearestOnRoute,validPoint} from '../lib/navigationMotion';
+import {createAdminTripSender} from '../lib/adminTripSender.mjs';
 import {historyDestination} from '../lib/historyPresentation.mjs';
 import {locationSummary} from '../lib/locationSummary.mjs';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
@@ -120,6 +121,14 @@ export default function MapPage({active=true}){
   const navigationRoadSigns=jevMode&&active&&routeVehicle!=='a-pe'&&
     (location.pathname==='/v2'||import.meta.env.VITE_PUBLIC_ROAD_SIGNS!=='0');
   const [simActive,setSimActive]=useState(false),[simPaused,setSimPaused]=useState(false),[simMeters,setSimMeters]=useState(0),[simConfirmOpen,setSimConfirmOpen]=useState(false);
+  const adminTripSender=useRef(null);
+  useEffect(()=>{
+    if(!navMode||!active||simActive||demo)return;
+    let sender;
+    try{sender=createAdminTripSender({post:(path,body,options)=>api(path,{method:'POST',body,...options})});}catch{return;}
+    adminTripSender.current=sender;
+    return()=>{if(adminTripSender.current===sender)adminTripSender.current=null;sender.stop();};
+  },[navMode,active,simActive,demo]);
   const [simCameraMode,setSimCameraMode]=useState('standard');
   const [v2FocusMode,setV2FocusMode]=useState(false);
   const [v2ToolsOpen,setV2ToolsOpen]=useState(false);
@@ -271,6 +280,7 @@ export default function MapPage({active=true}){
     const result=evaluateGpsPosition(p,lastGpsFix.current);
     if(!result.ok)return null;
     const {fix}=result;
+    adminTripSender.current?.add({coords:fix.coords,accuracy:fix.accuracy,timestamp:fix.sourceAt});
     lastGpsFix.current=fix;
     setUserCoords(fix.coords);
     if(warmCoords)setWarmCoords(null);

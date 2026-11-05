@@ -11,6 +11,7 @@ import '../admin-console.css';
 import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
 import AdminInsights from '../components/AdminInsights';
 import AdminEtaConsole from '../components/AdminEtaConsole';
+import AdminLiveTrips from '../components/AdminLiveTrips';
 
 const num=value=>typeof value==='number'&&Number.isFinite(value)?value.toLocaleString('pt-BR'):'—';
 const shortDate=value=>{
@@ -58,6 +59,7 @@ function SourceBreakdown({stats}){
 export default function AdminPage(){
  const {user,loading}=useVano();
  const [showLegacy,setShowLegacy]=useState(false);
+ const [showLiveTrips,setShowLiveTrips]=useState(false);
  const [stats,setStats]=useState(null),[users,setUsers]=useState(null),[failure,setFailure]=useState(''),
   [busy,setBusy]=useState(false),[offset,setOffset]=useState(0),[filter,setFilter]=useState('');
  async function refresh(page=offset){
@@ -86,11 +88,13 @@ export default function AdminPage(){
   <header className="v3-admin-heading">
    <div><span className="v3-admin-overline"><ShieldCheck size={16}/> ADMINISTRAÇÃO · VANO MAPS</span>
     <h1>Painel de controle<span className="v44-head-dot">.</span></h1>
-    <p>Contas, operação e atividade da plataforma — dados essenciais, sem localização individual.</p></div>
+    <p>Contas, operação e atividade da plataforma.</p></div>
    <div className="v44-admin-header-actions"><Link to="/admin/suporte" className="v44-admin-back"><MessageSquareText size={17}/> Atendimento e protocolos</Link><Link to="/admin/dev-sync" className="v44-admin-back" style={{background:"#f3965c",color:"#23170f",borderColor:"#f3965c",fontWeight:800}}><MessageSquareText size={17}/> Chat · Tarefas · Progresso</Link><Link to="/admin/intelligence" className="v44-admin-back"><Activity size={17}/> VANO Intelligence</Link><Link to="/v2" className="v44-admin-back"><Route size={17}/> Entrar no mapa de administrador</Link><Link to="/perfil" className="v44-admin-back"><ArrowLeft size={17}/> Perfil</Link>
     <button onClick={()=>refresh(0)} type="button" disabled={busy}><RefreshCcw size={17} className={busy?'v44-refreshing':''}/>{busy?'Atualizando…':'Atualizar'}</button></div>
   </header>
   {failure&&<p className="v3-admin-error" role="alert">Não foi possível carregar o console: {failure}</p>}
+  <button type="button" onClick={()=>setShowLiveTrips(v=>!v)} aria-expanded={showLiveTrips} style={{marginBottom:16}}>{showLiveTrips?'Fechar acompanhamento':'Acompanhar viagens ao vivo'}</button>
+  {showLiveTrips&&<AdminLiveTrips/>}
   <AdminEtaConsole/>
   {showLegacy&&<SafeRoutingTestPanel/>}
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
