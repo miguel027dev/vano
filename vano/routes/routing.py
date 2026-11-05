@@ -525,7 +525,7 @@ def api_route():
             "motorcycle_route": travel_profile == "motorcycle",
             "motorcycle_eta_policy": "conservative motorized ETA; no lane-splitting assumption" if travel_profile == "motorcycle" else "",
             "traffic_hotspots": (traffic.get("traffic_points") or [])[:6],
-            **metrics, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **professional,
+            **metrics, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **signal_eta_fields(route), **professional,
         })
 
     apply_route_intelligence(enriched, travel_profile, safety_bias=safety_bias, traffic_bias=traffic_bias)
