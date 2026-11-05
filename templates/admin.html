@@ -1,8 +1,37 @@
 {% extends 'base.html' %}
-{% block title %}Control Center · VANO MAPS{% endblock %}
+{% block title %}VANO Control Center · Administração{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='vano-admin-glass.css') }}?v={{ vano_build_id }}">
+{% endblock %}
 {% block content %}
-<main class="admin86 admin350" data-admin350-root id="conteudo-principal" tabindex="-1">
-  <div class="admin350-shell">
+<main class="admin86 admin350 vano-command" data-admin350-root id="conteudo-principal" tabindex="-1">
+  <aside class="vano-command-side" aria-label="Navegação administrativa VANO">
+    <a class="vano-command-brand" href="{{ url_for('admin_dashboard') }}">
+      <img src="{{ url_for('static', filename='vano-maps-icon-64.png') }}" width="42" height="42" alt="">
+      <span><b>VANO</b><small>CONTROL CENTER</small></span>
+    </a>
+    <nav aria-label="Módulos administrativos">
+      <a class="vano-side-link is-active" data-admin-view="dashboard" href="#dashboard"><i data-lucide="layout-dashboard"></i>Dashboard</a>
+      <a class="vano-side-link" data-admin-view="routes" href="#acompanhar-rotas"><i data-lucide="map-pinned"></i>Acompanhar Rotas</a>
+      <a class="vano-side-link" href="{{ url_for('admin_benchmark') }}"><i data-lucide="chart-no-axes-combined"></i>Benchmark de Rotas</a>
+      <a class="vano-side-link" href="{{ url_for('admin_dashboard') }}#product-signals"><i data-lucide="activity"></i>Inteligência operacional</a>
+      <a class="vano-side-link" href="{{ url_for('admin_reports') }}"><i data-lucide="triangle-alert"></i>Ocorrências</a>
+      <a class="vano-side-link" href="{{ url_for('admin_users') }}"><i data-lucide="users-round"></i>Usuários</a>
+      <a class="vano-side-link" href="{{ url_for('admin_risk_zones') }}"><i data-lucide="shield-alert"></i>Zonas de risco</a>
+      <a class="vano-side-link" href="{{ url_for('admin_finance') }}"><i data-lucide="wallet"></i>Financeiro</a>
+      <div class="vano-side-divider"></div>
+      <div class="vano-side-caption">Desenvolvimento e operação</div>
+      <a class="vano-side-link" href="{{ url_for('admin_dev_sync') }}"><i data-lucide="messages-square"></i>DevSync</a>
+      <a class="vano-side-link" href="{{ url_for('admin_audit_logs') }}"><i data-lucide="history"></i>Auditoria</a>
+      <a class="vano-side-link" href="{{ url_for('admin_dashboard') }}#infrastructure"><i data-lucide="server-cog"></i>Infraestrutura</a>
+    </nav>
+    <div class="vano-command-side-bottom">
+      <a class="vano-side-link" href="{{ url_for('index') }}"><i data-lucide="navigation"></i>Abrir VANO Maps</a>
+      <div class="vano-side-foot"><strong>Centro de controle VANO</strong>Dados operacionais provenientes do servidor.</div>
+    </div>
+  </aside>
+  <div class="admin350-shell vano-command-main" id="adminDashboardView">
     <header class="admin350-hero admin350-reveal">
       <div class="admin350-hero-copy">
         <div class="admin350-command-mark"><i data-lucide="command" width="21"></i></div>
@@ -54,6 +83,26 @@
       </article>
     </section>
 
+    <section class="admin350-card vano-activity-visual admin350-reveal" aria-labelledby="adminActivityTitle">
+      <header class="admin350-card-head">
+        <div><span>ATIVIDADE REAL · ÚLTIMAS 24 HORAS</span><h2 id="adminActivityTitle">Pulso do VANO</h2><p>Indicadores operacionais agrupados por tipo, sem estimativas artificiais.</p></div>
+        <a class="admin350-btn is-soft" href="{{ url_for('admin_benchmark') }}"><i data-lucide="chart-no-axes-combined" width="15"></i>Benchmark</a>
+      </header>
+      <div class="vano-activity-note">
+        <span class="vano-command-kicker">NAVEGAÇÕES INICIADAS</span>
+        <strong>{{ product_metrics['navigation_starts_24h'] }}</strong>
+        <p>{{ product_metrics['navigation_complete_24h'] }} navegações concluídas no período. A comparação ao lado usa contagens observadas, não porcentagens inventadas.</p>
+      </div>
+      <div class="vano-activity-chart" role="group" aria-label="Atividade por tipo nas últimas 24 horas">
+        {% set activity = [('Rotas',stats['routes_24h']),('Buscas',product_metrics['searches_24h']),('Inícios',product_metrics['navigation_starts_24h']),('Recálculos',product_metrics['reroutes_24h']),('Alertas',product_metrics['alerts_24h']),('Erros',product_metrics['errors_24h'])] %}
+        {% for label, amount in activity %}
+        <div class="vano-activity-bar" data-admin-activity-bar data-label="{{ label }}" data-value="{{ amount }}">
+          <b>{{ amount }}</b><span aria-hidden="true"></span><small>{{ label }}</small>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
     <section class="admin350-operational-grid admin350-reveal">
       <article class="admin350-card admin350-health-card">
         <header class="admin350-card-head">
@@ -77,7 +126,7 @@
         <div class="admin350-progress"><span id="heroOccupancyBar" style="width:{{ extra['simultaneous_occupancy_pct'] }}%"></span></div>
       </article>
 
-      <article class="admin350-card admin350-product-card">
+      <article class="admin350-card admin350-product-card" id="product-signals">
         <header class="admin350-card-head"><div><span>PRODUTO · 24H</span><h2>Sinais do produto</h2><p>O que os usuários estão fazendo e onde a experiência pode degradar.</p></div></header>
         <div class="admin350-signal-list">
           <div class="admin350-signal"><span class="is-good"><i data-lucide="navigation" width="15"></i></span><div><small>Navegações iniciadas</small><b>{{ product_metrics['navigation_starts_24h'] }}</b></div><em>{{ product_metrics['navigation_complete_24h'] }} concluídas</em></div>
@@ -162,6 +211,58 @@
     </section>
   </div>
 
+  <section class="vano-route-view vano-command-main" id="adminRoutesView" hidden aria-labelledby="adminRoutesTitle">
+    <header class="vano-route-head">
+      <div>
+        <span class="vano-command-kicker">CENTRO DE OPERAÇÕES · MAPA 3D ORIGINAL</span>
+        <h1 id="adminRoutesTitle">Acompanhar Rotas</h1>
+        <p>Mapa tridimensional VANO, histórico de trajetos e status operacional.</p>
+      </div>
+      <span class="vano-route-head-status"><i aria-hidden="true"></i>Visão administrativa</span>
+    </header>
+    <section class="vano-route-metrics" aria-label="Indicadores reais de navegação">
+      <article class="vano-glass-card vano-route-metric"><i data-lucide="route"></i><small>Rotas calculadas · 24h</small><strong>{{ stats['routes_24h'] }}</strong></article>
+      <article class="vano-glass-card vano-route-metric"><i data-lucide="radio"></i><small>Usuários ativos · 5min</small><strong>{{ extra['simultaneous_now'] }}</strong></article>
+      <article class="vano-glass-card vano-route-metric"><i data-lucide="triangle-alert"></i><small>Ocorrências ativas</small><strong>{{ stats['active_reports'] }}</strong></article>
+      <article class="vano-glass-card vano-route-metric"><i data-lucide="server"></i><small>Route Nodes saudáveis</small><strong>{{ infra['summary']['healthy_nodes'] }}/{{ infra['summary']['total_nodes'] }}</strong></article>
+    </section>
+    <div class="vano-route-workspace">
+      <article class="vano-glass-card vano-map-card">
+        <div class="vano-map-card-head">
+          <h2>VANO Maps · 3D</h2>
+          <div class="vano-map-tags"><span class="vano-map-tag">Mapa nativo VANO</span><span class="vano-map-tag">Relevo 3D</span><span class="vano-map-tag">Interativo</span></div>
+        </div>
+        <div id="adminRouteMap" role="region" aria-label="Mapa 3D interativo para localizar pontos de rotas recentes"></div>
+        <div class="vano-map-overlay" id="adminMapStatus" role="status" aria-live="polite">Preparando o mapa 3D...</div>
+      </article>
+      <aside class="vano-glass-card vano-route-inspector" aria-label="Painel de trajetos registrados">
+        <span class="vano-command-kicker">HISTÓRICO DE TRAJETOS</span>
+        <h2>Rotas recentes</h2>
+        <p>Selecione um registro para posicionar origem e destino no mapa. O histórico não contém a geometria do trajeto nem GPS ao vivo dos usuários.</p>
+        <div class="vano-route-records">
+        {% for r in recent_routes %}
+          <button type="button" class="vano-route-record" data-admin-route
+            data-origin-lat="{{ r['origin_lat'] }}" data-origin-lon="{{ r['origin_lon'] }}"
+            data-destination-lat="{{ r['destination_lat'] }}" data-destination-lon="{{ r['destination_lon'] }}"
+            data-route-description="{{ r['origin_label'] or 'Origem' }} → {{ r['destination_label'] or 'Destino' }}">
+            <time>{{ r['created_at'][:16].replace('T',' ') }}</time>
+            <b>{{ r['origin_label'] or 'Origem' }} → {{ r['destination_label'] or 'Destino' }}</b>
+            <small>{{ r['mode'] }} · {{ (r['distance_m']/1000)|round(1) }} km · {{ (r['duration_s']/60)|round|int }} min</small>
+          </button>
+        {% else %}
+          <p class="vano-route-message">Ainda não existem trajetos registrados no histórico.</p>
+        {% endfor %}
+        </div>
+        <div class="vano-route-message" id="adminSelectedRoute" aria-live="polite">Selecione um trajeto para mostrar origem e destino.</div>
+        <div class="vano-map-footer">
+          <button id="adminMapReset" type="button"><i data-lucide="crosshair" width="14"></i> Recentrar</button>
+          <a href="{{ url_for('index') }}" target="_blank" rel="noopener"><i data-lucide="external-link" width="14"></i> Mapa completo</a>
+        </div>
+      </aside>
+    </div>
+    <div class="vano-route-message">A localização contínua de veículos exige uma fonte de telemetria autorizada. Aqui são apresentados apenas registros já existentes e indicadores reais do servidor.</div>
+  </section>
+
   <div class="node-config-modal admin350-modal" id="nodeConfigModal" hidden>
     <div class="node-config-backdrop" data-close-node-modal></div>
     <section class="node-config-dialog" role="dialog" aria-modal="true" aria-labelledby="nodeConfigTitle">
@@ -183,5 +284,12 @@
   </div>
 </main>
 <script id="infraInitial" type="application/json">{{ infra|tojson }}</script>
+<script>window.VANO_ADMIN_MAP_BOOT={{ {'token': mapbox_token, 'style': mapbox_style}|tojson }};</script>
 {% endblock %}
-{% block scripts %}<script src="{{ url_for('static', filename='vano-admin-infrastructure.js') }}?v={{ vano_build_id }}"></script><script src="{{ url_for('static', filename='vano-admin-reset.js') }}?v={{ vano_build_id }}"></script><script src="{{ url_for('static', filename='vano-admin-experience.js') }}?v={{ vano_build_id }}"></script>{% endblock %}
+{% block scripts %}
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js"></script>
+<script src="{{ url_for('static', filename='vano-admin-infrastructure.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-admin-reset.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-admin-experience.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-admin-glass.js') }}?v={{ vano_build_id }}"></script>
+{% endblock %}
