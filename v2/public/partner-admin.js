@@ -10,7 +10,7 @@ function renderScopes(catalog,defaults){
  const defaultSet=new Set(defaults||[]);
  for(const item of scopeCatalog){
   const option=document.createElement('label');option.className='scope-option';
-  const box=document.createElement('input');box.type='checkbox';box.name='scope';box.value=item.id;box.checked=defaultSet.has(item.id);
+  const box=document.createElement('input');box.type='checkbox';box.name='scope';box.value=item.id;box.defaultChecked=defaultSet.has(item.id);
   const body=document.createElement('span'),name=document.createElement('strong'),description=document.createElement('small');
   name.textContent=item.label;description.textContent=item.description;
   body.append(name,description);option.append(box,body);scopeOptions.append(option);
