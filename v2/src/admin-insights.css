@@ -61,3 +61,71 @@
 @media(max-width:700px){.vai-tabs{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.vai-tabs button{min-height:65px;padding:10px;gap:8px}.vai-tabs button b{font-size:10px}.vai-tabs button small{font-size:9px}.vai-layout{grid-template-columns:1fr}.vai-card>header{padding:17px 15px 9px}.vai-card-body{padding:10px 15px 16px}.vai-metric{padding:15px}.vai-metric strong{font-size:27px}.vai-tools span{margin-left:0}}
 @media(max-width:390px){.vai-tabs button{gap:6px}.vai-tabs button svg{width:16px}.vai-metric>div span{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.vai-tabs button{transition:none}.vai-tabs button:hover{transform:none}}
+
+
+/* VANO animated operational charts: render actual data immediately;
+   entrance motion is decorative and runs only once per visible section. */
+.vanu-admin-page .vai-trend-panel{margin-bottom:14px;background:linear-gradient(136deg,rgba(79,52,46,.66),rgba(23,19,23,.95))!important;position:relative;isolation:isolate}
+.vanu-admin-page .vai-trend-panel:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 75% 100%,rgba(245,154,98,.13),transparent 65%);z-index:-1}
+.vanu-admin-page .vai-trend-panel .vai-card-body{padding:5px 21px 17px}
+.vanu-admin-page .vai-trend{display:grid;gap:9px}
+.vanu-admin-page .vai-trend-summary{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#ddb49d}
+.vanu-admin-page .vai-trend-summary>span{font-size:10px;font-weight:800;letter-spacing:.12em}
+.vanu-admin-page .vai-trend-summary strong{color:#f7e5d9;font-size:24px;font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.vanu-admin-page .vai-trend-summary small{color:#bca497;font-weight:550;letter-spacing:normal;font-size:10px}
+.vanu-admin-page .vai-trend-canvas{position:relative;width:100%;height:194px;min-width:0}
+.vanu-admin-page .vai-trend-canvas svg{display:block;width:100%;height:100%;overflow:visible}
+.vanu-admin-page .vai-trend-grid{stroke:#ffffff18;stroke-width:1;stroke-dasharray:3 7;vector-effect:non-scaling-stroke}
+.vanu-admin-page .vai-trend-y-label{fill:#b9a69c;font-size:11px;font-weight:600}
+.vanu-admin-page .vai-trend-area{opacity:.9}
+.vanu-admin-page .vai-trend-line{vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 7px #e583487d)}
+.vanu-admin-page .vai-trend-point{vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 4px #f59a6266)}
+.vanu-admin-page .vai-trend-labels{display:flex;justify-content:space-between;gap:3px;margin:0 5.3%}
+.vanu-admin-page .vai-trend-labels span{color:#ccb4a5;font-size:10px;font-weight:700;white-space:nowrap}
+.vanu-admin-page .vai-trend-caption{color:#b4a29a;margin:4px 0 0;font-size:10px;line-height:1.5}
+.vanu-admin-page .vai-bars>div>span{transform-origin:center bottom;backface-visibility:hidden}
+.vanu-admin-page .vai-metric{position:relative;overflow:hidden}
+.vanu-admin-page .vai-metric:after{content:"";position:absolute;inset:auto -30px -70px auto;width:150px;height:110px;border-radius:50%;background:#f59a6212;filter:blur(25px);pointer-events:none}
+.vanu-admin-page .vai-count-visual{display:inline-block;min-width:1ch;font-variant-numeric:tabular-nums}
+.vanu-admin-page .vai-insights{--vai-ease-out:cubic-bezier(0.23,1,0.32,1)}
+.vanu-admin-page .vai-insights[data-animate="true"] .vai-metrics>.vai-metric{
+ animation:vaiCardEnter 290ms var(--vai-ease-out) backwards;
+}
+.vanu-admin-page .vai-insights[data-animate="true"] .vai-metrics>.vai-metric:nth-child(2){animation-delay:60ms}
+.vanu-admin-page .vai-insights[data-animate="true"] .vai-metrics>.vai-metric:nth-child(3){animation-delay:120ms}
+.vanu-admin-page .vai-insights[data-animate="true"] .vai-metrics>.vai-metric:nth-child(4){animation-delay:180ms}
+.vanu-admin-page .vai-bars[data-animate="true"]>div>span{
+ animation:vaiBarRise 710ms var(--vai-ease-out) backwards;
+ animation-delay:calc(var(--vai-index,0)*65ms);
+}
+.vanu-admin-page .vai-trend[data-animate="true"] .vai-trend-line{
+ stroke-dasharray:1;stroke-dashoffset:1;
+ animation:vaiTrendDraw 990ms var(--vai-ease-out) forwards;
+ animation-delay:160ms;
+}
+.vanu-admin-page .vai-trend[data-animate="true"] .vai-trend-area{
+ animation:vaiAreaFade 500ms var(--vai-ease-out) backwards;
+ animation-delay:420ms;
+}
+.vanu-admin-page .vai-trend[data-animate="true"] .vai-trend-point{
+ animation:vaiPointReveal 220ms var(--vai-ease-out) backwards;
+ animation-delay:calc(360ms + var(--vai-index,0)*95ms);
+}
+@keyframes vaiCardEnter{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes vaiBarRise{from{transform:scaleY(.035);opacity:.45}to{transform:scaleY(1);opacity:1}}
+@keyframes vaiTrendDraw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes vaiAreaFade{from{opacity:0}to{opacity:.9}}
+@keyframes vaiPointReveal{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:700px){
+ .vanu-admin-page .vai-trend-panel .vai-card-body{padding:7px 14px 15px}
+ .vanu-admin-page .vai-trend-canvas{height:155px}
+ .vanu-admin-page .vai-trend-summary{align-items:flex-start;flex-direction:column;gap:5px}
+ .vanu-admin-page .vai-trend-labels span{font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){
+ .vanu-admin-page .vai-insights[data-animate="true"] .vai-metric,
+ .vanu-admin-page .vai-bars[data-animate="true"]>div>span,
+ .vanu-admin-page .vai-trend[data-animate="true"] :is(.vai-trend-line,.vai-trend-area,.vai-trend-point){
+  animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important;
+ }
+}
