@@ -10,7 +10,7 @@ export function createAdminLiveTrips({now=Date.now,ttl=120000,maxTrips=5000}={})
   return {
     update(body,user){
       const {token,coords,accuracy,meters}=body||{};
-      if(!validToken(token)||!Array.isArray(coords)||coords.length!==2||!coords.every(Number.isFinite)||Math.abs(coords[0])>180||Math.abs(coords[1])>90||!Number.isFinite(accuracy)||accuracy<0||accuracy>30||!Number.isFinite(meters)||meters<20||meters>10000000)return false;
+      if(!validToken(token)||!Array.isArray(coords)||coords.length!==2||!coords.every(Number.isFinite)||Math.abs(coords[0])>180||Math.abs(coords[1])>90||!Number.isFinite(accuracy)||accuracy<0||accuracy>50||!Number.isFinite(meters)||meters<0||meters>10000000)return false;
       prune();const id=key(token);
       if(!trips.has(id)&&trips.size>=maxTrips)return false;
       const previous=trips.get(id),trail=previous?.trail||[];

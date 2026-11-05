@@ -127,6 +127,8 @@ export default function MapPage({active=true}){
     let sender;
     try{sender=createAdminTripSender({post:(path,body,options)=>api(path,{method:'POST',body,...options})});}catch{return;}
     adminTripSender.current=sender;
+    const fix=lastGpsFix.current;
+    if(hasRecentGpsFix(fix,Date.now(),35000))sender.add({coords:fix.coords,accuracy:fix.accuracy,timestamp:fix.sourceAt});
     return()=>{if(adminTripSender.current===sender)adminTripSender.current=null;sender.stop();};
   },[navMode,active,simActive,demo]);
   const [simCameraMode,setSimCameraMode]=useState('standard');
