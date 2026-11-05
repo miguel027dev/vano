@@ -127,6 +127,7 @@ export default function MapPage({active=true}){
     let sender;
     try{sender=createAdminTripSender({post:(path,body,options)=>api(path,{method:'POST',body,...options})});}catch{return;}
     adminTripSender.current=sender;
+    sender.setRoute((routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0])?.geometry);
     const fix=lastGpsFix.current;
     if(hasRecentGpsFix(fix,Date.now(),35000))sender.add({coords:fix.coords,accuracy:fix.accuracy,timestamp:fix.sourceAt});
     return()=>{if(adminTripSender.current===sender)adminTripSender.current=null;sender.stop();};
@@ -601,6 +602,7 @@ export default function MapPage({active=true}){
     if(found){handledDestination.current=key;pick(found);}
   },[location.search,favorites,history]);
   const route=routeData?.routes?.find(r=>r.id===choice)||routeData?.routes?.[0];
+  useEffect(()=>{adminTripSender.current?.setRoute(route?.geometry);},[route?.geometry]);
   // Local private /v2 playback. Sampled coordinates never enter real GPS callbacks,
   // server routes, report submissions, saved journeys or actual telemetry.
   const simFrame=useMemo(()=>simActive?simulationFrame(route,simMeters):null,[simActive,route,simMeters]);

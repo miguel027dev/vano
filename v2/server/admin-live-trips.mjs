@@ -9,15 +9,16 @@ export function createAdminLiveTrips({now=Date.now,ttl=120000,maxTrips=5000}={})
   const cleanup=setInterval(prune,60000);cleanup.unref?.();
   return {
     update(body,user){
-      const {token,coords,accuracy,meters}=body||{};
+      const {token,coords,accuracy,meters,route}=body||{};
       if(!validToken(token)||!Array.isArray(coords)||coords.length!==2||!coords.every(Number.isFinite)||Math.abs(coords[0])>180||Math.abs(coords[1])>90||!Number.isFinite(accuracy)||accuracy<0||accuracy>50||!Number.isFinite(meters)||meters<0||meters>10000000)return false;
+      if(route!=null&&(!Array.isArray(route)||route.length<2||route.length>160||!route.every(p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<=90)))return false;
       prune();const id=key(token);
       if(!trips.has(id)&&trips.size>=maxTrips)return false;
       const previous=trips.get(id),trail=previous?.trail||[];
       const last=trail.at(-1);
       if(!last||last[0]!==coords[0]||last[1]!==coords[1])trail.push(coords);
       if(trail.length>120)trail.shift();
-      trips.set(id,{id:id.slice(0,16),coords,trail,accuracy,meters,updatedAt:now(),user:user?{name:String(user.name||'').slice(0,100)}:null});
+      trips.set(id,{id:id.slice(0,16),coords,trail,route:route??previous?.route??null,accuracy,meters,updatedAt:now(),user:user?{name:String(user.name||'').slice(0,100)}:null});
       return true;
     },
     stop(token){if(!validToken(token))return false;trips.delete(key(token));return true;},

@@ -16,3 +16,15 @@ test('guest trip is ephemeral, validates fixes and can be stopped',()=>{
  assert.equal(store.stop(token),true);assert.equal(store.list().length,0);
  store.update(fix,{name:'Teste'});time+=120001;assert.equal(store.list().length,0);
 });
+
+test('stores the planned route, rejects invalid geometry and replaces it after rerouting',()=>{
+ const store=createAdminLiveTrips(),token='b'.repeat(64),fix={token,coords:[-46,-23],accuracy:10,meters:0};
+ const route=[[-46,-23],[-46.1,-23.1]],replacement=[[-46,-23],[-46.2,-23.2]];
+ assert.equal(store.update({...fix,route},null),true);
+ assert.deepEqual(store.list()[0].route,route);
+ assert.equal(store.update({...fix,route:[[999,0],[0,0]]},null),false);
+ assert.deepEqual(store.list()[0].route,route);
+ assert.equal(store.update({...fix,route:replacement},null),true);
+ assert.deepEqual(store.list()[0].route,replacement);
+ store.stop(token);
+});

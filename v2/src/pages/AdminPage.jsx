@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useState,lazy,Suspense} from 'react';
 import {Link} from 'react-router-dom';
 import {
  Activity,AlertTriangle,ArrowLeft,ArrowUpRight,CalendarDays,CheckCircle2,
@@ -11,7 +11,7 @@ import '../admin-console.css';
 import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
 import AdminInsights from '../components/AdminInsights';
 import AdminEtaConsole from '../components/AdminEtaConsole';
-import AdminLiveTrips from '../components/AdminLiveTrips';
+const AdminLiveTrips=lazy(()=>import('../components/AdminLiveTrips'));
 
 const num=value=>typeof value==='number'&&Number.isFinite(value)?value.toLocaleString('pt-BR'):'—';
 const shortDate=value=>{
@@ -94,7 +94,7 @@ export default function AdminPage(){
   </header>
   {failure&&<p className="v3-admin-error" role="alert">Não foi possível carregar o console: {failure}</p>}
   <button type="button" onClick={()=>setShowLiveTrips(v=>!v)} aria-expanded={showLiveTrips} style={{marginBottom:16}}>{showLiveTrips?'Fechar acompanhamento':'Acompanhar viagens ao vivo'}</button>
-  {showLiveTrips&&<AdminLiveTrips/>}
+  {showLiveTrips&&<Suspense fallback={<div role="status">Abrindo mapa…</div>}><AdminLiveTrips onClose={()=>setShowLiveTrips(false)}/></Suspense>}
   <AdminEtaConsole/>
   {showLegacy&&<SafeRoutingTestPanel/>}
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
