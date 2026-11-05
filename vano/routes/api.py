@@ -1210,7 +1210,7 @@ def traffic_recommendation():
             "micro_traffic_relief": round(float(raw.get("_micro_traffic_relief") or 0), 1),
             "live_road_avoided": int(raw.get("_live_road_avoided",0) or 0),
             "routing_profile_used": raw.get("_profile_used", "driving-traffic"), "routing_provider": raw.get("_provider", "mapbox"), "route_signature": route_signature(raw),
-            **risk, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **professional,
+            **risk, **{k:v for k,v in traffic.items() if k != "traffic_points"}, **flow, **road, **signal_eta_fields(raw), **professional,
         }
     base = enrich_live(baseline, 0)
     options=[]

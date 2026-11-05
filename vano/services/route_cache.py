@@ -184,6 +184,8 @@ _MOBILE_ROUTE_KEEP_FIELDS = {
     "traffic_score", "traffic_level", "congested_distance_km", "severe_segments",
     "live_flow_score", "live_flow_confidence",
     "road_controls", "road_controls_count", "known_speed_limits", "speed_limit_points",
+    "signal_count", "duration_provider_s", "signal_eta_adjustment_s", "signal_eta_uncertainty_s",
+    "signal_eta_method", "signal_eta_confidence",
     "incidents_count", "closures_count", "eta_delta_vs_fastest_min", "safety_gain_vs_fastest",
 }
 
@@ -247,6 +249,8 @@ def _public_benchmark_payload(payload, cache_hit=False):
         "risk_exposure_pct", "hotspot_risk", "traffic_score", "traffic_level",
         "congested_distance_km", "severe_segments", "live_flow_score",
         "live_flow_confidence", "incidents_count", "closures_count",
+        "signal_count", "duration_provider_s", "signal_eta_adjustment_s",
+        "signal_eta_uncertainty_s", "signal_eta_method", "signal_eta_confidence",
         "eta_delta_vs_fastest_min", "safety_gain_vs_fastest", "vano_score", "vano_score",
     }
     routes = []
