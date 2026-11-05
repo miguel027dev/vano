@@ -61,7 +61,7 @@ Inserir a URL por propriedade DOM ou binding seguro do framework. O token tempor
 
 A origem deve coincidir exatamente com o cadastro: protocolo, host e porta. A página de embed envia CSP `frame-ancestors` com as origens cadastradas; o restante do site continua com sua política de bloqueio de frames. Se a rede social usa CSP, deve permitir o domínio retornado na embed_url em `frame-src`. Os demais domínios de autenticação e serviço devem ser tratados conforme o endereço efetivamente retornado pelo VANO.
 
-Sessões duram 5 minutos, com até 10 marcadores, zoom de 0 a 20 e temas `light` ou `dark`. Depois de expirar o mapa mostra um aviso. O parceiro pede outra sessão ao seu backend e recarrega o iframe; preserve o destino e peça uma rota nova se a referência antiga expirou. A geolocalização é solicitada pela rede social com consentimento, não pelo iframe. Há créditos Mapbox e OpenStreetMap no mapa; não ocultá-los.
+Tokens duram 5 minutos e são renovados pelo componente até 2 horas por sessão, com até 10 marcadores, zoom de 0 a 20 e temas `light` ou `dark`. Depois do prazo máximo da sessão, o mapa mostra um aviso. O parceiro pede outra sessão ao seu backend e recarrega o iframe; preserve o destino e peça uma rota nova se a referência antiga expirou. A geolocalização é solicitada pela rede social com consentimento, não pelo iframe. Há créditos Mapbox e OpenStreetMap no mapa; não ocultá-los.
 
 ## Serviços publicados
 
@@ -70,7 +70,7 @@ Todos os caminhos abaixo são relativos à base e exigem chave, exceto docs e Op
 | Método | Caminho | Scope e uso |
 | --- | --- | --- |
 | GET | /capabilities | Recursos e limites da integração |
-| GET | /places/search?q=... | places:read; até 16 sugestões |
+| GET | /places/search?q=... | places:read; até 30 sugestões |
 | GET | /places/{place_id} | places:read; detalhe da referência temporária |
 | GET | /geocode/reverse?lat=...&lng=... | places:read; endereço por coordenadas |
 | POST | /routes | routes:read; cálculo e alternativas |
@@ -105,7 +105,7 @@ Confirmação recebe `{"actor_id":"pseudonimo_2","choice":"present"}` ou `gone`.
 
 ## Limites e erros
 
-- Por parceiro: 60 chamadas/minuto; 10 cálculos/minuto; busca 30/minuto; reverso 12/minuto; feeds 20/minuto por serviço; carga de mapa 30/minuto.
+- Por parceiro: 60 chamadas/minuto; 10 cálculos/minuto; busca 120/minuto; reverso 12/minuto; feeds 20/minuto por serviço; carga de mapa 30/minuto.
 - Motor de parceiros: até 2 cálculos simultâneos e 60 cálculos/minuto no conjunto. Limites gerais de proteção do site também se aplicam (240 requisições/minuto por IP).
 - Corpo JSON: 16 KiB. Texto da busca: de 2 a 200 caracteres. Até 100 credenciais cadastradas; limpar/substituir por planejamento operacional antes de ampliar.
 - Relatos: 6/minuto; confirmações: 16/minuto por parceiro. Até 500 relatos retidos por parceiro.
@@ -135,3 +135,39 @@ As referências cifradas dependem de `VANO_SECURITY_SECRET`; a troca desse segre
 - Testes: `npm test`; compilação: `npm run build`.
 
 Os testes cobrem autenticação, scopes, CSRF, isolamento entre parceiros, rotação/revogação, expiração, geometria/unidades, bloqueio de demonstração, mapa, idempotência, tamanho do corpo e cotas. Os testes isolados usam fixtures explícitas; validar também o provedor real no ambiente publicado ao provisionar a chave do parceiro e a origem correta.
+
+
+## Mapa completo e SDK nativo sem iframe
+
+A versão 1.1 inclui as mesmas camadas de ícones e pontos públicos usadas pelo VANO: hospitais, combustível, estacionamento, radares, sinalização, POIs e ocorrências dos provedores, conforme sua cobertura. O mapa incorporado inclui pesquisa de origem e destino, carro/moto/caminhada, alternativas, instruções, tema claro/escuro e inclinação 3D. Os clientes que já usam embed_url recebem o mapa atualizado com uma sessão válida; quem implementou um mapa próprio deve montar o SDK ou consumir e desenhar as camadas.
+
+O backend continua criando POST /map-sessions com a chave permanente e allowed_origin do parceiro. Encaminhe o objeto data da resposta ao frontend. Além de embed_url, ele contém browser_token, api_base, sdk_url, expires_at e session_until. Não encaminhar a chave permanente.
+
+```js
+// Frontend: /api/vano/session é uma rota do backend da própria rede social.
+// Ela devolve somente o objeto data recebido de POST /map-sessions.
+const session = await fetch('/api/vano/session').then(r => r.json());
+const {mount} = await import(session.sdk_url);
+const mapa = await mount(document.querySelector('#mapa'), {
+  session,
+  onSessionExpired: () => fetch('/api/vano/session').then(r => r.json()),
+  onEvent: event => console.log(event.type)
+});
+mapa.setOrigin({lng: -46.6557, lat: -23.5615, name: 'Origem'});
+// mapa.setDestination({lng, lat, name});
+// await mapa.calculate();
+// await mapa.search('Avenida Paulista');
+// mapa.destroy(); // ao desmontar a tela
+```
+
+O elemento #mapa precisa de altura definida (por exemplo 600px). O SDK isola os estilos em Shadow DOM, carrega as folhas de estilo e as camadas do mesmo release e libera recursos em destroy. O transporte usa credentials=omit, sem cookies da conta do usuário.
+
+Para chamadas diretas do navegador, use Authorization: Bearer BROWSER_TOKEN. A chave permanente permanece restrita ao backend. CORS permite somente a origem cadastrada; uma sessão emitida para uma origem não pode ser usada por outra origem do mesmo parceiro. A sessão só permite leitura e cálculo: não cria chaves, novas sessões ou ocorrências. A revogação da chave invalida seus tokens. POST /map-sessions/renew renova tokens ainda válidos até session_until, sem estender esse prazo máximo original; o SDK faz isso automaticamente.
+
+A busca aceita q, query ou text; lat e lng juntos ou proximity=longitude,latitude; limit de 1 a 30 e language. A posição influencia a relevância sem limitar a busca ao país atual. A resposta contém data.items e data.results (mesma lista), com name, address, lat, lng, coords, category, id e place_id. Não há paginação exaustiva dos provedores. Resultados tardios de uma consulta anterior não substituem os resultados da consulta atual no componente.
+
+GET /map-data?service=map-features&bbox=... fornece o payload normalizado da camada. Serviços permitidos: map-features, map-radars, places/tomtom, places/openchargemap, places/overture, traffic/incidents/tomtom e road-events/regional. Nenhuma URL de provedor arbitrária ou rota administrativa é permitida. A camada conserva as fontes e avisos reais. Sessões usam até 180 chamadas/minuto por token, 1800/minuto por parceiro e 120/minuto por camada; os limites gerais de proteção do site continuam valendo. Busca permite 120/minuto por parceiro. Cálculos continuam com limite próprio.
+
+Se o parceiro usa CSP, precisa permitir o domínio VANO nos módulos, estilos e conexões e as fontes Mapbox necessárias ao renderizador; workers precisam de blob. Se houver restrições por URL no token público Mapbox, a origem do parceiro precisa estar permitida para usar o SDK nativo. O embed continua renderizando sob a origem VANO e é alternativa para esse caso.
+
+No iframe, o pai pode fornecer a origem por postMessage com type=vano:set-origin e place={lng,lat,name}; destino usa vano:set-destination; cálculo usa vano:calculate. O mapa verifica origin e source. O botão Minha localização solicita permissão apenas após interação e envia vano:request-location para o pai; não é feito rastreamento de localização em segundo plano.

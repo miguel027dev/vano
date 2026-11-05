@@ -3,7 +3,7 @@ export const fold = value => String(value || '').normalize('NFD').replace(/[\u03
 export const postalDigits = value => String(value || '').replace(/\D/g,'');
 /** Optional user-location bias breaks relevance ties; it never filters
  * remote results (including adjacent countries) out of the list. */
-export function rankSearchResults(items, query, proximity=null) {
+export function rankSearchResults(items, query, proximity=null, limit=10) {
   const q=fold(query), digits=postalDigits(query), isCep=/^\d{5}-?\d{3}$/.test(String(query||'').trim());
   const seen=new Set();
   return (Array.isArray(items)?items:[]).filter(item=>{
@@ -34,5 +34,5 @@ export function rankSearchResults(items, query, proximity=null) {
       distance=6371*2*Math.asin(Math.sqrt(h));
     }
     return {item,index,match,distance};
-  }).sort((a,b)=>a.match-b.match||a.distance-b.distance||a.index-b.index).map(x=>x.item).slice(0,10);
+  }).sort((a,b)=>a.match-b.match||a.distance-b.distance||a.index-b.index).map(x=>x.item).slice(0,Math.max(1,Math.min(30,Number.isInteger(limit)?limit:10)));
 }

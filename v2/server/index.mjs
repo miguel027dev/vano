@@ -41,6 +41,7 @@ import {createTrafficMemoryReader,assessTrafficMemory} from './traffic-memory.mj
 import {createSptransOlhoVivo} from './sptrans-olhovivo.mjs';
 import {cetPublicOverview,CET_SP_SOURCE} from './cet-public-overview.mjs';
 import { queryPlaces } from './search-provider.mjs';
+import {rankSearchResults} from './search-utils.mjs';
 import {parseReverseCoords,normalizedReverseAddress} from './reverse-geocode.mjs';
 import { directionsFromV1 } from './v1-bridge.mjs';
 import {createRouteFailover} from './route-failover.mjs';
@@ -402,7 +403,7 @@ async function emailAction(user, kind) {
   catch (e) { db.emailTokens=db.emailTokens.filter(x=>!(x.userId===user.id&&x.kind===kind)).concat(previous);throw e; }
   return true;
 }
-async function search(query,language='pt-BR',proximity=null) {
+async function search(query,language='pt-BR',proximity=null,{limit=16}={}) {
   const text=safeStr(query,256).trim();
   if(text.length<2)return [];
   const access=process.env.MAPBOX_SECRET_TOKEN || process.env.VITE_MAPBOX_PUBLIC_TOKEN;
@@ -413,7 +414,7 @@ async function search(query,language='pt-BR',proximity=null) {
   // Parallel TomTom Search complements existing Mapbox place coverage.
   // No TomTom credentials, endpoints or logs are exposed to the browser.
   const [primary,secondary]=await Promise.all([
-   queryPlaces(text,{token:access,language,proximity}).catch(()=>({results:[],providerOk:false})),
+   queryPlaces(text,{token:access,language,proximity,limit}).catch(()=>({results:[],providerOk:false})),
    (!/^\\d{5}-?\\d{3}$/.test(text)&&process.env[TOMTOM_ENV_NAME])
     ?searchTomTomPlaces(text,{key:process.env[TOMTOM_ENV_NAME],proximity})
     :Promise.resolve([])
@@ -431,7 +432,7 @@ async function search(query,language='pt-BR',proximity=null) {
    });
    if(!duplicated)merged.push(item);
   }
-  return merged.slice(0,16);
+  return rankSearchResults(merged,text,proximity,Math.max(1,Math.min(30,limit)));
 }
 const resilientOriginalRouting=createRouteFailover({
   cooldownMs:45_000,
@@ -517,6 +518,8 @@ const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persisten
   routingReady:()=>Boolean(process.env.VANO_V1_API_URL||process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN),
   mapToken:()=>process.env.VITE_MAPBOX_PUBLIC_TOKEN||'',
   embedHTML:()=>fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8'),
+  sdkPath:()=>'/assets/'+fs.readdirSync(path.join(root,'dist','assets')).find(x=>/^partner-sdk-.*\.js$/.test(x)),
+  stylesheets:()=>[...fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8').matchAll(/href="([^"]+\.css)"/g)].map(x=>new URL(x[1],origin||'http://localhost:8878').href),
   reportPublished:record=>reportStreams.publish(record),
   capabilities:()=>({transit_enabled:process.env.VANO_TRANSIT_ENABLED==='1',
    safety_notice:'Safe é uma preferência de cálculo, não uma garantia de segurança.',
@@ -533,7 +536,8 @@ const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persisten
   },
   search:async(...args)=>{
    if(!(process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN))throw new PartnerError(503,'SEARCH_UNAVAILABLE','Busca real indisponível.');
-   return search(...args);
+   try{return await search(args[0],LANGUAGES.has(args[1])?args[1]:'pt-BR',args[2],args[3]);}
+   catch{throw new PartnerError(503,'SEARCH_UNAVAILABLE','A busca de endereços está temporariamente indisponível. Tente novamente.');}
   },
   reverse:async coords=>{
    const access=process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN;
@@ -549,6 +553,15 @@ const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persisten
    if(!body?.origin||!body?.destination||!pointOK([body.origin.lng,body.origin.lat])||!pointOK([body.destination.lng,body.destination.lat])||Object.keys(body).some(x=>!['origin','destination'].includes(x)))throw new PartnerError(422,'INVALID_COORDINATES','Origem e destino inválidos.');
    try{return await planTransitTrip({origin:[body.origin.lng,body.origin.lat],destination:[body.destination.lng,body.destination.lat]},{regions:transitRegions()});}
    catch(e){if(e instanceof TransitError)throw new PartnerError(e.status===400?422:e.status,'TRANSIT_UNAVAILABLE','Não foi possível planejar nesta região.');throw e;}
+  },
+  mapRead:{
+   'map-features':async bbox=>{const r=await queryPublicMap(bbox);return {...r,features:[...(r.features||[]),...filterVerifiedReports(db.reports,bbox)]};},
+   'map-radars':bbox=>queryPublicRadars(bbox),
+   'places/tomtom':bbox=>tomtomPoiSnapshot(bbox,process.env[TOMTOM_ENV_NAME]||''),
+   'places/openchargemap':bbox=>openChargeSnapshot(bbox,process.env.VANO_OPENCHARGEMAP_API_KEY||''),
+   'places/overture':bbox=>overtureSnapshot(bbox,process.env.VANO_OVERTURE_PLACES_GEOJSON_URL||''),
+   'traffic/incidents/tomtom':bbox=>tomtomSnapshot(bbox,process.env[TOMTOM_ENV_NAME]||''),
+   'road-events/regional':bbox=>{const r=keylessRegionalSnapshot(bbox),o=officialRoadSnapshot(bbox);return {...r,features:[...o.features,...r.features].slice(0,100),sources:[...o.sources,...r.sources]};}
   },
   read:{
    traffic:{scope:'traffic:read',bbox:true,run:async bbox=>({
@@ -1885,7 +1898,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
   try {
     if(process.env.VANO_SEO_INDEXABLE!=='1' || !production)res.setHeader('X-Robots-Tag','noindex, nofollow');
     const method=req.method||'GET';
-    if(!['GET','POST','PATCH','DELETE','HEAD'].includes(method))return err(res,405,'Método não permitido.');
+    if(!['GET','POST','PATCH','DELETE','HEAD','OPTIONS'].includes(method))return err(res,405,'Método não permitido.');
     if(!requestHTTPS(req,res))return;
     if(!limits(req,res,'all',240,60000))return;
     // Google OAuth legacy callback must reach the API controller, not the React SPA fallback.
@@ -1895,10 +1908,11 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     catch { return err(res,400,'URL inválida.'); }
     const requestPath=parsedRequestUrl.pathname;
     recordOperationalEvent(runtimeMetrics,{path:requestPath,method,userAgent:req.headers['user-agent'],accept:req.headers.accept});
-    if(requestPath.startsWith('/api/partner/v1')||requestPath.startsWith('/api/admin/partner-keys')||requestPath==='/integracoes'||requestPath.startsWith('/embed/')){
+    if(requestPath.startsWith('/api/partner/v1')||requestPath.startsWith('/api/admin/partner-keys')||requestPath==='/integracoes'||requestPath.startsWith('/embed/')||requestPath==='/sdk/vano-map.js'){
       await store.assertHealthy?.();
       if(await partnerAPI.handle(req,res,parsedRequestUrl))return;
     }
+    if(method==='OPTIONS')return err(res,405,'Método não permitido.');
     if(requestPath.startsWith('/api/')||requestPath==='/login/google/callback'||requestPath==='/.well-known/vano-benchmark.json'){
       await store.assertHealthy?.();runtimeMetrics.requests+=1;return await route(req,res);
     }
@@ -1925,7 +1939,8 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     // The public V1 map and private administrator V2 map opt in to microphone
     // access. Voice capture still requires an explicit browser permission and tap.
     const voiceDocument=(name==='/v2'||name==='/mapa') && target.endsWith('index.html');
-    res.writeHead(200,{...headers,...(voiceDocument?{'Permissions-Policy':'camera=(), microphone=(self), payment=(), geolocation=(self)'}:{}),'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
+    const sdkAsset=requestPath.startsWith('/assets/')||requestPath.startsWith('/mapbox/');
+    res.writeHead(200,{...headers,...(sdkAsset?{'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}:{}),...(voiceDocument?{'Permissions-Policy':'camera=(), microphone=(self), payment=(), geolocation=(self)'}:{}),'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
     if(method==='HEAD')return res.end();
     fs.createReadStream(target).pipe(res);
   }catch(e){

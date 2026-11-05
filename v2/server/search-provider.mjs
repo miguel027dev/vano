@@ -65,7 +65,7 @@ function uniqueRealResults(items){
   seen.add(key);return true;
  });
 }
-export async function queryPlaces(query,{token,language='pt-BR',proximity=null,fetcher=fetch}={}){
+export async function queryPlaces(query,{token,language='pt-BR',proximity=null,fetcher=fetch,limit=10}={}){
  const text=String(query||'').trim();
  if(text.length<2||!token)return {results:[],providerOk:false};
  const viaCep=isBrazilianCep(text),precise=viaCep?postalDigits(text):'';
@@ -114,6 +114,6 @@ export async function queryPlaces(query,{token,language='pt-BR',proximity=null,f
    found.push(...normalizedPlaces(payload,'address'));
   }catch{providerErrors++;}
  }
- return {results:rankSearchResults(uniqueRealResults(found),text,explicitLocation?null:proximity),
+ return {results:rankSearchResults(uniqueRealResults(found),text,explicitLocation?null:proximity,limit),
   providerOk,providerErrors};
 }

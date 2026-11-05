@@ -22,6 +22,6 @@ export default defineConfig(({ mode, command }) => {
       https,
       proxy:{'/api':{target:`http://127.0.0.1:${env.API_PORT || 8878}`,changeOrigin:false}},
     },
-    build:{sourcemap:false,outDir:'dist',target:'es2022',rollupOptions:{input:{main:path.resolve('index.html'),partner:path.resolve('partner-map.html')}}},
+    build:{sourcemap:false,outDir:'dist',target:'es2022',rollupOptions:{preserveEntrySignatures:'strict',input:{main:path.resolve('index.html'),partner:path.resolve('partner-map.html'),'partner-sdk':path.resolve('src/partner-sdk.js')}}},
   };
 });

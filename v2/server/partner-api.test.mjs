@@ -11,17 +11,17 @@ const base='/api/partner/v1';
 const sample={origin:{lat:-23.5615,lng:-46.6557},destination:{lat:-23.5874,lng:-46.6597},mode:'car',profile:'fastest',alternatives:1};
 async function setup(options={}){
  const db=emptyData(),key='vp_'+'a'.repeat(16)+'_'+'b'.repeat(64),other='vp_'+'c'.repeat(16)+'_'+'d'.repeat(64);
- let tick=Date.now(),saves=0,failSave=false,calls=[];
+ let tick=Date.now(),saves=0,failSave=false,calls=[],searchCalls=[];
  db.partnerKeys=[{id:'a'.repeat(16),keyHash:hash(key),version:1,active:true,name:'Social',origins:['https://social.example'],scopes:['map:read','places:read','routes:read','reports:read','reports:write','traffic:read']},{id:'c'.repeat(16),keyHash:hash(other),version:1,active:true,name:'Other',origins:['https://other.example'],scopes:['map:read','places:read','routes:read']}];
  const route={id:'fast',distance:4.2,duration:13,geometry:{type:'LineString',coordinates:[[-46.6557,-23.5615],[-46.6597,-23.5874]]},steps:[{instruction:'Siga na avenida',distance:4200}],verifiedSafety:false};
  const api=createPartnerAPI({db,persist:async()=>{saves++;if(failSave)throw Error('private db secret');},secret:'test-only-partner-crypto-secret',origin:'https://vano.example',production:true,persistent:true,clock:()=>tick,
   headers:{'X-Frame-Options':'DENY','Content-Security-Policy':"default-src 'self'; frame-ancestors 'none'"},
   admin:req=>req.headers['x-test-admin']==='yes',csrfGuard:(req,res)=>{if(req.headers['x-test-csrf']==='yes')return true;res.writeHead(403);res.end('{}');return false;},
-  services:{directions:async(...args)=>{calls.push(args);return options.result||{source:'real-fixture',routes:[route,{...route,id:'safe',duration:15,geometry:{type:'LineString',coordinates:[[-46.6557,-23.5615],[-46.65,-23.58],[-46.6597,-23.5874]]}}]};},search:async()=>[{name:'Lugar',address:'Rua 1',coords:[-46.65,-23.56],category:'local'}],reverse:async()=>({found:true,address:{street:'Rua 1'}}),mapToken:()=> 'pk.public',routingReady:()=>true,embedHTML:()=>'<html>map</html>',read:{traffic:{scope:'traffic:read',bbox:true,run:async()=>({available:false,features:[]})}}}
+  services:{directions:async(...args)=>{calls.push(args);return options.result||{source:'real-fixture',routes:[route,{...route,id:'safe',duration:15,geometry:{type:'LineString',coordinates:[[-46.6557,-23.5615],[-46.65,-23.58],[-46.6597,-23.5874]]}}]};},search:async(...args)=>{searchCalls.push(args);return options.searchResults||[{name:'Lugar',address:'Rua 1',coords:[-46.65,-23.56],category:'local'}];},reverse:async()=>({found:true,address:{street:'Rua 1'}}),mapToken:()=> 'pk.public',routingReady:()=>true,embedHTML:()=>'<html>map</html>',mapRead:{'map-features':async()=>({features:[{id:'real-fixture',type:'hospital',coords:[-46.65,-23.56],name:'Hospital',source:'OpenStreetMap'}]})},read:{traffic:{scope:'traffic:read',bbox:true,run:async()=>({available:false,features:[]})}}}
  });
  const server=http.createServer(async(req,res)=>{if(!await api.handle(req,res)){res.writeHead(404);res.end();}});
  server.listen(0,'127.0.0.1');await once(server,'listening');const origin='http://127.0.0.1:'+server.address().port;
- return {db,key,other,calls,get saves(){return saves;},set failSave(x){failSave=x;},advance:x=>tick+=x,
+ return {db,key,other,calls,searchCalls,get saves(){return saves;},set failSave(x){failSave=x;},advance:x=>tick+=x,
   async call(path,method='GET',body,extra={}){const r=await fetch(origin+path,{method,headers:{Authorization:'Bearer '+key,...(body!==undefined?{'Content-Type':'application/json'}:{}),...extra},...(body!==undefined?{body:typeof body==='string'?body:JSON.stringify(body)}:{})});const raw=await r.text();let json;try{json=JSON.parse(raw);}catch{}return {status:r.status,headers:r.headers,json,raw};},
   close:()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);})};
 }
@@ -109,5 +109,39 @@ test('input size, malformed JSON, rate limit and spec routes',async()=>{
   assert.ok(partnerOpenAPI().paths['/routes/{route_id}/recalculate']);
   for(let i=0;i<61;i++)await s.call(base+'/capabilities');
   const limited=await s.call(base+'/capabilities');assert.equal(limited.status,429);assert.ok(Number(limited.headers.get('retry-after'))>0);
+ }finally{await s.close();}
+});
+test('browser session searches with location and receives complete map feeds without leaking permanent keys',async()=>{
+ const s=await setup({searchResults:Array.from({length:25},(_,i)=>({name:'Rua '+i,address:'Cidade',coords:[-46.65,-23.56]}))});try{
+  const created=await s.call(base+'/map-sessions','POST',{allowed_origin:'https://social.example',center:sample.origin});
+  assert.equal(created.status,201);const token=created.json.data.browser_token;assert.ok(token&&!token.startsWith('vp_'));
+  const auth={Authorization:'Bearer '+token,Origin:'https://social.example','Sec-Fetch-Site':'cross-site'};
+  const preflight=await s.call(base+'/places/search','OPTIONS',undefined,{Origin:'https://social.example','Access-Control-Request-Method':'GET','Access-Control-Request-Headers':'authorization'});
+  assert.equal(preflight.status,204);assert.equal(preflight.headers.get('access-control-allow-origin'),'https://social.example');
+  assert.equal((await s.call(base+'/places/search','OPTIONS',undefined,{Origin:'https://evil.example'})).status,403);
+  const found=await s.call(base+'/places/search?query=Rua&lat=-23.56&lng=-46.65&limit=30','GET',undefined,auth);
+  assert.equal(found.status,200);assert.equal(found.json.data.items.length,25);assert.equal(found.json.data.proximity_applied,true);
+  assert.deepEqual(s.searchCalls[0].slice(0,3),['Rua','pt-BR',[-46.65,-23.56]]);assert.equal(s.searchCalls[0][3].limit,30);
+  assert.ok(found.json.data.items[0].coords);assert.ok(found.json.data.items[0].id);
+  assert.equal((await s.call(base+'/places/search?q=Rua&lat=','GET',undefined,auth)).status,422);
+  const pins=await s.call(base+'/map-data?service=map-features&bbox=-46.68,-23.59,-46.63,-23.54','GET',undefined,auth);
+  assert.equal(pins.status,200);assert.equal(pins.json.data.features[0].type,'hospital');
+  assert.equal((await s.call(base+'/map-data?service=admin/users&bbox=-46.68,-23.59,-46.63,-23.54','GET',undefined,auth)).status,404);
+  assert.equal((await s.call(base+'/places/search?q=Rua','GET',undefined,{...auth,Origin:'https://other.example'})).status,403);
+  assert.equal((await s.call(base+'/map-sessions','POST',{allowed_origin:'https://social.example',center:sample.origin},auth)).status,403);
+  assert.equal((await s.call(base+'/reports','POST',{actor_id:'x'},auth)).status,403);
+  assert.equal((await s.call(base+'/routes','POST',sample,auth)).status,200);
+ }finally{await s.close();}
+});
+test('browser tokens renew until their original deadline and remain revocable',async()=>{
+ const s=await setup();try{
+  const created=await s.call(base+'/map-sessions','POST',{allowed_origin:'https://social.example',center:sample.origin});
+  const token=created.json.data.browser_token;s.advance(4*60000);
+  const renewed=await s.call(base+'/map-sessions/renew','POST',undefined,{Authorization:'Bearer '+token,Origin:'https://social.example'});
+  assert.equal(renewed.status,200);assert.notEqual(renewed.json.data.browser_token,token);
+  s.advance(61000);assert.equal((await s.call(base+'/map-session-data','GET',undefined,{Authorization:'Bearer '+token})).status,410);
+  const headers={Authorization:'Bearer '+renewed.json.data.browser_token,Origin:'https://social.example'};
+  assert.equal((await s.call(base+'/map-session-data','GET',undefined,headers)).status,200);
+  s.db.partnerKeys[0].active=false;assert.equal((await s.call(base+'/map-sessions/renew','POST',undefined,headers)).status,401);
  }finally{await s.close();}
 });
