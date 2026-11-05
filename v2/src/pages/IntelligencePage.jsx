@@ -25,7 +25,7 @@ function Rows({rows=[],title='Sem dados no período.'}){
   {rows.length?rows.map(x=><div className="vint-row" key={x.name}><span>{x.name}</span><strong>{fmt(x.count)}</strong></div>):<p className="vint-empty">{title}</p>}
  </div>;
 }
-export default function IntelligencePage(){
+export default function IntelligencePage({embedded=false}){
  const {user,loading}=useVano();
  const [days,setDays]=useState(7),[snapshot,setSnapshot]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [question,setQuestion]=useState(''),[asking,setAsking]=useState(false);
@@ -82,7 +82,7 @@ export default function IntelligencePage(){
  }
  if(loading)return <main className="vint-wrap">Verificando acesso…</main>;
  if(!user?.isAdmin)return <main className="vint-wrap vint-restricted"><LockKeyhole size={35}/><h1>Área administrativa</h1><p>Somente administradores autenticados podem acessar os diagnósticos.</p><Link to="/admin">Voltar ao painel</Link></main>;
- return <main className="vint-wrap" id="conteudo">
+ return <main className={'vint-wrap'+(embedded?' vint-inline':'')} id={embedded?undefined:'conteudo'}>
   <header className="vint-heading"><div>
    <div className="vint-eyebrow"><BrainCircuit size={16}/> VANO MAPS · INTELLIGENCE</div>
    <h1>Inteligência de rotas<span>.</span></h1>
