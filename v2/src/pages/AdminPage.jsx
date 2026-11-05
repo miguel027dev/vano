@@ -204,7 +204,7 @@ export default function AdminPage(){
   {showLegacy&&activeSection==='dashboard'&&<SafeRoutingTestPanel/>}
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
   {stats&&<>
-   <div id="vanuAdminInsights"><AdminInsights stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh}/></div>
+   <div id="vanuAdminInsights"><AdminInsights stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh} visible={activeSection==='dashboard'||activeSection==='indicators'}/></div>
    {activeSection==='dashboard'&&<div className="v90-classic-toggle"><button type="button" onClick={()=>setShowLegacy(v=>!v)} aria-expanded={showLegacy}>{showLegacy?'Ocultar console anterior':'Abrir console clássico'}</button><span>O painel anterior continua disponível para diagnóstico e rollback visual.</span></div>}
    {showLegacy&&activeSection==='dashboard'&&<>
    <section className="v3-kpi-grid" aria-label="Indicadores gerais">
