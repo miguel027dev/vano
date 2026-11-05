@@ -1,0 +1,90 @@
+/* VANO Control Center — amber/graphite glass UI. Scoped to /admin React. */
+.app-shell:has(.vanu-control-frame) > .side-nav{display:none!important}
+.app-shell:not(.shell-map):not(.shell-auth) .v3-admin.vanu-admin-page,
+.v3-admin.vanu-admin-page{
+  width:100%!important;max-width:none!important;margin:0!important;min-width:0;
+  padding:20px clamp(10px,2vw,28px) 40px!important;
+  min-height:100dvh;color:#f7eee8!important;
+  background:radial-gradient(ellipse 50% 45% at 12% 10%,rgba(208,105,48,.18),transparent 70%),radial-gradient(ellipse 45% 45% at 95% 85%,rgba(174,91,38,.15),transparent 75%),#0a090b!important;
+  font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;
+}
+.vanu-admin-page *{box-sizing:border-box}
+.vanu-control-frame{--vano-amber:#f59a62;--vano-text:#f9f1ed;--vano-muted:#b5a7a0;--vano-stroke:rgba(255,220,194,.14);display:grid;grid-template-columns:230px minmax(0,1fr);gap:15px;width:min(1780px,100%);margin:0 auto;min-height:calc(100dvh - 40px);padding:14px;border:1px solid rgba(247,196,162,.18);border-radius:30px;background:linear-gradient(140deg,rgba(105,76,69,.44),rgba(38,32,34,.82) 40%,rgba(31,29,31,.9));box-shadow:0 35px 110px #0009,inset 0 1px #ffffff26;isolation:isolate;position:relative}
+.vanu-control-frame:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 60% 45% at 34% 0%,rgba(245,154,98,.10),transparent 75%);pointer-events:none;border-radius:inherit;z-index:-1}
+.vanu-control-sidebar{position:sticky;top:14px;align-self:start;display:flex;flex-direction:column;gap:5px;height:calc(100dvh - 68px);min-height:660px;border-radius:22px;padding:17px 11px;background:linear-gradient(170deg,rgba(17,14,15,.98),rgba(18,16,18,.92));border:1px solid #ffffff10;box-shadow:inset 0 1px #ffffff16}
+.vanu-control-brand{display:flex;align-items:center;gap:11px;padding:12px 9px 32px;text-decoration:none!important;color:#fff!important}
+.vanu-control-mark{width:44px;height:44px;display:grid;place-items:center;flex:none;border-radius:13px;background:linear-gradient(130deg,#f6a069,#cf6430);box-shadow:0 8px 25px #ce632e55;color:#fff}
+.vanu-control-brand b{display:block;font-size:24px;font-weight:900;letter-spacing:.06em;line-height:1}.vanu-control-brand small{display:block;font-size:9px;letter-spacing:.2em;color:#b8a8a0;margin-top:8px;font-weight:800}
+.vanu-control-nav-label{color:#827670;font-size:9px;font-weight:850;letter-spacing:.16em;margin:0 11px 9px}.vanu-control-group-label{margin-top:23px}
+.vanu-control-nav{display:grid;gap:4px;min-width:0}
+.vanu-control-nav .vanu-control-link,.vanu-control-bottom .vanu-control-link{appearance:none;display:flex;width:100%;align-items:center;gap:12px;border:1px solid transparent;border-radius:13px;min-height:46px;padding:11px 12px;text-align:left;background:transparent;color:#bdb1ab;text-decoration:none;font:inherit;font-weight:680;font-size:12px;cursor:pointer;transition:background .22s,border-color .22s,transform .22s,color .22s}
+.vanu-control-link svg{width:18px;height:18px;flex:none}
+.vanu-control-link:hover{background:#ffffff0c!important;color:#fff!important;transform:translateX(2px)}
+.vanu-control-nav .vanu-control-link.is-selected{background:linear-gradient(115deg,#e98952,#b9562d);border-color:#ffd7b555;color:#fff;box-shadow:inset 0 1px #ffffff44,0 7px 24px #d9673644}
+.vanu-control-bottom{margin-top:auto;border-top:1px solid #ffffff15;padding-top:10px}.vanu-control-presence{padding:15px 11px;margin-top:5px;border:1px solid #ffffff13;background:#ffffff08;border-radius:12px;color:#e5d3c8;font-size:11px;line-height:1.5}.vanu-control-presence small{display:block;color:#9f8c83;font-size:10px;margin:5px 0 0 16px}
+.vanu-control-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#6bd5a5;box-shadow:0 0 13px #60d79c;vertical-align:middle;margin-right:8px}
+.vanu-control-content{min-width:0;padding:12px 10px 20px}.vanu-control-content .v3-admin-inner{max-width:none;width:100%;min-width:0}
+.vanu-admin-page .v3-admin-heading{background:none!important;box-shadow:none!important;border-radius:0!important;padding:12px 8px 21px!important;align-items:center!important;margin:0 0 6px!important;display:flex;gap:25px}
+.vanu-admin-page .v3-admin-heading h1{font-size:clamp(30px,3.3vw,47px)!important;font-weight:800!important;line-height:1.12!important;letter-spacing:-.052em;margin:8px 0 7px;color:#fff!important}
+.vanu-admin-page .v3-admin-heading h1 .v44-head-dot{color:#f59a62!important}
+.vanu-admin-page .v3-admin-heading p{color:#b8aaa1!important;font-size:12px}
+.vanu-admin-page .v3-admin-overline{color:#f3a772!important;font-size:10px;font-weight:850}
+.vanu-admin-page .v44-admin-header-actions{display:flex;align-items:center;gap:7px;justify-content:flex-end;flex-wrap:wrap}
+.vanu-admin-page .v44-admin-header-actions :is(a,button){min-height:37px;display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border:1px solid #ffffff22;background:#ffffff0c;color:#f0ded2;border-radius:12px;font-size:11px;font-weight:680;box-shadow:none;text-decoration:none;transition:background .22s,transform .22s,border-color .22s}
+.vanu-admin-page .v44-admin-header-actions :is(a,button):hover{background:#f59a6220;border-color:#f59a625e;transform:translateY(-2px)}
+.vanu-admin-page .v44-admin-header-actions a[style]{background:#f59a62!important;color:#26150f!important;border-color:#f59a62!important}
+.vanu-admin-page .v3-admin-error{background:#743a32;color:#fff2eb;border:1px solid #e3937f;border-radius:15px}
+.vanu-control-eyebrow{font-size:10px;color:#ffc29a;letter-spacing:.16em;font-weight:850}
+.vanu-admin-hero{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(275px,.65fr);gap:20px;min-height:280px;position:relative;overflow:hidden;margin:4px 0 15px;padding:30px clamp(20px,3vw,36px);border-radius:22px;border:1px solid #ffbd9b30;box-shadow:inset 0 1px #ffffff28,0 18px 45px #0004;background:radial-gradient(ellipse 50% 60% at 52% 125%,#fb915744,transparent),radial-gradient(ellipse 45% 75% at 100% 0%,#b85b3744,transparent),linear-gradient(118deg,#5c454b,#40363a 42%,#2a2428)}
+.vanu-admin-hero:before,.vanu-admin-hero:after{content:"";position:absolute;pointer-events:none;width:390px;height:390px;border:1px solid #ffdbc52b;border-radius:50%;left:38%;top:8%;transform:rotateX(65deg) rotate(-20deg)}.vanu-admin-hero:after{width:540px;height:540px;left:28%;top:-3%;border-color:#ffdbc514}
+.vanu-hero-main,.vanu-hero-stats{position:relative;z-index:1}.vanu-hero-main h2{font-size:clamp(32px,4vw,55px);letter-spacing:-.06em;line-height:1.07;color:#fff;margin:14px 0 13px;font-weight:800}.vanu-hero-main h2 em{font-style:normal;color:#ffc39b}
+.vanu-hero-main p{color:#e1cec3;font-size:12px;max-width:390px;line-height:1.65;margin:0 0 17px}
+.vanu-admin-page .vanu-hero-action{display:inline-flex;align-items:center;gap:12px;background:linear-gradient(115deg,#fbc6a5,#f0985b);color:#2c180f;border:1px solid #ffe0ca;font-size:12px;font-weight:850;padding:11px 15px;border-radius:12px;box-shadow:0 9px 28px #ed87454b;cursor:pointer;transition:transform .22s,box-shadow .22s}
+.vanu-hero-action:hover{transform:translateY(-3px);box-shadow:0 13px 35px #ed874566}
+.vanu-hero-stats{align-self:center;display:grid;gap:8px;min-width:0}
+.vanu-hero-stats div{display:flex;justify-content:space-between;align-items:center;gap:11px;background:rgba(24,20,23,.42);border:1px solid #ffe3d525;border-radius:13px;padding:15px 17px;backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px)}
+.vanu-hero-stats strong{font-size:clamp(20px,2vw,30px);font-variant-numeric:tabular-nums;letter-spacing:-.05em;color:#fff}.vanu-hero-stats span{font-size:10px;color:#dfc6b7;text-align:right}
+.vanu-dashboard-panel[hidden]{display:none!important}
+.vanu-admin-page .vai-insights{color:#f7ebe4!important}
+.vanu-admin-page :is(.vai-metric,.vai-card,.v3-kpi,.v3-admin-panel,.v55-engagement-panel){background:linear-gradient(140deg,rgba(67,53,52,.55),rgba(19,17,20,.88))!important;color:#f3e7e0!important;border-color:#ffd7b52b!important;box-shadow:inset 0 1px #ffffff19,0 13px 40px #0003!important;border-radius:19px!important;backdrop-filter:blur(14px)}
+.vanu-admin-page :is(.vai-metric,.v3-kpi){transition:transform .23s,border-color .23s,box-shadow .23s}
+.vanu-admin-page :is(.vai-metric,.v3-kpi):hover{transform:translateY(-3px);border-color:#f8b88663!important;box-shadow:0 16px 45px #0005!important}
+.vanu-admin-page :is(.vai-metric strong,.vai-stat-row strong,.vai-table-wrap td b,.vai-card>header h2,.v3-admin-panel h2,.v3-kpi strong,.v55-engagement-panel h2){color:#f7ede7!important}
+.vanu-admin-page :is(.vai-metric>div,.vai-metric small,.vai-card>header p,.vai-stat-row span,.vai-bars small,.vai-empty,.vai-muted,.vai-explain,.vai-pagination,.v90-classic-toggle span,.vai-tools label,.vai-tools span,.v3-admin-ops p span,.v3-admin-panel-head small){color:#b9a9a0!important}
+.vanu-admin-page :is(.vai-card>header small,.vai-metric svg,.v3-kpi-head svg){color:#fbb589!important}
+.vanu-admin-page .vai-tabs{gap:8px}.vanu-admin-page .vai-tabs button{background:#ffffff0b;color:#c9b8af;border:1px solid #ffffff24;border-radius:14px;box-shadow:none;backdrop-filter:blur(8px);min-height:71px}
+.vanu-admin-page .vai-tabs button:hover{background:#f59a6214;color:#fff;border-color:#ed9e654d}.vanu-admin-page .vai-tabs button.active{color:#fff;background:linear-gradient(115deg,#e18a5144,#9b4b2a3a);border-color:#ffb17e72;box-shadow:0 6px 23px #df874321}
+.vanu-admin-page .vai-stat-row{border-bottom-color:#ffffff15}
+.vanu-admin-page .vai-bars b{color:#f8e1d0}.vanu-admin-page .vai-bars span{background:linear-gradient(#ffbb89,#b45b32);box-shadow:0 0 23px #ed87452e;border-radius:9px 9px 3px 3px;transition:height .3s}
+.vanu-admin-page .vai-empty,.vanu-admin-page .vai-explain{background:#ffffff07;border-color:#ffffff26;color:#ccb9ae}
+.vanu-admin-page :is(.vai-table-wrap th,.v3-users-table thead){background:#ffffff0c!important;color:#d7bca9!important}
+.vanu-admin-page :is(.vai-table-wrap td,.v3-users-table td){border-bottom-color:#ffffff18!important;color:#ded1ca!important}
+.vanu-admin-page :is(.vai-tools input,.v44-users-search input,.vai-pagination button,.v90-classic-toggle button,.v3-admin-pagination button){background:#211b1e!important;color:#f4e8e1!important;border-color:#ffffff2d!important}
+.vanu-admin-page .vai-table-wrap{scrollbar-color:#a97761 transparent}.vanu-admin-page .v90-classic-toggle{padding:5px}
+.vanu-admin-page .vanu-route-view{position:relative;min-width:0}
+.vanu-route-view-head{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid #ffdbbb2a;border-radius:18px;padding:17px 20px;margin:5px 0 14px;background:linear-gradient(110deg,#7d53452d,#251b1e8a)}
+.vanu-route-view-head h2{font-size:22px;letter-spacing:-.04em;margin:8px 0 4px;color:#f9eae2}.vanu-route-view-head p{font-size:12px;line-height:1.5;color:#bda99c;margin:0}.vanu-route-refresh{display:flex;align-items:center;white-space:nowrap;font-size:11px;color:#afdec1}.vanu-map-loading{height:65dvh;display:grid;place-items:center;color:#e9c7b3;background:#21181b;border-radius:17px}
+.vanu-admin-page .alt-overlay.alt-embedded{position:relative;inset:auto;z-index:auto;display:block;min-height:610px;height:min(76dvh,825px);width:100%;overflow:hidden;border:1px solid #ffdbbb3a;border-radius:22px;background:#171316;color:#fff;box-shadow:inset 0 1px #ffffff1c,0 20px 55px #0005}
+.vanu-admin-page .alt-embedded .alt-map{position:absolute;inset:0;min-height:100%;touch-action:none}
+.vanu-admin-page .alt-embedded .alt-toolbar{top:18px;left:18px;right:18px;gap:12px;z-index:3}
+.vanu-admin-page .alt-embedded .alt-status{top:85px;left:19px;z-index:2;background:#181419b8;border:1px solid #ffffff33;border-radius:30px;padding:8px 12px;backdrop-filter:blur(12px)}
+.vanu-admin-page .alt-embedded .alt-glass{background:#21171acc;border-color:#ffc79c60;color:#f9e9df;backdrop-filter:blur(18px)}
+.vanu-admin-page .alt-embedded .alt-glass:hover{background:#513124db}
+.vanu-admin-page .alt-embedded .alt-trip-list{left:18px;right:18px;bottom:22px;z-index:2}
+.vanu-admin-page .alt-embedded .alt-trip{background:#251c21e8;border:1px solid #f9c8a33d;color:#f8e9e1;backdrop-filter:blur(14px);transition:background .2s,border-color .2s}
+.vanu-admin-page .alt-embedded .alt-trip:hover,.vanu-admin-page .alt-embedded .alt-trip.is-active{background:#6d422ae8;border-color:#ffc294}
+.vanu-admin-page .alt-embedded .alt-detail{top:105px;right:20px;background:#231d20ed;border:1px solid #ffdbbb44;z-index:5;backdrop-filter:blur(18px);box-shadow:0 16px 45px #0008}
+.vanu-admin-page .alt-embedded .alt-detail-icon{color:#ffc093;background:#f59a6226}
+.vanu-admin-page .alt-embedded .alt-profile{max-height:calc(100% - 210px)}
+.vanu-admin-page .alt-embedded .alt-error{z-index:5;left:20px;top:137px}
+.vanu-admin-page .alt-embedded .alt-analysis-button{background:#f59a6233;border-color:#f59a62;color:#fff}
+.vanu-admin-page .alt-embedded .alt-title small{color:#cebbae}
+.vanu-admin-page .alt-embedded .mapboxgl-ctrl-top-right{top:90px}
+.vanu-admin-page .alt-embedded .mapboxgl-ctrl-group{background:#1c171acb;border:1px solid #f5b08366}
+.vanu-admin-page .alt-embedded .mapboxgl-ctrl-group .mapboxgl-ctrl-icon{filter:invert(1)}
+.vanu-admin-page .alt-embedded .alt-trip-list{scrollbar-color:#c28c6c transparent}
+.vanu-admin-page :is(a,button,input):focus-visible{outline:2px solid #ffc098!important;outline-offset:3px}
+@media(max-width:1240px){.vanu-control-frame{grid-template-columns:195px minmax(0,1fr)}.vanu-control-sidebar{padding:12px 8px}.vanu-admin-page .v44-admin-header-actions{max-width:475px}.vanu-admin-hero{grid-template-columns:1fr}.vanu-hero-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.vanu-hero-stats div{display:block}.vanu-hero-stats span{text-align:left;display:block;margin-top:5px}}
+@media(max-width:1000px){.vanu-control-frame{display:block}.vanu-control-sidebar{position:relative;top:auto;height:auto;min-height:0;gap:6px;margin-bottom:12px}.vanu-control-brand{padding:7px 10px 10px}.vanu-control-nav-label,.vanu-control-group-label,.vanu-control-bottom{display:none}.vanu-control-nav{display:flex;gap:7px;overflow:auto;scrollbar-width:thin;padding-bottom:3px}.vanu-control-nav .vanu-control-link{width:auto;white-space:nowrap;flex:none;min-height:43px}.vanu-control-sidebar .vanu-control-nav+ .vanu-control-nav{display:none}.vanu-control-content{padding:6px}.vanu-admin-page .v3-admin-heading{align-items:flex-start!important;flex-wrap:wrap}.vanu-admin-page .v44-admin-header-actions{max-width:none}.vanu-admin-page .alt-overlay.alt-embedded{height:65dvh;min-height:500px}}
+@media(max-width:640px){.v3-admin.vanu-admin-page{padding:9px 9px 90px!important}.vanu-control-frame{padding:8px;border-radius:20px}.vanu-control-content{padding:3px}.vanu-admin-page .v3-admin-heading{padding:13px 8px 17px!important}.vanu-admin-page .v44-admin-header-actions{justify-content:flex-start}.vanu-admin-page .v44-admin-header-actions :is(a,button){padding:8px;font-size:10px}.vanu-admin-hero{padding:22px 17px;min-height:0;border-radius:18px;gap:17px}.vanu-hero-main h2{font-size:34px}.vanu-hero-stats{gap:7px}.vanu-hero-stats div{padding:11px}.vanu-hero-stats strong{font-size:20px}.vanu-hero-stats span{font-size:9px}.vanu-route-view-head{align-items:flex-start;flex-direction:column}.vanu-admin-page .alt-overlay.alt-embedded{height:69dvh;min-height:500px}.vanu-admin-page .alt-embedded .alt-toolbar{left:10px;right:10px;top:10px}.vanu-admin-page .alt-embedded .alt-status{left:10px;top:68px}.vanu-admin-page .alt-embedded .alt-detail{left:10px;right:10px;top:auto;bottom:91px;width:auto}.vanu-admin-page .alt-embedded .alt-profile{max-height:49%}.vanu-admin-page .alt-embedded .alt-trip-list{left:10px;right:10px;bottom:12px}.vanu-admin-page .alt-embedded .mapboxgl-ctrl-top-right{top:115px}}
+@media(prefers-reduced-motion:reduce){.vanu-control-frame *, .vanu-control-frame *:before, .vanu-control-frame *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
