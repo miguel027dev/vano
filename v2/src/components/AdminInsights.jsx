@@ -72,7 +72,7 @@ export default function AdminInsights({stats,users,offset,busy,filter,setFilter,
      <Card label="Rotas salvas" value={stats.routesTotal} note="Histórico persistido" icon={Route}/>
      <Card label="Chamadas de rota" value={stats.routeRequests} note="Desde o início desta instância" icon={Globe2}/>
     </div>
-    <Box className="vai-full vai-trend-panel" title="Crescimento do histórico de rotas" eyebrow="TENDÊNCIA · ÚLTIMOS SETE DIAS" info="Série observada, dia após dia, com os registros persistidos pelo servidor.">
+    <Box className="vai-full vai-trend-panel" title="Evolução das rotas registradas" eyebrow="TENDÊNCIA · ÚLTIMOS SETE DIAS" info="Série observada, dia após dia, com os registros persistidos pelo servidor.">
       <DailyRouteTrend days={stats.routesByDay||[]} animate={motionActive}/>
     </Box>
     <div className="vai-layout">
