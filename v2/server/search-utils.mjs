@@ -37,7 +37,7 @@ export function rankSearchResults(items, query, proximity=null, limit=10) {
       distance=6371*2*Math.asin(Math.sqrt(h));
     }
     return {item,index,match,distance};
-  }).sort((a,b)=>a.match-b.match||a.distance-b.distance||a.index-b.index).map(x=>x.item).slice(0,Math.max(1,Math.min(32,limit)));
+  }).sort((a,b)=>a.match-b.match||a.distance-b.distance||a.index-b.index).map(x=>x.item).slice(0,Math.max(1,Math.min(30,Number.isInteger(limit)?limit:10)));
 }
 
 /** Providers complement one another: merge before the final relevance cut.

@@ -89,7 +89,7 @@ function popupBody(item,onSelect){
  }
  return wrapper;
 }
-export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPickPlace=null,getHideSignals=()=>false,getPoiVisible=()=>null){
+export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPickPlace=null,getHideSignals=()=>false,getPoiVisible=()=>null,{request=fetch}={}){
  if(!map||!['mapbox','leaflet'].includes(backend))return ()=>{};
  let done=false,timer=null,vectorTimer=null,regionalTimer=null,controller=null,radarController=null,radarRetryTimer=null,radarRetryCount=0,regionalController=null,latestKey='',lastRead=0,radarKey='',radarReadAt=0,regionalKey='',regionalReadAt=0,tomtomKey='',tomtomReadAt=0,tomtomDisabled=false,tomtomController=null,tomtomTimer=null,tomtomPoiController=null,tomtomPoiKey='',tomtomPoiReadAt=0,tomtomPoiTimer=null,chargeKey='',chargeReadAt=0,chargeDisabled=false,chargeController=null,chargeTimer=null,overtureKey='',overtureReadAt=0,overtureDisabled=false,overtureController=null,overtureTimer=null,items=[],remoteItems=[],radarItems=[],mapTilesItems=[];
  const stableTileCache=new Map();
@@ -244,7 +244,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const request=new AbortController();
   radarController=request;
   try{
-   const response=await fetch('/api/map-radars?bbox='+encodeURIComponent(bbox.join(',')),
+   const response=await request('/api/map-radars?bbox='+encodeURIComponent(bbox.join(',')),
     {signal:request.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Radares públicos: '+response.status);
    const data=await response.json();
@@ -291,7 +291,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   regionalController?.abort();
   const request=new AbortController();regionalController=request;
   try{
-   const response=await fetch('/api/road-events/regional?bbox='+encodeURIComponent(bbox.join(',')),
+   const response=await request('/api/road-events/regional?bbox='+encodeURIComponent(bbox.join(',')),
     {signal:request.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Regional roads: '+response.status);
    const data=await response.json();
@@ -324,7 +324,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   tomtomPoiController?.abort();
   const request=new AbortController();tomtomPoiController=request;
   try{
-   const response=await fetch('/api/places/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
+   const response=await request('/api/places/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
     {signal:request.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('TomTom POI: '+response.status);
    const result=await response.json();
@@ -356,7 +356,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   chargeController?.abort();
   const request=new AbortController();chargeController=request;
   try{
-   const response=await fetch('/api/places/openchargemap?bbox='+encodeURIComponent(bbox.join(',')),
+   const response=await request('/api/places/openchargemap?bbox='+encodeURIComponent(bbox.join(',')),
     {signal:request.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Charging POIs: '+response.status);
    const data=await response.json();
@@ -389,7 +389,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   overtureController?.abort();
   const request=new AbortController();overtureController=request;
   try{
-   const response=await fetch('/api/places/overture?bbox='+encodeURIComponent(bbox.join(',')),
+   const response=await request('/api/places/overture?bbox='+encodeURIComponent(bbox.join(',')),
     {signal:request.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Overture POIs: '+response.status);
    const data=await response.json();
@@ -421,7 +421,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   tomtomController?.abort();
   const request=new AbortController();tomtomController=request;
   try{
-   const response=await fetch('/api/traffic/incidents/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
+   const response=await request('/api/traffic/incidents/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
     {signal:request.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('TomTom map: '+response.status);
    const data=await response.json();
@@ -468,7 +468,7 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   if(controller)controller.abort();
   const signal=new AbortController();controller=signal;
   try{
-   const response=await fetch('/api/map-features?bbox='+encodeURIComponent(bbox.join(',')),{signal:signal.signal,headers:{Accept:'application/json'}});
+   const response=await request('/api/map-features?bbox='+encodeURIComponent(bbox.join(',')),{signal:signal.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Dados públicos: '+response.status);
    const data=await response.json();
    if(done||signal.signal.aborted)return;

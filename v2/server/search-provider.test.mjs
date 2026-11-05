@@ -31,3 +31,9 @@ test('shop names are ranked behind an exact matching shopping center',async()=>{
 test('provider response without coordinates is not selectable',()=>{
   assert.deepEqual(normalizedPlaces({features:[{properties:{name:'Nothing'},geometry:{coordinates:null}}]}),[]);
 });
+test('partner search keeps suggestions from both providers beyond the former ten-result cap',async()=>{
+ const calls=[];
+ const fetcher=async url=>{calls.push(new URL(url));const tag=url.includes('searchbox')?'POI':'Rua';return {ok:true,json:async()=>({features:Array.from({length:10},(_,i)=>feature(tag+' '+i,tag+i,-46.72+i*.001,-23.58))})};};
+ const result=await queryPlaces('Rua',{token:'pk.test',fetcher,proximity:[-46.72,-23.58],limit:30});
+ assert.equal(result.results.length,20);assert.equal(calls.length,2);assert.ok(calls.every(u=>u.searchParams.get('proximity')==='-46.72,-23.58'));assert.ok(calls.every(u=>!u.searchParams.has('country')));
+});
