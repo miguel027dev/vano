@@ -168,22 +168,34 @@ export default function AdminPage(){
     <div className="vanu-route-view-head"><div><span className="vanu-control-eyebrow">VISÃO OPERACIONAL · MAPA 3D</span><h2>Monitoramento de viagens</h2><p>Interaja com o mapa, selecione viagens e consulte os dados atualizados a cada 5 segundos.</p></div><span className="vanu-route-refresh"><span className="vanu-control-status-dot"/>5 s · atualização</span></div>
     <Suspense fallback={<div className="vanu-map-loading" role="status">Preparando o mapa 3D…</div>}><AdminLiveTrips embedded onClose={()=>openArea('dashboard')}/></Suspense>
    </section>}
-  <div className="vanu-dashboard-panel" hidden={showLiveTrips}>
-  <section className="vanu-admin-hero" aria-label="Resumo de operações">
+  {activeSection==='training'&&<div className="vanu-section-mount vanu-training-area"><AdminEtaConsole/><SafeRoutingTestPanel/></div>}
+  {activeSection==='intelligence'&&<div className="vanu-section-mount vanu-ai-focus"><Suspense fallback={<div role="status">Abrindo VANO Intelligence…</div>}><IntelligencePage embedded/></Suspense></div>}
+  {activeSection==='incidents'&&<div className="vanu-section-mount"><Suspense fallback={<div role="status">Carregando ocorrências…</div>}><AdminOccurrences stats={stats}/></Suspense></div>}
+  {activeSection==='devsync'&&<div className="vanu-section-mount vanu-devsync-area"><Suspense fallback={<div role="status">Carregando DevSync…</div>}><DevSyncPage embedded/></Suspense></div>}
+  {activeSection==='support'&&<div className="vanu-section-mount vanu-support-area"><Suspense fallback={<div role="status">Carregando atendimento…</div>}><SupportInboxPage/></Suspense></div>}
+  {activeSection==='settings'&&<div className="vanu-section-mount vanu-settings-area"><Suspense fallback={<div role="status">Carregando configurações…</div>}><SettingsPage/></Suspense></div>}
+  {activeSection==='map'&&<section className="vanu-map-embed" aria-label="Mapa principal VANO">
+   <div className="vanu-module-heading"><div><span className="vanu-control-eyebrow">VANO ATLAS · MAPA PRINCIPAL</span>
+    <h2>Mapa completo e interativo</h2><p>O aplicativo de navegação original, sem sair do painel administrativo.</p></div>
+    <Link to="/mapa" target="_blank" rel="noopener">Tela inteira <ArrowUpRight size={16}/></Link></div>
+   <iframe title="Mapa principal VANO" src="/mapa" allow="geolocation; fullscreen" loading="lazy"/>
+  </section>}
+  <div className="vanu-dashboard-panel" hidden={activeSection!=='dashboard'&&activeSection!=='indicators'}>
+  {activeSection==='dashboard'&&<section className="vanu-admin-hero" aria-label="Resumo de operações">
    <div className="vanu-hero-main"><span className="vanu-control-eyebrow">PLATAFORMA · VISÃO GERAL</span><h2>Operação em<br/><em>movimento.</em></h2><p>O pulso do VANO em uma central de controle, com métricas reais e visualização de operações.</p><button type="button" className="vanu-hero-action" onClick={()=>openArea('routes')}>Acompanhar rotas <ArrowUpRight size={18}/></button></div>
    <div className="vanu-hero-stats" aria-label="Estatísticas reais do VANO">
      <div><strong>{num(stats?.usersTotal)}</strong><span>Contas cadastradas</span></div>
      <div><strong>{num(stats?.routes24h)}</strong><span>Rotas nas últimas 24h</span></div>
      <div><strong>{num(stats?.reports24h)}</strong><span>Ocorrências nas últimas 24h</span></div>
    </div>
-  </section>
-  <AdminEtaConsole/>
-  {showLegacy&&<SafeRoutingTestPanel/>}
+  </section>}
+  {activeSection==='dashboard'&&<AdminEtaConsole/>}
+  {showLegacy&&activeSection==='dashboard'&&<SafeRoutingTestPanel/>}
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
   {stats&&<>
    <div id="vanuAdminInsights"><AdminInsights stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh}/></div>
-   <div className="v90-classic-toggle"><button type="button" onClick={()=>setShowLegacy(v=>!v)} aria-expanded={showLegacy}>{showLegacy?'Ocultar console anterior':'Abrir console clássico'}</button><span>O painel anterior continua disponível para diagnóstico e rollback visual.</span></div>
-   {showLegacy&&<>
+   {activeSection==='dashboard'&&<div className="v90-classic-toggle"><button type="button" onClick={()=>setShowLegacy(v=>!v)} aria-expanded={showLegacy}>{showLegacy?'Ocultar console anterior':'Abrir console clássico'}</button><span>O painel anterior continua disponível para diagnóstico e rollback visual.</span></div>}
+   {showLegacy&&activeSection==='dashboard'&&<>
    <section className="v3-kpi-grid" aria-label="Indicadores gerais">
     <Stat label="Contas criadas" value={stats.usersTotal} icon={Users} foot={`${num(stats.signups7d)} nos últimos 7 dias`}/>
     <Stat label="Pessoas que voltaram (30d)" value={stats.engagement?.returningAccounts30} icon={RefreshCcw} foot="Dois ou mais dias diferentes"/>
