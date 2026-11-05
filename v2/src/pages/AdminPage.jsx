@@ -40,6 +40,11 @@ const SECTION_HEADERS={
  map:['Mapa principal','O mapa de navegação dentro da área administrativa.']
 };
 
+function SectionLink({area,icon:Icon,children,active,onSelect}){
+ return <button type="button" className={'vanu-control-link'+(active?' is-selected':'')}
+  aria-current={active?'page':undefined} onClick={()=>onSelect(area)}>
+  <Icon size={18}/>{children}</button>;
+}
 const num=value=>typeof value==='number'&&Number.isFinite(value)?value.toLocaleString('pt-BR'):'—';
 const shortDate=value=>{
  if(!value)return '—';
@@ -100,19 +105,21 @@ export default function AdminPage(){
   finally{setBusy(false);}
  }
  useEffect(()=>{if(user?.isAdmin)refresh(0);else{setStats(null);setUsers(null);}},[user?.isAdmin]);
- useEffect(()=>{const sync=()=>setActiveSection(sectionForHash());window.addEventListener('hashchange',sync);return()=>window.removeEventListener('hashchange',sync)},[]);
+ useEffect(()=>{
+  const sync=()=>setActiveSection(sectionForHash());
+  window.addEventListener('hashchange',sync);
+  window.addEventListener('popstate',sync);
+  return()=>{window.removeEventListener('hashchange',sync);window.removeEventListener('popstate',sync);};
+ },[]);
  const openArea=area=>{
   const next=ADMIN_SECTIONS.has(area)?area:'dashboard';
   setActiveSection(next);
   if(typeof window!=='undefined'){
-   window.history.replaceState(window.history.state,'','#'+(sectionHash[next]||next));
-   window.scrollTo({top:0,behavior:'instant'});
+   const hash='#'+(sectionHash[next]||next);
+   if(window.location.hash!==hash)window.history.pushState(window.history.state,'',hash);
+   window.scrollTo({top:0,behavior:'auto'});
   }
  };
- const SectionLink=({area,icon:Icon,children})=><button type="button"
-  className={'vanu-control-link'+(activeSection===area?' is-selected':'')}
-  aria-current={activeSection===area?'page':undefined} onClick={()=>openArea(area)}>
-  <Icon size={18}/>{children}</button>;
  const integration=stats?.integrations||{};
  const visibleUsers=useMemo(()=>{
   const q=filter.trim().toLocaleLowerCase('pt-BR');
@@ -133,22 +140,22 @@ export default function AdminPage(){
    </Link>
    <div className="vanu-control-nav-label">PAINEL ADMINISTRATIVO</div>
    <nav aria-label="Navegação administrativa" className="vanu-control-nav">
-    <SectionLink area="dashboard" icon={LayoutDashboard}>Dashboard</SectionLink>
-    <SectionLink area="routes" icon={MapPinned}>Acompanhar rotas</SectionLink>
-    <SectionLink area="training" icon={FlaskConical}>Treinamento</SectionLink>
-    <SectionLink area="intelligence" icon={Sparkles}>VANO Intelligence</SectionLink>
+    <SectionLink area="dashboard" icon={LayoutDashboard} active={activeSection==='dashboard'} onSelect={openArea}>Dashboard</SectionLink>
+    <SectionLink area="routes" icon={MapPinned} active={activeSection==='routes'} onSelect={openArea}>Acompanhar rotas</SectionLink>
+    <SectionLink area="training" icon={FlaskConical} active={activeSection==='training'} onSelect={openArea}>Treinamento</SectionLink>
+    <SectionLink area="intelligence" icon={Sparkles} active={activeSection==='intelligence'} onSelect={openArea}>VANO Intelligence</SectionLink>
     <Link to="/benchmark-de-rotas" className="vanu-control-link"><ChartNoAxesCombined size={18}/> Benchmark <ArrowUpRight className="vanu-external-mark" size={13}/></Link>
-    <SectionLink area="incidents" icon={AlertTriangle}>Ocorrências</SectionLink>
-    <SectionLink area="devsync" icon={MessageSquareText}>DevSync</SectionLink>
+    <SectionLink area="incidents" icon={AlertTriangle} active={activeSection==='incidents'} onSelect={openArea}>Ocorrências</SectionLink>
+    <SectionLink area="devsync" icon={MessageSquareText} active={activeSection==='devsync'} onSelect={openArea}>DevSync</SectionLink>
    </nav>
    <div className="vanu-control-nav-label vanu-control-group-label">OPERAÇÃO E CONTA</div>
    <nav aria-label="Ferramentas de operação" className="vanu-control-nav">
-    <SectionLink area="indicators" icon={Activity}>Indicadores</SectionLink>
-    <SectionLink area="support" icon={Headset}>Atendimento</SectionLink>
+    <SectionLink area="indicators" icon={Activity} active={activeSection==='indicators'} onSelect={openArea}>Indicadores</SectionLink>
+    <SectionLink area="support" icon={Headset} active={activeSection==='support'} onSelect={openArea}>Atendimento</SectionLink>
     <SectionLink area="settings" icon={Settings2}>Configurações</SectionLink>
    </nav>
    <div className="vanu-control-bottom">
-    <SectionLink area="map" icon={Compass}>Mapa principal</SectionLink>
+    <SectionLink area="map" icon={Compass} active={activeSection==='map'} onSelect={openArea}>Mapa principal</SectionLink>
     <div className="vanu-control-presence"><span className="vanu-control-status-dot"/> Ambiente administrativo<small>VANO Maps · v2</small></div>
    </div>
   </aside>
