@@ -52,8 +52,8 @@ def test_route_history_does_not_claim_live_tracking():
 
 
 def test_glass_dashboard_has_brand_and_motion_guards():
-    css = (ROOT / "static" / "vano-admin-glass.css").read_text(encoding="utf-8")
+    css = (ROOT / "static" / "vano-foundation.css").read_text(encoding="utf-8")
     html = (ROOT / "templates" / "admin.html").read_text(encoding="utf-8")
     assert '--vano-admin-orange:#f59a62' in css
     assert 'prefers-reduced-motion:reduce' in css
-    assert 'vano-admin-glass.css' in html and 'vano-admin-glass.js' in html
+    assert 'vano-admin-glass.js' in html and "vano-foundation.css" in (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
