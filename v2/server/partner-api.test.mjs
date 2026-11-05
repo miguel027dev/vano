@@ -195,7 +195,7 @@ test('admin chooses functions per HTTPS domain; restricted key and browser see o
   assert.equal((await s.call(base+'/map-data?service=map-features&bbox='+bbox,'GET',undefined,browser)).json.data.features.length,1);
   assert.equal((await s.call(base+'/map-sessions','POST',{allowed_origin:'https://other.example',center:sample.origin},auth)).status,403);
   assert.equal((await s.call(base+'/map-session-data','GET',undefined,{...browser,Origin:'https://other.example'})).status,403);
-  assert.equal((await s.call(base+'/capabilities','GET',undefined,{Authorization:key,Origin:'https://signals.example'})).status,403);
+  assert.equal((await s.call(base+'/capabilities','GET',undefined,{Authorization:'Bearer '+key,Origin:'https://signals.example'})).status,403);
  }finally{await s.close();}
 });
 test('new key defaults to standard map, route and road overlays, but not community writes',async()=>{
