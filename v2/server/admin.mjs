@@ -129,7 +129,7 @@ export function adminReportList(data,{offset=0,limit=25,status='all'}={}){
   items:rows.slice(safeOffset,safeOffset+safeLimit).map(r=>({
    id:String(r.id||'').slice(0,32),
    type:String(r.type||'').slice(0,36),
-   description:String(r.description||'').replace(/[\\u0000-\\u001f\\u007f]/g,'').slice(0,150),
+   description:String(r.description||'').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,150),
    status:r.status,createdAt:r.createdAt||null,expiresAt:r.expiresAt||null
   }))
  };
