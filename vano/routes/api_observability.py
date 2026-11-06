@@ -93,7 +93,7 @@ def _api_summarize_metric(m, kind):
         m["success_pct"] = round(100 * m["successes"] / n, 1)
         m["avg_ms"] = round(sum(durations) / len(durations), 1) if durations else None
         m["p95_ms"] = durations[max(0, math.ceil(len(durations) * 0.95) - 1)] if durations else None
-        m["status"] = "degradado" if n >= 5 and m["errors"] / n >= .10 else "com-medicoes"
+        m["status"] = "degradado" if (m["successes"] == 0 or (n >= 5 and m["errors"] / n >= .10)) else "com-medicoes"
     price = _api_tariff(kind, m["id"])
     if price is not None:
         m["estimated_cost_brl"] = round(n * price / 1000, 5)
