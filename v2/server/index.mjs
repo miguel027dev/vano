@@ -845,6 +845,21 @@ async function route(req, res) {
     finally{safeComparisonBusy=false;}
   }
   // VANO Intelligence V2: admin-authenticated, aggregate data only.
+  if(pathname==='/api/admin/intelligence/connectivity'&&req.method==='GET'){
+    const s=userSession(req);
+    if(!s)return err(res,401,'Autenticação obrigatória.');
+    if(!isAdminAccount(s.user))return err(res,403,'Área exclusiva da administração.');
+    if(!limits(req,res,'intelligence-connectivity',3,60000))return;
+    const start=Date.now();
+    try{
+      const response=await fetch('https://integrate.api.nvidia.com/v1/models',{signal:AbortSignal.timeout(10000)});
+      await response.body?.cancel();
+      return json(res,200,{reachable:true,httpStatus:response.status,elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});
+    }catch(e){
+      const code=String(e?.cause?.code||e?.name||'network').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40);
+      return json(res,200,{reachable:false,reason:code,elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});
+    }
+  }
   if(pathname==='/api/admin/intelligence/overview' && req.method==='GET'){
     const s=userSession(req);
     if(!s)return err(res,401,'Autenticação obrigatória.');
