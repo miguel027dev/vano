@@ -855,7 +855,7 @@ async function route(req, res) {
       if(u.searchParams.get('model')==='1'){
         const key=String(process.env.NVIDIA_API_KEY||process.env.VANO_INTELLIGENCE_API_KEY||'').trim();
         if(key.length<12)return json(res,200,{reachable:false,reason:'missing_key',elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});
-        const response=await fetch('https://integrate.api.nvidia.com/v1/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'nvidia/mistral-nemo-minitron-8b-8k-instruct',messages:[{role:'user',content:'Say OK'}],max_tokens:128,stream:true}),signal:AbortSignal.timeout(25000)});
+        const response=await fetch('https://integrate.api.nvidia.com/v1/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify({model:'nvidia/nemotron-3.5-bolt-e4b',messages:[{role:'user',content:'Say OK'}],max_tokens:128,stream:true}),signal:AbortSignal.timeout(25000)});
         if(!response.ok){await response.body?.cancel();return json(res,200,{reachable:false,reason:'http_'+response.status,elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});}
         const reader=response.body?.getReader();
         const part=reader?await reader.read():null;
