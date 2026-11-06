@@ -6,6 +6,7 @@ business rules. Runtime dependencies are injected once during application startu
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
+from vano.infrastructure.api_metering import metered_request
 
 def weather_risk_summary(current):
     """Converte condições meteorológicas em contexto de condução, sem alegar precisão de rua."""
@@ -63,7 +64,7 @@ def open_meteo_current(lat, lon):
         "forecast_days": 1,
     }
     try:
-        r = requests.get(OPEN_METEO_URL, params=params, headers={"User-Agent": "VANO MAPS/5.0 live-road"}, timeout=8)
+        r = metered_request("open-meteo", "current-weather", requests.get, OPEN_METEO_URL, params=params, headers={"User-Agent": "VANO MAPS/5.0 live-road"}, timeout=8)
         r.raise_for_status()
         data = r.json() or {}
         cur = data.get("current") or {}
@@ -129,7 +130,7 @@ def overpass_live_road_context(lat, lon, radius=850):
 );
 out center tags 140;'''
     try:
-        r = requests.post(OVERPASS_URL, data={"data": q}, headers={"User-Agent": "VANO MAPS/5.0 live-road-context"}, timeout=11)
+        r = metered_request("overpass", "road-context", requests.post, OVERPASS_URL, data={"data": q}, headers={"User-Agent": "VANO MAPS/5.0 live-road-context"}, timeout=11)
         r.raise_for_status()
         elements = (r.json() or {}).get("elements") or []
     except Exception:
