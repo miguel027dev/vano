@@ -75,6 +75,7 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
   const bearer=String(req.headers.authorization||'').match(/^Bearer (\S+)$/)?.[1];
   if(bearer&&!bearer.startsWith('vp_')){
    const {body:b,key:k}=open(bearer,'map');
+   req.vanoVerifiedPartnerId=k.id;
    const from=req.headers.origin;
    if(from&&from!==origin&&!(k.origins.includes(from)&&(!b.allowed_origin||b.allowed_origin===from)))fail(403,'ORIGIN_NOT_REGISTERED','Origem não cadastrada para esta sessão.');
    if(!from&&req.headers['sec-fetch-site']==='cross-site')fail(403,'ORIGIN_REQUIRED','Origem da integração ausente.');
@@ -87,6 +88,7 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
   const raw=String(req.headers.authorization||'').match(/^Bearer (vp_[a-f0-9]{16}_[a-f0-9]{64})$/)?.[1];
   const id=raw?.split('_')[1],k=id&&db.partnerKeys.find(x=>x.id===id);
   if(!active(k)||!equal(k.keyHash,hash(raw)))fail(401,'INVALID_API_KEY','Credencial inválida.');
+  req.vanoVerifiedPartnerId=k.id;
   quota('partner:'+k.id,60);return k;
  }
  async function write(work){
@@ -94,7 +96,9 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
  }
  function payload(res,status,data,requestId,extra={}){
   res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, private','X-Request-ID':requestId,'X-Robots-Tag':'noindex, nofollow',...extra});
-  res.end(JSON.stringify({data,meta:{request_id:requestId,api_version:'v1',generated_at:new Date(clock()).toISOString()}}));
+  const body=JSON.stringify({data,meta:{request_id:requestId,api_version:'v1',generated_at:new Date(clock()).toISOString()}});
+  res.vanoResponseBytes=Buffer.byteLength(body);
+  res.end(body);
  }
  async function calculated(k,spec,{choice=null}={}){
   scope(k,'routes:read');quota('routes:'+k.id,10);quota('routes:global',60);

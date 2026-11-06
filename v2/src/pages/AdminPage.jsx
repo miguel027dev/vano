@@ -4,7 +4,7 @@ import {
  Activity,AlertTriangle,ArrowLeft,ArrowUpRight,CalendarDays,CheckCircle2,
  ChevronLeft,ChevronRight,Clock3,Database,Globe2,LockKeyhole,Mail,MessageSquareText,
  RefreshCcw,Route,Search,ShieldCheck,Users,UserRoundCheck,X,
- LayoutDashboard,MapPinned,ChartNoAxesCombined,Settings2,Sparkles,Compass,Headset,FlaskConical
+ LayoutDashboard,MapPinned,ChartNoAxesCombined,Settings2,Sparkles,Compass,Headset,FlaskConical,Network,Plug
 } from 'lucide-react';
 import {api} from '../lib/api';
 import {useVano} from '../context';
@@ -15,18 +15,19 @@ import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
 import AdminInsights from '../components/AdminInsights';
 import AdminEtaConsole from '../components/AdminEtaConsole';
 const AdminLiveTrips=lazy(()=>import('../components/AdminLiveTrips'));
+const AdminApiObservability=lazy(()=>import('../components/AdminApiObservability'));
 const IntelligencePage=lazy(()=>import('./IntelligencePage'));
 const DevSyncPage=lazy(()=>import('./DevSyncPage'));
 const SupportInboxPage=lazy(()=>import('./SupportInboxPage'));
 const SettingsPage=lazy(()=>import('./SettingsPage').then(mod=>({default:mod.SettingsPage})));
 const AdminOccurrences=lazy(()=>import('../components/AdminOccurrences'));
-const ADMIN_SECTIONS=new Set(['dashboard','routes','training','intelligence','incidents','devsync','indicators','support','settings','map']);
+const ADMIN_SECTIONS=new Set(['dashboard','routes','training','intelligence','incidents','devsync','indicators','support','settings','map','apis-outbound','apis-partners']);
 const sectionForHash=()=>{
  const value=typeof window==='undefined'?'':window.location.hash.slice(1);
- const canonical={'acompanhar-rotas':'routes','ocorrencias':'incidents','atendimento':'support','configuracoes':'settings','indicadores':'indicators','mapa':'map','treinamento':'training'}[value]||value;
+ const canonical={'acompanhar-rotas':'routes','ocorrencias':'incidents','atendimento':'support','configuracoes':'settings','indicadores':'indicators','mapa':'map','treinamento':'training','apis-consumidas':'apis-outbound','apis-parceiros':'apis-partners'}[value]||value;
  return ADMIN_SECTIONS.has(canonical)?canonical:'dashboard';
 };
-const sectionHash={routes:'acompanhar-rotas',incidents:'ocorrencias',support:'atendimento',settings:'configuracoes',indicators:'indicadores',map:'mapa',training:'treinamento'};
+const sectionHash={routes:'acompanhar-rotas',incidents:'ocorrencias',support:'atendimento',settings:'configuracoes',indicators:'indicadores',map:'mapa',training:'treinamento','apis-outbound':'apis-consumidas','apis-partners':'apis-parceiros'};
 const SECTION_HEADERS={
  dashboard:['Painel de controle','Indicadores, operação, infraestrutura e atividade da plataforma.'],
  routes:['Acompanhar rotas','Mapa 3D original do VANO e viagens ativas autorizadas.'],
@@ -37,7 +38,9 @@ const SECTION_HEADERS={
  indicators:['Indicadores','Dados de uso, rotas e desempenho agregado.'],
  support:['Atendimento','Solicitações, respostas e protocolos do VANO.'],
  settings:['Configurações','Preferências de experiência e da conta.'],
- map:['Mapa principal','O mapa de navegação dentro da área administrativa.']
+ map:['Mapa principal','O mapa de navegação dentro da área administrativa.'],
+ 'apis-outbound':['APIs consumidas','Qualidade, disponibilidade observada e consumo das fontes externas.'],
+ 'apis-partners':['APIs de parceiros','Volume, erros e latência por credencial de parceiro autenticada.']
 };
 
 function SectionLink({area,icon:Icon,children,active,onSelect}){
@@ -151,6 +154,8 @@ export default function AdminPage(){
    <div className="vanu-control-nav-label vanu-control-group-label">OPERAÇÃO E CONTA</div>
    <nav aria-label="Ferramentas de operação" className="vanu-control-nav">
     <SectionLink area="indicators" icon={Activity} active={activeSection==='indicators'} onSelect={openArea}>Indicadores</SectionLink>
+    <SectionLink area="apis-outbound" icon={Network} active={activeSection==='apis-outbound'} onSelect={openArea}>APIs consumidas</SectionLink>
+    <SectionLink area="apis-partners" icon={Plug} active={activeSection==='apis-partners'} onSelect={openArea}>APIs de parceiros</SectionLink>
     <SectionLink area="support" icon={Headset} active={activeSection==='support'} onSelect={openArea}>Atendimento</SectionLink>
     <SectionLink area="settings" icon={Settings2}>Configurações</SectionLink>
    </nav>
@@ -177,6 +182,7 @@ export default function AdminPage(){
     <Suspense fallback={<div className="vanu-map-loading" role="status">Preparando o mapa 3D…</div>}><AdminLiveTrips embedded onClose={()=>openArea('dashboard')}/></Suspense>
    </section>}
   {activeSection==='training'&&<div className="vanu-section-mount vanu-training-area"><AdminEtaConsole/><SafeRoutingTestPanel/></div>}
+  {(activeSection==='apis-outbound'||activeSection==='apis-partners')&&<Suspense fallback={<div className="v44-admin-loading" role="status">Preparando observabilidade…</div>}><AdminApiObservability key={activeSection} type={activeSection==='apis-partners'?'partners':'providers'}/></Suspense>}
   {activeSection==='intelligence'&&<div className="vanu-section-mount vanu-ai-focus"><Suspense fallback={<div role="status">Abrindo VANO Intelligence…</div>}><IntelligencePage embedded/></Suspense></div>}
   {activeSection==='incidents'&&<div className="vanu-section-mount"><Suspense fallback={<div role="status">Carregando ocorrências…</div>}><AdminOccurrences stats={stats}/></Suspense></div>}
   {activeSection==='devsync'&&<div className="vanu-section-mount vanu-devsync-area"><Suspense fallback={<div role="status">Carregando DevSync…</div>}><DevSyncPage embedded/></Suspense></div>}
