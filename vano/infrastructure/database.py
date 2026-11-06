@@ -194,6 +194,8 @@ def init_db():
                 created_at TEXT NOT NULL
             );
 
+            CREATE INDEX IF NOT EXISTS idx_request_activity_api_usage ON request_activity_logs(event_type, created_at DESC);
+
             CREATE TABLE IF NOT EXISTS reports (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
