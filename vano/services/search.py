@@ -6,6 +6,7 @@ business rules. Runtime dependencies are injected once during application startu
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
+from vano.infrastructure.api_metering import metered_request
 
 def _explicit_country_hint(query):
     normalized = _search_normalize(query or "")
@@ -217,7 +218,7 @@ def mapbox_get(url, params, timeout=12):
     last_error = None
     for attempt in range(2):
         try:
-            response = _MAPBOX_HTTP.get(url, params=params, timeout=(2.5, timeout))
+            response = metered_request("mapbox", "directions" if "/directions/" in url else "geocoding", _MAPBOX_HTTP.get, url, params=params, timeout=(2.5, timeout))
             try:
                 payload = response.json()
             except Exception:
@@ -253,7 +254,7 @@ def lookup_brazil_cep(cep):
 
     def fetch_viacep():
         try:
-            r = requests.get(f"{VIACEP_URL}/{digits}/json/", timeout=4.5)
+            r = metered_request("viacep", "cep", requests.get, f"{VIACEP_URL}/{digits}/json/", timeout=4.5)
             if not r.ok:
                 return None
             d = r.json() or {}
@@ -271,7 +272,7 @@ def lookup_brazil_cep(cep):
 
     def fetch_brasilapi():
         try:
-            r = requests.get(f"{BRASILAPI_CEP_URL}/{digits}", timeout=4.5)
+            r = metered_request("brasilapi", "cep", requests.get, f"{BRASILAPI_CEP_URL}/{digits}", timeout=4.5)
             if not r.ok:
                 return None
             d = r.json() or {}
