@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}Observabilidade de APIs · VANO Control Center{% endblock %}
+{% block head %}
+<style>
+.apiobs{--a:#ef8753;--ink:#242b3a;--muted:#748093;--line:#e6e9ef;max-width:1410px;margin:auto;padding:clamp(18px,3.5vw,44px) 18px 80px;color:var(--ink)}
+.apiobs *{box-sizing:border-box}
+.apiobs a{color:inherit}
+.apiobs-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:26px}
+.apiobs-eyebrow{color:#cd7045;font-size:11px;letter-spacing:.15em;font-weight:850}
+.apiobs h1{font-size:clamp(27px,4vw,43px);letter-spacing:-.05em;margin:9px 0 8px}
+.apiobs p{color:var(--muted);margin:0;line-height:1.65;font-size:14px}
+.apiobs-back{display:inline-flex;gap:8px;align-items:center;text-decoration:none;border:1px solid var(--line);background:#fff;padding:12px 16px;border-radius:12px;font-weight:750;font-size:12px}
+.apiobs-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.apiobs-controls select,.apiobs-controls button{height:42px;border:1px solid #dadfe9;border-radius:11px;background:#fff;color:var(--ink);padding:0 14px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.apiobs-controls button{background:#242b3a;color:#fff;border-color:#242b3a}
+.apiobs-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin:8px 0 24px;flex-wrap:wrap}
+.apiobs-tab{appearance:none;border:0;background:transparent;color:#727c8b;font:inherit;font-size:13px;font-weight:800;padding:13px 18px 16px;cursor:pointer;border-bottom:3px solid transparent}
+.apiobs-tab[aria-selected=true]{color:#dc7445;border-bottom-color:#ef8753}
+.apiobs-tab:focus-visible,.apiobs-controls button:focus-visible{outline:3px solid #ef8753;outline-offset:2px}
+.apiobs-panel[hidden]{display:none}
+.apiobs-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.apiobs-kpi,.apiobs-card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:0 12px 38px rgba(24,39,67,.035)}
+.apiobs-kpi{padding:19px}
+.apiobs-kpi span{display:block;color:#7a8594;font-size:10px;letter-spacing:.08em;font-weight:850;text-transform:uppercase}
+.apiobs-kpi strong{display:block;font-size:clamp(22px,3vw,35px);letter-spacing:-.05em;margin-top:9px;font-variant-numeric:tabular-nums}
+.apiobs-kpi small{display:block;color:#858f9f;font-size:11px;margin-top:6px}
+.apiobs-card{padding:23px;margin-bottom:16px}
+.apiobs-card h2{font-size:18px;letter-spacing:-.035em;margin:0 0 5px}
+.apiobs-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.apiobs-tablewrap{overflow-x:auto;max-width:100%}
+.apiobs-table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap;font-size:12px}
+.apiobs-table th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#8b95a4;padding:13px 10px;background:#fafbfd}
+.apiobs-table td{padding:15px 10px;border-bottom:1px solid #eff1f4;color:#4d596b;font-variant-numeric:tabular-nums}
+.apiobs-table tr:last-child td{border-bottom:0}
+.apiobs-table td:first-child{font-weight:750;color:#252c3b}
+.apiobs-table small{display:block;font-size:11px;color:#8993a3;font-weight:450;white-space:normal;margin-top:4px}
+.apiobs-state{display:inline-block;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:850;color:#5e6a7a;background:#eff1f5}
+.apiobs-state.ok{color:#127951;background:#e3f5ec}
+.apiobs-state.warn{color:#a4611a;background:#fff0da}
+.apiobs-state.bad{color:#aa3d46;background:#ffebee}
+.apiobs-chart{display:flex;align-items:flex-end;gap:4px;height:150px;border-bottom:1px solid #ebedf3;padding:9px 0 0}
+.apiobs-chart-item{flex:1;min-width:4px;height:100%;display:flex;align-items:flex-end;position:relative}
+.apiobs-bar{width:100%;height:0;min-height:0;background:linear-gradient(#f6a372,#df754a);border-radius:6px 6px 0 0;transition:height .7s cubic-bezier(.2,.7,.1,1);opacity:.94}
+.apiobs-bar.partner{background:linear-gradient(#6475b0,#9aa5c8)}
+.apiobs-chart-axis{display:flex;justify-content:space-between;color:#8c95a4;font-size:10px;margin-top:8px}
+.apiobs-empty{padding:30px 18px;border:1px dashed #e1e5eb;border-radius:13px;text-align:center;color:#7a8495;font-size:13px}
+.apiobs-footnote{font-size:12px!important;color:#7e8898!important;margin-top:13px!important}
+.apiobs-status{min-height:18px;margin:14px 0;font-size:12px;color:#69798c}
+.apiobs-notice{background:#fff9f5;border:1px solid #f1e1d6;border-radius:14px;padding:14px 16px;color:#85664f;font-size:12px;line-height:1.6}
+.apiobs-notice strong{color:#73543f}
+@media(max-width:920px){.apiobs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.apiobs-grid{grid-template-columns:1fr 1fr;gap:8px}.apiobs-kpi{padding:14px}.apiobs-kpi strong{font-size:22px}.apiobs-card{padding:15px}.apiobs-tab{padding:12px 10px;font-size:12px}.apiobs-table{font-size:11px}.apiobs-top{margin-bottom:14px}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="apiobs" id="conteudo-principal" tabindex="-1">
+  <header class="apiobs-top">
+    <div><span class="apiobs-eyebrow">VANO CONTROL CENTER · OBSERVABILIDADE</span><h1>Monitoramento de APIs</h1><p>Qualidade das fontes externas e consumo autenticado dos parceiros, sem métricas simuladas.</p></div>
+    <div class="apiobs-controls"><a class="apiobs-back" href="{{ url_for('admin_dashboard') }}">Voltar ao painel</a><label for="apiobsRange">Período <select id="apiobsRange"><option value="24h">24 horas</option><option value="7d">7 dias</option><option value="30d">30 dias</option></select></label><button type="button" id="apiobsRefresh">Atualizar</button></div>
+  </header>
+  <div class="apiobs-tabs" role="tablist" aria-label="Tipo de API">
+    <button class="apiobs-tab" role="tab" aria-selected="true" aria-controls="apiobsSources" data-tab="externas" id="apiobsSourcesTab">APIs consumidas</button>
+    <button class="apiobs-tab" role="tab" aria-selected="false" aria-controls="apiobsPartners" data-tab="parceiros" id="apiobsPartnersTab">APIs de parceiros</button>
+  </div>
+  <p id="apiobsLive" class="apiobs-status" aria-live="polite">Consultando métricas reais do backend…</p>
+  <section id="apiobsSources" class="apiobs-panel" role="tabpanel" aria-labelledby="apiobsSourcesTab">
+    <div class="apiobs-grid">
+      <div class="apiobs-kpi"><span>Chamadas externas</span><strong id="apiobsOutReq">—</strong><small>Somente tráfego observado no servidor</small></div>
+      <div class="apiobs-kpi"><span>Fontes com tráfego</span><strong id="apiobsOutActive">—</strong><small>Com pelo menos uma amostra</small></div>
+      <div class="apiobs-kpi"><span>Erros externos</span><strong id="apiobsOutErrors">—</strong><small>HTTP 4xx/5xx e falhas de conexão</small></div>
+      <div class="apiobs-kpi"><span>Taxas limitadas</span><strong id="apiobsOutLimits">—</strong><small>Respostas HTTP 429</small></div>
+    </div>
+    <article class="apiobs-card"><div class="apiobs-card-head"><div><h2>Volume de requisições externas</h2><p>Tendência do período selecionado (UTC)</p></div></div><div id="apiobsSourcesChart" class="apiobs-chart" aria-label="Gráfico de requisições externas"></div><div id="apiobsSourcesAxis" class="apiobs-chart-axis"></div></article>
+    <article class="apiobs-card"><div class="apiobs-card-head"><div><h2>Qualidade e consumo por fonte</h2><p>Configuração, respostas, latência p95 e custo estimado quando houver tarifa cadastrada</p></div></div><div class="apiobs-tablewrap"><table class="apiobs-table"><thead><tr><th>Fonte / base</th><th>Situação</th><th>Chamadas</th><th>Sucesso</th><th>p95</th><th>429</th><th>Última amostra</th><th>Custo estimado</th></tr></thead><tbody id="apiobsSourcesRows"></tbody></table></div></article>
+    <div class="apiobs-notice"><strong>Interpretação correta:</strong> configuração não é disponibilidade, e HTTP 200 não confirma precisão geográfica ou atualização dos dados. Chamadas Mapbox feitas diretamente pelo aplicativo ou navegador devem ser conciliadas com o painel do provedor.</div>
+  </section>
+  <section id="apiobsPartners" class="apiobs-panel" role="tabpanel" aria-labelledby="apiobsPartnersTab" hidden>
+    <div class="apiobs-grid">
+      <div class="apiobs-kpi"><span>Chamadas de parceiros</span><strong id="apiobsPartnerReq">—</strong><small>Somente credenciais verificadas</small></div>
+      <div class="apiobs-kpi"><span>Parceiros identificados</span><strong id="apiobsPartnerCount">—</strong><small>Identidades autenticadas</small></div>
+      <div class="apiobs-kpi"><span>Erros de parceiros</span><strong id="apiobsPartnerErrors">—</strong><small>4xx, 5xx e falhas</small></div>
+      <div class="apiobs-kpi"><span>Dados transferidos</span><strong id="apiobsPartnerBytes">—</strong><small>Resposta estimada por Content-Length</small></div>
+    </div>
+    <article class="apiobs-card"><div class="apiobs-card-head"><div><h2>Chamadas às APIs VANO</h2><p>Tendência do período selecionado (UTC)</p></div></div><div id="apiobsPartnersChart" class="apiobs-chart" aria-label="Gráfico de requisições de parceiros"></div><div id="apiobsPartnersAxis" class="apiobs-chart-axis"></div></article>
+    <article class="apiobs-card"><div class="apiobs-card-head"><div><h2>Consumo por parceiro</h2><p>Identificação vem exclusivamente do middleware que valida a chave de API</p></div></div><div class="apiobs-tablewrap"><table class="apiobs-table"><thead><tr><th>Parceiro</th><th>Chamadas</th><th>Erros</th><th>Sucesso</th><th>p95</th><th>Bytes enviados</th><th>Custo estimado</th><th>Última chamada</th></tr></thead><tbody id="apiobsPartnersRows"></tbody></table></div></article>
+    <div class="apiobs-notice"><strong>Integração necessária:</strong> para contabilizar cada parceiro, o middleware da API precisa definir <code>g.vano_authenticated_partner_id</code> somente após validar sua chave. Até isso acontecer, o painel indica ausência de medição, sem tentar deduzir a identidade por IP ou cabeçalhos informados pelo cliente.</div>
+  </section>
+  <p class="apiobs-footnote" id="apiobsFootnote">Dados desde o início da instrumentação. O total não inclui chamadas que não passam pelo backend VANO.</p>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  'use strict';
+  const q = id => document.getElementById(id);
+  const tabs = [...document.querySelectorAll('[data-tab]')];
+  const number = n => new Intl.NumberFormat('pt-BR').format(Number(n) || 0);
+  const pct = v => v === null || v === undefined ? '—' : String(v).replace('.', ',') + '%';
+  const money = v => v === null || v === undefined ? '—' : new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:5}).format(v);
+  const stamp = s => s ? new Date(s).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'Sem amostras';
+  const bytes = n => n > 0 ? (n >= 1048576 ? (n/1048576).toFixed(1)+' MB' : n >= 1024 ? (n/1024).toFixed(1)+' KB' : number(n)+' B') : '—';
+  const cell = (row,value,detail) => { const td=document.createElement('td'); td.textContent=String(value); if(detail){const el=document.createElement('small');el.textContent=detail;td.append(el)} row.append(td);return td;};
+  const statusChip = (row,label,cls) => { const td=document.createElement('td'); const b=document.createElement('span');b.className='apiobs-state '+cls;b.textContent=label;td.append(b);row.append(td) };
+  const tab = name => {
+    const partner = name === 'parceiros';
+    q('apiobsSources').hidden=partner;q('apiobsPartners').hidden=!partner;
+    tabs.forEach(b => { const selected=b.dataset.tab===name;b.setAttribute('aria-selected',String(selected));b.tabIndex=selected?0:-1; });
+    history.replaceState(history.state,'','#'+name);
+  };
+  tabs.forEach(b => b.addEventListener('click',()=>tab(b.dataset.tab)));
+  window.addEventListener('hashchange',()=>tab(location.hash==='#parceiros'?'parceiros':'externas'));
+  function chart(id,axisId,points,key,partner){
+    const host=q(id),axis=q(axisId);host.replaceChildren();axis.replaceChildren();
+    const max=Math.max(1,...points.map(p => Number(p[key]) || 0));
+    points.forEach(p => {
+      const item=document.createElement('div');item.className='apiobs-chart-item';
+      const bar=document.createElement('div');bar.className='apiobs-bar'+(partner?' partner':'');
+      bar.title=p.bucket+' · '+number(p[key])+' chamadas';
+      item.append(bar);host.append(item);
+      requestAnimationFrame(()=>{bar.style.height=(100*(Number(p[key])||0)/max)+'%'});
+    });
+    if(points.length){ const first=document.createElement('span'),last=document.createElement('span');first.textContent=points[0].bucket.replace('T',' ');last.textContent=points[points.length-1].bucket.replace('T',' ');axis.append(first,last); }
+  }
+  function fillSources(items){
+    const host=q('apiobsSourcesRows');host.replaceChildren();
+    if(!items.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;td.textContent='Nenhuma fonte cadastrada.';tr.append(td);host.append(tr);return}
+    items.forEach(item => {
+      const row=document.createElement('tr');
+      cell(row,item.label,item.description||'');
+      const monitored=item.requests>0;
+      const status=item.configured===false?'Não configurada':!monitored?'Sem medições':item.status==='degradado'?'Degradada':'Com medições';
+      statusChip(row,status,item.status==='degradado'?'bad':!monitored?'warn':'ok');
+      cell(row,number(item.requests));
+      cell(row,pct(item.success_pct),monitored ? number(item.errors)+' falhas' : '');
+      cell(row,item.p95_ms===null?'—':number(item.p95_ms)+' ms');
+      cell(row,number(item.rate_limits));
+      cell(row,stamp(item.last_at));
+      cell(row,money(item.estimated_cost_brl),item.estimated_cost_brl===null?'Tarifa não configurada':'Estimativa');
+      host.append(row);
+    });
+  }
+  function fillPartners(items){
+    const host=q('apiobsPartnersRows');host.replaceChildren();
+    if(!items.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=8;td.innerText='Ainda não há chamadas associadas a parceiros autenticados. Verifique a integração de identidade no middleware das chaves.';tr.append(td);host.append(tr);return}
+    items.forEach(item => {
+      const row=document.createElement('tr');
+      const top=(item.operations||[]).slice(0,2).map(x=>x.name+' ('+number(x.count)+')').join(' · ');
+      cell(row,item.label,top);
+      cell(row,number(item.requests));
+      cell(row,number(item.errors));
+      cell(row,pct(item.success_pct));
+      cell(row,item.p95_ms===null?'—':number(item.p95_ms)+' ms');
+      cell(row,bytes(item.response_bytes));
+      cell(row,money(item.estimated_cost_brl),item.estimated_cost_brl===null?'Tarifa não configurada':'Estimativa');
+      cell(row,stamp(item.last_at));
+      host.append(row);
+    });
+  }
+  async function load(){
+    const state=q('apiobsLive');
+    state.textContent='Atualizando dados do servidor…';
+    q('apiobsRefresh').disabled=true;
+    try {
+      const res=await fetch('/api/admin/apis/stats?range='+encodeURIComponent(q('apiobsRange').value),{credentials:'same-origin',cache:'no-store'});
+      if(!res.ok)throw new Error('Falha HTTP '+res.status);
+      const data=await res.json();
+      if(!data.ok)throw new Error(data.error||'Dados indisponíveis');
+      const sources=data.sources||[],partners=data.partners||[];
+      q('apiobsOutReq').textContent=number(data.counts.outbound_requests);
+      q('apiobsOutActive').textContent=number(sources.filter(x=>x.requests>0).length);
+      q('apiobsOutErrors').textContent=number(sources.reduce((s,x)=>s+x.errors,0));
+      q('apiobsOutLimits').textContent=number(sources.reduce((s,x)=>s+x.rate_limits,0));
+      q('apiobsPartnerReq').textContent=number(data.counts.partner_requests);
+      q('apiobsPartnerCount').textContent=number(data.counts.partners_observed);
+      q('apiobsPartnerErrors').textContent=number(partners.reduce((s,x)=>s+x.errors,0));
+      q('apiobsPartnerBytes').textContent=bytes(partners.reduce((s,x)=>s+x.response_bytes,0));
+      fillSources(sources);fillPartners(partners);
+      chart('apiobsSourcesChart','apiobsSourcesAxis',data.trend||[],'outbound',false);
+      chart('apiobsPartnersChart','apiobsPartnersAxis',data.trend||[],'partners',true);
+      state.textContent='Dados atualizados · '+stamp(data.generated_at)+(data.truncated?' · Atenção: volume acima do limite de análise; totais parciais.':'');
+    } catch (err){
+      state.textContent='Não foi possível carregar as métricas: '+(err.message||'erro desconhecido');
+    } finally{q('apiobsRefresh').disabled=false}
+  }
+  q('apiobsRange').addEventListener('change',load);
+  q('apiobsRefresh').addEventListener('click',load);
+  tab(location.hash==='#parceiros'?'parceiros':'externas');
+  load();
+  setInterval(()=>{if(!document.hidden)load()},60000);
+})();
+</script>
+{% endblock %}
