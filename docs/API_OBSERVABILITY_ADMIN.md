@@ -21,8 +21,8 @@ passam pelos métodos alterados.
 **Cobertura parcial importante**: solicitações ao Mapbox GL JS feitas diretamente
 pelo navegador/app não passam pelo backend, então não constam aqui.
 O consumo total precisa ser conciliado com os medidores oficiais do Mapbox.
-Requisições de jobs sem contexto Flask também não são capturadas por este
-registrador leve. Sem amostra não quer dizer offline, e resposta HTTP correta
+Jobs e buscas de CEP executadas em workers sem contexto Flask são contabilizados
+como eventos anônimos na mesma fila limitada de observabilidade. Sem amostra não quer dizer offline, e resposta HTTP correta
 não garante qualidade semântica, atualização ou precisão dos dados de mapa.
 
 ## Identidade autenticada de parceiro
