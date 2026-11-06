@@ -7,6 +7,7 @@ from vano.services.signal_eta import apply_signal_eta, signal_eta_fields
 from vano.bootstrap import inject as _vano_inject
 _vano_inject(globals())
 del _vano_inject
+from vano.infrastructure.api_metering import metered_request
 
 def sanitize_depart_at(value):
     value = (value or "now").strip()
@@ -138,10 +139,10 @@ def openrouteservice_routes(start_lon, start_lat, end_lon, end_lat, travel_profi
         body["alternative_routes"] = {"target_count": 3, "weight_factor": 1.45, "share_factor": 0.7}
     headers = {"Authorization": OPENROUTESERVICE_API_KEY, "Content-Type": "application/json", "Accept": "application/geo+json, application/json"}
     try:
-        r = requests.post(url, json=body, headers=headers, timeout=22)
+        r = metered_request("openrouteservice", "route", requests.post, url, json=body, headers=headers, timeout=22)
         if r.status_code >= 400 and "alternative_routes" in body:
             body.pop("alternative_routes", None)
-            r = requests.post(url, json=body, headers=headers, timeout=22)
+            r = metered_request("openrouteservice", "route", requests.post, url, json=body, headers=headers, timeout=22)
         r.raise_for_status()
         data = r.json() or {}
     except Exception as exc:
@@ -203,7 +204,7 @@ def osrm_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="driving"
     url = f"{OSRM_BASE_URL}/route/v1/{profile}/{float(start_lon):.6f},{float(start_lat):.6f};{float(end_lon):.6f},{float(end_lat):.6f}"
     params = {"alternatives": "true" if alternatives else "false", "steps": "true", "overview": "full", "geometries": "geojson"}
     try:
-        r = requests.get(url, params=params, timeout=18); r.raise_for_status(); data = r.json() or {}
+        r = metered_request("osrm", "route", requests.get, url, params=params, timeout=18); r.raise_for_status(); data = r.json() or {}
     except Exception as exc:
         raise RuntimeError(f"OSRM indisponível: {exc}") from exc
     if data.get("code") != "Ok":
