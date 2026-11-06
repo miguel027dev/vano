@@ -31,6 +31,7 @@ export default function IntelligencePage({embedded=false}){
  const [days,setDays]=useState(7),[snapshot,setSnapshot]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [question,setQuestion]=useState(''),[asking,setAsking]=useState(false);
  const [mode,setMode]=useState('fast'),[copied,setCopied]=useState(-1);
+ const [diagnostic,setDiagnostic]=useState(''),[checking,setChecking]=useState(false);
  const [historyPeriod,setHistoryPeriod]=useState('all');
  const [conversation,setConversation]=useState(()=>{
   try{const stored=JSON.parse(sessionStorage.getItem('vano-intelligence-chat-v2')||'[]');return Array.isArray(stored)?stored.slice(-24):[];}
@@ -81,10 +82,15 @@ export default function IntelligencePage({embedded=false}){
   try{await navigator.clipboard.writeText(value);setCopied(index);}
   catch{setCopied(-1);}
  }
+ async function checkConnection(){
+  setChecking(true);setDiagnostic('');
+  try{const result=await api('/admin/intelligence/connectivity');setDiagnostic(result.reachable?`NVIDIA acessível · HTTP ${result.httpStatus} · ${result.elapsedMs} ms`:`Conexão indisponível · ${result.reason} · ${result.elapsedMs} ms`);}
+  catch{setDiagnostic('Não foi possível executar o diagnóstico.');}finally{setChecking(false);}
+ }
  if(loading)return <main className="vint-wrap">Verificando acesso…</main>;
  if(!user?.isAdmin)return <main className="vint-wrap vint-restricted"><LockKeyhole size={35}/><h1>Área administrativa</h1><p>Somente administradores autenticados podem acessar os diagnósticos.</p><Link to="/admin">Voltar ao painel</Link></main>;
  if(embedded)return <section className="vai-chat-shell" aria-label="Chat VANO Intelligence">
-  <header className="vai-chat-header"><div className="vai-chat-icon"><BrainCircuit size={19}/></div><div><strong>VANO Intelligence</strong><small>Seu assistente de análise</small></div><button type="button" onClick={()=>setConversation([])} disabled={!conversation.length||asking} aria-label="Limpar conversa"><RotateCcw size={16}/></button></header>
+  <header className="vai-chat-header"><div className="vai-chat-icon"><BrainCircuit size={19}/></div><div><strong>VANO Intelligence</strong><small>{diagnostic||'Seu assistente de análise'}</small></div><button type="button" onClick={checkConnection} disabled={checking} aria-label="Testar conexão com a NVIDIA" title="Testar conexão com a NVIDIA"><Activity size={16}/></button><button type="button" onClick={()=>setConversation([])} disabled={!conversation.length||asking} aria-label="Limpar conversa"><RotateCcw size={16}/></button></header>
   <div className="vai-chat-messages" role="log" aria-live="polite" aria-label="Conversa com o VANO Intelligence">
    {!conversation.length&&<div className="vai-chat-welcome"><span className="vai-chat-welcome-icon"><BrainCircuit size={25}/></span><h2><ShinyText text="Como posso ajudar?" color="#f7eee8" shineColor="#ffd4b1" speed={4} trigger="view"/></h2><p>Pergunte sobre as rotas, indicadores e funcionamento do VANO.</p><div className="vai-chat-suggestions">{suggestions.map(x=><button type="button" key={x} onClick={()=>setQuestion(x)}>{x}<ArrowUpRight size={14}/></button>)}</div></div>}
    {conversation.map((turn,index)=><article key={index} className={'vai-message '+(turn.role==='user'?'is-user':turn.role==='error'?'is-error':'is-assistant')}><strong>{turn.role==='user'?'Você':turn.role==='error'?'Falha de conexão':'VANO Intelligence'}</strong><p>{turn.content}</p>{turn.role==='assistant'&&<button type="button" onClick={()=>copyAnswer(turn.content,index)}><Copy size={13}/>{copied===index?'Copiado':'Copiar'}</button>}{turn.role==='error'&&<button type="button" onClick={()=>setQuestion(turn.question||'')}><RotateCcw size={13}/>Tentar novamente</button>}</article>)}
