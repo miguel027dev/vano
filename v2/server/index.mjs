@@ -9,6 +9,7 @@ import {tripProfile,analyzeTripProfile} from './admin-trip-profile.mjs';
 import {createHelpAssistant} from './help-assistant.mjs';
 const helpAssistant=createHelpAssistant();
 import {createPartnerAPI,PartnerError} from './partner-api.mjs';
+import {createApiObservability} from './api-observability.mjs';
 import {ROAD_SIGN_TYPES} from './partner-map-scopes.mjs';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
 import {compareLightingInventory} from './safe-routing/lighting-grid.mjs';
@@ -181,6 +182,9 @@ const persist = async opts => {
   pruneSupport(db,time);
   await store.save(opts);
 };
+const apiObservability=createApiObservability({db,persist});
+apiObservability.prune();
+apiObservability.installFetchMeter();
 // Expired support is purged on startup, hourly and on every persisted write.
 if(pruneSupport(db))await persist({backup:false});
 const supportRetentionTimer=setInterval(()=>{
@@ -908,6 +912,15 @@ async function route(req, res) {
     if(!event||typeof event!=='object'||!recordNavigationOutcome(db,event))return err(res,400,'Evento inválido ou consentimento ausente.');
     try{await persist();}catch{return err(res,503,'Não foi possível registrar o evento.');}
     return json(res,200,{ok:true});
+  }
+  if(pathname==='/api/admin/api-observability'&&req.method==='GET'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
+    if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
+    if(!limits(req,res,'admin-api-observability',30,60000))return;
+    const range=u.searchParams.get('range')||'24h';
+    if(!['24h','7d','30d'].includes(range))return err(res,400,'Período inválido.');
+    return json(res,200,{ok:true,...apiObservability.report(range)},{'Cache-Control':'private, no-store'});
   }
   if (['/api/admin','/api/admin/users','/api/admin/reports','/api/admin/safe-routing/storage'].includes(pathname) && req.method === 'GET') {
     const session=userSession(req);
@@ -1999,6 +2012,10 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     const requestPath=parsedRequestUrl.pathname;
     recordOperationalEvent(runtimeMetrics,{path:requestPath,method,userAgent:req.headers['user-agent'],accept:req.headers.accept});
     if(requestPath.startsWith('/api/partner/v1')||requestPath.startsWith('/api/admin/partner-keys')||requestPath==='/integracoes'||requestPath.startsWith('/embed/')||requestPath==='/sdk/vano-map.js'){
+      if(requestPath.startsWith('/api/partner/v1/')){
+        const started=Date.now();
+        res.once('finish',()=>apiObservability.recordPartner(req,res,started));
+      }
       await store.assertHealthy?.();
       if(await partnerAPI.handle(req,res,parsedRequestUrl))return;
     }
