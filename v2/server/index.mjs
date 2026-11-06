@@ -891,7 +891,7 @@ async function route(req, res) {
     const snapshot=intelligenceSnapshot(db,runtimeMetrics,{days:body.days});
     try{
       return json(res,200,{ok:true,...await askIntelligenceConversational(body.question,db,runtimeMetrics,{
-        days:body.days,historyPeriod:body.historyPeriod||'all',history:body.history,mode:body.mode||'fast'
+        days:body.days,historyPeriod:body.historyPeriod||'all',history:body.history,mode:body.mode||'fast',agentMode:body.agentMode||'operational'
       })});
     }catch(e){
       console.warn('VANO Intelligence NVIDIA:',e?.diagnostic||'failure','providerStatus='+Number(e?.providerStatus||0));

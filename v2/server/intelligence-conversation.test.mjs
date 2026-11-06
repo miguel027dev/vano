@@ -48,6 +48,18 @@ test('context validator rejects tool/system roles and oversized text',()=>{
  assert.equal(CHAT_MAX_TURNS,12);
  assert.match(conversationPrompt(),/conversa|CONVERSA/i);
 });
+test('text and operational modules use separate instructions and evidence',async()=>{
+ const requests=[];const fetcher=async(_url,opts)=>{requests.push(JSON.parse(opts.body));return {ok:true,json:async()=>({choices:[{message:{content:'Resposta'}}]})};};
+ const options={now,fetcher,env:{NVIDIA_API_KEY:'DUMMY_KEY_123456789'}};
+ const text=await askIntelligenceConversational('Olá, como você está?',data,{}, {...options,agentMode:'text'});
+ const operational=await askIntelligenceConversational('Analise as rotas',data,{}, {...options,agentMode:'operational'});
+ assert.equal(text.mode,'text-conversation');assert.equal(operational.mode,'historical-plus-live-aggregate-readonly');
+ assert.match(requests[0].messages[0].content,/Converse em português/);
+ assert.doesNotMatch(JSON.stringify(requests[0]),/EVIDÊNCIAS OPERACIONAIS|savedAllTime/);
+ assert.match(requests[1].messages.at(-1).content,/EVIDÊNCIAS OPERACIONAIS/);
+ assert.notEqual(requests[0].messages[0].content,requests[1].messages[0].content);
+ await assert.rejects(()=>askIntelligenceConversational('Teste',data,{}, {...options,agentMode:'unexpected'}),error=>error.status===400);
+});
 test('context snapshots distinguish historical records from 30-day new telemetry',()=>{
  const ctx=intelligenceContext(data,{}, {now});
  assert.equal(ctx.previouslyExisting.sources.historical_routes.savedAllTime,1);

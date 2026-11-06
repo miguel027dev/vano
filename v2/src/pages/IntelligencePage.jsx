@@ -30,16 +30,20 @@ export default function IntelligencePage({embedded=false}){
  const {user,loading}=useVano();
  const [days,setDays]=useState(7),[snapshot,setSnapshot]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const [question,setQuestion]=useState(''),[asking,setAsking]=useState(false);
- const [mode,setMode]=useState('fast'),[copied,setCopied]=useState(-1);
+ const [mode,setMode]=useState('fast'),[copied,setCopied]=useState(-1),[agentMode,setAgentMode]=useState('text');
  const [diagnostic,setDiagnostic]=useState(''),[checking,setChecking]=useState(false);
  const [historyPeriod,setHistoryPeriod]=useState('all');
- const [conversation,setConversation]=useState(()=>{
-  try{const stored=JSON.parse(sessionStorage.getItem('vano-intelligence-chat-v2')||'[]');return Array.isArray(stored)?stored.slice(-24):[];}
-  catch{return [];}
+ const [conversations,setConversations]=useState(()=>{
+  const read=key=>{try{const value=JSON.parse(sessionStorage.getItem(key)||'[]');return Array.isArray(value)?value.slice(-24):[];}catch{return [];}};
+  let operationalKeyExists=false;
+  try{operationalKeyExists=sessionStorage.getItem('vano-chat-operational-v1')!==null;}catch{}
+  return {text:read('vano-chat-text-v1'),operational:read(operationalKeyExists?'vano-chat-operational-v1':'vano-intelligence-chat-v2')};
  });
+ const conversation=conversations[agentMode];
+ const setConversation=update=>setConversations(previous=>({...previous,[agentMode]:typeof update==='function'?update(previous[agentMode]):update}));
  const chatBottom=useRef(null);
- useEffect(()=>{try{sessionStorage.setItem('vano-intelligence-chat-v2',JSON.stringify(conversation.slice(-24)));}catch{}},[conversation]);
- useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:'smooth',block:'nearest'});},[conversation,asking]);
+ useEffect(()=>{try{sessionStorage.setItem('vano-chat-text-v1',JSON.stringify(conversations.text.slice(-24)));sessionStorage.setItem('vano-chat-operational-v1',JSON.stringify(conversations.operational.slice(-24)));}catch{}},[conversations]);
+ useEffect(()=>{chatBottom.current?.scrollIntoView({behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'nearest'});},[conversation,asking]);
  const [view,setView]=useState('routes');
  async function refresh(){
   setBusy(true);setError('');
@@ -50,11 +54,15 @@ export default function IntelligencePage({embedded=false}){
  useEffect(()=>{if(user?.isAdmin)refresh();},[user?.isAdmin,days]);
  const route=snapshot?.route_decisions||{},infra=snapshot?.infrastructure||{},quality=snapshot?.route_quality||{};
  const findings=snapshot?.findings||[];
- const suggestions=useMemo(()=>[
+ const suggestions=useMemo(()=>agentMode==='text'?[
+  'Me ajude a organizar uma ideia para o Vano.',
+  'Como posso apresentar melhor o aplicativo?',
+  'Vamos pensar em melhorias para a experiência de navegação.',
+ ]:[
   'Quais sinais mais importantes sugerem problemas de roteamento?',
   'Analise falhas, contingências e mudanças que devo priorizar.',
   'Quais dados precisamos coletar para medir congestionamento real?',
- ],[]);
+ ],[agentMode]);
  async function submit(e){
   e?.preventDefault?.();
   const userQuestion=question.trim();
@@ -65,7 +73,7 @@ export default function IntelligencePage({embedded=false}){
   setQuestion('');setAsking(true);
   try{
    const result=await post('/admin/intelligence/ask',{
-    question:userQuestion,days,historyPeriod,mode,history:prior
+    question:userQuestion,days,historyPeriod,mode,agentMode,history:prior
    });
    setConversation(turns=>[...turns.slice(-23),{
     role:'assistant',content:result.answer||'O modelo não retornou conteúdo.',
@@ -90,14 +98,15 @@ export default function IntelligencePage({embedded=false}){
  if(loading)return <main className="vint-wrap">Verificando acesso…</main>;
  if(!user?.isAdmin)return <main className="vint-wrap vint-restricted"><LockKeyhole size={35}/><h1>Área administrativa</h1><p>Somente administradores autenticados podem acessar os diagnósticos.</p><Link to="/admin">Voltar ao painel</Link></main>;
  if(embedded)return <section className="vai-chat-shell" aria-label="Chat VANO Intelligence">
-  <header className="vai-chat-header"><div className="vai-chat-icon"><BrainCircuit size={19}/></div><div><strong>VANO Intelligence</strong><small>{diagnostic||'Seu assistente de análise'}</small></div><button type="button" onClick={checkConnection} disabled={checking} aria-label="Testar conexão com a NVIDIA" title="Testar conexão com a NVIDIA"><Activity size={16}/></button><button type="button" onClick={()=>setConversation([])} disabled={!conversation.length||asking} aria-label="Limpar conversa"><RotateCcw size={16}/></button></header>
+  <header className="vai-chat-header"><div className="vai-chat-icon"><BrainCircuit size={19}/></div><div><strong>VANO Intelligence</strong><small>{diagnostic||'Duas maneiras de pensar com você'}</small></div><button type="button" onClick={checkConnection} disabled={checking} aria-label="Testar conexão com a NVIDIA" title="Testar conexão com a NVIDIA"><Activity size={16}/></button><button type="button" onClick={()=>setConversation([])} disabled={!conversation.length||asking} aria-label="Limpar conversa deste módulo"><RotateCcw size={16}/></button></header>
+  <div className="vai-module-switch" role="group" aria-label="Módulo do assistente"><button type="button" aria-pressed={agentMode==='text'} disabled={asking} onClick={()=>{setAgentMode('text');setQuestion('');}}><span>Conversa</span><small>Ideias e diálogo</small></button><button type="button" aria-pressed={agentMode==='operational'} disabled={asking} onClick={()=>{setAgentMode('operational');setQuestion('');}}><span>Operacional</span><small>Dados e diagnósticos</small></button><p>{agentMode==='text'?'Converse livremente com o assistente do Vano.':'Analise indicadores agregados do Vano. Este módulo não executa ações.'}</p></div>
   <div className="vai-chat-messages" role="log" aria-live="polite" aria-label="Conversa com o VANO Intelligence">
-   {!conversation.length&&<div className="vai-chat-welcome"><span className="vai-chat-welcome-icon"><BrainCircuit size={25}/></span><h2><ShinyText text="Como posso ajudar?" color="#f7eee8" shineColor="#ffd4b1" speed={4} trigger="view"/></h2><p>Pergunte sobre as rotas, indicadores e funcionamento do VANO.</p><div className="vai-chat-suggestions">{suggestions.map(x=><button type="button" key={x} onClick={()=>setQuestion(x)}>{x}<ArrowUpRight size={14}/></button>)}</div></div>}
+   {!conversation.length&&<div className="vai-chat-welcome"><span className="vai-chat-welcome-icon"><BrainCircuit size={25}/></span><h2><ShinyText text={agentMode==='text'?'Vamos conversar?':'O que vamos investigar?'} color="#f7eee8" shineColor="#ffd4b1" speed={4} trigger="view"/></h2><p>{agentMode==='text'?'Conte uma ideia, faça uma pergunta ou simplesmente comece uma conversa.':'Explore as rotas e os sinais disponíveis da operação.'}</p><div className="vai-chat-suggestions">{suggestions.map(x=><button type="button" key={x} onClick={()=>setQuestion(x)}>{x}<ArrowUpRight size={14}/></button>)}</div></div>}
    {conversation.map((turn,index)=><article key={index} className={'vai-message '+(turn.role==='user'?'is-user':turn.role==='error'?'is-error':'is-assistant')}><strong>{turn.role==='user'?'Você':turn.role==='error'?'Falha de conexão':'VANO Intelligence'+(turn.model?' · '+turn.model.split('/').pop():'')+(turn.fallbackUsed?' · alternativa':'')}</strong><p>{turn.content}</p>{turn.role==='assistant'&&<button type="button" onClick={()=>copyAnswer(turn.content,index)}><Copy size={13}/>{copied===index?'Copiado':'Copiar'}</button>}{turn.role==='error'&&<button type="button" onClick={()=>setQuestion(turn.question||'')}><RotateCcw size={13}/>Tentar novamente</button>}</article>)}
    {asking&&<div className="vai-chat-thinking" role="status"><span className="vint-chat-dots"/> Aguardando resposta da NVIDIA…</div>}<div ref={chatBottom}/>
   </div>
   <div className="vai-chat-bottom"><div className="vai-chat-options" role="group" aria-label="Modo de análise"><button type="button" aria-pressed={mode==='fast'} onClick={()=>setMode('fast')} disabled={asking}>Rápido · NVIDIA 8B</button><button type="button" aria-pressed={mode==='deep'} onClick={()=>setMode('deep')} disabled={asking}>GPT-OSS · 20B</button></div>
-   <form className="vai-composer" onSubmit={submit}><label className="vai-sr-only" htmlFor="vai-message">Mensagem</label><textarea id="vai-message" rows={2} value={question} maxLength={1500} onChange={e=>setQuestion(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder="Pergunte qualquer coisa sobre o VANO…"/><button type="submit" disabled={asking||question.trim().length<2} aria-label="Enviar mensagem"><Send size={18}/></button></form><p className="vai-chat-disclaimer">Dados agregados são usados na análise. A IA pode cometer erros.</p></div>
+   <form className="vai-composer" onSubmit={submit}><label className="vai-sr-only" htmlFor="vai-message">Mensagem</label><textarea id="vai-message" rows={2} value={question} maxLength={1500} onChange={e=>setQuestion(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder={agentMode==='text'?'Escreva sua mensagem…':'Pergunte sobre a operação do Vano…'}/><button type="submit" disabled={asking||question.trim().length<2} aria-label="Enviar mensagem"><Send size={18}/></button></form><p className="vai-chat-disclaimer">{agentMode==='text'?'Conversa sem indicadores operacionais.':'A análise usa indicadores agregados.'} A IA pode cometer erros.</p></div>
  </section>;
  return <main className={'vint-wrap'+(embedded?' vint-inline':'')} id={embedded?undefined:'conteudo'}>
   <header className="vint-heading"><div>
@@ -150,6 +159,7 @@ export default function IntelligencePage({embedded=false}){
   </section>
   <aside className="vint-panel vint-ai">
    <div className="vint-panel-title"><div><small>ANALISTA ADMINISTRATIVO</small><h2><BrainCircuit size={20}/> VAI · Intelligence</h2></div><span className="vint-neutral"><ShieldCheck size={13}/> Leitura</span></div>
+   <div className="vai-module-switch" role="group" aria-label="Módulo do assistente"><button type="button" aria-pressed={agentMode==='text'} disabled={asking} onClick={()=>setAgentMode('text')}><span>Conversa</span></button><button type="button" aria-pressed={agentMode==='operational'} disabled={asking} onClick={()=>setAgentMode('operational')}><span>Operacional</span></button></div>
    <p>Seu copiloto administrativo. Pergunte sobre rotas, falhas, uso do app e melhorias com dados reais, preservando a privacidade.</p>
    <div className="vint-suggestions">{suggestions.map(x=><button type="button" key={x} onClick={()=>setQuestion(x)}>{x}<ArrowUpRight size={14}/></button>)}</div>
    <div className="vint-mode-row" role="group" aria-label="Escolha o modo de inteligência">
