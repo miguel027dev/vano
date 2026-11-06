@@ -66,8 +66,8 @@ export function conversationPrompt(){
  ].join('\n');
 }
 export const INTELLIGENCE_MODES=Object.freeze({
- fast:{model:'openai/gpt-oss-20b',maxTokens:900,timeoutMs:55000,reasoning:'low'},
- deep:{model:'openai/gpt-oss-120b',maxTokens:1800,timeoutMs:55000,reasoning:'medium'},
+ fast:{model:'nvidia/nemotron-3.5-bolt-e4b',maxTokens:900,timeoutMs:30000,reasoning:'low'},
+ deep:{model:'openai/gpt-oss-20b',maxTokens:1800,timeoutMs:55000,reasoning:'low'},
 });
 const providerError=(reason,providerStatus=0)=>{
  const error=Object.assign(new Error('Falha de comunicação com a NVIDIA.'),{
@@ -83,7 +83,7 @@ async function requestCompletion(fetcher,key,model,messages,config){
    method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json',Accept:'application/json'},
    body:JSON.stringify({
     model,max_tokens:config.maxTokens,stream:false,
-    ...(model.includes('gpt-oss')?{reasoning_effort:config.reasoning}:{temperature:0.3}),
+    ...(model.includes('gpt-oss')?{reasoning_effort:config.reasoning}:{temperature:0.3,chat_template_kwargs:{enable_thinking:false}}),
     messages,
    }),
    signal:AbortSignal.timeout(config.timeoutMs),
@@ -114,7 +114,10 @@ export async function askIntelligenceConversational(question,data,runtime,{
  if(key.length<12)throw Object.assign(new Error('Chave NVIDIA não configurada no Render.'),{status:503,diagnostic:'missing_key'});
  const modelOverride=mode==='deep'?env.VANO_INTELLIGENCE_MODEL:env.VANO_INTELLIGENCE_FAST_MODEL;
  const config=INTELLIGENCE_MODES[mode];
- const model=String(modelOverride||config.model).trim();
+ const configured=String(modelOverride||'').trim();
+ // Existing environments may still pin the retired 120B free endpoint or
+ // the unresponsive former fast model. Keep other explicit overrides intact.
+ const model=(mode==='deep'&&configured==='openai/gpt-oss-120b'||mode==='fast'&&configured==='openai/gpt-oss-20b')?config.model:(configured||config.model);
  if(!/^[a-z0-9][a-z0-9._/-]{2,90}$/i.test(model))
   throw Object.assign(new Error('Modelo de IA inválido.'),{status:503,diagnostic:'invalid_model'});
  const context=intelligenceContext(data,runtime,{days,historyPeriod,now});
@@ -135,11 +138,12 @@ export async function askIntelligenceConversational(question,data,runtime,{
  }catch(error){
   // A model may be unavailable on the same NVIDIA key even if another model works.
   // Never retry authentication failures, account-wide rate limits or custom models.
-  const canFallback=mode==='deep'&&model==='openai/gpt-oss-120b'&&
+  const canFallback=mode==='deep'&&model==='openai/gpt-oss-20b'&&
    ['timeout','network','http','invalid_json','empty_answer'].includes(error?.diagnostic)&&
    ![401,429].includes(error?.providerStatus);
   if(!canFallback)throw error;
-  selectedModel=String(env.VANO_INTELLIGENCE_FAST_MODEL||INTELLIGENCE_MODES.fast.model).trim();
+  const fastOverride=String(env.VANO_INTELLIGENCE_FAST_MODEL||'').trim();
+  selectedModel=fastOverride==='openai/gpt-oss-20b'?INTELLIGENCE_MODES.fast.model:(fastOverride||INTELLIGENCE_MODES.fast.model);
   if(!/^[a-z0-9][a-z0-9._/-]{2,90}$/i.test(selectedModel))throw error;
   answer=await requestCompletion(fetcher,key,selectedModel,messages,INTELLIGENCE_MODES.fast);
   fallbackUsed=true;

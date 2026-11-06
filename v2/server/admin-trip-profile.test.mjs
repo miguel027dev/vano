@@ -12,7 +12,7 @@ test('profile only contains the selected account history, guests have none',()=>
 test('NVIDIA receives bounded anonymous evidence and the specified model',async()=>{
  let body;
  const result=await analyzeTripProfile(tripProfile(trip,db),{env:{NVIDIA_API_KEY:'test-key-123456789'},fetcher:async(_url,opts)=>{body=JSON.parse(opts.body);return {ok:true,json:async()=>({choices:[{message:{content:'Análise de teste'}}]})};}});
- assert.equal(body.model,'openai/gpt-oss-20b');assert.equal(result.answer,'Análise de teste');
+ assert.equal(body.model,'nvidia/nemotron-3.5-bolt-e4b');assert.equal(result.answer,'Análise de teste');
  assert.doesNotMatch(JSON.stringify(body),/private@example|Casa secreta|Outra pessoa/);
 });
 test('profile chat sends only allowed conversation turns plus bounded evidence',async()=>{
