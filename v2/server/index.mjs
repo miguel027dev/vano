@@ -852,6 +852,16 @@ async function route(req, res) {
     if(!limits(req,res,'intelligence-connectivity',3,60000))return;
     const start=Date.now();
     try{
+      if(u.searchParams.get('model')==='1'){
+        const key=String(process.env.NVIDIA_API_KEY||process.env.VANO_INTELLIGENCE_API_KEY||'').trim();
+        if(key.length<12)return json(res,200,{reachable:false,reason:'missing_key',elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});
+        const response=await fetch('https://integrate.api.nvidia.com/v1/chat/completions',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'user',content:'Say OK'}],max_tokens:128,reasoning_effort:'low',stream:true}),signal:AbortSignal.timeout(25000)});
+        if(!response.ok){await response.body?.cancel();return json(res,200,{reachable:false,reason:'http_'+response.status,elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});}
+        const reader=response.body?.getReader();
+        const part=reader?await reader.read():null;
+        await reader?.cancel();
+        return json(res,200,{reachable:!!part&&!part.done,httpStatus:response.status,elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});
+      }
       const response=await fetch('https://integrate.api.nvidia.com/v1/models',{signal:AbortSignal.timeout(10000)});
       await response.body?.cancel();
       return json(res,200,{reachable:true,httpStatus:response.status,elapsedMs:Date.now()-start},{'Cache-Control':'no-store'});

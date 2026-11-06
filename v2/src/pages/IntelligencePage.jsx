@@ -84,7 +84,7 @@ export default function IntelligencePage({embedded=false}){
  }
  async function checkConnection(){
   setChecking(true);setDiagnostic('');
-  try{const result=await api('/admin/intelligence/connectivity');setDiagnostic(result.reachable?`NVIDIA acessível · HTTP ${result.httpStatus} · ${result.elapsedMs} ms`:`Conexão indisponível · ${result.reason} · ${result.elapsedMs} ms`);}
+  try{const result=await api('/admin/intelligence/connectivity?model=1');setDiagnostic(result.reachable?`Modelo acessível · HTTP ${result.httpStatus} · ${result.elapsedMs} ms`:`Modelo indisponível · ${result.reason} · ${result.elapsedMs} ms`);}
   catch{setDiagnostic('Não foi possível executar o diagnóstico.');}finally{setChecking(false);}
  }
  if(loading)return <main className="vint-wrap">Verificando acesso…</main>;
