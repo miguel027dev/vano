@@ -15,6 +15,8 @@
       <a class="vano-side-link is-active" data-admin-view="dashboard" href="#dashboard"><i data-lucide="layout-dashboard"></i>Dashboard</a>
       <a class="vano-side-link" data-admin-view="routes" href="#acompanhar-rotas"><i data-lucide="map-pinned"></i>Acompanhar Rotas</a>
       <a class="vano-side-link" href="{{ url_for('admin_benchmark') }}"><i data-lucide="chart-no-axes-combined"></i>Benchmark de Rotas</a>
+      <a class="vano-side-link" href="{{ url_for('admin_api_monitor') }}#externas"><i data-lucide="network"></i>APIs consumidas</a>
+      <a class="vano-side-link" href="{{ url_for('admin_api_monitor') }}#parceiros"><i data-lucide="plug-zap"></i>APIs de parceiros</a>
       <a class="vano-side-link" href="{{ url_for('admin_dashboard') }}#product-signals"><i data-lucide="activity"></i>Inteligência operacional</a>
       <a class="vano-side-link" href="{{ url_for('admin_reports') }}"><i data-lucide="triangle-alert"></i>Ocorrências</a>
       <a class="vano-side-link" href="{{ url_for('admin_users') }}"><i data-lucide="users-round"></i>Usuários</a>
