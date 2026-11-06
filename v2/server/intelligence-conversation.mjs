@@ -66,8 +66,8 @@ export function conversationPrompt(){
  ].join('\n');
 }
 export const INTELLIGENCE_MODES=Object.freeze({
- fast:{model:'openai/gpt-oss-20b',maxTokens:1500,timeoutMs:17000,reasoning:'low'},
- deep:{model:'openai/gpt-oss-120b',maxTokens:3200,timeoutMs:27000,reasoning:'medium'},
+ fast:{model:'openai/gpt-oss-20b',maxTokens:900,timeoutMs:55000,reasoning:'low'},
+ deep:{model:'openai/gpt-oss-120b',maxTokens:1800,timeoutMs:55000,reasoning:'medium'},
 });
 const providerError=(reason,providerStatus=0)=>{
  const error=Object.assign(new Error('Falha de comunicação com a NVIDIA.'),{

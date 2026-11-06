@@ -603,8 +603,10 @@ async function route(req, res) {
     const profile=tripProfile(adminLiveTrips.get(liveProfile[1]),db);
     if(!profile)return err(res,404,'Viagem não está mais disponível.');
     if(!liveProfile[2])return json(res,200,profile,{'Cache-Control':'no-store'});
-    try{return json(res,200,await analyzeTripProfile(profile),{'Cache-Control':'no-store'});}
-    catch(e){return err(res,e?.status===503?503:502,e?.status===503?'NVIDIA não configurada no servidor.':'Análise temporariamente indisponível.');}
+    const body=await getBody(req);
+    if(body.question!==undefined&&(typeof body.question!=='string'||body.question.length>1200)||body.history!==undefined&&!Array.isArray(body.history))return err(res,400,'Pergunta inválida.');
+    try{return json(res,200,await analyzeTripProfile(profile,{question:body.question,history:body.history}),{'Cache-Control':'no-store'});}
+    catch(e){console.warn('VANO trip NVIDIA:',e?.diagnostic||'failure','providerStatus='+Number(e?.providerStatus||0));return err(res,e?.status===503?503:502,e?.status===503?'NVIDIA não configurada no servidor.':e?.diagnostic==='timeout'?'A NVIDIA demorou para responder. Tente novamente.':e?.providerStatus===401||e?.providerStatus===403?'A NVIDIA recusou a chave ou o acesso ao modelo.':e?.providerStatus===429?'A NVIDIA atingiu o limite de uso. Tente mais tarde.':'Não foi possível obter resposta da NVIDIA.');}
   }
   if((pathname==='/api/admin/live-trips'||pathname.startsWith('/api/live-navigation/'))&&process.env.VANO_ADMIN_LIVE_TRIPS_ENABLED==='0')return err(res,404,'Recurso indisponível.');
   if(pathname==='/api/admin/live-trips'&&req.method==='GET'){
@@ -869,7 +871,7 @@ async function route(req, res) {
     }catch(e){
       console.warn('VANO Intelligence NVIDIA:',e?.diagnostic||'failure','providerStatus='+Number(e?.providerStatus||0));
       return err(res,e?.status===400?400:e?.status===503?503:502,
-        e?.status===503?'NVIDIA não configurada no Render.':e?.status===400?'Pergunta inválida.':'Análise temporariamente indisponível. Consulte os indicadores do painel.');
+        e?.status===503?'NVIDIA não configurada no Render.':e?.status===400?'Pergunta inválida.':e?.diagnostic==='timeout'?'A NVIDIA demorou para responder. Tente novamente.':e?.providerStatus===401||e?.providerStatus===403?'A NVIDIA recusou a chave ou o acesso ao modelo.':e?.providerStatus===429?'A NVIDIA atingiu o limite de uso. Tente mais tarde.':'Não foi possível obter resposta da NVIDIA.');
     }
   }
   if(pathname==='/api/intelligence/navigation-outcome' && req.method==='POST'){

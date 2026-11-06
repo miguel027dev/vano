@@ -8,7 +8,7 @@ import '../admin-live-trips.css';
 const empty=()=>({type:'FeatureCollection',features:[]});
 export default function AdminLiveTrips({onClose,embedded=false}){
  const [trips,setTrips]=useState([]),[error,setError]=useState(''),[selected,setSelected]=useState(null),[mapReady,setMapReady]=useState(false);
- const [profile,setProfile]=useState(null),[profileError,setProfileError]=useState(''),[analysis,setAnalysis]=useState(''),[analysisBusy,setAnalysisBusy]=useState(false);
+ const [profile,setProfile]=useState(null),[profileError,setProfileError]=useState(''),[chat,setChat]=useState([]),[chatInput,setChatInput]=useState(''),[analysisBusy,setAnalysisBusy]=useState(false);
  const container=useRef(null),map=useRef(null),fitted=useRef(false),tripsRef=useRef([]);
  const selectedRef=useRef(null);selectedRef.current=selected;
  tripsRef.current=trips;
@@ -37,14 +37,17 @@ export default function AdminLiveTrips({onClose,embedded=false}){
   return()=>{instance.remove();map.current=null;};
  },[]);
  useEffect(()=>{
-  let alive=true;setProfile(null);setProfileError('');setAnalysis('');setAnalysisBusy(false);
+  let alive=true;setProfile(null);setProfileError('');setChat([]);setChatInput('');setAnalysisBusy(false);
   if(selected)api('/admin/live-trips/'+encodeURIComponent(selected)).then(data=>{if(alive)setProfile(data);}).catch(()=>{if(alive)setProfileError('Não foi possível carregar a ficha. A viagem pode ter encerrado.');});
   return()=>{alive=false;};
  },[selected]);
- async function analyze(){
-  if(!selected||analysisBusy)return;const id=selected;setAnalysisBusy(true);setAnalysis('');
-  try{const result=await api('/admin/live-trips/'+encodeURIComponent(id)+'/analysis',{method:'POST',body:{}});if(selectedRef.current===id)setAnalysis(result.answer);}
-  catch(e){if(selectedRef.current===id)setAnalysis(e.message||'Análise indisponível.');}finally{if(selectedRef.current===id)setAnalysisBusy(false);}
+ async function analyze(e){
+  e?.preventDefault?.();const question=chatInput.trim();
+  if(!selected||analysisBusy||question.length<2)return;const id=selected;
+  const history=chat.filter(t=>t.role==='user'||t.role==='assistant').slice(-8);
+  setChat(old=>[...old.slice(-19),{role:'user',content:question}]);setChatInput('');setAnalysisBusy(true);
+  try{const result=await api('/admin/live-trips/'+encodeURIComponent(id)+'/analysis',{method:'POST',body:{question,history}});if(selectedRef.current===id)setChat(old=>[...old.slice(-19),{role:'assistant',content:result.answer}]);}
+  catch(error){if(selectedRef.current===id)setChat(old=>[...old.slice(-19),{role:'error',content:error.message||'Análise indisponível.'}]);}finally{if(selectedRef.current===id)setAnalysisBusy(false);}
  }
  useEffect(()=>{
   let alive=true,busy=false;
@@ -72,7 +75,7 @@ export default function AdminLiveTrips({onClose,embedded=false}){
    {!profile&&!profileError&&<p role="status">Carregando ficha…</p>}
    {profile&&<><div className="alt-profile-heading">Informações</div><dl className="alt-profile-grid"><dt>Conta</dt><dd>{profile.account?.email||'Visitante'}</dd><dt>Veículo atual</dt><dd>{profile.current.vehicle||'Não registrado'}</dd><dt>Estilo atual</dt><dd>{profile.current.routeType==='fast'?'Rápida':profile.current.routeType==='safe'?'Segura':'Não registrado'}</dd><dt>Preferência</dt><dd>{profile.preferences.preferredRoute==='fast'?'Rápida':profile.preferences.preferredRoute==='safe'?'Segura':'Não registrada'}</dd><dt>Rotas salvas</dt><dd>{profile.summary.count}</dd><dt>Estilos escolhidos</dt><dd>{profile.summary.safe} seguras · {profile.summary.fast} rápidas</dd></dl>
    <div className="alt-profile-heading">Histórico de rotas</div><div className="alt-table-wrap">{profile.history.length?<table><thead><tr><th>Data</th><th>Destino</th><th>Estilo</th><th>Distância</th></tr></thead><tbody>{profile.history.map((h,i)=><tr key={i}><td>{h.createdAt?new Date(h.createdAt).toLocaleDateString('pt-BR'):'—'}</td><td>{h.destination}</td><td>{h.routeType==='safe'?'Segura':h.routeType==='fast'?'Rápida':'—'}</td><td>{Number.isFinite(h.distance)?`${h.distance.toFixed(1)} km`:'—'}</td></tr>)}</tbody></table>:<p>Nenhum histórico de conta disponível.</p>}</div><p className="alt-profile-note">{profile.notice}</p>
-   <div className="alt-profile-heading">Análise NVIDIA</div><p className="alt-profile-note">A análise envia apenas indicadores resumidos, sem nome, e-mail ou coordenadas.</p><button type="button" className="alt-analysis-button" onClick={analyze} disabled={analysisBusy}>{analysisBusy?'Analisando…':'Analisar esta viagem'}</button>{analysis&&<p className="alt-analysis-text" role="status">{analysis}</p>}</>}
+   <div className="alt-profile-heading">Converse sobre esta viagem</div><p className="alt-profile-note">Indicadores resumidos e suas perguntas são enviados à NVIDIA. Não inclua dados pessoais nas perguntas.</p><div className="alt-profile-chat" role="log" aria-live="polite">{!chat.length&&<p>Pergunte sobre estilos de rota ou padrões disponíveis.</p>}{chat.map((turn,i)=><div key={i} className={'alt-profile-message '+turn.role}><strong>{turn.role==='user'?'Você':turn.role==='error'?'Falha':'VANO Intelligence'}</strong><p>{turn.content}</p></div>)}{analysisBusy&&<p role="status">Aguardando resposta da NVIDIA…</p>}</div><form className="alt-profile-composer" onSubmit={analyze}><label className="vai-sr-only" htmlFor="alt-question">Mensagem sobre a viagem</label><input id="alt-question" value={chatInput} onChange={e=>setChatInput(e.target.value)} maxLength={1200} placeholder="Pergunte sobre esta viagem…"/><button type="submit" disabled={analysisBusy||chatInput.trim().length<2}>Enviar</button></form></>}
   </aside>}
   <nav className="alt-trip-list" aria-label="Viagens ativas">{trips.map(t=><button className={'alt-trip'+(selected===t.id?' is-active':'')} key={t.id} type="button" onClick={()=>focusTrip(t)}><span className="alt-trip-dot"/><span><strong>{t.user?.name||'Visitante'}</strong><small>{new Date(t.updatedAt).toLocaleTimeString('pt-BR')}</small></span></button>)}{!trips.length&&!error&&<div className="alt-empty">Nenhuma viagem em andamento</div>}</nav>
  </section>;

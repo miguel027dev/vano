@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom';
 import {Activity,ArrowLeft,ArrowUpRight,BrainCircuit,CheckCircle2,Clock3,Database,RefreshCcw,Route,ShieldCheck,TriangleAlert,LockKeyhole,Send,Layers3,Copy,RotateCcw} from 'lucide-react';
 import {api,post} from '../lib/api';
 import {useVano} from '../context';
+import ShinyText from '../components/reactbits/ShinyText/ShinyText';
 import '../intelligence-console.css';
 
 const fmt=v=>v===null||v===undefined||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('pt-BR',{maximumFractionDigits:1});
@@ -82,6 +83,16 @@ export default function IntelligencePage({embedded=false}){
  }
  if(loading)return <main className="vint-wrap">Verificando acesso…</main>;
  if(!user?.isAdmin)return <main className="vint-wrap vint-restricted"><LockKeyhole size={35}/><h1>Área administrativa</h1><p>Somente administradores autenticados podem acessar os diagnósticos.</p><Link to="/admin">Voltar ao painel</Link></main>;
+ if(embedded)return <section className="vai-chat-shell" aria-label="Chat VANO Intelligence">
+  <header className="vai-chat-header"><div className="vai-chat-icon"><BrainCircuit size={19}/></div><div><strong>VANO Intelligence</strong><small>Seu assistente de análise</small></div><button type="button" onClick={()=>setConversation([])} disabled={!conversation.length||asking} aria-label="Limpar conversa"><RotateCcw size={16}/></button></header>
+  <div className="vai-chat-messages" role="log" aria-live="polite" aria-label="Conversa com o VANO Intelligence">
+   {!conversation.length&&<div className="vai-chat-welcome"><span className="vai-chat-welcome-icon"><BrainCircuit size={25}/></span><h2><ShinyText text="Como posso ajudar?" color="#f7eee8" shineColor="#ffd4b1" speed={4} trigger="view"/></h2><p>Pergunte sobre as rotas, indicadores e funcionamento do VANO.</p><div className="vai-chat-suggestions">{suggestions.map(x=><button type="button" key={x} onClick={()=>setQuestion(x)}>{x}<ArrowUpRight size={14}/></button>)}</div></div>}
+   {conversation.map((turn,index)=><article key={index} className={'vai-message '+(turn.role==='user'?'is-user':turn.role==='error'?'is-error':'is-assistant')}><strong>{turn.role==='user'?'Você':turn.role==='error'?'Falha de conexão':'VANO Intelligence'}</strong><p>{turn.content}</p>{turn.role==='assistant'&&<button type="button" onClick={()=>copyAnswer(turn.content,index)}><Copy size={13}/>{copied===index?'Copiado':'Copiar'}</button>}{turn.role==='error'&&<button type="button" onClick={()=>setQuestion(turn.question||'')}><RotateCcw size={13}/>Tentar novamente</button>}</article>)}
+   {asking&&<div className="vai-chat-thinking" role="status"><span className="vint-chat-dots"/> Aguardando resposta da NVIDIA…</div>}<div ref={chatBottom}/>
+  </div>
+  <div className="vai-chat-bottom"><div className="vai-chat-options" role="group" aria-label="Modo de análise"><button type="button" aria-pressed={mode==='fast'} onClick={()=>setMode('fast')} disabled={asking}>Rápido · 20B</button><button type="button" aria-pressed={mode==='deep'} onClick={()=>setMode('deep')} disabled={asking}>Profundo · 120B</button></div>
+   <form className="vai-composer" onSubmit={submit}><label className="vai-sr-only" htmlFor="vai-message">Mensagem</label><textarea id="vai-message" rows={2} value={question} maxLength={1500} onChange={e=>setQuestion(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit();}}} placeholder="Pergunte qualquer coisa sobre o VANO…"/><button type="submit" disabled={asking||question.trim().length<2} aria-label="Enviar mensagem"><Send size={18}/></button></form><p className="vai-chat-disclaimer">Dados agregados são usados na análise. A IA pode cometer erros.</p></div>
+ </section>;
  return <main className={'vint-wrap'+(embedded?' vint-inline':'')} id={embedded?undefined:'conteudo'}>
   <header className="vint-heading"><div>
    <div className="vint-eyebrow"><BrainCircuit size={16}/> VANO MAPS · INTELLIGENCE</div>
