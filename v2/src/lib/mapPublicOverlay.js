@@ -241,14 +241,14 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const key=bbox.map(n=>n.toFixed(3)).join(',');
   if(key===radarKey&&Date.now()-radarReadAt<180000)return;
   radarController?.abort();
-  const request=new AbortController();
-  radarController=request;
+  const aborter=new AbortController();
+  radarController=aborter;
   try{
    const response=await request('/api/map-radars?bbox='+encodeURIComponent(bbox.join(',')),
-    {signal:request.signal,headers:{Accept:'application/json'}});
+    {signal:aborter.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Radares públicos: '+response.status);
    const data=await response.json();
-   if(done||request.signal.aborted)return;
+   if(done||aborter.signal.aborted)return;
    if(Array.isArray(data?.features)){
     // Preserve an existing mapped-radar snapshot during transient failures.
     if(!data.error||data.features.length){
@@ -289,13 +289,13 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const key=bbox.map(x=>x.toFixed(3)).join(',');
   if(key===regionalKey&&Date.now()-regionalReadAt<120000)return;
   regionalController?.abort();
-  const request=new AbortController();regionalController=request;
+  const aborter=new AbortController();regionalController=aborter;
   try{
    const response=await request('/api/road-events/regional?bbox='+encodeURIComponent(bbox.join(',')),
-    {signal:request.signal,headers:{Accept:'application/json'}});
+    {signal:aborter.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Regional roads: '+response.status);
    const data=await response.json();
-   if(done||request.signal.aborted)return;
+   if(done||aborter.signal.aborted)return;
    if(Array.isArray(data?.features)&&data.features.length){
     rememberPublicFeatures(sourceCache,data.features.filter(x=>x?.regional===true).slice(0,100));
     mergeSources();render();
@@ -322,13 +322,13 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const key=bbox.map(n=>n.toFixed(3)).join(',');
   if(key===tomtomPoiKey&&Date.now()-tomtomPoiReadAt<120000)return;
   tomtomPoiController?.abort();
-  const request=new AbortController();tomtomPoiController=request;
+  const aborter=new AbortController();tomtomPoiController=aborter;
   try{
    const response=await request('/api/places/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
-    {signal:request.signal,headers:{Accept:'application/json'}});
+    {signal:aborter.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('TomTom POI: '+response.status);
    const result=await response.json();
-   if(done||request.signal.aborted)return;
+   if(done||aborter.signal.aborted)return;
    if(result.enabled===false){tomtomPoiKey=key;tomtomPoiReadAt=Date.now();return;}
    if(Array.isArray(result.features)&&result.features.length){
     rememberPublicFeatures(sourceCache,result.features.filter(p=>p?.poi===true&&p.source==='TomTom Search').slice(0,70));
@@ -354,13 +354,13 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const key=bbox.map(n=>n.toFixed(3)).join(',');
   if(key===chargeKey&&Date.now()-chargeReadAt<150000)return;
   chargeController?.abort();
-  const request=new AbortController();chargeController=request;
+  const aborter=new AbortController();chargeController=aborter;
   try{
    const response=await request('/api/places/openchargemap?bbox='+encodeURIComponent(bbox.join(',')),
-    {signal:request.signal,headers:{Accept:'application/json'}});
+    {signal:aborter.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Charging POIs: '+response.status);
    const data=await response.json();
-   if(done||request.signal.aborted)return;
+   if(done||aborter.signal.aborted)return;
    if(data.enabled===false){chargeDisabled=true;return;}
    if(Array.isArray(data.features)&&data.features.length){
     rememberPublicFeatures(sourceCache,data.features.filter(p=>
@@ -387,13 +387,13 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const key=bbox.map(n=>n.toFixed(3)).join(',');
   if(key===overtureKey&&Date.now()-overtureReadAt<200000)return;
   overtureController?.abort();
-  const request=new AbortController();overtureController=request;
+  const aborter=new AbortController();overtureController=aborter;
   try{
    const response=await request('/api/places/overture?bbox='+encodeURIComponent(bbox.join(',')),
-    {signal:request.signal,headers:{Accept:'application/json'}});
+    {signal:aborter.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('Overture POIs: '+response.status);
    const data=await response.json();
-   if(done||request.signal.aborted)return;
+   if(done||aborter.signal.aborted)return;
    if(data.enabled===false){overtureDisabled=true;return;}
    if(Array.isArray(data.features)&&data.features.length){
     rememberPublicFeatures(sourceCache,data.features.filter(p=>p?.poi===true&&p?.source==='Overture Maps').slice(0,90));
@@ -419,13 +419,13 @@ export function attachPublicMapOverlay(map,backend,getNavigation=()=>false,onPic
   const key=bbox.map(n=>n.toFixed(3)).join(',');
   if(key===tomtomKey&&Date.now()-tomtomReadAt<115000)return;
   tomtomController?.abort();
-  const request=new AbortController();tomtomController=request;
+  const aborter=new AbortController();tomtomController=aborter;
   try{
    const response=await request('/api/traffic/incidents/tomtom?bbox='+encodeURIComponent(bbox.join(',')),
-    {signal:request.signal,headers:{Accept:'application/json'}});
+    {signal:aborter.signal,headers:{Accept:'application/json'}});
    if(!response.ok)throw Error('TomTom map: '+response.status);
    const data=await response.json();
-   if(done||request.signal.aborted)return;
+   if(done||aborter.signal.aborted)return;
    if(data.enabled===false){tomtomDisabled=true;return;}
    if(Array.isArray(data.features)&&data.features.length){
     rememberPublicFeatures(sourceCache,data.features.filter(x=>x?.source==='TomTom Traffic').slice(0,120));
