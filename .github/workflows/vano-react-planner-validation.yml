@@ -1,0 +1,22 @@
+name: VANO React Planner V3
+on:
+  push:
+    branches:
+      - feat/vano-react-fullscreen-planner-20261107
+  workflow_dispatch:
+jobs:
+  v2:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: v2/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
