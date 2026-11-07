@@ -33,6 +33,9 @@
   const fieldSlot = overlay.querySelector('.vano-search-field-slot');
   const resultSlot = overlay.querySelector('.vano-search-results-slot');
   const backButton = overlay.querySelector('.vano-search-back');
+  const searchCard = searchRow.querySelector('.planner-search-card');
+  const defaultCardBackground = searchCard?.style.getPropertyValue('background') || '';
+  const defaultCardPriority = searchCard?.style.getPropertyPriority('background') || '';
   let searching = false;
   let wasFocused = false;
   let closeQueued = false;
@@ -49,6 +52,7 @@
     overlay.hidden = false;
     document.body.classList.add('vano-search-fullscreen-active');
     fieldSlot.appendChild(searchRow);
+    searchCard?.style.setProperty('background','#242831','important');
     if (results.parentNode !== resultSlot) resultSlot.appendChild(results);
     syncSearchContent();
     if (focus) requestAnimationFrame(() => field.focus({preventScroll:true}));
@@ -64,6 +68,9 @@
     results.classList.remove('search-results-portal');
     delete results.dataset.placement;
     overlay.hidden = true;
+    if (defaultCardBackground)
+      searchCard?.style.setProperty('background',defaultCardBackground,defaultCardPriority);
+    else searchCard?.style.removeProperty('background');
     if (document.activeElement === field) field.blur();
     if (restoreFocus && !wasFocused) {
       const trigger = document.querySelector('#v2Dock input#destinationInput');
@@ -115,12 +122,12 @@
     const profile = button.dataset.profile;
     const copy = button.querySelector('.route-option-copy');
     if (!copy) continue;
-    let eta = copy.querySelector('[data-vano-eta]');
+    let eta = copy.querySelector('[data-vano-eta]') || copy.querySelector('small');
     if (!eta) {
       eta = document.createElement('small');
-      eta.dataset.vanoEta = profile;
       copy.appendChild(eta);
     }
+    eta.dataset.vanoEta = profile;
     eta.textContent = 'Ver rota';
   }
   const publicButton = document.createElement('button');
@@ -155,6 +162,31 @@
   let transitAbort = null;
   let transitSort = 'fastest';
   let transitRoutes = [];
+  const hiddenRouteLayers = new Map();
+  const previewLayerIds = [
+    'route-shadow','route-alternatives','route-selected-glow','route-selected',
+    'route-progress','route-selected-flow','traffic-route-core','traffic-route-glow'
+  ];
+  function setRoutePreviewVisibility(visible) {
+    const map = window.__VANO_MAP_BRIDGE?.getMap?.();
+    if (!map?.getLayer) return;
+    for (const id of previewLayerIds) {
+      if (!map.getLayer(id)) continue;
+      try {
+        if (!visible) {
+          if (!hiddenRouteLayers.has(id))
+            hiddenRouteLayers.set(id,map.getLayoutProperty(id,'visibility') || 'visible');
+          map.setLayoutProperty(id,'visibility','none');
+        } else if (hiddenRouteLayers.has(id)) {
+          map.setLayoutProperty(id,'visibility',hiddenRouteLayers.get(id));
+          hiddenRouteLayers.delete(id);
+        }
+      } catch (_) {}
+    }
+  }
+  window.addEventListener('vano:themechange',() => {
+    if (transitActive) setTimeout(() => setRoutePreviewVisibility(false),400);
+  });
   let estimatesKey = '';
   let estimateAbort = null;
   let estimateBusy = false;
@@ -197,9 +229,11 @@
     const key = sourceKey(snapshot);
     if (!key || estimateBusy || transitActive || !window.VANO_BOOT?.loggedIn ||
         document.visibilityState === 'hidden' || !$('routeState')?.offsetParent) return;
-    const profiles = baseModes.filter(p => p !== snapshot.profile &&
-      (!estimateCache.has(key + ':' + p) ||
-        Date.now() - estimateCache.get(key + ':' + p).at > 120000));
+    const profiles = baseModes.filter(p => {
+      if (p === snapshot.profile) return false;
+      const cached = estimateCache.get(key + ':' + p);
+      return !cached || Date.now() - cached.at > (cached.unavailable ? 45000 : 120000);
+    });
     if (!profiles.length) return;
     estimateBusy = true;
     estimateAbort?.abort();
@@ -228,8 +262,10 @@
           estimateCache.set(key + ':' + profile, {duration,at:Date.now()});
           if (sourceKey(plannerSnapshot()) === key) setEta(profile, fmt(duration));
         } catch (_) {
-          if (!controller.signal.aborted && sourceKey(plannerSnapshot()) === key)
+          if (!controller.signal.aborted && sourceKey(plannerSnapshot()) === key) {
+            estimateCache.set(key + ':' + profile, {unavailable:true,at:Date.now()});
             setEta(profile, 'Indisponível');
+          }
         } finally { clearTimeout(timeout); }
       }
     } finally { estimateBusy = false; }
@@ -329,8 +365,10 @@
     publicPanel.hidden = !active;
     if (active) {
       availableButtons.forEach(button => button.classList.remove('active'));
+      setRoutePreviewVisibility(false);
       loadTransit();
     } else {
+      setRoutePreviewVisibility(true);
       transitAbort?.abort();
       transitRoutes = [];
     }
@@ -363,7 +401,8 @@
     for (const p of baseModes) {
       if (p === snapshot.profile) continue;
       const cached = estimateCache.get(key + ':' + p);
-      if (cached && Date.now() - cached.at < 120000) setEta(p,fmt(cached.duration));
+      if (cached && !cached.unavailable && Date.now() - cached.at < 120000) setEta(p,fmt(cached.duration));
+      if (cached?.unavailable && Date.now() - cached.at < 45000) setEta(p,'Indisponível');
     }
     if (!transitActive) previewOtherModes(snapshot);
     const routeSig = key + ':' + snapshot.profile + ':' + (snapshot.selectedRoute?.id || '');
@@ -373,6 +412,7 @@
   window.addEventListener('vano:map-ready',sync);
   const updateInterval = setInterval(sync,1100);
   window.addEventListener('pagehide',() => {
+    setRoutePreviewVisibility(true);
     clearInterval(updateInterval);
     estimateAbort?.abort();
     transitAbort?.abort();
