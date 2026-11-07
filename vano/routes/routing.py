@@ -74,6 +74,98 @@ def _heavy_route_central_fallback(slat, slon, elat, elon, travel_profile, mode, 
     }
 
 
+
+@app.route("/api/transit/itineraries", methods=["GET"])
+def api_transit_itineraries():
+    """Optional VANO multimodal planner adapter.
+
+    VANO_TRANSIT_PLANNER_URL must point to a VANO-compatible JSON service.
+    No schedule, bus line or ETA is synthesized when this source is unavailable.
+    """
+    import math
+    import os
+    from urllib.parse import urlsplit
+    import requests
+
+    if not rate_limit("transit-itineraries-ip", 18, 60, shared=True):
+        return jsonify({"routes": [], "code": "rate_limited",
+                        "message": "Muitas consultas. Tente novamente em instantes."}), 429
+    try:
+        points = {key: float(request.args[key]) for key in
+                  ("start_lat", "start_lon", "end_lat", "end_lon")}
+    except (TypeError, ValueError, KeyError):
+        return jsonify({"routes": [], "code": "invalid_coordinates"}), 400
+    if not (all(math.isfinite(v) for v in points.values())
+            and -90 <= points["start_lat"] <= 90
+            and -90 <= points["end_lat"] <= 90
+            and -180 <= points["start_lon"] <= 180
+            and -180 <= points["end_lon"] <= 180):
+        return jsonify({"routes": [], "code": "invalid_coordinates"}), 400
+
+    upstream = os.environ.get("VANO_TRANSIT_PLANNER_URL", "").strip()
+    if not upstream:
+        return jsonify({
+            "routes": [], "code": "transit_not_configured",
+            "message": "Planejador de transporte público ainda não configurado."
+        }), 503
+
+    parsed = urlsplit(upstream)
+    # URL is operator-configured, never accepted from the client.
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        return jsonify({"routes": [], "code": "transit_invalid_config"}), 503
+
+    try:
+        response = requests.get(upstream, params=points, timeout=(2.5, 7),
+                                allow_redirects=False,
+                                headers={"Accept": "application/json"})
+        if response.status_code != 200:
+            raise ValueError("transit upstream unavailable")
+        payload = response.json()
+        if not isinstance(payload, dict) or not isinstance(payload.get("routes"), list):
+            raise ValueError("invalid transit response")
+        normalized = []
+        for item in payload["routes"][:10]:
+            if not isinstance(item, dict):
+                continue
+            try:
+                duration = float(item["duration_seconds"])
+            except (TypeError, ValueError, KeyError):
+                continue
+            if not math.isfinite(duration) or not 0 < duration < 172800:
+                continue
+            walk = item.get("walking_seconds")
+            try:
+                walk = max(0, float(walk)) if walk is not None else None
+                if walk is not None and not math.isfinite(walk):
+                    walk = None
+            except (TypeError, ValueError):
+                walk = None
+            try:
+                transfers = int(item["transfers"]) if item.get("transfers") is not None else None
+                if transfers is not None and not 0 <= transfers <= 20:
+                    transfers = None
+            except (TypeError, ValueError):
+                transfers = None
+            legs = []
+            for leg in item.get("legs", [])[:16] if isinstance(item.get("legs"), list) else []:
+                if not isinstance(leg, dict):
+                    continue
+                legs.append({key: str(leg.get(key) or "")[:120] for key in
+                             ("mode", "line", "from", "to")})
+            normalized.append({
+                "id": str(item.get("id", ""))[:80],
+                "label": str(item.get("label") or "Rota de transporte público")[:120],
+                "duration_seconds": round(duration),
+                "walking_seconds": round(walk) if walk is not None else None,
+                "transfers": transfers, "legs": legs
+            })
+        if not normalized:
+            return jsonify({"routes": [], "code": "no_transit_itineraries"}), 200
+        return jsonify({"routes": normalized, "code": "ok", "source": "configured_transit_planner"})
+    except (requests.RequestException, ValueError, TypeError):
+        return jsonify({"routes": [], "code": "transit_upstream_unavailable",
+                        "message": "Não foi possível consultar os horários de transporte."}), 503
+
 @app.route("/api/benchmark/v1/route")
 @app.route("/api/route")
 def api_route():
