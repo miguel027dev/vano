@@ -147,7 +147,10 @@
     function alignResults() {
       if (!results || !results.classList.contains('show') ||
           !results.classList.contains('search-results-portal')) return;
-      const rect = dock.querySelector('.planner-search-card').getBoundingClientRect();
+      if (document.body.classList.contains('vano-search-fullscreen-active')) return;
+      const anchor = dock.querySelector('.planner-search-card');
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
       const vv = window.visualViewport;
       const visibleHeight = vv?.height || window.innerHeight;
       const viewportOffset = vv?.offsetTop || 0;
