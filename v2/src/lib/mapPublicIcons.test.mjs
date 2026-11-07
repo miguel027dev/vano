@@ -295,3 +295,14 @@ test('White and Black maps hide requested POIs but preserve bank and safety icon
   for(const cls of ['hospital','clinic','park'])assert.ok(allowed.includes(cls));
  }
 });
+
+
+test('public overlay keeps the injected request client callable across every provider refresh',()=>{
+ const overlay=readFileSync(new URL('./mapPublicOverlay.js',import.meta.url),'utf8');
+ assert.match(overlay,/\{request=fetch,featureAllowed=/);
+ assert.equal((overlay.match(/const aborter=new AbortController\(\)/g)||[]).length,6);
+ assert.equal((overlay.match(/await request\('/g)||[]).length,7);
+ assert.doesNotMatch(overlay,/const request=new AbortController\(\)/);
+ assert.doesNotMatch(overlay,/signal:request\.signal/);
+ assert.doesNotMatch(overlay,/request\.signal\.aborted/);
+});
