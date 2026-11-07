@@ -87,9 +87,9 @@ def test_transit_adapts_upstream_without_synthesizing_data(monkeypatch):
 
 def test_planner_keeps_original_search_and_existing_mode_handlers():
     index = (ROOT / "templates/index.html").read_text(encoding="utf-8")
-    ui = (ROOT / "static/vano-planner-v3.js").read_text(encoding="utf-8")
+    ui = (ROOT / "static/vano-v2.js").read_text(encoding="utf-8")
     core = (ROOT / "static/vano-map.js").read_text(encoding="utf-8")
-    assert "vano-planner-v3.js" in index
+    assert "vano-v2.js" in index
     assert 'id="destinationInput"' in index
     assert "fieldSlot.appendChild(searchRow)" in ui
     assert "resultSlot.appendChild(results)" in ui
