@@ -281,7 +281,7 @@
     card.append(heading, copy);
     publicList.appendChild(card);
   }
-  function numeric(v) { return Number.isFinite(+v) ? +v : Infinity; }
+  function numeric(v) { return v == null || v === '' ? Infinity : Number.isFinite(+v) ? +v : Infinity; }
   function renderTransit() {
     if (!transitRoutes.length) {
       writeTransitMessage('Sem itinerários verificados',
@@ -306,8 +306,8 @@
         ? fmt(+route.duration_seconds) : 'Sem ETA';
       heading.append(title, duration);
       const information = document.createElement('p');
-      const transfers = Number.isFinite(+route.transfers) ? +route.transfers : null;
-      const walk = Number.isFinite(+route.walking_seconds) ? fmt(+route.walking_seconds) : null;
+      const transfers = route.transfers != null && Number.isFinite(+route.transfers) ? +route.transfers : null;
+      const walk = route.walking_seconds != null && Number.isFinite(+route.walking_seconds) ? fmt(+route.walking_seconds) : null;
       information.textContent = [walk ? walk + ' caminhando' : '',
         transfers !== null ? transfers + ' baldeação(ões)' : ''].filter(Boolean).join(' · ');
       card.append(heading,information);
