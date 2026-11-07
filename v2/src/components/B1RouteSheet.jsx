@@ -1,6 +1,7 @@
 import React from 'react';
 import {ArrowLeft,CarFront,Footprints,Navigation,ShieldCheck,Zap} from 'lucide-react';
 import MotorcycleIcon from './MotorcycleIcon';
+import TransportModeRail from './TransportModeRail.jsx';
 import {fmtKm,fmtTime} from '../lib/api';
 import '../b1-route-sheet.css';
 
@@ -13,7 +14,7 @@ function arrivalLabel(seconds){
 
 // This only displays the choices. The parent MapPage remains the single
 // authority for GPS, route requests, preferred mode and navigation.
-export default function B1RouteSheet({step,vehicle,routeData,choice,loading,error,language,onVehicle,onChoice,onStart,onBack,onRetry}){
+export default function B1RouteSheet({step,vehicle,routeData,choice,loading,error,language,onVehicle,onChoice,onStart,onBack,onRetry,onTransit,modeEstimates={},plannerV3=false}){
   const options=Array.isArray(routeData?.routes)?routeData.routes:[];
   const selected=options.find(item=>item.id===choice)||options[0]||null;
   const fastest=options.find(item=>item.id==='fast')||options[0]||null;
@@ -25,11 +26,12 @@ export default function B1RouteSheet({step,vehicle,routeData,choice,loading,erro
         <div><h2>Como você vai?</h2><p>Escolha seu meio de transporte</p></div>
         <button type="button" className="b1-back" onClick={onBack} aria-label="Alterar endereço"><ArrowLeft size={20}/></button>
       </div>
-      <div className="b1-transport-grid" role="group" aria-label="Como você vai">
+      {plannerV3?<TransportModeRail selected={vehicle} onSelect={onVehicle} onPublic={onTransit}
+        estimates={modeEstimates}/>:<div className="b1-transport-grid" role="group" aria-label="Como você vai">
         <button type="button" onClick={()=>onVehicle('carro')}><CarFront size={34} strokeWidth={1.9}/><span>Carro</span></button>
         <button type="button" onClick={()=>onVehicle('moto')}><MotorcycleIcon size={35}/><span>Moto</span></button>
         <button type="button" onClick={()=>onVehicle('a-pe')}><Footprints size={33} strokeWidth={1.9}/><span>A pé</span></button>
-      </div>
+      </div>}
     </>:<>
       <div className="b1-sheet-heading"><div><h2>Escolha sua prioridade</h2><p>{vehicle==='a-pe'?'Trajeto para caminhada':'Como prefere chegar?'}</p></div>
         <button className="b1-back" type="button" onClick={onBack} aria-label="Escolher outro transporte"><ArrowLeft size={20}/></button>

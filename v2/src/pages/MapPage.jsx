@@ -3,6 +3,9 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, ChevronRight, ChevronLeft, SlidersHorizontal, CalendarDays } from 'lucide-react';
 import VanoMap from '../components/VanoMap';
 import B1RouteSheet from '../components/B1RouteSheet.jsx';
+import FullscreenDestinationSearch from '../components/FullscreenDestinationSearch.jsx';
+import TransportModeRail from '../components/TransportModeRail.jsx';
+import '../planner-v3.css';
 import RoadAuditPanel from '../components/RoadAuditPanel.jsx';
 import QuickReportSheet from '../components/QuickReportSheet.jsx';
 import {quickReportPosition,quickReportMotionBlocked} from '../lib/quickReport.js';
@@ -59,6 +62,7 @@ export default function MapPage({active=true}){
   const {user,preferences,favorites,history,saveTrip,savePreference,report,setToast,demo,t,language}=useVano(),navigate=useNavigate(),location=useLocation();
   const jevMode=location.pathname==='/mapa'||location.pathname==='/v2';
   const b1User=location.pathname==='/mapa';
+  const plannerV3Enabled=import.meta.env.VITE_PLANNER_V3!=='0';
   // Experiment is available ONLY in the role-gated administrator route.
   const adminV2RoadSigns=location.pathname==='/v2'&&user?.isAdmin===true;
   // The same preference powers /configuracoes and the map. The local
@@ -265,6 +269,54 @@ export default function MapPage({active=true}){
   // be a route origin or a substitute for an accepted live GPS fix.
   const displayCoords=userCoords||warmCoords;
   const origin=manualCoords||userCoords;
+  const [modeEstimates,setModeEstimates]=useState({});
+  const modeEtaCache=useRef(new Map());
+  const estimateKey=validPoint(origin)&&validPoint(dest?.coords)?
+    [origin[0],origin[1],dest.coords[0],dest.coords[1]].map(v=>Number(v).toFixed(4)).join(':'):'';
+  useEffect(()=>{
+    if(!plannerV3Enabled||!estimateKey||!active||navMode)return;
+    const controller=new AbortController();
+    const vehicles=['carro','moto','a-pe'];
+    setModeEstimates(Object.fromEntries(vehicles.map(vehicle=>{
+      const cached=modeEtaCache.current.get(estimateKey+':'+vehicle);
+      return [vehicle,cached&&Date.now()-cached.at<120000?
+        {status:'ready',seconds:cached.seconds}:{status:'loading'}];
+    })));
+    // One sequential pass per destination, never a request on every keystroke.
+    // Abort on origin/destination change or when navigation begins.
+    const timer=setTimeout(async()=>{
+      for(const vehicle of vehicles){
+        if(controller.signal.aborted)break;
+        const cacheId=estimateKey+':'+vehicle;
+        const cached=modeEtaCache.current.get(cacheId);
+        if(cached&&Date.now()-cached.at<120000)continue;
+        try{
+          const response=await api('/route',{
+            method:'POST',signal:controller.signal,
+            body:JSON.stringify({origin,destination:dest.coords,vehicle,language,
+              routeOptions:{adaptive:false,variantBudget:2,avoidTolls:preferences?.avoidTolls===true}})
+          });
+          const seconds=Math.min(...(response?.routes||[])
+            .map(item=>Number(item.duration)).filter(n=>Number.isFinite(n)&&n>0));
+          if(!Number.isFinite(seconds))throw new Error('eta-unavailable');
+          if(controller.signal.aborted)break;
+          modeEtaCache.current.set(cacheId,{seconds,at:Date.now()});
+          setModeEstimates(previous=>({...previous,[vehicle]:{status:'ready',seconds}}));
+        }catch(error){
+          if(controller.signal.aborted)break;
+          setModeEstimates(previous=>({...previous,[vehicle]:{status:'unavailable'}}));
+        }
+      }
+    },480);
+    return()=>{clearTimeout(timer);controller.abort();};
+  },[estimateKey,active,navMode,plannerV3Enabled]);
+  useEffect(()=>{
+    const seconds=Math.min(...(routeData?.routes||[])
+      .map(item=>Number(item.duration)).filter(n=>Number.isFinite(n)&&n>0));
+    if(!Number.isFinite(seconds)||!estimateKey)return;
+    modeEtaCache.current.set(estimateKey+':'+routeVehicle,{seconds,at:Date.now()});
+    setModeEstimates(previous=>({...previous,[routeVehicle]:{status:'ready',seconds}}));
+  },[routeData,routeVehicle,estimateKey]);
   const usingManual=validPoint(manualCoords);
   manualCoordsRef.current=manualCoords;
   const hasLiveGPS=validPoint(userCoords)&&!usingManual&&gpsStatus==='granted'&&hasRecentGpsFix(lastGpsFix.current,Date.now(),35000);
@@ -1236,7 +1288,12 @@ export default function MapPage({active=true}){
     {adminV2RoadSigns&&routeVehicle!=='a-pe'&&route&&!navMode&&!sheetOpen&&!searchOpen&&<div className="v81-traffic-preview"><RouteTrafficCard traffic={routeTraffic}/></div>}
     {!navMode ? <div className={`map-top v31-map-top ${dest?'v32-route-top':''}`}>
       {!dest ? <>
-      <div className="map-search v31-search"><Search size={22} aria-hidden="true"/><input ref={searchInput} role="combobox" aria-expanded={searchOpen} aria-controls="vano-location-options" aria-autocomplete="list" aria-label={t("Buscar endereço, lugar ou destino")} value={query} placeholder={t("Buscar endereço, lugar ou destino")} onFocus={()=>setSearchOpen(true)} onChange={e=>{setQuery(e.target.value);setSearchOpen(true);}} onKeyDown={e=>{if(e.key==='Escape'){setSearchOpen(false);e.currentTarget.blur();}else if(e.key==='Enter'&&!searchBusy&&suggestions[0]){e.preventDefault();pick(suggestions[0]);}else if(e.key==='ArrowDown'){const first=document.querySelector('#vano-location-options .suggestion');if(first){e.preventDefault();first.focus();}}}}/>{searchBusy&&<span className="v32-search-spinner" role="status" aria-label="Buscando endereços"/>}{query&&<button type="button" onClick={()=>{setQuery('');searchInput.current?.focus();}} aria-label="Limpar busca"><X size={18}/></button>}<Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link></div>
+      <div className="map-search v31-search">
+       <Search size={22} aria-hidden="true"/>
+       <button type="button" className="v3-search-open-button" onClick={()=>setSearchOpen(true)}
+        aria-haspopup="dialog" aria-label="Buscar endereço, lugar ou destino">Buscar endereço, lugar ou destino</button>
+       <Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link>
+      </div>
       {!searchOpen&&<div className="quick-scroll v31-shortcuts" role="group" aria-label="Atalhos de destinos">{shortcuts.map(s=><button type="button" className="quick-chip" key={s.name} onClick={()=>clickShortcut(s)}><s.icon size={16}/>{t(s.name)}</button>)}</div>}
       </>:<><div className="v32-route-layout">
       <div className="v5-route-box" aria-label="Origem e destino da rota">
@@ -1293,7 +1350,11 @@ export default function MapPage({active=true}){
       <div className="gps-actions"><button onClick={()=>requestGPS(true)}>{t('Tentar novamente')}</button><button className="gps-primary" onClick={()=>setPickOriginMode(true)}>{t('Escolher origem no mapa')}</button></div>
     </div>}
     {!navMode&&!searchOpen&&!pickOriginMode&&usingManual&&!dest&&<div className="gps-manual-chip" role="status"><MapPin size={16}/> Origem manual <button onClick={()=>setPickOriginMode(true)}>{t('Alterar')}</button><button onClick={()=>requestGPS(true)}>{t('Usar GPS')}</button></div>}
-    {searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t(searchBias?locationState.live?'Sugestões próximas de você':'Nesta área do mapa':'Buscar um destino')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':searchError?searchError:query.trim().length<2?searchBias?'Digite um lugar, rua ou CEP.':'Busque sua cidade ou um destino, ou escolha uma área no mapa.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
+    {plannerV3Enabled&&searchOpen&&!dest&&<FullscreenDestinationSearch
+      query={query} onQuery={setQuery} onClose={()=>setSearchOpen(false)}
+      onPick={pick} suggestions={suggestions} searchBusy={searchBusy}
+      searchError={searchError} nearby={Boolean(searchBias)} demo={demo} searchRef={searchInput}/>}
+    {!plannerV3Enabled&&searchOpen&&!dest&&<div id="vano-location-options" className="search-results v32-results" role="listbox" aria-label="Resultados de endereço"><div className="search-results-head"><span>{query.trim()?/^\d{5}-?\d{3}$/.test(query.trim())?'Endereços para este CEP':t('Resultados da busca'):t(searchBias?locationState.live?'Sugestões próximas de você':'Nesta área do mapa':'Buscar um destino')}</span><button type="button" aria-label="Fechar resultados" onClick={()=>setSearchOpen(false)}><X size={17}/></button></div>{suggestions.length?suggestions.map((s,i)=><button type="button" key={s.id||i} className="suggestion v32-suggestion" role="option" aria-selected={false} onClick={()=>pick(s)}><span className="v32-result-icon"><MapPin size={18}/></span><span><strong>{s.name}</strong><small>{s.address}</small></span><MoveRight size={16}/></button>):<div className="search-blank" role="status">{searchBusy?'Buscando endereços e lugares…':searchError?searchError:query.trim().length<2?searchBias?'Digite um lugar, rua ou CEP.':'Busque sua cidade ou um destino, ou escolha uma área no mapa.':demo?'Adicione as chaves Mapbox para buscar todos os endereços.':'Nenhum local encontrado. Tente outra busca.'}</div>}</div>}
     {editor&&<div className="modal-backdrop v5-editor-overlay" onClick={()=>setEditor(null)}><section className="destination-modal v5-editor" aria-label={t(editor==='origin'?'Buscar origem':'Buscar destino')} onClick={e=>e.stopPropagation()}><div className="modal-title"><h3>{t(editor==='origin'?'Definir ponto de partida':'Escolher destino')}</h3><button type="button" aria-label="Fechar busca" onClick={()=>setEditor(null)}><X size={20}/></button></div><div className="map-search"><Search size={19}/><input autoFocus value={editorQuery} placeholder={t("Rua, endereço ou lugar")} onChange={e=>setEditorQuery(e.target.value)} aria-label="Buscar endereço"/></div><div className="v5-editor-results" aria-live="polite">{editorBusy&&<span className="v5-editor-busy">{t('Buscando endereços…')}</span>}{!editorBusy&&editorResults.length===0&&<span className="v5-editor-busy">{editorError||t('Nenhum endereço encontrado.')}</span>}{editorResults.map(x=><button key={x.id||`${x.name}-${x.coords?.join(',')}`} className="suggestion" onClick={()=>chooseEdited(x)}><MapPin size={18}/><span><strong>{x.name}</strong><small>{x.address||'Selecionar localização'}</small></span><MoveRight size={17}/></button>)}</div>{editor==='origin'&&<button className="v5-editor-map" onClick={()=>{setEditor(null);setPickOriginMode(true);setSheetOpen(false)}}><MapPinned size={18}/> Selecionar origem tocando no mapa <ArrowRightLeft size={17}/></button>}</section></div>}
     {!navMode&&!sheetOpen&&!searchOpen&&!locationState.showRecovery&&!pickOriginMode&&<div className="v31-location-card" role="status" aria-label="Estado da sua localização">
       <span className="v31-location-symbol" aria-hidden="true"><LocateFixed size={18} strokeWidth={1.9}/></span>
@@ -1376,7 +1437,9 @@ export default function MapPage({active=true}){
         {!navMode&&dest&&sheetOpen&&!pickOriginMode&&(b1User?<B1RouteSheet
       step={b1Stage} vehicle={routeVehicle} routeData={routeData} choice={choice}
       loading={loadingRoute} error={routeError} language={language}
-      onVehicle={chooseB1Vehicle} onChoice={id=>{mapControl.current?.cancelCinematic?.();setChoice(id);}}
+      onVehicle={chooseB1Vehicle} plannerV3={plannerV3Enabled} modeEstimates={modeEstimates}
+      onTransit={()=>navigate('/planejar-transporte',{state:{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}})}
+      onChoice={id=>{mapControl.current?.cancelCinematic?.();setChoice(id);}}
       onStart={begin} onRetry={()=>{b1CameraArmed.current=true;calculateRoute(dest,origin,routeVehicle);}}
       onBack={()=>{
         mapControl.current?.cancelCinematic?.();b1CameraArmed.current=false;
@@ -1384,6 +1447,11 @@ export default function MapPage({active=true}){
         routeEpoch.current++;routeRequest.current?.abort();
         setRouteData(null);setRouteError('');setLoadingRoute(false);setB1Stage('transport');
       }}/>:<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{adminV2RoadSigns?'SEU TRAJETO':t('DESTINO SELECIONADO')}</span><h2>{adminV2RoadSigns?'Escolha seu caminho':t('Escolha a sua rota')}</h2>{adminV2RoadSigns&&<span className="v95-route-destination" title={dest?.name}>{dest?.name}</span>}</div><button type="button" className="sheet-close" aria-label="Recolher opções de rota" title="Recolher opções" onClick={()=>setSheetOpen(false)}>{adminV2RoadSigns?<X size={20}/>:<ChevronDown size={23}/>}</button></div>
+      {plannerV3Enabled?<div className="v3-route-mode-wrap">
+        <small>COMO VOCÊ VAI?</small>
+        <TransportModeRail selected={routeVehicle} onSelect={chooseRouteVehicle} estimates={modeEstimates}
+          onPublic={()=>navigate('/planejar-transporte',{state:{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}})}/>
+      </div>:<>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
         <div className={`v47-route-vehicle-switch ${import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
@@ -1401,7 +1469,7 @@ export default function MapPage({active=true}){
             <Footprints size={19} strokeWidth={2} aria-hidden="true"/><span>{t('A pé')}</span>
           </button>
         </div>
-      </div>
+      </div></>}
       {loadingRoute?<div className="route-loader" role="status"><div className="spinner"/>{t('Calculando as opções...')}</div>:routeData?<><div className="route-options">{routeData.routes.map(r=><button key={r.id} className={`route-option ${choice===r.id?'selected':''}`} onClick={()=>setChoice(r.id)}><span className="route-option-icon">{routeVehicle==='a-pe'?<Footprints size={25}/>:r.id==='safe'?<ShieldCheck size={25}/>:<Zap size={25}/>}</span><span className="route-option-main"><span className="route-option-title">{t(routeVehicle==='a-pe'?'Rota a pé':r.id==='safe'?(r.verifiedSafety?'Mais segura':'Rota alternativa'):'Mais rápida')}<span className={`radio-circle ${choice===r.id?'on':''}`}>{choice===r.id&&<Check size={13}/>}</span></span><small>{routeVehicle==='a-pe'?t('Percurso para caminhada'):r.microRoute?(adminV2RoadSigns?'Alternativa por outras vias':'Micro-rota V1 • desvio anti-gargalo'):r.id==='safe'&&!r.verifiedSafety?t('Segurança não verificada'):r.id==='safe'?(adminV2RoadSigns?'Dados disponíveis para esta rota':t('Avaliação V1')):t('Menor tempo estimado')}{r.trafficDataStatus==='degraded'?' · sem trânsito ao vivo':''}</small><span className="route-stats"><strong>{fmtTime(r.duration)}</strong><span>{fmtKm(r.distance,language)}</span></span></span></button>)}</div>
 
        {choice==='safe'&&routeVehicle!=='a-pe'&&<p className="route-safety-note" role="note">{routeData.safetyMessage||'Os dados de segurança podem ser limitados nesta região. Nenhuma rota garante segurança absoluta.'}</p>}
