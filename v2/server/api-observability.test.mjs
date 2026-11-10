@@ -55,3 +55,14 @@ test('aggregated rows older than selected range are excluded',()=>{
  assert.equal(mon.report('7d').summary.providerRequests,1);
  mon.stop();
 });
+
+
+test('partner response bytes take precedence over request-side fallback',()=>{
+ const current=Date.UTC(2026,10,10,2,0,0);
+ const mon=createApiObservability({db:{partnerKeys:[{id:'abcdef0123456789',name:'Test Partner',active:true}]},clock:()=>current,env:{}});
+ const request={url:'/api/partner/v1/routes',method:'GET',vanoVerifiedPartnerId:'abcdef0123456789',vanoResponseBytes:10};
+ const response={statusCode:200,vanoResponseBytes:512};
+ mon.recordPartner(request,response,current-5);
+ assert.equal(mon.report('24h').partners.find(p=>p.id==='abcdef0123456789').response_bytes,512);
+ mon.stop();
+});
