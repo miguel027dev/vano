@@ -1,3 +1,4 @@
+import {readLimitedText} from './read-limited.mjs';
 /** TomTom Orbis v2 incident adapter. Secret API key lives server-side only.
  * Map-only advisory context; never used to block or rerank VANO routes.
  * API: https://api.tomtom.com/maps/orbis/traffic/incidents/details
@@ -111,8 +112,7 @@ export function createTomTomGateway({fetcher=fetch,clock=Date.now}={}){
    },signal:AbortSignal.timeout(2500)});
    if(!res.ok){if([401,403,429].includes(res.status))holdUntil=clock()+10*60_000;throw Error('unavailable');}
    if(Number(res.headers?.get?.('content-length')||0)>MAX_BYTES)throw Error('too-large');
-   const raw=await res.text();
-   if(raw.length>MAX_BYTES)throw Error('too-large');
+   const raw=await readLimitedText(res,MAX_BYTES);
    const body=JSON.parse(raw);
    if(!Array.isArray(body?.incidents))throw Error('invalid-json');
    save(key,{events:normalizeTomTomIncidents(body,bounds,clock()),at:clock(),ok:true});
