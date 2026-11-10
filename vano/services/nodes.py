@@ -119,6 +119,12 @@ def _node_log_worker():
                 pass
             db = None
         finally:
+            if db is not None:
+                try:
+                    db.close()
+                except Exception:
+                    pass
+                db = None
             _NODE_LOG_QUEUE.task_done()
 
 
@@ -1001,6 +1007,12 @@ def _call_route_node(cfg, job_payload, prefetch, headers, timeout_override=None,
     return None, attempt, False
 
 
+# Shared bounded worker pool: abandoned network hedges must not create
+# unbounded extra threads on each incoming routing request.
+_HEAVY_ROUTE_POOL = ThreadPoolExecutor(max_workers=12, thread_name_prefix="vano-heavy-route")
+_HEAVY_ROUTE_SLOTS = threading.BoundedSemaphore(24)
+
+
 def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, policy):
     """Hedged worker race: first valid route wins; extra workers start only as needed."""
     selected = list(candidates[:int(policy.get("attempts") or 1)])
@@ -1009,7 +1021,7 @@ def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, poli
     max_parallel = max(1, min(int(policy.get("fanout") or 1), len(selected)))
     hedge_delay = max(.08, float(policy.get("hedge_delay_ms") or 320) / 1000.0)
     deadline = time.monotonic() + max(5.0, float(policy.get("overall_timeout_s") or 30))
-    pool = ThreadPoolExecutor(max_workers=max_parallel, thread_name_prefix="vano-heavy-route")
+    pool = _HEAVY_ROUTE_POOL
     pending = {}
     next_index = 0
     next_hedge_at = time.monotonic()
@@ -1018,6 +1030,9 @@ def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, poli
         nonlocal next_index, next_hedge_at
         if next_index >= len(selected) or len(pending) >= max_parallel:
             return False
+        if not _HEAVY_ROUTE_SLOTS.acquire(blocking=False):
+            next_index = len(selected)
+            return False
         cfg, _status = selected[next_index]
         rank = next_index + 1
         next_index += 1
@@ -1025,6 +1040,7 @@ def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, poli
             _call_route_node, cfg, job_payload, prefetch, headers,
             float(policy.get("node_timeout_s") or VANO_NODE_ROUTE_TIMEOUT), rank,
         )
+        fut.add_done_callback(lambda done: _HEAVY_ROUTE_SLOTS.release())
         pending[fut] = cfg
         next_hedge_at = time.monotonic() + hedge_delay
         return True
@@ -1074,14 +1090,14 @@ def _dispatch_heavy_route(job_payload, candidates, prefetch, meta, headers, poli
                     # and release their reservation/cooldown state themselves.
                     for other in list(pending):
                         other.cancel()
-                    pool.shutdown(wait=False, cancel_futures=True)
                     return result, meta
                 immediate_replacement = True
             if immediate_replacement and next_index < len(selected) and len(pending) < max_parallel:
                 launch_one()
     finally:
         # Do not block the request waiting for already-running hedges.
-        pool.shutdown(wait=False, cancel_futures=True)
+        for future in list(pending):
+            future.cancel()
 
     meta["fallback"] = True
     meta["reason"] = "heavy_nodes_unavailable"

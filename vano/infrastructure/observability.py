@@ -149,6 +149,12 @@ def _activity_log_worker():
                         # Audit logging must never take the app down.
                         break
         finally:
+            if db is not None:
+                try:
+                    db.close()
+                except Exception:
+                    pass
+                db = None
             for _ in batch:
                 ACTIVITY_LOG_QUEUE.task_done()
 
@@ -308,6 +314,12 @@ def _user_access_worker():
                 db = None
                 app.logger.exception("Could not persist authenticated user IP")
         finally:
+            if db is not None:
+                try:
+                    db.close()
+                except Exception:
+                    pass
+                db = None
             USER_ACCESS_QUEUE.task_done()
 
 

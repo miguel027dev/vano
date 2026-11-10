@@ -1,3 +1,4 @@
+import {readLimitedText} from './read-limited.mjs';
 /** VANO Global Map Features. Overpass is a small-area source, not planet-scale hosting.
  * For large production demand, import OSM extracts into a managed spatial store.
  * OSM data must remain attributed: https://www.openstreetmap.org/copyright
@@ -147,7 +148,7 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
          'User-Agent':'VANO Maps public road-safety map (https://vanomaps.online)'
        },body:query,signal:AbortSignal.timeout(index?8500:7500)});
        if(!response.ok)throw Error('Overpass status '+response.status);
-       const data=await response.json();
+       const data=JSON.parse(await readLimitedText(response,6*1024*1024));
        if(!Array.isArray(data?.elements))throw Error('Resposta Overpass inválida');
        return {features:normalizeOsmElements(data.elements),source:'OpenStreetMap',
          attribution:OSM_ATTRIBUTION,licenseUrl:'https://www.openstreetmap.org/copyright',

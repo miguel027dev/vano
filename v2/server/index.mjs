@@ -20,6 +20,7 @@ import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import {once} from 'node:events';
+import {pipeline} from 'node:stream';
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 const scryptAsync=promisify(scrypt);
@@ -250,11 +251,18 @@ function userSession(req) {
 function currentUser(req) { return safeUser(userSession(req)?.user); }
 function guestToken(req) {
   const value = req.vanoGuest || cookie(req, 'vano_guest');
-  return /^[a-f0-9]{32}$/.test(value) ? value : null;
+  // Guest IDs must be authenticated, otherwise a caller can impersonate
+  // arbitrary guests and cast votes against their own community report.
+  const payload = openSignedToken(secret, value);
+  return payload?.type === 'guest' &&
+    /^[a-f0-9]{32}$/.test(payload.id) &&
+    Number.isFinite(payload.expires) &&
+    payload.expires > now() && payload.expires <= now() + 604800000
+    ? payload.id : null;
 }
 function guestCookie(req) {
   if (userSession(req) || guestToken(req)) return null;
-  req.vanoGuest = hex(16);
+  req.vanoGuest = signedToken(secret, { type: 'guest', id: hex(16), expires: now() + 604800000 });
   return setCookie('vano_guest', req.vanoGuest, 604800);
 }
 function owner(req) {
@@ -286,6 +294,7 @@ function createSession(userId) {
   db.sessions = db.sessions.filter(s => s.expires > now());
   const own=db.sessions.filter(s=>s.userId===userId).sort((a,b)=>a.expires-b.expires);
   if(own.length>=10){const oldest=new Set(own.slice(0,own.length-9));db.sessions=db.sessions.filter(s=>!oldest.has(s));}
+  if(db.sessions.length>=25000)throw new HttpError(503,'Limite temporário de sessões. Tente novamente.');
   const raw = token();
   db.sessions.push({ tokenHash: sha256(raw), userId, expires: now() + SESSION_MAX_AGE*1000, createdAt: stamp() });
   return raw;
@@ -329,7 +338,12 @@ function getBody(req) {
     let bytes = 0, chunks = [], overflow = false;
     req.on('data', ch => {
       bytes += ch.length;
-      if (bytes > 32768) { if (!overflow) { overflow = true; reject(new HttpError(413, 'Dados muito grandes.')); } chunks = []; return; }
+      if (bytes > 32768) {
+        if (!overflow) { overflow = true; reject(new HttpError(413, 'Dados muito grandes.')); }
+        chunks = [];
+        if(bytes>65536)req.destroy();
+        return;
+      }
       if (!overflow) chunks.push(ch);
     });
     req.on('end', () => {
@@ -356,7 +370,7 @@ function getAudioBytes(req,max=2_500_000){
    req.on('data',chunk=>{
      if(failed)return;
      size+=chunk.length;
-     if(size>max){failed=true;reject(new HttpError(413,'Áudio maior que o limite de 2,5 MB.'));return;}
+     if(size>max){failed=true;reject(new HttpError(413,'Áudio maior que o limite de 2,5 MB.'));req.destroy();return;}
      chunks.push(chunk);
    });
    req.on('end',()=>{if(!failed)resolve(Buffer.concat(chunks));});
@@ -519,15 +533,18 @@ function requestHTTPS(req, res) {
 }
 const devSync=createDevSync({db,persist,json,err,getBody,protectedWrite,userSession,isAdminAccount,limits,
   persistent:store.persistent===true});
+let partnerHtmlCache=null,partnerSdkCache=null;
+const partnerHTML=()=>partnerHtmlCache??=fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8');
+const partnerSdkPath=()=>partnerSdkCache??='/assets/'+fs.readdirSync(path.join(root,'dist','assets')).find(x=>/^partner-sdk-.*\.js$/.test(x));
 const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persistent:store.persistent===true,headers,
  enabled:process.env.VANO_PARTNER_API_ENABLED!=='0',
  admin:req=>isAdminAccount(userSession(req)?.user),csrfGuard:protectedWrite,
  services:{
   routingReady:()=>Boolean(process.env.VANO_V1_API_URL||process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN),
   mapToken:()=>process.env.VITE_MAPBOX_PUBLIC_TOKEN||'',
-  embedHTML:()=>fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8'),
-  sdkPath:()=>'/assets/'+fs.readdirSync(path.join(root,'dist','assets')).find(x=>/^partner-sdk-.*\.js$/.test(x)),
-  stylesheets:()=>[...fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8').matchAll(/href="([^"]+\.css)"/g)].map(x=>new URL(x[1],origin||'http://localhost:8878').href),
+  embedHTML:()=>partnerHTML(),
+  sdkPath:partnerSdkPath,
+  stylesheets:()=>[...partnerHTML().matchAll(/href="([^"]+\.css)"/g)].map(x=>new URL(x[1],origin||'http://localhost:8878').href),
   reportPublished:record=>reportStreams.publish(record),
   capabilities:()=>({transit_enabled:process.env.VANO_TRANSIT_ENABLED==='1',
    safety_notice:'Safe é uma preferência de cálculo, não uma garantia de segurança.',
@@ -1058,7 +1075,14 @@ async function route(req, res) {
       if(pruneSupport(db))await persist();
       const body=await getBody(req);
       const result=pathname==='/api/support'?createSupportTicket(db,body):supportStatus(db,body.receipt);
-      if(pathname==='/api/support')await persist();
+      if(pathname==='/api/support'){
+        try{await persist();}
+        catch(error){
+          const receiptHash=sha256(result.receipt);
+          db.supportTickets=db.supportTickets.filter(ticket=>ticket.receiptHash!==receiptHash);
+          throw error;
+        }
+      }
       return json(res,pathname==='/api/support'?201:200,result,{'Cache-Control':'no-store'});
     }catch(error){return err(res,error.status||503,error.status?error.message:'Não foi possível consultar o suporte. Tente novamente.');}
   }
@@ -1069,7 +1093,16 @@ async function route(req, res) {
     try{
       if(pruneSupport(db))await persist();
       if(req.method==='GET')return json(res,200,{tickets:supportInbox(db,Date.now(),{offset:u.searchParams.get('offset')}),total:db.supportTickets.length}, {'Cache-Control':'no-store'});
-      const body=await getBody(req);const result=replySupport(db,pathname.split('/')[4],body.reply);await persist();return json(res,200,result,{'Cache-Control':'no-store'});
+      const body=await getBody(req);
+       const ticket=db.supportTickets.find(t=>t.id===pathname.split('/')[4]);
+       const previous=ticket?{reply:ticket.reply,status:ticket.status,repliedAt:ticket.repliedAt}:null;
+       const result=replySupport(db,pathname.split('/')[4],body.reply);
+       try{await persist();}
+       catch(error){
+         if(ticket&&previous)Object.assign(ticket,previous);
+         throw error;
+       }
+       return json(res,200,result,{'Cache-Control':'no-store'});
     }catch(error){return err(res,error.status||503,error.status?error.message:'Não foi possível atualizar o suporte.');}
   }
   if(pathname==='/api/help/ask'&&req.method==='POST'){
@@ -1909,6 +1942,7 @@ async function route(req, res) {
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);if(!cleanText(b.name,90)||!pointOK(b.coords))return err(res,400,'Local inválido.');
     if(!listCap(db.favorites,id,100))return err(res,429,'Limite de lugares favoritos atingido.');
+    if(db.favorites.length>=25000)return err(res,503,'Limite temporário de favoritos atingido.');
     const rec={id:hex(8),owner:id,name:cleanText(b.name,90),address:cleanText(b.address,180),category:cleanText(b.category,30),coords:b.coords,createdAt:stamp()};db.favorites.push(rec);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/favorites/')&&req.method==='DELETE'){
@@ -1973,6 +2007,7 @@ async function route(req, res) {
     // Preserve legacy categories during rollout for old clients.
     const legacy=['obra','risco','radar'].includes(b.type);
     if(!pointOK(b.coords)||(!isReportType(b.type)&&!legacy))return err(res,400,'Dados da ocorrência inválidos.');
+    if(db.reports.length>=5000)return err(res,503,'Limite temporário de relatos atingido.');
     if(!listCap(db.reports,id,40))return err(res,429,'Limite de relatos desta conta atingido.');
     const duplicated=db.reports.some(r=>r.owner===id&&r.type===b.type&&
       Date.now()-Date.parse(r.createdAt)<15*60000&&metersApart(r.coords,b.coords)<150);
@@ -2049,7 +2084,10 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     const sdkAsset=requestPath.startsWith('/assets/')||requestPath.startsWith('/mapbox/');
     res.writeHead(200,{...headers,...(sdkAsset?{'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}:{}),...(voiceDocument?{'Permissions-Policy':'camera=(), microphone=(self), payment=(), geolocation=(self)'}:{}),'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
     if(method==='HEAD')return res.end();
-    fs.createReadStream(target).pipe(res);
+    pipeline(fs.createReadStream(target),res,streamError=>{
+      if(streamError && !['ERR_STREAM_PREMATURE_CLOSE','ECONNRESET'].includes(streamError.code))
+        console.warn('VANO static asset stream failed:',streamError.code||'read_error');
+    });
   }catch(e){
     console.error('VANO HTTP error:',e instanceof HttpError?e.message:(e?.stack||String(e)));
     if(!res.headersSent)return err(res,e instanceof HttpError?e.status:500,e instanceof HttpError?e.message:'Erro interno do servidor.');
@@ -2060,7 +2098,31 @@ const host=process.env.API_HOST||'127.0.0.1';
 // Render terminates TLS at its reverse proxy and requires 0.0.0.0:$PORT binding.
  // Do not accept public bind addresses outside the trusted Render runtime.
  if(production && !['127.0.0.1','::1','localhost'].includes(host) && !(renderWeb && host==='0.0.0.0')) throw Error('O backend de produção deve ficar privado ou protegido pelo proxy HTTPS do Render.');
-if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
+if(process.env.VANO_DISABLE_AUTOSTART!=='1'){
+ server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
+ // Drain existing requests on Render SIGTERM instead of killing an in-flight
+ // PostgreSQL snapshot write. A bounded deadline prevents a stuck deployment.
+ let stopping=false;
+ const stopGracefully=()=>{
+  if(stopping)return;
+  stopping=true;
+  const deadline=setTimeout(()=>process.exit(1),12000);
+  server.close(async error=>{
+   try{
+    await store.close?.();
+    clearTimeout(deadline);
+    process.exit(error?1:0);
+   }catch{
+    clearTimeout(deadline);
+    console.error('VANO shutdown: failed to flush persistent storage.');
+    process.exit(1);
+   }
+  });
+  server.closeIdleConnections?.();
+ };
+ process.once('SIGTERM',stopGracefully);
+ process.once('SIGINT',stopGracefully);
+}
 // The scheduled job shares the persistent server store, but never touches users' routes.
 // Results are published as soon as a verified measurement is saved; no deploy per run.
 if(production&&store.persistent===true&&process.env.VANO_DISABLE_AUTOSTART!=='1'&&

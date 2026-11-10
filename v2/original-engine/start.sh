@@ -12,6 +12,9 @@ if [[ -z "${MAPBOX_ACCESS_TOKEN:-}" ]]; then
   exit 78
 fi
 
+if [[ -z "${VANO_INTERNAL_BRIDGE_SECRET:-}" || ${#VANO_INTERNAL_BRIDGE_SECRET} -lt 32 ]]; then
+  export VANO_INTERNAL_BRIDGE_SECRET="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+fi
 export VANO_SKIP_DB_INIT=1
 export VANO_KEEPALIVE_ENABLED=0
 export VANO_PUBLIC_BENCHMARK_ENABLED=0
@@ -24,7 +27,10 @@ export VANO_V1_API_URL="http://127.0.0.1:${VANO_ORIGINAL_ENGINE_PORT}"
 export API_HOST="${API_HOST:-0.0.0.0}"
 export PUBLIC_SITE_URL="${PUBLIC_SITE_URL:-${VANO_PUBLIC_ORIGIN:-https://vanomaps.online}}"
 
-python -m gunicorn app:app \
+# Run schema initialization before health probes; never start routing against an
+# incomplete PostgreSQL schema.
+VANO_DB_INIT_ONLY=1 python -c 'from app import init_db_with_retry; init_db_with_retry()'
+python -m gunicorn -c gunicorn.conf.py app:app \
   --bind "127.0.0.1:${VANO_ORIGINAL_ENGINE_PORT}" \
   --workers 1 --threads 4 --timeout 95 \
   --access-logfile - --error-logfile - &

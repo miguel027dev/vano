@@ -58,10 +58,7 @@ export function createDevSync({db,persist,json,err,getBody,protectedWrite,userSe
      progress:'Post progress and decisions while working; renew lease before 15 minutes.',
      handoff:'Finish with branch, PR/commit, tests and pending issues.'}
  });
- const save=async(res,status,payload)=>{
-   try{await persist();json(res,status,payload);}
-   catch{err(res,503,'Não foi possível persistir o registro DevSync.');}
- };
+ let writing=false;
  async function handle(req,res,pathname){
    const isAdmin=pathname==='/api/admin/dev-sync'||pathname.startsWith('/api/admin/dev-sync/');
    const isAgent=pathname==='/api/agent/dev-sync'||pathname.startsWith('/api/agent/dev-sync/');
@@ -85,6 +82,18 @@ export function createDevSync({db,persist,json,err,getBody,protectedWrite,userSe
    const method=req.method;
    if(method!=='GET'&&method!=='POST'){err(res,405,'Método não permitido.');return true;}
    if(method==='POST'&&isAdmin&&!protectedWrite(req,res))return true;
+   // DevSync is single-instance: serialize its write handlers so an aborted
+   // persist cannot roll back a later successful claim or key rotation.
+   if(method==='POST'&&writing){err(res,409,'Outra atualização DevSync está em andamento.');return true;}
+   if(method==='POST')writing=true;
+   const before=method==='POST'?structuredClone(state):null;
+   const save=async(res,status,payload)=>{
+     try{await persist();json(res,status,payload);}
+     catch{
+       if(before)for(const key of Object.keys(before))state[key]=before[key];
+       err(res,503,'Não foi possível persistir o registro DevSync.');
+     }
+   };
    let sub=pathname.replace(/^\/api\/(?:admin|agent)\/dev-sync/,'')||'/';
    try{
      if((sub==='/'||sub==='/handoff'||sub==='/snapshot')&&method==='GET'){
@@ -181,6 +190,8 @@ export function createDevSync({db,persist,json,err,getBody,protectedWrite,userSe
    }catch(e){
      if(e instanceof Error&&/^(Campo|Verifique|Área inválida)/.test(e.message)){err(res,400,e.message);return true;}
      throw e;
+   }finally{
+     if(method==='POST')writing=false;
    }
  }
  return {handle,snapshot};

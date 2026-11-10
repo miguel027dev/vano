@@ -425,7 +425,7 @@ def api_alerts():
         except Exception:
             age_h = 24.0
         confirmations = int(r["confirmations"] or 0)
-        absence_votes = int(r.get("absence_votes") or 0)
+        absence_votes = int(_row_value(r, "absence_votes", 0) or 0)
         confidence = int(clamp(48 + confirmations*12 - absence_votes*15 - min(28, age_h*2.2), 5, 99))
         snapped = snap_updates.get(int(r["id"])) if snap_updates else None
         # Never render a legacy raw-GPS report off-road. If an older row cannot
@@ -689,6 +689,7 @@ def api_road_awareness():
         # o cache persistido, se existir, e os demais controles viários.
         app.logger.warning("Radar discovery degraded: %s", type(exc).__name__)
         try:
+            get_db().rollback()
             radar_meta["items"] = query_radars(get_db(), lat, lon, radius)
         except Exception:
             radar_meta["items"] = []
@@ -932,7 +933,7 @@ def event_route_check():
         abort(400)
     if not VANO_EVENT_INTELLIGENCE_ENABLED:
         return jsonify({"active":False,"enabled":False,"events":[],"recommend":False})
-    if not rate_limit("event_route_check", 10, 60):
+    if not rate_limit("event_route_check", 4, 60):
         return jsonify({"error":"Checagens de evento muito frequentes."}),429
     payload=request.get_json(silent=True) or {}
     try:
@@ -1025,7 +1026,7 @@ def event_route_check():
 def traffic_recommendation():
     if not validate_csrf():
         abort(400)
-    if not rate_limit("traffic_recommendation", 20, 60):
+    if not rate_limit("traffic_recommendation", 4, 60):
         return jsonify({"error": "Atualização de trânsito em intervalo muito curto."}), 429
     payload = request.get_json(silent=True) or {}
     try:

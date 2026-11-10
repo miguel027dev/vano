@@ -39,6 +39,7 @@ export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20
       clearTimeout(lifetime);
       peers.delete(peer);
     }
+    peer.close=close;
     res.once('close',close);
     res.once('error',close);
     req.once('aborted',close);
@@ -49,12 +50,12 @@ export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20
     let count=0;
     for(const peer of peers){
       if(!pointInsideBBox(record.coords,peer.bbox))continue;
-      if(peer.res.destroyed||peer.res.writableEnded){peers.delete(peer);continue;}
+      if(peer.res.destroyed||peer.res.writableEnded){peer.close?.();continue;}
       try{
         // Send only an invalidation signal, not individual report details.
         peer.res.write('event: reports-changed\ndata: {}\n\n');
         count++;
-      }catch{peers.delete(peer);}
+      }catch{peer.close?.();}
     }
     return count;
   }

@@ -20,8 +20,12 @@ test('a real active guest navigation receives a new Cartesia proof after ten min
   const bootstrap=await fetch(base+'/api/bootstrap');
   const data=await bootstrap.json();
   const cookie=(bootstrap.headers.get('set-cookie')||'').split(';')[0];
-  assert.match(cookie,/^vano_guest=[a-f0-9]{32}$/);
-  const owner='guest:'+cookie.slice('vano_guest='.length);
+  assert.match(cookie,/^vano_guest=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  const guest=openSignedToken(process.env.VANO_SECURITY_SECRET,cookie.slice('vano_guest='.length));
+  assert.equal(guest?.type,'guest');
+  assert.match(guest?.id||'',/^[a-f0-9]{32}$/);
+  assert.ok(guest.expires>Date.now());
+  const owner='guest:'+guest.id;
   const sign=(overrides={})=>signedToken(process.env.VANO_SECURITY_SECRET,{
    type:'trip',nonce:'a'.repeat(24),user:owner,kind:'safe',
    dest:[-46.7,-23.6],mins:15,km:8,

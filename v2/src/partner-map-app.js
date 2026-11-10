@@ -132,7 +132,7 @@ export async function mountPartnerMap(container,{session,apiBase,token,onEvent=(
     const service=new URL(path,'https://map.invalid').pathname.replace(/^\/api\//,'');
     return enabledServices.has(service)?client.overlayRequest(path,options):Promise.resolve({ok:true,status:200,json:async()=>({features:[],available:true})});
    };
-   overlay=enabledServices.length?attachPublicMapOverlay(map,'mapbox',()=>false,p=>void setDestination(p),()=>false,()=>null,{
+   overlay=enabledServices.size>0?attachPublicMapOverlay(map,'mapbox',()=>false,p=>void setDestination(p),()=>false,()=>null,{
     request:overlayRequest,featureAllowed:item=>filterPartnerMapFeatures([item],data.layer_scopes||[]).length>0
    }):null;if(routes.length)draw(true);notify('ready',{features:data.features,external_controls:$('.vano-partner-panel').hidden});});
   if(!data.features.search)for(const input of root.querySelectorAll('input'))input.disabled=true;$('[data-action="route"]').disabled=!data.features.directions;schedule(data);if(window.parent!==window)window.addEventListener('message',onMessage);

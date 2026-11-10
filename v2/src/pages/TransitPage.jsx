@@ -24,7 +24,7 @@ function PlaceSearch({label,selected,onSelect,allowGps=false}){
  const [text,setText]=useState(selected?.name||''),[hits,setHits]=useState([]),[busy,setBusy]=useState(false),[focused,setFocused]=useState(false),[message,setMessage]=useState('');
  useEffect(()=>{if(selected?.name)setText(selected.name);},[selected?.name]);
  useEffect(()=>{
-  if(!focused||selected||text.trim().length<2){setHits([]);return;}
+  if(!focused||selected||text.trim().length<2){setHits([]);setBusy(false);return;}
   const timer=setTimeout(()=>{
    const controller=new AbortController();setBusy(true);
    api('/search?q='+encodeURIComponent(text.trim())+'&lang=pt-BR',{signal:controller.signal})
@@ -34,7 +34,7 @@ function PlaceSearch({label,selected,onSelect,allowGps=false}){
    activeController=controller;
   },300);
   let activeController=null;
-  return()=>{clearTimeout(timer);activeController?.abort();};
+  return()=>{clearTimeout(timer);activeController?.abort();setBusy(false);};
  },[text,selected,focused]);
  const gps=()=>{
   if(!navigator.geolocation){setMessage('GPS indisponível neste navegador.');return;}
@@ -109,7 +109,9 @@ export default function TransitPage(){
   e.preventDefault();if(!from||!to)return;
   setLoading(true);setError('');setResult(null);setSelected(0);
   try{
-   const request={origin:from.coords,destination:to.coords,sort,...(depart?{departAt:new Date(depart).toISOString()}:{})};
+   const departDate=depart?new Date(depart):null;
+   if(departDate&&!Number.isFinite(departDate.getTime()))throw Error('Data e horário de partida inválidos.');
+   const request={origin:from.coords,destination:to.coords,sort,...(departDate?{departAt:departDate.toISOString()}:{})};
    const response=await post('/transit/plan',request);setResult(response);
    if(!response.itineraries?.length)setError('Nenhuma viagem disponível neste horário. Experimente outra data ou estação.');
   }catch(e){setError(e.message||'Não foi possível calcular esta viagem.');}

@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import re
 import time
+import threading
 from urllib.parse import urlparse
 
 try:
@@ -88,13 +89,16 @@ def database_url() -> str:
 def _rewrite_sql(sql: str) -> str:
     """Translate the tiny legacy query dialect still used by application call sites."""
     rewritten = _LIMIT_MINUS_ONE_RE.sub(r"OFFSET \1", str(sql))
-    rewritten = _QMARK_RE.sub("%s", rewritten)
+    if "?" in rewritten:
+        # psycopg2 interprets literal % in LIKE and expressions when params are bound.
+        rewritten = _QMARK_RE.sub("%s", rewritten.replace("%", "%%"))
     return rewritten
 
 
 _POOL = None
 _POOL_LOCK = __import__("threading").Lock()
 _POOL_LAST_RETURNED = {}
+_POOL_SEMAPHORE = None
 
 def _pool_limits() -> tuple[int, int]:
     minconn = max(1, min(8, int(os.environ.get("DATABASE_POOL_MIN", "1") or 1)))
@@ -102,7 +106,7 @@ def _pool_limits() -> tuple[int, int]:
     return minconn, maxconn
 
 def _get_pool():
-    global _POOL
+    global _POOL, _POOL_SEMAPHORE
     if _POOL is not None:
         return _POOL
     if ThreadedConnectionPool is None:
@@ -115,6 +119,7 @@ def _get_pool():
                 connect_timeout=max(3, min(30, int(os.environ.get("DATABASE_CONNECT_TIMEOUT", "10") or 10))),
                 application_name="vano-maps",
             )
+            _POOL_SEMAPHORE = threading.BoundedSemaphore(maxconn)
     return _POOL
 
 class CursorProxy:
@@ -199,6 +204,8 @@ class PostgresDB:
                     _POOL_LAST_RETURNED.pop(id(self._connection), None)
                 else:
                     _POOL_LAST_RETURNED[id(self._connection)] = time.monotonic()
+                if _POOL_SEMAPHORE is not None:
+                    _POOL_SEMAPHORE.release()
                 return
             except Exception:
                 pass
@@ -206,6 +213,9 @@ class PostgresDB:
             self._connection.close()
         except Exception:
             pass
+        finally:
+            if self._pool is not None and _POOL_SEMAPHORE is not None:
+                _POOL_SEMAPHORE.release()
 
 
 def connect_db() -> PostgresDB:
@@ -214,7 +224,14 @@ def connect_db() -> PostgresDB:
             "psycopg2 não está instalado. Execute pip install -r requirements.txt antes de iniciar o VANO MAPS."
         ) from _IMPORT_ERROR
     pool = _get_pool()
-    connection = pool.getconn()
+    if _POOL_SEMAPHORE is not None and not _POOL_SEMAPHORE.acquire(timeout=3):
+        raise RuntimeError("Pool PostgreSQL ocupado; tente novamente.")
+    try:
+        connection = pool.getconn()
+    except Exception:
+        if _POOL_SEMAPHORE is not None:
+            _POOL_SEMAPHORE.release()
+        raise
     try:
         if connection.closed:
             pool.putconn(connection, close=True)
@@ -239,6 +256,8 @@ def connect_db() -> PostgresDB:
             pool.putconn(connection, close=True)
         except Exception:
             pass
+        if _POOL_SEMAPHORE is not None:
+            _POOL_SEMAPHORE.release()
         raise
 
 

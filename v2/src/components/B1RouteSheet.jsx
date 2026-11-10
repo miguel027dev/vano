@@ -43,7 +43,7 @@ export default function B1RouteSheet({step,vehicle,routeData,choice,loading,erro
           {vehicle!=='a-pe'&&<button type="button" className={choice==='safe'?'is-active':''} onClick={()=>safest&&onChoice(safest.id)} disabled={!safest}
             aria-pressed={choice==='safe'} title={safest&&!safest.verifiedSafety?'Dados de segurança limitados':'Priorizar segurança'}><ShieldCheck size={19} strokeWidth={2.1}/><span>Mais segura</span></button>}
         </div>
-        <div className="b1-trip-facts"><div><strong>{fmtTime(selected.duration)}</strong><small>{fmtKm(selected.distance,language)}</small></div><span>{arrivalLabel(selected.duration)}</span></div>
+        <div className="b1-trip-facts"><div><strong>{fmtTime(selected.duration)}</strong><small>{fmtKm(selected.distance,language)}</small></div><span>{arrivalLabel(selected.durationSeconds ?? (Number(selected.duration)*60))}</span></div>
         <button type="button" className="b1-start-navigation" onClick={onStart}><Navigation size={20} fill="currentColor" strokeWidth={1.5}/><span>Iniciar navegação</span></button>
       </div>:null}
     </>}
