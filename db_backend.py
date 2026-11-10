@@ -204,6 +204,8 @@ class PostgresDB:
                     _POOL_LAST_RETURNED.pop(id(self._connection), None)
                 else:
                     _POOL_LAST_RETURNED[id(self._connection)] = time.monotonic()
+                if _POOL_SEMAPHORE is not None:
+                    _POOL_SEMAPHORE.release()
                 return
             except Exception:
                 pass
