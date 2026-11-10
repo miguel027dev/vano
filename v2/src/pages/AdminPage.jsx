@@ -157,7 +157,7 @@ export default function AdminPage(){
     <SectionLink area="apis-outbound" icon={Network} active={activeSection==='apis-outbound'} onSelect={openArea}>APIs consumidas</SectionLink>
     <SectionLink area="apis-partners" icon={Plug} active={activeSection==='apis-partners'} onSelect={openArea}>APIs de parceiros</SectionLink>
     <SectionLink area="support" icon={Headset} active={activeSection==='support'} onSelect={openArea}>Atendimento</SectionLink>
-    <SectionLink area="settings" icon={Settings2}>Configurações</SectionLink>
+    <SectionLink area="settings" icon={Settings2} active={activeSection==='settings'} onSelect={openArea}>Configurações</SectionLink>
    </nav>
    <div className="vanu-control-bottom">
     <SectionLink area="map" icon={Compass} active={activeSection==='map'} onSelect={openArea}>Mapa principal</SectionLink>
