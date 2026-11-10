@@ -2098,7 +2098,31 @@ const host=process.env.API_HOST||'127.0.0.1';
 // Render terminates TLS at its reverse proxy and requires 0.0.0.0:$PORT binding.
  // Do not accept public bind addresses outside the trusted Render runtime.
  if(production && !['127.0.0.1','::1','localhost'].includes(host) && !(renderWeb && host==='0.0.0.0')) throw Error('O backend de produção deve ficar privado ou protegido pelo proxy HTTPS do Render.');
-if(process.env.VANO_DISABLE_AUTOSTART!=='1')server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
+if(process.env.VANO_DISABLE_AUTOSTART!=='1'){
+ server.listen(port,host,()=>console.log(`VANO API: http://${host}:${port} (${production?'production':'development'})`));
+ // Drain existing requests on Render SIGTERM instead of killing an in-flight
+ // PostgreSQL snapshot write. A bounded deadline prevents a stuck deployment.
+ let stopping=false;
+ const stopGracefully=()=>{
+  if(stopping)return;
+  stopping=true;
+  const deadline=setTimeout(()=>process.exit(1),12000);
+  server.close(async error=>{
+   try{
+    await store.close?.();
+    clearTimeout(deadline);
+    process.exit(error?1:0);
+   }catch{
+    clearTimeout(deadline);
+    console.error('VANO shutdown: failed to flush persistent storage.');
+    process.exit(1);
+   }
+  });
+  server.closeIdleConnections?.();
+ };
+ process.once('SIGTERM',stopGracefully);
+ process.once('SIGINT',stopGracefully);
+}
 // The scheduled job shares the persistent server store, but never touches users' routes.
 // Results are published as soon as a verified measurement is saved; no deploy per run.
 if(production&&store.persistent===true&&process.env.VANO_DISABLE_AUTOSTART!=='1'&&
