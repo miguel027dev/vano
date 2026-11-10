@@ -4,6 +4,7 @@
  * Dataset snapshot age is UNKNOWN, and records must never be called verified.
  */
 import {parseBBox} from './map-public-data.mjs';
+import {readLimitedText} from './read-limited.mjs';
 import {radarDisplayAllowed} from '../src/lib/radarPolicy.js';
 
 export const WORLD_CAMERA_EXPORT='https://speedcams.world/downloads/world/world-all.csv';
@@ -122,8 +123,7 @@ async function fetchSnapshot(state,{fetcher=fetch,now=Date.now}={}){
    if(!response.ok)throw Error('HTTP '+response.status);
    const length=Number(response.headers?.get?.('content-length')||0);
    if(length>MAX_EXPORT_BYTES)throw Error('World radar export exceeds maximum size');
-   const body=await response.text();
-   if(body.length>MAX_EXPORT_BYTES)throw Error('World radar export exceeds maximum size');
+   const body=await readLimitedText(response,MAX_EXPORT_BYTES);
    const rows=state.id==='world'?parseWorldCameraCsv(body):parseUkCameraJson(JSON.parse(body));
    // Reject malformed or truncated feeds; never overwrite a good old snapshot.
    if(rows.length<(state.id==='world'?1000:300))throw Error('Too few mapped cameras: '+rows.length);
