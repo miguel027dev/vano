@@ -7,6 +7,8 @@ import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 const dataPath=fileURLToPath(new URL('../seo/public-benchmark-records.json',import.meta.url));
+let curatedSnapshot=null;
+const curatedRecords=()=>curatedSnapshot??=(JSON.parse(fs.readFileSync(dataPath,'utf8'))?.records||[]);
 const CATEGORIES=new Set(['centro','residencial','avenidas','travessias','congestionamento']);
 const SOURCES=new Set(['vano_fastest','google_maps']);
 const numeric=x=>typeof x==='number'&&Number.isFinite(x)&&x>=0?x:null;
@@ -50,8 +52,7 @@ export function publicBenchmarkPayload({query=new URLSearchParams(),now=new Date
   if(!['7d','30d','all'].includes(period))period='30d';
   if(!Number.isSafeInteger(page)||page<1)page=1;
   page=Math.min(10000,page);
-  const raw=JSON.parse(fs.readFileSync(dataPath,'utf8'));
-  const rows=validatedPublicBenchmarks([...(raw?.records||[]),...(Array.isArray(records)?records:[])].slice(-2000));
+  const rows=validatedPublicBenchmarks([...curatedRecords(),...(Array.isArray(records)?records:[])].slice(-2000));
   const cutoff=period==='all'?null:now.getTime()-(period==='7d'?7:30)*86400000;
   const filtered=rows.filter(r=>(source==='all'||r.reference.source===source)&&(!category||r.category===category)&&(!cutoff||Date.parse(r.measuredAt)>=cutoff));
   const eta=filtered.map(r=>r.delta.etaMin).filter(n=>n!==null),pct=filtered.map(r=>r.delta.etaPercent).filter(n=>n!==null);
