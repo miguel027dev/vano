@@ -20,6 +20,7 @@ import net from 'node:net';
 import fs from 'node:fs';
 import path from 'node:path';
 import {once} from 'node:events';
+import {pipeline} from 'node:stream';
 import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 const scryptAsync=promisify(scrypt);
@@ -2049,7 +2050,10 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     const sdkAsset=requestPath.startsWith('/assets/')||requestPath.startsWith('/mapbox/');
     res.writeHead(200,{...headers,...(sdkAsset?{'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}:{}),...(voiceDocument?{'Permissions-Policy':'camera=(), microphone=(self), payment=(), geolocation=(self)'}:{}),'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
     if(method==='HEAD')return res.end();
-    fs.createReadStream(target).pipe(res);
+    pipeline(fs.createReadStream(target),res,streamError=>{
+      if(streamError && !['ERR_STREAM_PREMATURE_CLOSE','ECONNRESET'].includes(streamError.code))
+        console.warn('VANO static asset stream failed:',streamError.code||'read_error');
+    });
   }catch(e){
     console.error('VANO HTTP error:',e instanceof HttpError?e.message:(e?.stack||String(e)));
     if(!res.headersSent)return err(res,e instanceof HttpError?e.status:500,e instanceof HttpError?e.message:'Erro interno do servidor.');
