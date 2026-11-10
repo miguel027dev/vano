@@ -231,16 +231,44 @@ def _cached_bulk(name: str, loader: Callable[[], list[dict[str, Any]]], ttl: int
         return items
 
 
+MAX_RADAR_FEED_BYTES = 16 * 1024 * 1024
+
+
+def _bounded_radar_body(response, max_bytes=MAX_RADAR_FEED_BYTES) -> bytes:
+    pieces, total = [], 0
+    if hasattr(response, "iter_content"):
+        for piece in response.iter_content(chunk_size=65536):
+            if not piece:
+                continue
+            total += len(piece)
+            if total > max_bytes:
+                raise ValueError("Radar feed exceeds safe byte budget")
+            pieces.append(piece)
+        return b"".join(pieces)
+    raw = response.content
+    if len(raw) > max_bytes:
+        raise ValueError("Radar feed exceeds safe byte budget")
+    return raw
+
+
 def _get_json(url: str, *, params: dict[str, Any] | None = None, timeout: float | None = None) -> Any:
-    r = _SESSION.get(url, params=params, timeout=timeout or RADAR_HTTP_TIMEOUT)
-    r.raise_for_status()
-    return r.json()
+    r = _SESSION.get(url, params=params, timeout=timeout or RADAR_HTTP_TIMEOUT, stream=True)
+    try:
+        r.raise_for_status()
+        return json.loads(_bounded_radar_body(r).decode("utf-8-sig"))
+    finally:
+        if callable(getattr(r, "close", None)):
+            r.close()
 
 
 def _get_text(url: str, *, timeout: float | None = None) -> str:
-    r = _SESSION.get(url, timeout=timeout or RADAR_HTTP_TIMEOUT)
-    r.raise_for_status()
-    return r.content.decode(r.encoding or "utf-8", errors="replace")
+    r = _SESSION.get(url, timeout=timeout or RADAR_HTTP_TIMEOUT, stream=True)
+    try:
+        r.raise_for_status()
+        return _bounded_radar_body(r).decode(r.encoding or "utf-8", errors="replace")
+    finally:
+        if callable(getattr(r, "close", None)):
+            r.close()
 
 
 def fetch_osm(lat: float, lon: float, radius_m: int) -> list[dict[str, Any]]:
@@ -555,6 +583,8 @@ def fetch_dgt_spain(lat: float, lon: float, radius_m: int) -> list[dict[str, Any
         if not urls:
             raise RuntimeError("DGT DATEX resource unavailable")
         xml_text = _get_text(urls[0], timeout=min(12.0, RADAR_HTTP_TIMEOUT + 4))
+        if "<!DOCTYPE" in xml_text.upper() or "<!ENTITY" in xml_text.upper():
+            raise ValueError("External XML declarations are not accepted")
         root = ET.fromstring(xml_text)
         parent = {child: par for par in root.iter() for child in par}
         out = []
