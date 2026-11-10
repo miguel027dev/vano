@@ -527,15 +527,18 @@ function requestHTTPS(req, res) {
 }
 const devSync=createDevSync({db,persist,json,err,getBody,protectedWrite,userSession,isAdminAccount,limits,
   persistent:store.persistent===true});
+let partnerHtmlCache=null,partnerSdkCache=null;
+const partnerHTML=()=>partnerHtmlCache??=fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8');
+const partnerSdkPath=()=>partnerSdkCache??='/assets/'+fs.readdirSync(path.join(root,'dist','assets')).find(x=>/^partner-sdk-.*\\.js$/.test(x));
 const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persistent:store.persistent===true,headers,
  enabled:process.env.VANO_PARTNER_API_ENABLED!=='0',
  admin:req=>isAdminAccount(userSession(req)?.user),csrfGuard:protectedWrite,
  services:{
   routingReady:()=>Boolean(process.env.VANO_V1_API_URL||process.env.MAPBOX_SECRET_TOKEN||process.env.VITE_MAPBOX_PUBLIC_TOKEN),
   mapToken:()=>process.env.VITE_MAPBOX_PUBLIC_TOKEN||'',
-  embedHTML:()=>fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8'),
-  sdkPath:()=>'/assets/'+fs.readdirSync(path.join(root,'dist','assets')).find(x=>/^partner-sdk-.*\.js$/.test(x)),
-  stylesheets:()=>[...fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8').matchAll(/href="([^"]+\.css)"/g)].map(x=>new URL(x[1],origin||'http://localhost:8878').href),
+  embedHTML:()=>partnerHTML(),
+  sdkPath:partnerSdkPath,
+  stylesheets:()=>[...partnerHTML().matchAll(/href="([^"]+\.css)"/g)].map(x=>new URL(x[1],origin||'http://localhost:8878').href),
   reportPublished:record=>reportStreams.publish(record),
   capabilities:()=>({transit_enabled:process.env.VANO_TRANSIT_ENABLED==='1',
    safety_notice:'Safe é uma preferência de cálculo, não uma garantia de segurança.',
