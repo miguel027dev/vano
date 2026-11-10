@@ -933,7 +933,7 @@ def event_route_check():
         abort(400)
     if not VANO_EVENT_INTELLIGENCE_ENABLED:
         return jsonify({"active":False,"enabled":False,"events":[],"recommend":False})
-    if not rate_limit("event_route_check", 10, 60):
+    if not rate_limit("event_route_check", 4, 60):
         return jsonify({"error":"Checagens de evento muito frequentes."}),429
     payload=request.get_json(silent=True) or {}
     try:
@@ -1026,7 +1026,7 @@ def event_route_check():
 def traffic_recommendation():
     if not validate_csrf():
         abort(400)
-    if not rate_limit("traffic_recommendation", 20, 60):
+    if not rate_limit("traffic_recommendation", 4, 60):
         return jsonify({"error": "Atualização de trânsito em intervalo muito curto."}), 429
     payload = request.get_json(silent=True) or {}
     try:
