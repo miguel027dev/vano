@@ -21,5 +21,6 @@ def test_navigation_voice_keeps_speech_eligible_and_sound_settings():
     assert "if(speak(vp.announcement,key))spokenMilestones.add(key)" in src
     assert "if(speak(`${prefix}, ${step.instruction||'siga pela rota'}`,key))spokenMilestones.add(key)" in src
     assert "spokenMilestones.clear();lastSpokenInstruction='';navAudioCooldown.clear()" in src
+    assert "spokenMilestones.delete(key);" in src
     assert "localStorage.setItem('vano-navigation-sound-v1'" in src
     assert "window.VANO_NATIVE_SPEECH?.stop?.()" in src
