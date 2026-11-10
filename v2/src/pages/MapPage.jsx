@@ -1108,7 +1108,7 @@ export default function MapPage({active=true}){
     return result.ok;
   }
   function speakManeuver(text,key=null){
-    if(simActive)return false; // Simulations must not speak real directions.
+    if(simActive)return false; // Simulation must never request spoken directions.
     // Cloud outages / proof renewal cannot silence the next turn. Cool down only
     // cloud retries, not local speech.
     if(jevMode&&route?.proof&&language==='pt-BR'&&Date.now()>=voiceRetryAfterRef.current){
