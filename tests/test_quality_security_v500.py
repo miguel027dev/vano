@@ -69,7 +69,8 @@ def test_all_map_motion_respects_reduced_motion():
 def test_frontend_asset_budgets():
     budgets = {
         "static/vano.css": 2_500_000,
-        "static/vano-map.js": 390_000,
+        # Audio fallback and exact maneuver playback add under 0.5% to the legacy bundle.
+        "static/vano-map.js": 392_000,
         "static/vano-map-fallback.js": 290_000,
         "static/vano-i18n.js": 220_000,
         "templates/index.html": 65_000,
