@@ -529,7 +529,7 @@ const devSync=createDevSync({db,persist,json,err,getBody,protectedWrite,userSess
   persistent:store.persistent===true});
 let partnerHtmlCache=null,partnerSdkCache=null;
 const partnerHTML=()=>partnerHtmlCache??=fs.readFileSync(path.join(root,'dist','partner-map.html'),'utf8');
-const partnerSdkPath=()=>partnerSdkCache??='/assets/'+fs.readdirSync(path.join(root,'dist','assets')).find(x=>/^partner-sdk-.*\\.js$/.test(x));
+const partnerSdkPath=()=>partnerSdkCache??='/assets/'+fs.readdirSync(path.join(root,'dist','assets')).find(x=>/^partner-sdk-.*\.js$/.test(x));
 const partnerAPI=createPartnerAPI({db,persist,secret,origin,production,persistent:store.persistent===true,headers,
  enabled:process.env.VANO_PARTNER_API_ENABLED!=='0',
  admin:req=>isAdminAccount(userSession(req)?.user),csrfGuard:protectedWrite,
