@@ -88,7 +88,9 @@ def database_url() -> str:
 def _rewrite_sql(sql: str) -> str:
     """Translate the tiny legacy query dialect still used by application call sites."""
     rewritten = _LIMIT_MINUS_ONE_RE.sub(r"OFFSET \1", str(sql))
-    rewritten = _QMARK_RE.sub("%s", rewritten)
+    if "?" in rewritten:
+        # psycopg2 interprets literal % in LIKE and expressions when params are bound.
+        rewritten = _QMARK_RE.sub("%s", rewritten.replace("%", "%%"))
     return rewritten
 
 
