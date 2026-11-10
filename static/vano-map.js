@@ -1858,6 +1858,7 @@ function speak(text,key=text){
   const rollback=()=>{
     if(lastSpokenInstruction===key)lastSpokenInstruction='';
     navAudioCooldown.delete(`${kind}:${String(key)}`);
+    spokenMilestones.delete(key);
   };
   const locale=String(BOOT.locale||window.VANO_ACTIVE_LOCALE||'pt-BR');
   let accepted=false;
