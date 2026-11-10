@@ -103,7 +103,7 @@ export default function MapPage({active=true}){
   const voiceTrafficReport=useRef({pending:false,lastAt:0,lastCoords:null});
   const latestEtaGuidance=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
-  const deviceVoiceFocusRef=useRef(null),deviceVoiceSequence=useRef(0);
+  const deviceVoiceFocusRef=useRef(null),deviceVoiceSequence=useRef(0),voiceLocalFailuresRef=useRef(new Map());
   const measuredTrip=useRef(null),odometer=useRef({meters:0,anchor:null,lastSeenAt:null}),distanceSync=useRef(0),tripWrites=useRef(Promise.resolve()),lastWarmGpsWrite=useRef(0);
   function queueTripWrite(item){tripWrites.current=tripWrites.current.catch(()=>{}).then(()=>saveTrip(item)).catch(()=>setToast('Não foi possível salvar a distância percorrida.'));return tripWrites.current;}
   function syncMeasuredDistance(force=false){
@@ -113,7 +113,7 @@ export default function MapPage({active=true}){
   }
   useEffect(()=>{const flush=()=>syncMeasuredDistance(true);window.addEventListener('pagehide',flush);return()=>{window.removeEventListener('pagehide',flush);flush();};},[]);
   useEffect(()=>{if(!active)syncMeasuredDistance(true);},[active]);
-  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[searchViewport,setSearchViewport]=useState(null),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[maviPendingStop,setMaviPendingStop]=useState(null),[maviResuming,setMaviResuming]=useState(false),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[routeError,setRouteError]=useState(''),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(false),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
+  const [telemetry,setTelemetry]=useState({}),[speedSample,setSpeedSample]=useState(null),[recalculating,setRecalculating]=useState(false),[userCoords,setUserCoords]=useState(null),[warmCoords,setWarmCoords]=useState(()=>{try{return readWarmGps(window.localStorage)?.coords||null;}catch{return null;}}),[gpsStatus,setGpsStatus]=useState('checking'),[gpsMessage,setGpsMessage]=useState(''),[gpsClock,setGpsClock]=useState(0),[manualCoords,setManualCoords]=useState(null),[pickOriginMode,setPickOriginMode]=useState(false),[searchViewport,setSearchViewport]=useState(null),[query,setQuery]=useState(''),[suggestions,setSuggestions]=useState([]),[searchBusy,setSearchBusy]=useState(false),[searchError,setSearchError]=useState(''),[allPlaces,setAllPlaces]=useState([]),[searchOpen,setSearchOpen]=useState(false),[dest,setDest]=useState(null),[maviPendingStop,setMaviPendingStop]=useState(null),[maviResuming,setMaviResuming]=useState(false),[routeData,setRouteData]=useState(null),[choice,setChoice]=useState('safe'),[sheetOpen,setSheetOpen]=useState(false),[loadingRoute,setLoadingRoute]=useState(false),[routeError,setRouteError]=useState(''),[navMode,setNavMode]=useState(false),[muted,setMuted]=useState(()=>{try{return window.localStorage.getItem('vano-nav-muted-v1')==='1';}catch{return false;}}),[layer,setLayer]=useState('streets'),[trafficEnabled,setTrafficEnabled]=useState(()=>{try{return window.localStorage.getItem('vano-traffic-layer')!=='off';}catch{return true;}}),[trafficStatus,setTrafficStatus]=useState('loading'),[pointMenu,setPointMenu]=useState(null),[editor,setEditor]=useState(null),[editorQuery,setEditorQuery]=useState(''),[editorResults,setEditorResults]=useState([]),[editorBusy,setEditorBusy]=useState(false),[editorError,setEditorError]=useState(''),[manualLabel,setManualLabel]=useState('Origem selecionada'),[guidance,setGuidance]=useState(null),[currentAddress,setCurrentAddress]=useState(null);
   // Route selection is explicit: the chosen vehicle drives route calculation,
   // navigation marker, and any off-route recalculation.
   const [routeVehicle,setRouteVehicle]=useState(()=>preferences?.vehicle==='moto'?'moto':'carro');
@@ -167,35 +167,25 @@ export default function MapPage({active=true}){
   destRef.current=dest;
   useEffect(()=>{if(!tripBooted.current)setChoice(initialChoice);},[initialChoice]);
   useEffect(()=>{try{window.localStorage.setItem('vano-traffic-layer',trafficEnabled?'on':'off');}catch{/* Private-mode storage unavailable. */}},[trafficEnabled]);
+  useEffect(()=>{try{window.localStorage.setItem('vano-nav-muted-v1',muted?'1':'0');}catch{/* Private-mode storage unavailable. */}},[muted]);
   useEffect(()=>{let dead=false;readOffline('active-trip').then(saved=>{const value=validTrip(saved,user?.id||'guest');if(dead||!value)return;tripBooted.current=true;if(value.measuredTrip?.id){measuredTrip.current=value.measuredTrip;odometer.current={meters:Number(value.measuredTrip.meters)||0,anchor:null,lastSeenAt:null};}setDest(value.destination);setMaviPendingStop(value.maviPendingStop?.originalDestination?.coords?.length===2?value.maviPendingStop:null);setRouteData({routes:[value.route],source:value.source,safetyMessage:value.safetyMessage});setChoice(value.route.id);setRouteVehicle(['carro','moto','a-pe'].includes(value.vehicle)?value.vehicle:preferences?.vehicle==='moto'?'moto':'carro');setLayer(value.layer||'streets');setMuted(!!value.muted);setNavMode(true);setSheetOpen(false);setOfflineMap({status:value.mapPrepared?'ready':'idle',key:value.route.id});if(value.position){setUserCoords(value.position.coords);setTelemetry(value.position.telemetry||{});}spoken.current=new Set(value.spoken||[]);});return()=>{dead=true;};},[user?.id]);
   useEffect(()=>{
     const status=event=>{
       const value=event?.detail?.status,id=event?.detail?.id;
+      const attempt=lastVoiceAttempt.current;
+      // A delayed callback for an earlier turn must not change the current one.
+      if(id&&attempt?.utteranceId&&id!==attempt.utteranceId)return;
       if(id&&deviceVoiceFocusRef.current&&id!==deviceVoiceFocusRef.current.id)return;
-      if(['done','canceled','unavailable','missing-language'].includes(value))releaseDeviceVoiceFocus();
+      if(['done','canceled','unavailable','missing-language'].includes(value))releaseDeviceVoiceFocus(id);
       if(['unavailable','missing-language'].includes(value)){
-        if(lastVoiceAttempt.current?.key){spoken.current.delete(lastVoiceAttempt.current.key);setSpokenRevision(v=>v+1);}
-        setVoiceProblem(true);
+        if(!fallbackNativeGuidance(id))setVoiceProblem(true);
       }else if(['speaking','done'].includes(value))setVoiceProblem(false);
     };
     const nativeFailure=event=>{
       const error=String(event?.detail?.error||'');
-      // Existing Android WebView emits failed TTS here instead of voice-status.
+      // Compatibility with older Android WebViews that report TTS errors here.
       if(!/voz offline indisponível|instale uma voz local/i.test(error))return;
-      if(jevMode){setVoiceProblem(true);return;} // MAVI prioritizes its configured navigation voice; no browser fallback.
-      const attempt=lastVoiceAttempt.current;
-      if(!navMode||muted||!attempt){setVoiceProblem(true);return;}
-      // If the APK has no offline voice, try device/browser Web Speech once.
-      // Never send the failed instruction back to the same Android bridge.
-      const result=speakNavigationVoice(attempt.text,language,{
-        native:false,
-        onStart:()=>setVoiceProblem(false),
-        onFailure:()=>{
-          if(attempt.key)spoken.current.delete(attempt.key);
-          setVoiceProblem(true);
-        }
-      });
-      if(!result.ok)setVoiceProblem(true);
+      if(!fallbackNativeGuidance(lastVoiceAttempt.current?.utteranceId))setVoiceProblem(true);
     };
     window.addEventListener('vano:voice-status',status);
     window.addEventListener('vano:native-dictation',nativeFailure);
@@ -677,7 +667,7 @@ export default function MapPage({active=true}){
       odometer.current={meters:0,anchor:null,lastSeenAt:null};
       distanceSync.current=Date.now();
       if(jevMode)maneuverAudioRef.current?.abort();
-      stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
+      stopActiveGuidance();
       routeEpoch.current++; // Ignore any pending reroute response from the real journey.
       rerouteRequest.current=null;
       setRecalculating(false);
@@ -882,11 +872,11 @@ export default function MapPage({active=true}){
       mapControl.current?.overview?.();return true;
     }
     if(action==='mute_guidance'){
-      setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});return true;
+      setMuted(true);stopActiveGuidance();return true;
     }
     if(action==='resume_original'){void resumeMaviDestination();return true;}
     if(action==='unmute_guidance'){
-      setMuted(false);setVoiceProblem(false);spoken.current.clear();return true;
+      setMuted(false);setVoiceProblem(false);spoken.current.clear();voiceLocalFailuresRef.current.clear();return true;
     }
     return false;
   }
@@ -1068,19 +1058,63 @@ export default function MapPage({active=true}){
     const snapshot={version:1,owner:user?.id||'guest',savedAt:Date.now(),destination:dest,...(maviPendingStop?{maviPendingStop}:{}),route,source:routeData?.source,safetyMessage:routeData?.safetyMessage,vehicle:routeVehicle,layer,muted,measuredTrip:measuredTrip.current?{...measuredTrip.current,meters:odometer.current.meters}:null,mapPrepared:offlineMap.status==='ready',position:userCoords?{coords:userCoords,telemetry}:null,spoken:[...spoken.current]};
     writeOffline('active-trip',snapshot).then(setStorageReady);
   },[navMode,route,dest,maviPendingStop,userCoords?.[0],userCoords?.[1],muted,layer,offlineMap.status,spokenRevision,routeVehicle]);
-  function speakManeuver(text,key=null){
-    if(simActive)return false; // Simulation must never request spoken directions.
-    if(jevMode){
-      // Prefer the configured voice for verified route cues. Android's device
-      // voice remains available when the online voice or route proof expires.
-      if(!route?.proof||language!=='pt-BR'){
-        if(isNativeShell())return speakDeviceManeuver(text,key);
-        setVoiceProblem(true);return false;
+  function markUnheardCue(key){
+    if(!key)return;
+    spoken.current.delete(key);
+    voiceLocalFailuresRef.current.set(key,Date.now()+3500);
+    if(cuePlaybackRef.current?.key===key)cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null,key:null};
+    setSpokenRevision(v=>v+1);
+  }
+  function releaseDeviceVoiceFocus(id=null){
+    const lease=deviceVoiceFocusRef.current;
+    if(!lease||(id&&lease.id!==id))return;
+    deviceVoiceFocusRef.current=null;
+    clearTimeout(lease.timer);
+    lease.release();
+  }
+  function stopActiveGuidance(){
+    maneuverAudioRef.current?.abort();
+    const id=deviceVoiceFocusRef.current?.id;
+    // Target only the navigation utterance; do not cancel MAVI's speech.
+    stopNavigationVoice({native:isNativeShell()&&!!id,
+      sendNative:message=>notifyNative({...message,utteranceId:id})});
+    releaseDeviceVoiceFocus();
+  }
+  function fallbackNativeGuidance(id){
+    const attempt=lastVoiceAttempt.current;
+    if(!navMode||muted||!attempt||attempt.fallbackUsed||!attempt.utteranceId||
+       (id&&attempt.utteranceId!==id))return false;
+    attempt.fallbackUsed=true;
+    releaseDeviceVoiceFocus(attempt.utteranceId);
+    const release=acquireNavigationAudioFocus();
+    const timer=setTimeout(()=>releaseDeviceVoiceFocus(attempt.utteranceId),20000);
+    deviceVoiceFocusRef.current={id:attempt.utteranceId,release,timer};
+    const result=speakNavigationVoice(attempt.text,language,{
+      native:false,
+      onStart:()=>{if(lastVoiceAttempt.current===attempt)setVoiceProblem(false);},
+      onEnd:()=>releaseDeviceVoiceFocus(attempt.utteranceId),
+      onFailure:()=>{
+        if(lastVoiceAttempt.current!==attempt)return;
+        releaseDeviceVoiceFocus(attempt.utteranceId);
+        markUnheardCue(attempt.key);
+        setVoiceProblem(true);
       }
+    });
+    if(!result.ok){
+      releaseDeviceVoiceFocus(attempt.utteranceId);
+      markUnheardCue(attempt.key);
+      setVoiceProblem(true);
+    }
+    return result.ok;
+  }
+  function speakManeuver(text,key=null){
+    if(simActive)return false; // Simulations must not speak real directions.
+    // Cloud outages / proof renewal cannot silence the next turn. Cool down only
+    // cloud retries, not local speech.
+    if(jevMode&&route?.proof&&language==='pt-BR'&&Date.now()>=voiceRetryAfterRef.current){
       if(maneuverAudioRef.current){
         const interrupted=lastVoiceAttempt.current;
         maneuverAudioRef.current.abort();
-        // A canceled voice request was not heard. Keep its cue eligible.
         if(interrupted?.key)spoken.current.delete(interrupted.key);
       }
       lastVoiceAttempt.current={text,key};
@@ -1105,48 +1139,53 @@ export default function MapPage({active=true}){
           if(!controller.signal.aborted){
             if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
             voiceRetryAfterRef.current=Date.now()+12000;
-            if(isNativeShell())speakDeviceManeuver(text,key);
-            else setVoiceProblem(true);
+            // Both the Android app and browser have a local voice path.
+            if(!speakDeviceManeuver(text,key))setVoiceProblem(true);
           }
-        }finally{releaseAudioFocus();if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;}
+        }finally{
+          releaseAudioFocus();
+          if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;
+        }
       })();
       return true;
     }
     return speakDeviceManeuver(text,key);
   }
-  function releaseDeviceVoiceFocus(){
-    const lease=deviceVoiceFocusRef.current;deviceVoiceFocusRef.current=null;
-    if(lease){clearTimeout(lease.timer);lease.release();}
-  }
-  useEffect(()=>()=>releaseDeviceVoiceFocus(),[]);
   function speakDeviceManeuver(text,key=null){
     releaseDeviceVoiceFocus();
     const utteranceId='navigation-'+Date.now()+'-'+(++deviceVoiceSequence.current);
-    if(isNativeShell()){
-      const release=acquireNavigationAudioFocus();
-      const timer=setTimeout(()=>{if(deviceVoiceFocusRef.current?.id===utteranceId){notifyNative({action:'stopSpeech',utteranceId});releaseDeviceVoiceFocus();}},20000);
-      deviceVoiceFocusRef.current={id:utteranceId,release,timer};
-    }
-    lastVoiceAttempt.current={text,key};
+    const release=acquireNavigationAudioFocus();
+    const timer=setTimeout(()=>{
+      if(deviceVoiceFocusRef.current?.id!==utteranceId)return;
+      if(isNativeShell())notifyNative({action:'stopSpeech',utteranceId});
+      releaseDeviceVoiceFocus(utteranceId);
+      markUnheardCue(key);
+      setVoiceProblem(true);
+    },20000);
+    deviceVoiceFocusRef.current={id:utteranceId,release,timer};
+    const attempt={text,key,utteranceId,fallbackUsed:false};
+    lastVoiceAttempt.current=attempt;
     const result=speakNavigationVoice(text,language,{
       native:isNativeShell(),sendNative:notifyNative,utteranceId,
-      onStart:()=>setVoiceProblem(false),
+      onStart:()=>{if(lastVoiceAttempt.current===attempt)setVoiceProblem(false);},
+      onEnd:()=>releaseDeviceVoiceFocus(utteranceId),
       onFailure:()=>{
-        releaseDeviceVoiceFocus();
-        if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
+        if(lastVoiceAttempt.current!==attempt)return;
+        releaseDeviceVoiceFocus(utteranceId);
+        markUnheardCue(key);
         setVoiceProblem(true);
       }
     });
-    // A missing browser speech API must NEVER mark a maneuver as spoken.
+    // The browser must not mark an unsupported instruction as announced.
     if(result.ok&&key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
-    if(!result.ok||result.channel!=='native')releaseDeviceVoiceFocus();
+    if(!result.ok)releaseDeviceVoiceFocus(utteranceId);
     return result.ok;
   }
   useEffect(()=>{
-    if(!active||!navMode||simActive||muted||recalculating||Date.now()<voiceRetryAfterRef.current)return;
+    if(!active||!navMode||simActive||muted||recalculating)return;
     const fresh=hasLiveGPS&&nearestOnRoute(userCoords,route?.geometry).distance<=Math.max(35,(telemetry.accuracy||0)*1.8);
     const cue=spokenCue(guidance,{fresh,preview:false,muted,speed:telemetry.speed,language});
-    if(cue&&!spoken.current.has(cue.key)){
+    if(cue&&!spoken.current.has(cue.key)&&Date.now()>=(voiceLocalFailuresRef.current.get(cue.key)||0)){
       const previous=cuePlaybackRef.current,now=Date.now(),elapsed=now-previous.at;
       // An earlier combined cue already announced the imminent second turn.
       const alreadyCovered=cue.stage==='now'&&previous.followingIndex===cue.stepIndex&&elapsed<5500;
@@ -1154,7 +1193,7 @@ export default function MapPage({active=true}){
       const interruptedSequence=cue.stage==='now'&&previous.stage==='soon'&&previous.stepIndex===cue.stepIndex&&elapsed<2400&&cue.distance>8;
       const lowPriorityOverlap=cue.stage==='soon'&&elapsed<1800;
       if(!alreadyCovered&&!interruptedSequence&&!lowPriorityOverlap&&speakManeuver(cue.text,cue.key)){
-        cuePlaybackRef.current={at:now,stepIndex:cue.stepIndex,stage:cue.stage,followingIndex:cue.followingIndex};
+        cuePlaybackRef.current={at:now,stepIndex:cue.stepIndex,stage:cue.stage,followingIndex:cue.followingIndex,key:cue.key};
       }
     }
   },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem,recalculating]);
@@ -1173,13 +1212,13 @@ export default function MapPage({active=true}){
   },[active,routeVehicle,routeData?.source,navMode,hasLiveGPS,muted,
     mappedCrossing?.id,mappedCrossing?.distance,guidance?.distance,recalculating,language,jevMode]);
   useEffect(()=>{
-    if(jevMode&&(!navMode||muted))maneuverAudioRef.current?.abort();
-    if(!navMode||muted)releaseDeviceVoiceFocus();
-    if(!navMode||muted)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
-    return()=>{if(jevMode)maneuverAudioRef.current?.abort();if(navMode)stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});};
+    if(!navMode||muted)stopActiveGuidance();
   },[navMode,muted]);
+  // Unmount cleanup is separate: changing mute state must not immediately
+  // cancel the activation announcement or an in-progress turn.
+  useEffect(()=>()=>stopActiveGuidance(),[]);
   function toggleVoice(){
-    if(!muted){if(jevMode)maneuverAudioRef.current?.abort();setMuted(true);stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});}
+    if(!muted){stopActiveGuidance();setMuted(true);}
     else{
       setMuted(false);setVoiceProblem(false);spoken.current.clear();
       speakManeuver(language==='fr-FR'?'Instructions vocales activées.':language==='en-US'?'Voice guidance enabled.':'Instruções por voz ativadas.');
@@ -1187,7 +1226,7 @@ export default function MapPage({active=true}){
   }
   async function begin(){
     if(!route||!dest||simActive)return;
-    spoken.current.clear();
+    spoken.current.clear();voiceLocalFailuresRef.current.clear();
     // A manual origin only plans a route: navigation needs a recent real GPS fix.
     if(!hasLiveGPS){requestGPS(true);return;}
     if(measuredTrip.current)return;
@@ -1202,7 +1241,7 @@ export default function MapPage({active=true}){
     if(!muted&&(!Number.isFinite(first?.distance)||first.distance>150))
       speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){if(simActive){stopRouteSimulation();return;}routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){if(simActive){stopRouteSimulation();return;}routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopActiveGuidance();spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
@@ -1218,7 +1257,7 @@ export default function MapPage({active=true}){
     setRecalculating(true);
     // Abort instructions tied to the wrong road while obtaining the new route.
     if(jevMode)maneuverAudioRef.current?.abort();
-    else stopNavigationVoice({native:isNativeShell(),sendNative:notifyNative});
+    else stopActiveGuidance();
     try{
       const next=await api('/route',{method:'POST',body:JSON.stringify({
         origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,
@@ -1226,7 +1265,7 @@ export default function MapPage({active=true}){
         routeOptions:{reroute:true,adaptive:false,variantBudget:2,avoidTolls:preferences?.avoidTolls===true}
       })});
       if(epoch===routeEpoch.current){
-        spoken.current.clear();cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};
+        spoken.current.clear();voiceLocalFailuresRef.current.clear();cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};
         voiceRouteProofRef.current={route:null,proof:null};voiceRetryAfterRef.current=0;
         setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');
       }
