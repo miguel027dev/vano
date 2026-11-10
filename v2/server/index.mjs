@@ -1917,6 +1917,7 @@ async function route(req, res) {
     if(!limits(req,res,'writes',90,60000))return;
     const b=await getBody(req),id=owner(req);if(!cleanText(b.name,90)||!pointOK(b.coords))return err(res,400,'Local inválido.');
     if(!listCap(db.favorites,id,100))return err(res,429,'Limite de lugares favoritos atingido.');
+    if(db.favorites.length>=25000)return err(res,503,'Limite temporário de favoritos atingido.');
     const rec={id:hex(8),owner:id,name:cleanText(b.name,90),address:cleanText(b.address,180),category:cleanText(b.category,30),coords:b.coords,createdAt:stamp()};db.favorites.push(rec);await persist();const {owner:_privateOwner,...publicRec}=rec;return json(res,201,publicRec);
   }
   if(pathname.startsWith('/api/favorites/')&&req.method==='DELETE'){
@@ -1981,6 +1982,7 @@ async function route(req, res) {
     // Preserve legacy categories during rollout for old clients.
     const legacy=['obra','risco','radar'].includes(b.type);
     if(!pointOK(b.coords)||(!isReportType(b.type)&&!legacy))return err(res,400,'Dados da ocorrência inválidos.');
+    if(db.reports.length>=5000)return err(res,503,'Limite temporário de relatos atingido.');
     if(!listCap(db.reports,id,40))return err(res,429,'Limite de relatos desta conta atingido.');
     const duplicated=db.reports.some(r=>r.owner===id&&r.type===b.type&&
       Date.now()-Date.parse(r.createdAt)<15*60000&&metersApart(r.coords,b.coords)<150);
