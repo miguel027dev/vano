@@ -385,7 +385,7 @@ def account_delete():
         return redirect(url_for("profile") + "#accountDanger")
     session.clear()
     response = redirect(url_for("index"))
-    response.delete_cookie(REMEMBER_COOKIE_NAME, path="/")
+    clear_remember_cookie(response)
     flash("Sua conta foi excluída permanentemente.", "success")
     return response
 
