@@ -367,7 +367,7 @@ def register_mobile_routes(app, core: dict) -> None:
             "native_map": native_map_ui_contract(),
             "mapbox": mobile_mapbox_config(),
         })
-        response.headers["Cache-Control"] = "public, max-age=60, stale-while-revalidate=300"
+        response.headers["Cache-Control"] = "private, no-store"
         response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
         return response
 
@@ -380,7 +380,7 @@ def register_mobile_routes(app, core: dict) -> None:
             "native_map": native_map_ui_contract(),
             "mapbox": mobile_mapbox_config(),
         })
-        response.headers["Cache-Control"] = "public, max-age=300, stale-while-revalidate=900"
+        response.headers["Cache-Control"] = "private, no-store"
         response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
         return response
 
@@ -399,7 +399,7 @@ def register_mobile_routes(app, core: dict) -> None:
                 "headers": {"X-VANO-Mobile-Compact": "1"},
             },
         })
-        response.headers["Cache-Control"] = "public, max-age=120, stale-while-revalidate=600"
+        response.headers["Cache-Control"] = "private, no-store"
         response.headers["X-VANO-Mobile-Contract"] = str(nav_contract_version)
         return response
 
