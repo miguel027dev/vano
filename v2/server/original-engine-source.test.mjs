@@ -11,7 +11,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 // Git blob SHA1, not a bare file SHA1. Python engine sources remain pinned.\n// Dependency lock updated to patched certifi 2026.10.19 and Brotli 1.2.1 (PYSEC-2026-4322).
 const expected={
  'app.py':'aebccf0c0e428b5ccb6e57d9bba7929f10d9f229',
- 'vano/services/routing.py':'ea9b0befd7f578fd4a9c91efff5c513a4afd224e',
+ 'vano/services/routing.py':'15e1a8f8eba0689a6f774992c8f1ca663061ab22',
  'vano/services/safety.py':'05d3eef8797dbc187e1aae7de3c6410a6a24e4ce',
  'vano/services/nodes.py':'0aef26f66ed0815fd05163b30ce76cf7f02328bb',
  'vano/services/route_cache.py':'a6113f578da45984cc0dc2c8632c5cbda5f4045c',
