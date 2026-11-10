@@ -158,7 +158,7 @@ export function createApiObservability({db,persist=async()=>{},clock=Date.now,en
     op=(req.method||'GET')+':'+base;
    }
   }catch{return}
-  const bytes=Number.isFinite(req.vanoResponseBytes)?req.vanoResponseBytes:null;
+  const bytes=Number.isFinite(res.vanoResponseBytes)?res.vanoResponseBytes:(Number.isFinite(req.vanoResponseBytes)?req.vanoResponseBytes:null);
   record('partners',id,op,res.statusCode||599,clock()-started,bytes);
  }
  function installFetchMeter(){
