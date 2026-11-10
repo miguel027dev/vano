@@ -294,6 +294,7 @@ function createSession(userId) {
   db.sessions = db.sessions.filter(s => s.expires > now());
   const own=db.sessions.filter(s=>s.userId===userId).sort((a,b)=>a.expires-b.expires);
   if(own.length>=10){const oldest=new Set(own.slice(0,own.length-9));db.sessions=db.sessions.filter(s=>!oldest.has(s));}
+  if(db.sessions.length>=25000)throw new HttpError(503,'Limite temporário de sessões. Tente novamente.');
   const raw = token();
   db.sessions.push({ tokenHash: sha256(raw), userId, expires: now() + SESSION_MAX_AGE*1000, createdAt: stamp() });
   return raw;
@@ -337,7 +338,12 @@ function getBody(req) {
     let bytes = 0, chunks = [], overflow = false;
     req.on('data', ch => {
       bytes += ch.length;
-      if (bytes > 32768) { if (!overflow) { overflow = true; reject(new HttpError(413, 'Dados muito grandes.')); } chunks = []; return; }
+      if (bytes > 32768) {
+        if (!overflow) { overflow = true; reject(new HttpError(413, 'Dados muito grandes.')); }
+        chunks = [];
+        if(bytes>65536)req.destroy();
+        return;
+      }
       if (!overflow) chunks.push(ch);
     });
     req.on('end', () => {
@@ -364,7 +370,7 @@ function getAudioBytes(req,max=2_500_000){
    req.on('data',chunk=>{
      if(failed)return;
      size+=chunk.length;
-     if(size>max){failed=true;reject(new HttpError(413,'Áudio maior que o limite de 2,5 MB.'));return;}
+     if(size>max){failed=true;reject(new HttpError(413,'Áudio maior que o limite de 2,5 MB.'));req.destroy();return;}
      chunks.push(chunk);
    });
    req.on('end',()=>{if(!failed)resolve(Buffer.concat(chunks));});
