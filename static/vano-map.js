@@ -88,7 +88,7 @@ runEntrySplash();
 
 // Bind the primary navigation action early so a later optional UI error can never leave the CTA dead.
 document.addEventListener('click',e=>{const btn=e.target.closest?.('#startTripBtn');if(!btn)return;e.preventDefault();e.stopPropagation();console.debug('[VANO MAPS:UI] iniciar navegação');startTrip();},true);
-let map,userMarker,userMarkerElement,originMarker,destinationMarker,userLocation=null,origin=null,destination=null,routes=[],selectedRoute=null,routeMode='safest',profile='driving',searchTimer=null,watchId=null,passiveWatchId=null,mapFollowMode=true,lastPassivePosition=null,lastPassiveCameraAt=0,navStartedAt=0,gpsDistance=0,lastGps=null,lastNavPosition=null,smoothedPos=null,routeCumulative=[],routeTotalGeometry=1,starting=false,rerouting=false,offRouteCount=0,lastRerouteAt=0,followMode=true,wakeLock=null,soundEnabled=false,lastSpokenInstruction='',roadAwareness=[],lastRoadFetchAt=0,lastRoadFetchPos=null,lastCameraBearing=null,trafficSuggestionRoute=null,lastTrafficCheckAt=0,trafficDismissUntil=0,trafficChecking=false,lastLiveEta=0,lastMarkerHeading=null,navCameraMode='perspective',spokenMilestones=new Set(),liveShareToken=null,liveShareUrl='',lastLiveShareAt=0,liveShareUpdating=false,safetyPulse=false,supportPoints=[],supportLoading=false,previewFrame=null,previewing=false,previewStartedAt=0,searchController=null,fastSearchController=null,searchRefineTimer=null,searchRequestId=0,activeSearchKind=null,liveContext=null,lastLiveContextAt=0,lastLiveContextPos=null,lastFlowProbeAt=0,signalRefreshTimer=null,lastSignalViewportKey='',adminSimulation=false,adminSimFrame=null,adminSimDistance=0,adminSimLastTs=0,adminSimRealSpeed=11.5,adminSimTimeScale=6,routeLoadingSeq=0,navGpsHeartbeatTimer=null,passiveGpsHeartbeatTimer=null,gpsHeartbeatBusy=false,lastGpsFixAt=0;
+let map,userMarker,userMarkerElement,originMarker,destinationMarker,userLocation=null,origin=null,destination=null,routes=[],selectedRoute=null,routeMode='safest',profile='driving',searchTimer=null,watchId=null,passiveWatchId=null,mapFollowMode=true,lastPassivePosition=null,lastPassiveCameraAt=0,navStartedAt=0,gpsDistance=0,lastGps=null,lastNavPosition=null,smoothedPos=null,routeCumulative=[],routeTotalGeometry=1,starting=false,rerouting=false,offRouteCount=0,lastRerouteAt=0,followMode=true,wakeLock=null,soundEnabled=(()=>{try{const saved=localStorage.getItem('vano-navigation-sound-v1');return saved===null?true:saved==='1'}catch{return true}})(),lastSpokenInstruction='',roadAwareness=[],lastRoadFetchAt=0,lastRoadFetchPos=null,lastCameraBearing=null,trafficSuggestionRoute=null,lastTrafficCheckAt=0,trafficDismissUntil=0,trafficChecking=false,lastLiveEta=0,lastMarkerHeading=null,navCameraMode='perspective',spokenMilestones=new Set(),liveShareToken=null,liveShareUrl='',lastLiveShareAt=0,liveShareUpdating=false,safetyPulse=false,supportPoints=[],supportLoading=false,previewFrame=null,previewing=false,previewStartedAt=0,searchController=null,fastSearchController=null,searchRefineTimer=null,searchRequestId=0,activeSearchKind=null,liveContext=null,lastLiveContextAt=0,lastLiveContextPos=null,lastFlowProbeAt=0,signalRefreshTimer=null,lastSignalViewportKey='',adminSimulation=false,adminSimFrame=null,adminSimDistance=0,adminSimLastTs=0,adminSimRealSpeed=11.5,adminSimTimeScale=6,routeLoadingSeq=0,navGpsHeartbeatTimer=null,passiveGpsHeartbeatTimer=null,gpsHeartbeatBusy=false,lastGpsFixAt=0;
 
 function vanoNativeMapBridge(){try{const b=window.VanoNative;if(!b||typeof b.nativeMapAvailable!=='function'||!b.nativeMapAvailable())return null;return b}catch{return null}}
 function vanoNativeMapPayload(p=null){return JSON.stringify({route:selectedRoute||null,origin:origin||null,destination:destination||null,route_mode:routeMode||'',profile:profile||'driving',position:p&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lon)?{lat:+p.lat,lon:+p.lon,accuracy:Number.isFinite(+p.accuracy)?+p.accuracy:null,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?+p.speed:null}:null,started_at:navStartedAt||Date.now()})}
@@ -124,8 +124,18 @@ function setNavCameraState(next){if(!Object.values(NAV_CAMERA_STATES).includes(n
 const NAV_AUDIO_PRIORITY=Object.freeze({navigation:1,radar:2,maneuver:3,reroute:4,safety:5,arrival:6});
 let navAudioPriority=0,navAudioPriorityUntil=0;const navAudioCooldown=new Map();
 function navAudioKind(text,key=''){const s=normalizeVanoText(`${key} ${text}`);if(s.includes('chegou')||s.includes('arrival'))return'arrival';if(/assalto|perigo|seguranca|segurança|safety/.test(s))return'safety';if(/recalcul|rerout|ajustando rota/.test(s))return'reroute';if(/radar|velocidade/.test(s))return'radar';if(/vire|curva|retorno|rotatoria|rotatória|saida|saída|mantenha/.test(s))return'maneuver';return'navigation'}
-function canPlayNavAudio(kind,key){const now=Date.now(),priority=NAV_AUDIO_PRIORITY[kind]||1,cooldown=kind==='navigation'?1800:kind==='maneuver'?2600:kind==='radar'?90000:kind==='safety'?12000:kind==='reroute'?8000:45000,last=navAudioCooldown.get(`${kind}:${key}`)||0;if(now-last<cooldown)return false;if(now<navAudioPriorityUntil&&priority<navAudioPriority)return false;navAudioCooldown.set(`${kind}:${key}`,now);navAudioPriority=priority;navAudioPriorityUntil=now+(kind==='arrival'?6500:kind==='safety'?5200:kind==='maneuver'?4200:2800);return true}
-
+function canPlayNavAudio(kind,key){
+  const now=Date.now(),priority=NAV_AUDIO_PRIORITY[kind]||1;
+  const cooldown=kind==='navigation'?1800:kind==='maneuver'?2600:kind==='radar'?90000:kind==='safety'?12000:kind==='reroute'?8000:45000;
+  if(now-(navAudioCooldown.get(`${kind}:${key}`)||0)<cooldown)return false;
+  return !(now<navAudioPriorityUntil&&priority<navAudioPriority);
+}
+function markNavAudioPlayed(kind,key){
+  const now=Date.now();
+  navAudioCooldown.set(`${kind}:${key}`,now);
+  navAudioPriority=NAV_AUDIO_PRIORITY[kind]||1;
+  navAudioPriorityUntil=now+(kind==='arrival'?6500:kind==='safety'?5200:kind==='maneuver'?4200:2800);
+}
 let arrivalPresented=false,tripStartRouteDistance=0,tripStartRouteEta=0,tripRerouteCount=0,tripStartMode='',tripStartSafetyScore=null;
 const NAV_CAMERA_HOME={zoom:17.18,pitch:52,lookAhead:126,centerLead:.62,bottomRatio:.285,topRatio:.045};
 const MAP_HOME_ZOOM=16.82; // V401: slightly closer default framing around the user.
@@ -1745,12 +1755,12 @@ function maybeSpeakStep(step){
   for(let i=0;i<prompts.length;i++){
     const vp=prompts[i],trigger=Math.max(0,+vp.distance||0),key=`${step.stepIndex}:voice:${i}`;
     if(d<=trigger+18&&!spokenMilestones.has(key)){
-      spokenMilestones.add(key);speak(vp.announcement,key);return;
+      if(speak(vp.announcement,key))spokenMilestones.add(key);return;
     }
   }
   const speed=Math.max(0,+lastNavPosition?.speed||0),far=isMotorizedProfile()&&speed>13?620:420,mid=isMotorizedProfile()&&speed>8?220:160,threshold=d<=45?45:d<=mid?mid:d<=far?far:null;if(!threshold)return;
-  const key=`${step.stepIndex}:fallback:${threshold}`;if(spokenMilestones.has(key))return;spokenMilestones.add(key);
-  const prefix=threshold<=45?'Agora':`Em ${Math.max(50,Math.round(d/10)*10)} metros`;speak(`${prefix}, ${step.instruction||'siga pela rota'}`,key);
+  const key=`${step.stepIndex}:fallback:${threshold}`;if(spokenMilestones.has(key))return;
+  const prefix=threshold<=45?'Agora':`Em ${Math.max(50,Math.round(d/10)*10)} metros`;if(speak(`${prefix}, ${step.instruction||'siga pela rota'}`,key))spokenMilestones.add(key);
 }
 
 function updateProgressLine(index){if(activeNav?.classList.contains('show')){map.getSource('route-progress')?.setData(emptyFC());return}const c=selectedRoute?.geometry?.coordinates||[];if(index<1||!map.getSource('route-progress'))return;map.getSource('route-progress').setData({type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:c.slice(0,index+1)}}]})}
@@ -1758,38 +1768,73 @@ async function requestWake(){try{if('wakeLock'in navigator)wakeLock=await naviga
 async function releaseWake(){try{await wakeLock?.release()}catch{}wakeLock=null}
 function normalizeVanoText(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[.,;:!?]/g,' ').replace(/\s+/g,' ').trim()}
 function vanoSegmentsForText(value){
-  const t=normalizeVanoText(value),out=[];let maneuverMatched=false;
-  const add=f=>{if(f&&!out.includes(f))out.push(f)};
-  if(/\bem\s+50\s+metros?\b/.test(t))add(VANO_ASSETS.em50);
-  else if(/\bem\s+200\s+metros?\b/.test(t))add(VANO_ASSETS.em200);
-  else if(/\bem\s+300\s+metros?\b/.test(t))add(VANO_ASSETS.em300);
-  else if(/\bem\s+500\s+metros?\b/.test(t))add(VANO_ASSETS.em500);
-  else if(/\bem\s+(?:1|um)\s+(?:km|quilometro)\b/.test(t))add(VANO_ASSETS.em1km);
-  else if(/\bem\s+(?:2|dois)\s+(?:km|quilometros)\b/.test(t))add(VANO_ASSETS.em2km);
-  const maneuver=f=>{add(f);maneuverMatched=true};
-  if(t.includes('chegou ao destino')||t.includes('voce chegou ao destino'))maneuver(VANO_ASSETS.chegou);
-  else if(t.includes('destino')&&t.includes('esquerda'))maneuver(VANO_ASSETS.destinoEsquerda);
-  else if(t.includes('faca o retorno')||t.includes('faca retorno')||t.includes('retorno'))maneuver(VANO_ASSETS.facaRetorno);
-  else if(t.includes('leve curva')&&t.includes('esquerda'))maneuver(VANO_ASSETS.leveEsquerda);
-  else if(t.includes('leve curva')&&t.includes('direita'))maneuver(VANO_ASSETS.leveDireita);
-  else if(t.includes('mantenha-se a direita')||t.includes('mantenha se a direita'))maneuver(VANO_ASSETS.mantenhaSeDireita);
-  else if(t.includes('mantenha a direita'))maneuver(VANO_ASSETS.mantenhaDireita);
-  else if(t.includes('mantenha-se a esquerda')||t.includes('mantenha se a esquerda')||t.includes('mantenha a esquerda'))maneuver(VANO_ASSETS.mantenhaEsquerda);
-  else if(t.includes('vire a direita'))maneuver(VANO_ASSETS.vireDireita);
-  else if(t.includes('continue em frente'))maneuver(VANO_ASSETS.continueFrente);
-  else if(t.includes('siga em frente')||t.includes('siga pela rota'))maneuver(VANO_ASSETS.sigaFrente);
-  const needsManeuver=/\b(vire|curva|mantenha|retorno|destino|rotatoria|rotatória|saida|saída|siga|continue|entre na via)\b/.test(t);
-  return needsManeuver&&!maneuverMatched?[]:out;
+  // Clips must preserve the COMPLETE instruction, including distances and roads.
+  // Any unmatched street name, intersection, exit, or distance uses full TTS.
+  let remaining=normalizeVanoText(value),distanceClip=null;
+  const distances=[
+    [/^em 50 metros?\b\s*/,VANO_ASSETS.em50],
+    [/^em 200 metros?\b\s*/,VANO_ASSETS.em200],
+    [/^em 300 metros?\b\s*/,VANO_ASSETS.em300],
+    [/^em 500 metros?\b\s*/,VANO_ASSETS.em500],
+    [/^em (?:1|um) (?:km|quilometro)\b\s*/,VANO_ASSETS.em1km],
+    [/^em (?:2|dois) (?:km|quilometros)\b\s*/,VANO_ASSETS.em2km]
+  ];
+  for(const [pattern,file] of distances){
+    const match=remaining.match(pattern);
+    if(match){distanceClip=file;remaining=remaining.slice(match[0].length).trim();break;}
+  }
+  const phrases=new Map([
+    ['faca o retorno',VANO_ASSETS.facaRetorno],['faca retorno',VANO_ASSETS.facaRetorno],
+    ['continue em frente',VANO_ASSETS.continueFrente],['siga em frente',VANO_ASSETS.sigaFrente],
+    ['siga pela rota',VANO_ASSETS.sigaFrente],
+    ['mantenha se a direita',VANO_ASSETS.mantenhaSeDireita],['mantenha a direita',VANO_ASSETS.mantenhaDireita],
+    ['mantenha se a esquerda',VANO_ASSETS.mantenhaEsquerda],['mantenha a esquerda',VANO_ASSETS.mantenhaEsquerda],
+    ['vire a direita',VANO_ASSETS.vireDireita],
+    ['leve curva a direita',VANO_ASSETS.leveDireita],['leve curva a esquerda',VANO_ASSETS.leveEsquerda],
+    ['chegou ao destino',VANO_ASSETS.chegou],['voce chegou ao destino',VANO_ASSETS.chegou],
+    ['destino a esquerda',VANO_ASSETS.destinoEsquerda]
+  ]);
+  const maneuver=phrases.get(remaining);
+  return maneuver?(distanceClip?[distanceClip,maneuver]:[maneuver]):[];
 }
-function speakAutomatic(text){
+let pendingV1NativeSpeech=null;
+function speakAutomatic(text,{useNative=true,onFailure=()=>{}}={}){
   text=window.VANO_I18N?.t?.(String(text))||String(text);
-  try{if(window.Android&&typeof window.Android.speak==='function'){window.Android.speak(String(text));return true}}catch{}
+  const locale=String(BOOT.locale||window.VANO_ACTIVE_LOCALE||'pt-BR');
+  if(useNative){
+    try{
+      if(window.VANO_NATIVE_SPEECH&&typeof window.VANO_NATIVE_SPEECH.speak==='function'){
+        const result=window.VANO_NATIVE_SPEECH.speak(text,locale);
+        if(result==='ok'||result===true){pendingV1NativeSpeech={text,onFailure};return true;}
+      }
+      if(window.Android&&typeof window.Android.speak==='function'){
+        window.Android.speak(text);return true;
+      }
+    }catch{/* Fall back to browser speech. */}
+  }
   if(!('speechSynthesis'in window))return false;
-  try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(text));u.lang=String(BOOT.locale||window.VANO_ACTIVE_LOCALE||'pt-BR');u.rate=1.01;u.pitch=1;const voices=window.speechSynthesis.getVoices?.()||[],want=String(BOOT.locale||window.VANO_ACTIVE_LOCALE||'pt-BR'),base=want.split('-')[0],chosen=voices.find(v=>String(v.lang||'').toLowerCase()===want.toLowerCase())||voices.find(v=>String(v.lang||'').toLowerCase().startsWith(base.toLowerCase()));if(chosen){u.voice=chosen;u.lang=chosen.lang||u.lang}window.speechSynthesis.speak(u);return true}catch(e){console.debug('[VANO MAPS:voice-auto]',e);return false}
+  try{
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang=locale;u.rate=1.01;u.pitch=1;
+    const voices=window.speechSynthesis.getVoices?.()||[],base=locale.split('-')[0];
+    const chosen=voices.find(v=>String(v.lang||'').toLowerCase()===locale.toLowerCase())||
+      voices.find(v=>String(v.lang||'').toLowerCase().startsWith(base.toLowerCase()));
+    if(chosen){u.voice=chosen;u.lang=chosen.lang||u.lang;}
+    u.onerror=()=>onFailure();
+    window.speechSynthesis.speak(u);return true;
+  }catch(e){console.debug('[VANO MAPS:voice-auto]',e);return false;}
 }
-async function playVanoSequence(files,fallbackText){
-  if(!files?.length)return speakAutomatic(fallbackText);
-  stopVanoVoice();try{window.speechSynthesis?.cancel()}catch{}
+window.addEventListener('vano:native-dictation',event=>{
+  const error=String(event?.detail?.error||'');
+  if(!/voz offline indisponivel|voz offline indisponível|instale uma voz local/i.test(error))return;
+  const pending=pendingV1NativeSpeech;pendingV1NativeSpeech=null;
+  if(!pending||!soundEnabled)return;
+  if(!speakAutomatic(pending.text,{useNative:false,onFailure:pending.onFailure}))pending.onFailure();
+});
+async function playVanoSequence(files,fallbackText,onFailure=()=>{}){
+  if(!files?.length)return speakAutomatic(fallbackText,{onFailure});
+  stopVanoVoice();try{window.VANO_NATIVE_SPEECH?.stop?.();window.speechSynthesis?.cancel()}catch{}
   const generation=vanoAudioGeneration;
   for(const file of files){
     if(generation!==vanoAudioGeneration||!soundEnabled||selectedVoiceName!=='vano')return false;
@@ -1801,16 +1846,30 @@ async function playVanoSequence(files,fallbackText){
       setTimeout(()=>finish(false),6500);
     });
     if(generation!==vanoAudioGeneration)return false;
-    if(!ok){stopVanoVoice();return speakAutomatic(fallbackText)}
+    if(!ok){stopVanoVoice();const accepted=speakAutomatic(fallbackText,{onFailure});if(!accepted)onFailure();return accepted;}
   }
   if(generation===vanoAudioGeneration)vanoAudio=null;
   return true;
 }
 function speak(text,key=text){
-  if(!soundEnabled||!text||key===lastSpokenInstruction)return;const kind=navAudioKind(text,key);if(!canPlayNavAudio(kind,String(key)))return;lastSpokenInstruction=key;
+  if(!soundEnabled||!text||key===lastSpokenInstruction)return false;
+  const kind=navAudioKind(text,key);
+  if(!canPlayNavAudio(kind,String(key)))return false;
+  const rollback=()=>{
+    if(lastSpokenInstruction===key)lastSpokenInstruction='';
+    navAudioCooldown.delete(`${kind}:${String(key)}`);
+    spokenMilestones.delete(key);
+  };
   const locale=String(BOOT.locale||window.VANO_ACTIVE_LOCALE||'pt-BR');
-  if(selectedVoiceName==='vano'&&locale.toLowerCase().startsWith('pt')){const files=vanoSegmentsForText(text);if(files.length){playVanoSequence(files,String(text));return}}
-  stopVanoVoice();speakAutomatic(String(text));
+  let accepted=false;
+  if(selectedVoiceName==='vano'&&locale.toLowerCase().startsWith('pt')){
+    const files=vanoSegmentsForText(text);
+    if(files.length){void playVanoSequence(files,String(text),rollback);accepted=true;}
+  }
+  if(!accepted){stopVanoVoice();accepted=speakAutomatic(String(text),{onFailure:rollback});}
+  if(!accepted)return false;
+  lastSpokenInstruction=key;markNavAudioPlayed(kind,String(key));
+  return true;
 }
 function setLayerVisibility(id,visible){try{if(map?.getLayer(id))map.setLayoutProperty(id,'visibility',visible?'visible':'none')}catch{}}
 function applyMapPrefs(){const live=!!mapPrefs.liveSignals;setLayerVisibility('road-controls-dot',live);setLayerVisibility('road-controls-secondary-icons',live);setLayerVisibility('road-controls-pulse',live);['vano-traffic-probe','vano-traffic-glow','vano-traffic-flow','vano-traffic-core','vano-traffic-hotspot-glow','vano-traffic-hotspot-dot'].forEach(id=>setLayerVisibility(id,live));if(!live){if(map?.getSource('road-controls'))map.getSource('road-controls').setData(emptyFC());if(map?.getSource('vano-traffic-visible'))map.getSource('vano-traffic-visible').setData(emptyFC())}else{scheduleSignalRefresh(true);scheduleTrafficSnapshot(true)}if(map?.getSource('route-alternatives'))map.getSource('route-alternatives').setData(alternativeRoutesFC());renderRouteVariants();updateTrafficRadar(true);if(activeNav?.classList.contains('show'))setNavigationRouteFocus(true)}
@@ -1890,7 +1949,7 @@ async function checkLiveTraffic(force=false){
 async function performNavReroute(position,{manual=false}={}){
   if(rerouting||!destination||!selectedRoute)return;const p=position||lastNavPosition||userLocation;if(!p)return;if(navigator.onLine===false){showToast('Sem internet · mantendo a rota já carregada.');productTelemetry('connectivity','reroute-deferred-offline','navigation');return}if(manual)haptic(10);
   const previousRouteKey=routeClientKey(selectedRoute);rerouting=true;hideTrafficSuggestion();setNavMotionIntent('reroute');setNavCameraState(NAV_CAMERA_STATES.REROUTING);lastRerouteAt=Date.now();productTelemetry('route',manual?'reroute-manual':'reroute-auto','navigation');resetOffRouteTracker();const notice=$('rerouteNotice'),btn=$('navRecalculateBtn'),noticeCopy=notice?.querySelector('span:last-child');notice?.classList.remove('is-success','is-error');notice?.classList.add('show');notice?.setAttribute('aria-busy','true');btn?.classList.add('recalculating');motionSwapText(noticeCopy,manual?'Recalculando rota…':'Ajustando ao seu trajeto…');
-  try{if(manual)routeResponseCache.clear();const start={lat:+p.lat,lon:+p.lon,label:'Minha localização',is_gps:true,is_reroute:true,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?Math.max(0,+p.speed):null,accuracy:Number.isFinite(+p.accuracy)?+p.accuracy:null};await fetchRoutes(start,true);const nextRouteKey=routeClientKey(selectedRoute);if(!manual&&previousRouteKey&&nextRouteKey===previousRouteKey)productTelemetry('route','reroute-same-corridor','navigation');origin=start;navSuppressedRouteKeys.clear();navAlternativeHitKey='';navAlternativeHitCount=0;buildMetrics();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;lastNavRoutePaintAt=0;const liveP=(lastNavPosition&&Number.isFinite(+lastNavPosition.lat)&&Number.isFinite(+lastNavPosition.lon))?lastNavPosition:p,m=nearestProgress(liveP),step=currentStep(m.distanceAlong),rerouteP={...liveP,_distanceAlong:m.distanceAlong,_routeSnapped:m.offRoute<=Math.max(30,(+liveP.accuracy||35)*1.35)};navLastAlong=Math.max(0,m.distanceAlong);setNavigationRouteFocus(true);setNavRouteData(navLastAlong);refreshNavigationAlternatives(true);updateRoadLayer();motionSwapText($('nextStreet'),stepStreet(step));motionSwapText($('nextInstruction'),maneuverLabel(step));updateNavSummary(selectedRoute.duration||0,m.remaining,step,m);markCameraIntent('reroute',900);cameraVisualState=null;resetPuckMotionModel();lastNavPosition=rerouteP;userLocation={lat:rerouteP.lat,lon:rerouteP.lon};updateUserMarker(rerouteP,{instant:true});scheduleCamera(rerouteP,true,m);tripRerouteCount++;notice?.classList.add('is-success');notice?.setAttribute('aria-busy','false');motionSwapText(noticeCopy,manual?'Rota recalculada':'Rota ajustada');showToast(manual?'Rota recalculada.':'Rota ajustada ao seu trajeto.')}
+  try{if(manual)routeResponseCache.clear();const start={lat:+p.lat,lon:+p.lon,label:'Minha localização',is_gps:true,is_reroute:true,heading:Number.isFinite(+p.heading)?+p.heading:null,speed:Number.isFinite(+p.speed)?Math.max(0,+p.speed):null,accuracy:Number.isFinite(+p.accuracy)?+p.accuracy:null};await fetchRoutes(start,true);const nextRouteKey=routeClientKey(selectedRoute);spokenMilestones.clear();lastSpokenInstruction='';navAudioCooldown.clear();navAudioPriority=0;navAudioPriorityUntil=0;if(!manual&&previousRouteKey&&nextRouteKey===previousRouteKey)productTelemetry('route','reroute-same-corridor','navigation');origin=start;navSuppressedRouteKeys.clear();navAlternativeHitKey='';navAlternativeHitCount=0;buildMetrics();navLastAlong=0;navLastPaintAlong=0;navLastRawPosition=null;lastNavRoutePaintAt=0;const liveP=(lastNavPosition&&Number.isFinite(+lastNavPosition.lat)&&Number.isFinite(+lastNavPosition.lon))?lastNavPosition:p,m=nearestProgress(liveP),step=currentStep(m.distanceAlong),rerouteP={...liveP,_distanceAlong:m.distanceAlong,_routeSnapped:m.offRoute<=Math.max(30,(+liveP.accuracy||35)*1.35)};navLastAlong=Math.max(0,m.distanceAlong);setNavigationRouteFocus(true);setNavRouteData(navLastAlong);refreshNavigationAlternatives(true);updateRoadLayer();motionSwapText($('nextStreet'),stepStreet(step));motionSwapText($('nextInstruction'),maneuverLabel(step));updateNavSummary(selectedRoute.duration||0,m.remaining,step,m);markCameraIntent('reroute',900);cameraVisualState=null;resetPuckMotionModel();lastNavPosition=rerouteP;userLocation={lat:rerouteP.lat,lon:rerouteP.lon};updateUserMarker(rerouteP,{instant:true});scheduleCamera(rerouteP,true,m);tripRerouteCount++;notice?.classList.add('is-success');notice?.setAttribute('aria-busy','false');motionSwapText(noticeCopy,manual?'Rota recalculada':'Rota ajustada');showToast(manual?'Rota recalculada.':'Rota ajustada ao seu trajeto.')}
   catch(e){if(e?.name!=='AbortError'){notice?.classList.add('is-error');notice?.setAttribute('aria-busy','false');motionSwapText(noticeCopy,'Não foi possível atualizar');showToast(e?.message||'Não foi possível recalcular a rota.')}}
   finally{rerouting=false;if(activeNav?.classList.contains('show'))setNavCameraState(followMode?NAV_CAMERA_STATES.FOLLOWING:NAV_CAMERA_STATES.FREE_LOOK);btn?.classList.remove('recalculating');setTimeout(()=>{notice?.classList.remove('show','is-success','is-error');notice?.setAttribute('aria-busy','false');clearNavMotionIntent('reroute')},REDUCED_MOTION?50:280)}
 }
@@ -2238,7 +2297,7 @@ const plannerHeadingLabel=document.querySelector('.planner-heading-copy b');if(p
 const sharedSearchQuery=new URLSearchParams(location.search).get('q');if(sharedSearchQuery&&destinationInput){destinationInput.value=sharedSearchQuery.slice(0,240);setTimeout(()=>searchPlaces(destinationInput.value,'destination'),520)}
 ['navDrawerAlert'].forEach(id=>{try{$(id)?.remove()}catch{}});document.querySelectorAll('.nav-report-fab,[data-action="report"],[data-nav-action="report"]').forEach(el=>{try{el.remove()}catch{}});
 bindClick('navDrawerToggle',toggleNavControlDrawer);bindClick('navDrawerOptions',navDrawerAction(()=>openAccountDrawer(true)));bindClick('navDrawerSupport',navDrawerAction(()=>openSafetyDrawer(true)));bindClick('navDrawerRecenter',navDrawerAction(()=>calibrateNavigation()));
-ensureAdminSimulationControl();bindRouteMoreDetails();bindClick('continueResumeTrip',continueSavedTrip);bindClick('discardResumeTrip',discardSavedTrip);bindClick('arrivalFinishBtn',()=>finishTrip(false));bindClick('arrivalParkingBtn',openArrivalParking);bindClick('confirmDestinationBtn',confirmDestination);bindClick('editDestinationBtn',editDestination);bindClick('previewRouteBtn',previewRoute);bindClick('adminSimBtn',()=>startAdminSimulation());bindClick('adminSimV2Btn',()=>startAdminSimulation({cinematic:true}),true);bindClick('previewCancelBtn',()=>stopRoutePreview(true));bindClick('navAltAccept',acceptNavigationAlternative);bindClick('navAltDismiss',dismissNavigationAlternative);bindClick('navSearchBtn',returnToDestinationSearch);bindClick('navExitBtn',()=>finishTrip(false));syncNavCameraButton();syncFollowButton();syncImmersiveButton();syncSoundButton();populateVoiceSelectors();bindClick('quickAlertBtn',()=>openQuickAlert(null));bindClick('quickAlertCloseBtn',()=>openQuickAlert(false));bindClick('quickAlertBackdrop',()=>openQuickAlert(false));document.querySelectorAll('[data-quick-alert]').forEach(btn=>btn.addEventListener('click',()=>submitQuickAlert(btn.dataset.quickAlert,btn)));bindClick('safetyToolsBtn',()=>openSafetyDrawer(null),true);bindClick('safetyCloseBtn',()=>openSafetyDrawer(false));bindClick('safetyLiveBtn',toggleLiveShare);bindClick('supportPointsBtn',loadSupportPoints);bindClick('emergencyShareBtn',()=>shareSafetyMessage('sos'));bindClick('checkinBtn',()=>shareSafetyMessage('checkin'));bindClick('liveShareBtn',toggleLiveShare);bindClick('acceptTrafficRoute',applyTrafficSuggestion);bindClick('dismissTrafficRoute',()=>{trafficDismissUntil=Date.now()+120000;hideTrafficSuggestion();showToast('Mantendo a rota atual.')});bindClick('navRecenter',()=>calibrateNavigation());bindClick('soundBtn',()=>{if(navVoiceHoldOpened){navVoiceHoldOpened=false;return}soundEnabled=!soundEnabled;try{if(!soundEnabled){window.speechSynthesis?.cancel();stopVanoVoice()}}catch{}toggleVoicePopover(false);syncSoundButton();showToast(soundEnabled?'Orientações por voz ativadas.':'Orientações por voz desativadas.')});bindClick('shareRouteBtn',shareRoute);bindClick('showAlertsBtn',()=>{if(!selectedRoute)return;const n=selectedRoute.nearby_alerts?.length||0;showToast(n?`${n} alerta(s) comunitário(s) próximo(s) desta rota.`:'Nenhum alerta recente próximo desta rota.')});
+ensureAdminSimulationControl();bindRouteMoreDetails();bindClick('continueResumeTrip',continueSavedTrip);bindClick('discardResumeTrip',discardSavedTrip);bindClick('arrivalFinishBtn',()=>finishTrip(false));bindClick('arrivalParkingBtn',openArrivalParking);bindClick('confirmDestinationBtn',confirmDestination);bindClick('editDestinationBtn',editDestination);bindClick('previewRouteBtn',previewRoute);bindClick('adminSimBtn',()=>startAdminSimulation());bindClick('adminSimV2Btn',()=>startAdminSimulation({cinematic:true}),true);bindClick('previewCancelBtn',()=>stopRoutePreview(true));bindClick('navAltAccept',acceptNavigationAlternative);bindClick('navAltDismiss',dismissNavigationAlternative);bindClick('navSearchBtn',returnToDestinationSearch);bindClick('navExitBtn',()=>finishTrip(false));syncNavCameraButton();syncFollowButton();syncImmersiveButton();syncSoundButton();populateVoiceSelectors();bindClick('quickAlertBtn',()=>openQuickAlert(null));bindClick('quickAlertCloseBtn',()=>openQuickAlert(false));bindClick('quickAlertBackdrop',()=>openQuickAlert(false));document.querySelectorAll('[data-quick-alert]').forEach(btn=>btn.addEventListener('click',()=>submitQuickAlert(btn.dataset.quickAlert,btn)));bindClick('safetyToolsBtn',()=>openSafetyDrawer(null),true);bindClick('safetyCloseBtn',()=>openSafetyDrawer(false));bindClick('safetyLiveBtn',toggleLiveShare);bindClick('supportPointsBtn',loadSupportPoints);bindClick('emergencyShareBtn',()=>shareSafetyMessage('sos'));bindClick('checkinBtn',()=>shareSafetyMessage('checkin'));bindClick('liveShareBtn',toggleLiveShare);bindClick('acceptTrafficRoute',applyTrafficSuggestion);bindClick('dismissTrafficRoute',()=>{trafficDismissUntil=Date.now()+120000;hideTrafficSuggestion();showToast('Mantendo a rota atual.')});bindClick('navRecenter',()=>calibrateNavigation());bindClick('soundBtn',()=>{if(navVoiceHoldOpened){navVoiceHoldOpened=false;return}soundEnabled=!soundEnabled;try{localStorage.setItem('vano-navigation-sound-v1',soundEnabled?'1':'0')}catch{}try{if(!soundEnabled){window.VANO_NATIVE_SPEECH?.stop?.();pendingV1NativeSpeech=null;window.speechSynthesis?.cancel();stopVanoVoice()}}catch{}toggleVoicePopover(false);syncSoundButton();showToast(soundEnabled?'Orientações por voz ativadas.':'Orientações por voz desativadas.')});bindClick('shareRouteBtn',shareRoute);bindClick('showAlertsBtn',()=>{if(!selectedRoute)return;const n=selectedRoute.nearby_alerts?.length||0;showToast(n?`${n} alerta(s) comunitário(s) próximo(s) desta rota.`:'Nenhum alerta recente próximo desta rota.')});
 
 function plannerCollapsedHeight(){if(!planSheet)return 190;const raw=parseFloat(getComputedStyle(planSheet).getPropertyValue('--planner-collapsed-h'));return Number.isFinite(raw)?raw:190}
 function syncFloatingLocate(){
