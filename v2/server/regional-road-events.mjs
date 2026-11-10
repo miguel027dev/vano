@@ -54,7 +54,7 @@ const event=(id,type,coords,name,description,source,observedAt,endsAt,priority=6
 export function normalizeTflRoadEvents(body,bbox,now=Date.now()){
  if(!Array.isArray(body))return [];
  const out=[],seen=new Set();
- for(const f of body.slice(0,2000)){
+ for(const f of body.slice(0,5000)){
   if(f?.status&&String(f.status).toLowerCase()!=='active')continue;
   if(!activeTime(f?.startDateTime,f?.endDateTime,now))continue;
   const coords=valid(f?.geography?.coordinates)&&inside(f.geography.coordinates,bbox)?
@@ -72,7 +72,7 @@ export function normalizeTflRoadEvents(body,bbox,now=Date.now()){
 export function normalizeDriveBcRoadEvents(body,bbox,now=Date.now()){
  const entries=Array.isArray(body?.events)?body.events:[];
  const out=[],seen=new Set();
- for(const f of entries.slice(0,500)){
+ for(const f of entries.slice(0,5000)){
   if(String(f?.status||'').toUpperCase()!=='ACTIVE')continue;
   const id=clean(f.id,80);if(!id||seen.has(id))continue;
   const isWorks=String(f.event_type||'').toUpperCase()==='CONSTRUCTION';
@@ -90,7 +90,7 @@ export function normalizeDriveBcRoadEvents(body,bbox,now=Date.now()){
 export function normalizeFintrafficRoadEvents(body,bbox,now=Date.now()){
  const features=Array.isArray(body?.features)?body.features:[];
  const out=[],seen=new Set();
- for(const f of features.slice(0,1200)){
+ for(const f of features.slice(0,5000)){
   const p=f?.properties||{};
   const id=clean(p.situationId||f.id,80);if(!id||seen.has(id))continue;
   const isWorks=String(p.situationType||'').toUpperCase()==='ROAD_WORK';
