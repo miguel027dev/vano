@@ -64,15 +64,38 @@ export async function enforceQuota(env, clientHash, limit) {
   const row = await env.SAFE_ROUTING_QUOTAS.prepare('SELECT count FROM safe_routing_quota WHERE day=?1 AND client_hash=?2').bind(day, clientHash).first();
   return Number(row?.count) <= limit;
 }
-async function readTile(bucket, snapshot, tile) {
+async function limitedStreamText(stream,maxBytes) {
+  const reader=stream.getReader(),decoder=new TextDecoder();
+  let bytes=0,body='';
+  try {
+    while(true){
+      const {value,done}=await reader.read();
+      if(done)break;
+      bytes+=value.byteLength;
+      if(bytes>maxBytes){
+        await reader.cancel().catch(()=>{});
+        throw new Error('body-too-large');
+      }
+      body+=decoder.decode(value,{stream:true});
+    }
+    return body+decoder.decode();
+  } finally {reader.releaseLock();}
+}
+function inViewport(feature,bbox) {
+  const coords=feature?.geometry?.type==='Point'?feature.geometry.coordinates:null;
+  if(!Array.isArray(coords)||coords.length<2)return false;
+  const [lon,lat]=coords;
+  return Number.isFinite(lon)&&Number.isFinite(lat)&&
+    lon>=bbox[0]-.003&&lon<=bbox[2]+.003&&lat>=bbox[1]-.003&&lat<=bbox[3]+.003;
+}
+async function readTile(bucket, snapshot, tile, bbox) {
   const object = await bucket.get(tileKey(snapshot, tile));
-  if (!object) return null;
+  if (!object) return [];
   const stream = object.body.pipeThrough(new DecompressionStream('gzip'));
-  const text = await new Response(stream).text();
-  if (text.length > 1_500_000) throw new Error('tile-too-large');
+  const text = await limitedStreamText(stream,1_500_000);
   const data = JSON.parse(text);
   if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features) || data.features.length > 20_000) throw new Error('tile-invalid');
-  return data.features;
+  return data.features.filter(feature=>inViewport(feature,bbox));
 }
 export default {
   async fetch(request, env, ctx) {
@@ -82,13 +105,19 @@ export default {
       const contentLength = Number(request.headers.get('content-length') || 0);
       if (contentLength > MAX_BODY_BYTES) throw new Error('body-too-large');
       const keyHash = await requireAuthorization(request, env);
-      const query = parseRequest(await request.json(), { maxTiles: env.MAX_QUERY_TILES, maxMeters: env.MAX_QUERY_METERS });
+      const requestBody=JSON.parse(await limitedStreamText(request.body,MAX_BODY_BYTES));
+      const query = parseRequest(requestBody, { maxTiles: env.MAX_QUERY_TILES, maxMeters: env.MAX_QUERY_METERS });
       const allowed = await enforceQuota(env, keyHash, Math.min(Number(env.DAILY_QUERY_LIMIT) || 120, 1000));
       if (!allowed) return json({ available: false, reason: 'quota-exceeded', usedForRouting: false }, 429);
       const manifest = await readVerifiedManifest(env.SAFE_ROUTING_DATA, query.snapshot, env.SNAPSHOT_SIGNING_KEY);
       if (query.tiles.some((tile) => !manifest.tiles.includes(tile))) throw new Error('tile-not-in-snapshot');
-      const lists = await Promise.all(query.tiles.map((tile) => readTile(env.SAFE_ROUTING_DATA, manifest.snapshotId, tile)));
-      const fixtures = lists.flat().filter(Boolean);
+      const fixtures=[];
+      // Staging evidence only: keep at most one tile decoded at a time.
+      for (const tile of query.tiles) {
+        const filtered=await readTile(env.SAFE_ROUTING_DATA, manifest.snapshotId, tile, query.bbox);
+        if(fixtures.length+filtered.length>8000)throw new Error('evidence-too-dense');
+        fixtures.push(...filtered);
+      }
       return json({ available: true, sourceSnapshot: manifest.snapshotId, sourceVersion: manifest.payloadSha256, evidenceType: 'registered-public-light-fixtures', functioningLightsConfirmed: false, visibilityConfirmed: false, suitableForAutomaticRanking: false, usedForRouting: false, bbox: query.bbox, maxDistanceMeters: query.maxDistanceMeters, fixtures });
     } catch (error) {
       const reason = ['unauthorized', 'invalid-number', 'invalid-body', 'invalid-bbox', 'bbox-outside-pilot', 'invalid-tiles', 'body-too-large'].includes(error?.message) ? error.message : 'evidence-unavailable';
