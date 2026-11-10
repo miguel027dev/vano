@@ -240,7 +240,7 @@ def motorized_candidate_routes(start_lon, start_lat, end_lon, end_lat, travel_pr
     )
     return routes, "mapbox", len(routes)
 
-def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walking", depart_at="now", exclusions=None, alternatives=True, extra_excludes=None, start_bearing=None, start_speed=None, reroute=False):
+def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walking", depart_at="now", exclusions=None, alternatives=True, extra_excludes=None, start_bearing=None, start_speed=None, reroute=False, language=None):
     profile_map = {
         "walking": "walking",
         "cycling": "cycling",
@@ -260,7 +260,7 @@ def mapbox_routes(start_lon, start_lat, end_lon, end_lat, travel_profile="walkin
         "voice_units": "metric",
         "geometries": "geojson",
         "overview": "full",
-        "language": mapbox_language(),
+        "language": language or mapbox_language(),
         "annotations": "distance,duration,speed",
     }
     if profile == "driving-traffic":
@@ -478,9 +478,10 @@ def build_adaptive_corridor_routes(base_routes, start_lon, start_lat, end_lon, e
     groups = adaptive_exclusion_groups(primary, max(1, min(5, int(budget or 4))))
     if not groups:
         return []
+    ui_language = mapbox_language()  # Capture Flask request locale before spawning threads.
     def fetch_group(group):
         try:
-            found = mapbox_routes(start_lon,start_lat,end_lon,end_lat,"driving",depart_at,exclusions=(list(base_exclusions or [])+list(group))[:18],alternatives=False,extra_excludes=extra_excludes)
+            found = mapbox_routes(start_lon,start_lat,end_lon,end_lat,"driving",depart_at,exclusions=(list(base_exclusions or [])+list(group))[:18],alternatives=False,extra_excludes=extra_excludes, language=ui_language)
             if found:
                 candidate = found[0]
                 candidate["_adaptive_variant"] = True
@@ -899,11 +900,12 @@ def build_fast_micro_routes(base_routes, start_lon, start_lat, end_lon, end_lat,
         groups.append({"points": [c["point"] for c in clusters[:3]], "kind": "corridor", "labels": [c["street"] for c in clusters[:3]]})
     groups = groups[:6]
 
+    ui_language = mapbox_language()
     def fetch(spec):
         try:
             found = mapbox_routes(
                 start_lon, start_lat, end_lon, end_lat, "driving", depart_at,
-                exclusions=spec["points"], alternatives=False, extra_excludes=None,
+                exclusions=spec["points"], alternatives=False, extra_excludes=None, language=ui_language,
             )
             if not found:
                 return None
@@ -1027,12 +1029,13 @@ def build_dense_micro_route_pool(base_routes, start_lon, start_lat, end_lon, end
     if not specs:
         return []
 
+    ui_language = mapbox_language()
     def fetch(spec):
         try:
             exclusions = (list(base_exclusions or []) + list(spec["points"]))[:18]
             found = mapbox_routes(
                 start_lon, start_lat, end_lon, end_lat, "driving", depart_at,
-                exclusions=exclusions, alternatives=False, extra_excludes=extra_excludes,
+                exclusions=exclusions, alternatives=False, extra_excludes=extra_excludes, language=ui_language,
             )
             if not found:
                 return None
