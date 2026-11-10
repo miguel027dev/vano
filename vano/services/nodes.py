@@ -119,6 +119,12 @@ def _node_log_worker():
                 pass
             db = None
         finally:
+            if db is not None:
+                try:
+                    db.close()
+                except Exception:
+                    pass
+                db = None
             _NODE_LOG_QUEUE.task_done()
 
 
