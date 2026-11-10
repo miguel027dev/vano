@@ -86,7 +86,8 @@ test('active real navigation requires confirmation before changing to GPS-isolat
  assert.match(page,/role="dialog" aria-modal="true"/);
  assert.match(page,/onClick=\{activateRouteSimulation\}>Iniciar simulação/);
  assert.match(page,/syncMeasuredDistance\(true\);\s*measuredTrip\.current=null/);
- assert.match(page,/stopNavigationVoice\(\{native:isNativeShell\(\),sendNative:notifyNative\}\)/);
+ assert.match(page,/stopActiveGuidance\(\)/);
+ assert.match(page,/utteranceId:id/);
  assert.match(page,/void deleteOffline\('active-trip'\)/);
  assert.match(page,/routeEpoch\.current\+\+; \/\/ Ignore any pending reroute/);
  assert.match(css,/\.v76-sim-confirm-backdrop/);

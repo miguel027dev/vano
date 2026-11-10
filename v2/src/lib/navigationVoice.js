@@ -5,7 +5,7 @@
 const VOICE_LOCALE=Object.freeze({'pt-BR':'pt-BR','pt-PT':'pt-PT','fr-FR':'fr-FR','en-US':'en-US'});
 export function speakNavigationVoice(text,language='pt-BR',{
   native=false,sendNative=()=>false,scope=typeof window!=='undefined'?window:null,
-  onFailure=()=>{},onStart=()=>{},utteranceId=null
+  onFailure=()=>{},onStart=()=>{},onEnd=()=>{},utteranceId=null
 }={}){
  const phrase=String(text||'').trim();
  if(!phrase)return {ok:false,reason:'empty'};
@@ -13,7 +13,8 @@ export function speakNavigationVoice(text,language='pt-BR',{
  if(native){
   try{
    if(sendNative({action:'speak',text:phrase,lang:locale,language:locale,...(utteranceId?{utteranceId}:{})})){
-    onStart();return {ok:true,channel:'native'};
+    // The native bridge only accepted the command; Android TTS status confirms playback.
+    return {ok:true,channel:'native'};
    }
   }catch{/* Unavailable native host: fall back to Web Speech. */}
  }
@@ -31,6 +32,7 @@ export function speakNavigationVoice(text,language='pt-BR',{
   const languageFamily=voices.find(v=>String(v.lang).toLowerCase().split('-')[0]===locale.split('-')[0].toLowerCase());
   if(same||languageFamily)speech.voice=same||languageFamily;
   speech.onstart=()=>onStart();
+  speech.onend=()=>onEnd();
   speech.onerror=event=>{
    // A newer instruction may preempt an old one; this is not a microphone/
    // voice failure and must not trigger a false error banner.
