@@ -1,3 +1,4 @@
+import {readLimitedText} from './read-limited.mjs';
 /** Keyless regional road events: source-owned fixed HTTPS feeds only.
  * These are advisory map markers, NEVER instructions to alter route geometry.
  * A cold request reads empty cache immediately and refreshes in background.
@@ -131,8 +132,7 @@ export function createKeylessRegionalGateway({fetcher=fetch,clock=Date.now}={}){
    const response=await fetcher(sourceRequest(source,key),{headers,signal:AbortSignal.timeout(2500)});
    if(!response.ok)throw Error('unavailable');
    if(Number(response.headers?.get?.('content-length')||0)>MAX_BYTES)throw Error('too-large');
-   const text=await response.text();
-   if(text.length>MAX_BYTES)throw Error('too-large');
+   const text=await readLimitedText(response,MAX_BYTES);
    const data=JSON.parse(text);
    if(source.id==='tfl-london'&&!Array.isArray(data))throw Error('bad-data');
    if(source.id==='drivebc'&&!Array.isArray(data?.events))throw Error('bad-data');
