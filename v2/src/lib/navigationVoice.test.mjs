@@ -72,7 +72,7 @@ test('application integrates speech on real maneuver, navigation start, unmute a
  assert.match(page,/import \{speakNavigationVoice,stopNavigationVoice\}/);
  assert.match(page,/const result=speakNavigationVoice\(text,language,/);
  assert.match(page,/if\(result.ok&&key\)/);
- assert.match(page,/if\(cue&&!spoken.current.has\(cue.key\)\)/);
+ assert.match(page,/if\(cue&&!spoken.current.has\(cue.key\)&&/);
  assert.match(page,/alreadyCovered/);
  assert.match(page,/interruptedSequence/);
  assert.match(page,/speakManeuver\(cue.text,cue.key\)/);
@@ -84,6 +84,12 @@ test('application integrates speech on real maneuver, navigation start, unmute a
  assert.match(page,/voz offline indisponível\|instale uma voz local/);
  assert.match(page,/native:false,/);
  assert.match(page,/lastVoiceAttempt.current=\{text,key\}/);
- assert.match(page,/stopNavigationVoice\(\{native:isNativeShell\(\),sendNative:notifyNative\}\)/);
+ assert.match(page,/function stopActiveGuidance\(\)/);
+ assert.match(page,/utteranceId:id/);
+ assert.match(page,/if\(!navMode\|\|muted\)stopActiveGuidance\(\)/);
+ assert.match(page,/if\(jevMode&&route\?\.proof&&language==='pt-BR'&&Date\.now\(\)>=voiceRetryAfterRef\.current\)/);
+ assert.match(page,/if\(!speakDeviceManeuver\(text,key\)\)setVoiceProblem\(true\)/);
+ assert.match(page,/fallbackNativeGuidance\(id\)/);
+ assert.match(page,/getItem\('vano-nav-muted-v1'\)/);
  assert.doesNotMatch(page,/spoken\.current\.add\(cue\.key\);setSpokenRevision\(v=>v\+1\);notifyNative/);
 });
