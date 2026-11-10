@@ -59,6 +59,10 @@ export async function openPostgresStore(connectionString, ClientType=Client){
     return {
       data,kind:'postgres',persistent:true,
       async assertHealthy(){await ensureConnected();},
+      async close(){
+        await pending.catch(()=>{});
+        await client.end();
+      },
       save(){
         const snapshot=JSON.stringify(data);
         if(Buffer.byteLength(snapshot)>64*1024*1024)return Promise.reject(new Error('Estado VANO V2 excedeu 64 MiB.'));
