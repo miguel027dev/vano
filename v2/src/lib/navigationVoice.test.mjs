@@ -49,6 +49,17 @@ test('unsupported speech never claims a maneuver was audible; synthesis errors c
  synth.spoken[0].onerror?.({error:'interrupted'});
  assert.equal(failures.length,2,'new instruction cancellation is not a broken TTS voice');
 });
+test('web playback completion releases navigation focus only after speech ends',()=>{
+ const {synth,scope}=browser();let ended=0,started=0;
+ const out=speakNavigationVoice('Vire à direita','pt-BR',{scope,onStart:()=>started++,onEnd:()=>ended++});
+ assert.equal(out.channel,'web');assert.equal(started,1);assert.equal(ended,0);
+ synth.spoken.at(-1).onend?.();assert.equal(ended,1);
+});
+test('native request acknowledgment is not falsely treated as audible playback',()=>{
+ let started=0;
+ const result=speakNavigationVoice('Vire à direita','pt-BR',{native:true,sendNative:()=>true,onStart:()=>started++});
+ assert.equal(result.channel,'native');assert.equal(started,0);
+});
 test('stopping navigation cancels browser queued audio as well as native audio',()=>{
  const {synth,scope}=browser();const actions=[];
  speakNavigationVoice('Siga em frente.','pt-BR',{scope});
