@@ -1066,7 +1066,14 @@ async function route(req, res) {
       if(pruneSupport(db))await persist();
       const body=await getBody(req);
       const result=pathname==='/api/support'?createSupportTicket(db,body):supportStatus(db,body.receipt);
-      if(pathname==='/api/support')await persist();
+      if(pathname==='/api/support'){
+        try{await persist();}
+        catch(error){
+          const receiptHash=sha256(result.receipt);
+          db.supportTickets=db.supportTickets.filter(ticket=>ticket.receiptHash!==receiptHash);
+          throw error;
+        }
+      }
       return json(res,pathname==='/api/support'?201:200,result,{'Cache-Control':'no-store'});
     }catch(error){return err(res,error.status||503,error.status?error.message:'Não foi possível consultar o suporte. Tente novamente.');}
   }
@@ -1077,7 +1084,16 @@ async function route(req, res) {
     try{
       if(pruneSupport(db))await persist();
       if(req.method==='GET')return json(res,200,{tickets:supportInbox(db,Date.now(),{offset:u.searchParams.get('offset')}),total:db.supportTickets.length}, {'Cache-Control':'no-store'});
-      const body=await getBody(req);const result=replySupport(db,pathname.split('/')[4],body.reply);await persist();return json(res,200,result,{'Cache-Control':'no-store'});
+      const body=await getBody(req);
+       const ticket=db.supportTickets.find(t=>t.id===pathname.split('/')[4]);
+       const previous=ticket?{reply:ticket.reply,status:ticket.status,repliedAt:ticket.repliedAt}:null;
+       const result=replySupport(db,pathname.split('/')[4],body.reply);
+       try{await persist();}
+       catch(error){
+         if(ticket&&previous)Object.assign(ticket,previous);
+         throw error;
+       }
+       return json(res,200,result,{'Cache-Control':'no-store'});
     }catch(error){return err(res,error.status||503,error.status?error.message:'Não foi possível atualizar o suporte.');}
   }
   if(pathname==='/api/help/ask'&&req.method==='POST'){
