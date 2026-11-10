@@ -251,11 +251,18 @@ function userSession(req) {
 function currentUser(req) { return safeUser(userSession(req)?.user); }
 function guestToken(req) {
   const value = req.vanoGuest || cookie(req, 'vano_guest');
-  return /^[a-f0-9]{32}$/.test(value) ? value : null;
+  // Guest IDs must be authenticated, otherwise a caller can impersonate
+  // arbitrary guests and cast votes against their own community report.
+  const payload = openSignedToken(secret, value);
+  return payload?.type === 'guest' &&
+    /^[a-f0-9]{32}$/.test(payload.id) &&
+    Number.isFinite(payload.expires) &&
+    payload.expires > now() && payload.expires <= now() + 604800000
+    ? payload.id : null;
 }
 function guestCookie(req) {
   if (userSession(req) || guestToken(req)) return null;
-  req.vanoGuest = hex(16);
+  req.vanoGuest = signedToken(secret, { type: 'guest', id: hex(16), expires: now() + 604800000 });
   return setCookie('vano_guest', req.vanoGuest, 604800);
 }
 function owner(req) {
