@@ -5,7 +5,7 @@ import { Map, Route, Bookmark, UserRound, CircleHelp, Settings, ShieldCheck } fr
 import { Brand } from './Brand';
 import {useVano} from '../context';
 const tabs=[{to:'/mapa',label:'Mapa',icon:Map},{to:'/rotas',label:'Rotas',icon:Route},{to:'/favoritos',label:'Salvos',icon:Bookmark},{to:'/perfil',label:'Perfil',icon:UserRound}];
-export function BottomNav(){const {t}=useVano();const navigation=<nav className="bottom-nav v5-bottom-nav" aria-label="Navegação principal">{tabs.map(x=><NavLink key={x.to} to={x.to} end={x.to==='/mapa'} className={({isActive})=>`nav-tab ${isActive?'active':''}`}><x.icon size={20} strokeWidth={1.95}/><span>{t(x.label)}</span></NavLink>)}</nav>;return typeof document==='undefined'?navigation:createPortal(navigation,document.body);}
+export function BottomNav(){const {t,user}=useVano();const navigation=<nav className="bottom-nav v5-bottom-nav" aria-label="Navegação principal">{tabs.map(x=><NavLink key={x.to} to={x.to==='/perfil'&&!user?'/entrar':x.to} end={x.to==='/mapa'} className={({isActive})=>`nav-tab ${isActive?'active':''}`}><x.icon size={20} strokeWidth={1.95}/><span>{t(x.label)}</span></NavLink>)}</nav>;return typeof document==='undefined'?navigation:createPortal(navigation,document.body);}
 export function SideNav(){
  const {t,user}=useVano(),location=useLocation();
  const profilePaths=new Set(['/perfil','/conta','/privacidade']);
@@ -17,7 +17,7 @@ export function SideNav(){
      {tabs.map(x=>{
        const active=x.to==='/perfil'?profilePaths.has(location.pathname):
          x.to==='/rotas'?routePaths.has(location.pathname):x.to===location.pathname;
-       return <NavLink key={x.to} to={x.to} end className={`side-link ${active?'active':''}`} aria-current={active?'page':undefined}><x.icon size={19}/>{t(x.label)}</NavLink>;
+       return <NavLink key={x.to} to={x.to==='/perfil'&&!user?'/entrar':x.to} end className={`side-link ${active?'active':''}`} aria-current={active?'page':undefined}><x.icon size={19}/>{t(x.label)}</NavLink>;
      })}
    </nav>
    <hr/>
