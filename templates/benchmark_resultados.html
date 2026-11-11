@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}Resultados públicos de benchmark | VANO Maps{% endblock %}
+{% block meta_description %}Consulte testes publicados de navegação do VANO Maps: rota padrão versus rota VANO, ETA, distância, fonte, horário, metodologia e resultados em JSON para pesquisadores e IAs.{% endblock %}
+{% block og_title %}Benchmark público: resultados e metodologia | VANO Maps{% endblock %}
+{% block og_description %}Comparações auditáveis de rotas, com dados reais identificados por fonte, horário e versão.{% endblock %}
+{% block head %}
+<link rel="alternate" type="application/json" title="Resultados públicos do benchmark VANO" href="{{ public_site_url }}/api/benchmark/v1/results">
+<script type="application/ld+json">{{ {
+  "@context":"https://schema.org",
+  "@type":"Dataset",
+  "@id":public_site_url ~ "/benchmark-resultados#dataset",
+  "name":"VANO Maps — resultados públicos de benchmarks de rotas",
+  "description":"Medições publicadas de rotas de navegação com origem, destino, horários, duração estimada, distância e proveniência da referência. A ausência de dados não é convertida em resultados fictícios.",
+  "url":public_site_url ~ "/benchmark-resultados",
+  "inLanguage":"pt-BR",
+  "isAccessibleForFree":true,
+  "usageInfo":public_site_url ~ "/terms",
+  "creator":{"@type":"Organization","name":"VANO Maps","url":public_site_url},
+  "measurementTechnique":"Comparação de estimativas de rotas para o mesmo par origem-destino, registradas por provedor e horário; não corresponde a viagens executadas.",
+  "variableMeasured":["ETA em minutos", "Distância em quilômetros", "Latência em milissegundos", "Fonte da rota", "Data da medição"],
+  "distribution":[{"@type":"DataDownload","encodingFormat":"application/json","contentUrl":public_site_url ~ "/api/benchmark/v1/results"}]
+}|tojson }}</script>
+<style>
+  .results-wrap{width:min(1190px,calc(100% - 32px));margin:auto;color:var(--text)}
+  .results-hero{padding:38px 0 26px}
+  .results-eyebrow{font-size:11px;letter-spacing:.19em;text-transform:uppercase;color:#F59A62;font-weight:850}
+  .results-hero h1{font-size:clamp(38px,6vw,70px);letter-spacing:-.055em;line-height:1.01;max-width:850px;margin:12px 0 18px}
+  .results-hero p{max-width:780px;color:var(--muted);font-size:16px;line-height:1.7;margin:0}
+  .results-links{display:flex;flex-wrap:wrap;gap:10px;margin:24px 0 0}
+  .results-links a{border:1px solid #3b3430;border-radius:12px;padding:11px 14px;color:#f5f1ec;text-decoration:none;font-weight:730;background:#22201f}
+  .results-links a:first-child{border-color:#F59A62;background:#F59A62;color:#231b15}
+  .results-panel{border:1px solid #393330;background:linear-gradient(145deg,#1d1b1a,#151719);border-radius:23px;padding:22px;margin-bottom:18px}
+  .results-filter{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+  .results-filter label{font-size:12px;font-weight:740;color:#c9c2bc;display:grid;gap:8px;flex:1 1 170px}
+  .results-filter select{width:100%;min-height:43px;color:#fff;background:#252627;border:1px solid #4b423c;border-radius:11px;padding:0 12px}
+  .results-filter button{min-height:43px;border:0;border-radius:11px;background:#F59A62;color:#241b16;padding:0 20px;font-weight:800}
+  .results-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:18px 0}
+  .results-metric{border:1px solid #393330;background:#1c1c1e;border-radius:18px;padding:18px}
+  .results-metric small{color:#a9a09b;text-transform:uppercase;letter-spacing:.09em;font-size:10px;font-weight:800}
+  .results-metric strong{display:block;font-size:clamp(21px,3vw,34px);letter-spacing:-.04em;margin:10px 0}
+  .results-metric span{color:#aaa4a2;font-size:12px;line-height:1.5}
+  .results-table-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:15px}
+  .results-table-title h2,.results-method h2{font-size:22px;letter-spacing:-.035em;margin:0}
+  .results-table-title a{color:#ffbb94;font-size:13px}
+  .results-scroller{width:100%;overflow-x:auto}
+  .results-table{width:100%;border-collapse:collapse;text-align:left;min-width:920px}
+  .results-table th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#ada7a2;font-weight:800;padding:13px 11px;border-bottom:1px solid #514840}
+  .results-table td{font-size:13px;line-height:1.55;padding:16px 11px;border-bottom:1px solid #342e2b;vertical-align:top}
+  .results-table tbody tr:hover{background:#282321}
+  .results-table td strong{display:block;font-size:13px;color:#fff}
+  .results-table td small{display:block;font-size:11px;color:#a6a09a}
+  .results-table .positive{color:#a6e4be;font-weight:800}
+  .results-table .negative{color:#ffae9c;font-weight:800}
+  .results-table details summary{cursor:pointer;color:#ffbe9b}
+  .results-table details p{max-width:280px;margin:7px 0;color:#b6aeab;font-size:11px}
+  .results-empty{padding:45px 18px;text-align:center}
+  .results-empty h3{font-size:21px;margin:0 0 10px}
+  .results-empty p{color:#b4aca5;line-height:1.65;max-width:620px;margin:0 auto}
+  .results-note{padding:13px 16px;border-left:3px solid #F59A62;background:#2a231f;color:#d5c4b7;font-size:13px;line-height:1.7;border-radius:6px;margin:15px 0}
+  .results-method{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .results-method p,.results-method li{color:#b5aba5;line-height:1.7;font-size:13px}
+  .results-method ul{margin:13px 0 0;padding-left:20px}
+  .results-method code{padding:2px 6px;border-radius:5px;background:#302925;color:#ffbf95}
+  .results-pages{display:flex;align-items:center;gap:12px;justify-content:flex-end;margin-top:18px;font-size:13px}
+  .results-pages a{border:1px solid #48403a;border-radius:8px;padding:9px 12px;color:#fff}
+  @media(max-width:760px){.results-hero{padding:22px 0 20px}.results-panel{padding:16px}.results-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.results-method{grid-template-columns:1fr}.results-links a{flex:1 1 auto;text-align:center}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="page results-wrap" id="conteudo-principal" tabindex="-1">
+  <nav class="vano-public-breadcrumb" aria-label="Trilha de navegação">
+    <a href="{{ url_for('index') }}">Início</a><span class="vano-breadcrumb-sep" aria-hidden="true">/</span><span aria-current="page">Resultados de benchmark</span>
+  </nav>
+  <header class="results-hero">
+    <span class="results-eyebrow">VANO Maps / Transparência e desempenho</span>
+    <h1>Uma rota melhor precisa de <span style="color:#F59A62">dados.</span> Não de promessas.</h1>
+    <p>Compare a <strong>rota padrão de referência</strong> com a alternativa do VANO. Cada teste publicado mostra o que foi medido, quando, por qual fonte e quais são as limitações da comparação.</p>
+    <div class="results-links">
+      <a href="#resultados">Explorar resultados</a>
+      <a href="{{ url_for('route_benchmark_page') }}">Executar meu teste</a>
+      <a href="{{ url_for('benchmark_public_results_json') }}">Dados para IAs · JSON</a>
+    </div>
+  </header>
+
+  <section class="results-panel" aria-label="Filtros dos benchmarks">
+    <form class="results-filter" method="get" action="{{ url_for('benchmark_public_results_page') }}">
+      <label>Categoria<select name="category">
+        <option value="">Todas as categorias</option>
+        {% for key,value in categories.items() %}<option value="{{ key }}" {% if data.category == key %}selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select></label>
+      <label>Rota de referência<select name="source">
+        {% for key,value in sources.items() %}<option value="{{ key }}" {% if data.source == key %}selected{% endif %}>{{ value }}</option>{% endfor %}
+        <option value="all" {% if data.source == 'all' %}selected{% endif %}>Todas as fontes (não agregar como equivalentes)</option>
+      </select></label>
+      <label>Período<select name="period">
+        {% for key,value in periods.items() %}<option value="{{ key }}" {% if data.period == key %}selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select></label>
+      <button type="submit">Aplicar filtros</button>
+    </form>
+  </section>
+
+  <section class="results-metrics" aria-label="Resumo dos testes filtrados">
+    <div class="results-metric"><small>Testes publicados</small><strong>{{ data.total if data.data_available else '—' }}</strong><span>Registros auditáveis no período</span></div>
+    <div class="results-metric"><small>Diferença média de ETA</small><strong>{% if data.stats.get('avg_minutes_saved') is not none %}{{ '%.1f'|format(data.stats.avg_minutes_saved) }} min{% else %}—{% endif %}</strong><span>Referência − VANO · positivo indica menor ETA do VANO</span></div>
+    <div class="results-metric"><small>Diferença percentual média</small><strong>{% if data.stats.get('avg_pct_saved') is not none %}{{ '%+.1f'|format(data.stats.avg_pct_saved) }}%{% else %}—{% endif %}</strong><span>Valor médio das diferenças relativas por teste</span></div>
+    <div class="results-metric"><small>Diferença mediana de ETA</small><strong>{% if data.stats.get('median_minutes_saved') is not none %}{{ '%.1f'|format(data.stats.median_minutes_saved) }} min{% else %}—{% endif %}</strong><span>Não confundir estimativa com tempo real de viagem</span></div>
+    <div class="results-metric"><small>Latência p95 do VANO</small><strong>{% if data.stats.get('p95_latency_ms') is not none %}{{ '%.0f'|format(data.stats.p95_latency_ms) }} ms{% else %}—{% endif %}</strong><span>Somente medições com latência disponível</span></div>
+  </section>
+
+  <section class="results-panel" id="resultados" aria-label="Resultados de rotas">
+    <div class="results-table-title">
+      <h2>Histórico público</h2>
+      <a href="{{ url_for('benchmark_public_results_json', category=data.category, source=data.source, period=data.period) }}">Ver estes dados em JSON</a>
+    </div>
+    {% if not data.data_available %}
+    <div class="results-empty" role="status"><h3>Dados temporariamente indisponíveis</h3><p>O histórico ainda não pôde ser consultado. Nenhum dado fictício será exibido no lugar dos resultados reais.</p></div>
+    {% elif not data.records %}
+    <div class="results-empty" role="status"><h3>Nenhum teste publicado neste filtro</h3><p>Os testes do laboratório são executados sob demanda e não entram automaticamente no histórico público. Esta página só exibirá medições verificadas e publicadas com identificação de fonte e horário.</p></div>
+    {% else %}
+    <div class="results-scroller"><table class="results-table">
+      <caption class="sr-only">Comparação entre rota de referência e rota escolhida pelo VANO</caption>
+      <thead><tr><th>Data / trajeto</th><th>Categoria</th><th>Referência padrão</th><th>VANO</th><th>Diferença ETA</th><th>Diferença km</th><th>Evidência</th></tr></thead>
+      <tbody>{% for r in data.records %}<tr>
+        <td><strong>{{ r.origin_label }} → {{ r.destination_label }}</strong><small>{{ r.recorded_at }} · {{ r.profile }}</small></td>
+        <td>{{ r.category_label }}</td>
+        <td><strong>{{ '%.1f'|format(r.baseline_eta_min) ~ ' min' if r.baseline_eta_min is not none else '—' }}</strong><small>{{ '%.1f'|format(r.baseline_distance_km) ~ ' km' if r.baseline_distance_km is not none else '—' }}</small><small>{{ r.baseline_label }}</small></td>
+        <td><strong>{{ '%.1f'|format(r.vano_eta_min) ~ ' min' if r.vano_eta_min is not none else '—' }}</strong><small>{{ '%.1f'|format(r.vano_distance_km) ~ ' km' if r.vano_distance_km is not none else '—' }}</small><small>Modo {{ r.vano_mode }}</small></td>
+        <td>{% if r.delta_eta_min is not none %}<span class="{{ 'positive' if r.delta_eta_min > 0 else 'negative' if r.delta_eta_min < 0 else '' }}">{{ '%+.1f'|format(r.delta_eta_min) }} min</span><small>{{ '%+.1f'|format(r.delta_eta_pct) }}%</small>{% else %}—{% endif %}</td>
+        <td>{% if r.delta_distance_km is not none %}{{ '%+.1f'|format(r.delta_distance_km) }} km<small>{{ '%+.1f'|format(r.delta_distance_pct) }}%</small>{% else %}—{% endif %}</td>
+        <td><details><summary>Detalhes</summary><p>ID: {{ r.run_id }}</p><p>Fonte: {{ r.baseline_source }} / {{ r.vano_provider or 'não informada' }}</p><p>Horários: {{ r.baseline_measured_at or '—' }} e {{ r.vano_measured_at or '—' }}</p><p>Rota referência: {{ r.baseline_route_id or '—' }}</p><p>Rota VANO: {{ r.vano_route_id or '—' }}</p><p>Latência: {{ r.latency_ms if r.latency_ms is not none else '—' }} ms</p><p>Trânsito: {{ r.traffic_score if r.traffic_score is not none else 'não medido' }}</p><p>Segurança: {{ r.safety_score if r.safety_score is not none else 'não medido' }}</p><p>VANO score: {{ r.vano_score if r.vano_score is not none else 'não medido' }}</p>{% if r.evidence_url %}<p><a href="{{ r.evidence_url }}" rel="nofollow noopener noreferrer" target="_blank">Abrir evidência</a></p>{% endif %}</details></td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+    {% endif %}
+    <div class="results-pages">
+      {% if data.page > 1 %}<a href="{{ url_for('benchmark_public_results_page', category=data.category, source=data.source, period=data.period, page=data.page - 1) }}">Anterior</a>{% endif %}
+      <span>Página {{ data.page }}</span>
+      {% if data.page * data.page_size < data.total %}<a href="{{ url_for('benchmark_public_results_page', category=data.category, source=data.source, period=data.period, page=data.page + 1) }}">Próxima</a>{% endif %}
+    </div>
+    <p class="results-note">A rota mais rápida do VANO é uma <strong>referência interna</strong>, não uma medição do Google Maps. Somente medições externas identificadas e verificáveis são nomeadas como Google Maps. Selecione uma única fonte para comparar médias.</p>
+  </section>
+
+  <section class="results-method" aria-label="Metodologia e leitura por IA">
+    <article class="results-panel"><span class="results-eyebrow">Como interpretamos</span><h2>Metodologia transparente</h2>
+      <ul><li>Comparar origem, destino, veículo e janela de medição equivalentes.</li><li>ETA e distância são <strong>estimativas do momento</strong>, não tempos reais de chegada.</li><li>Diferença de ETA = referência − VANO. Valor positivo significa menor ETA previsto para o VANO.</li><li>Um resultado isolado não prova superioridade estatística; mediana e p95 exigem amostras suficientes.</li><li>Dados de trânsito ou segurança ausentes são desconhecidos, nunca zero.</li></ul>
+    </article>
+    <article class="results-panel"><span class="results-eyebrow">Para indexadores e modelos de IA</span><h2>Dados acessíveis, sem interpretação ambígua</h2>
+      <p>Esta página possui HTML legível, tabela com rótulos, metadados de Dataset, canonical e um endpoint JSON público com campos estáveis, fonte, unidade, horário e metodologia.</p>
+      <p>Endpoint: <code>/api/benchmark/v1/results</code></p>
+      <p>Contrato de execução: <code>/api/benchmark/v1/capabilities</code>. O laboratório de execução é separado da publicação dos resultados.</p>
+      <p>O histórico é paginado em 25 registros. Use o parâmetro <code>page</code> para percorrer todas as páginas.</p>
+    </article>
+  </section>
+</main>
+{% endblock %}
