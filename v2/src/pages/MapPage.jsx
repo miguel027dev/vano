@@ -100,6 +100,7 @@ export default function MapPage({active=true}){
   }
 
   const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const nativePositionCallback=useRef(null),nativeLastAcceptedAt=useRef(0);
   const voiceTrafficReport=useRef({pending:false,lastAt:0,lastCoords:null});
   const latestEtaGuidance=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
@@ -194,7 +195,15 @@ export default function MapPage({active=true}){
       window.removeEventListener('vano:native-dictation',nativeFailure);
     };
   },[navMode,muted,language]);
-  useEffect(()=>{const native=e=>onPosition(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
+  // Native Android events always call the latest GPS handler (including live nav state).
+  useEffect(()=>{
+    const native=event=>{
+      const accepted=nativePositionCallback.current?.(event.detail);
+      if(accepted)nativeLastAcceptedAt.current=Date.now();
+    };
+    window.addEventListener('vano:native-position',native);
+    return()=>window.removeEventListener('vano:native-position',native);
+  },[]);
   // Keep Android's location feed active on both maps, even before a trip starts.
   useEffect(()=>{notifyNative({action:'mapTracking',active:active&&!simActive});return()=>notifyNative({action:'mapTracking',active:false});},[active,simActive]);
   useEffect(()=>{notifyNative({action:'navigation',active:navMode&&!simActive});return()=>notifyNative({action:'navigation',active:false});},[navMode,simActive]);
@@ -358,6 +367,7 @@ export default function MapPage({active=true}){
     }
     return fix;
   }
+  nativePositionCallback.current=onPosition;
   function onPositionError(error){
     const state=gpsStateAfterError(error,lastGpsFix.current);
     // An old pending request or a temporary indoors accuracy error is not loss of an already valid fix.
@@ -428,7 +438,11 @@ export default function MapPage({active=true}){
       setGpsMessage('');
     }
     const stop=startGpsSession(navigator.geolocation,{
-      onPosition,onError:onPositionError,
+      // The native GPS stream wins while fresh; browser GPS stays as fallback.
+      onPosition:position=>{
+        if(isNativeShell()&&Date.now()-nativeLastAcceptedAt.current<2800)return true;
+        return onPosition(position);
+      },onError:onPositionError,
       onRecover:()=>{if(navMode&&!simActive&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
         setGpsStatus('reconnecting');setGpsMessage('Reconectando ao GPS. Mantendo o último ponto conhecido.');
       }}
