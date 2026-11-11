@@ -45,3 +45,12 @@
     min-width: 54px;
   }
 }
+
+/* OSM attribution below the fixed "Sua localização" card on the main map.
+   Move only the native attribution control; do not alter the card or logos. */
+.map-page:not(.in-navigation):not(.has-sheet) .mapboxgl-ctrl-bottom-right,
+.map-page:not(.in-navigation):not(.has-sheet) .leaflet-bottom.leaflet-right {
+  left: env(safe-area-inset-left, 0px) !important;
+  right: auto !important;
+  bottom: env(safe-area-inset-bottom, 0px) !important;
+}
