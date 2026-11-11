@@ -948,8 +948,36 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       padding:[46,46],maxZoom:15,animate:!reduced,duration:.55
     });
   },[previewRoute,previewFocus,navigation]);
-  // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
-  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy,v2Experience,routeTraffic]);
+  // Heavy sources, route geometry and symbols change on route/UI events, not every GPS fix.
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map)return;
+    if(backend.current==='mapbox'){
+      if(!isLoaded(map))return;
+      paintMapbox(map,latest.current,lastSelection);
+      if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();
+      else if(destination?.coords){
+        const fitKey=`${destination.id}|${selectedRoute}`;
+        if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}
+      }
+    }else paintLeaflet(map,latest.current);
+  },[manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,v2Experience,routeTraffic,vehicle,appearance,layer]);
+  // Hot GPS path: the lightweight RAF owns pointer position and chase camera.
+  // Only initialize an absent origin marker once; do not re-upload map layers per fix.
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||!active)return;
+    if(backend.current==='mapbox'){
+      if(!isLoaded(map))return;
+      if(!map._vanoMarker?.current&&validPoint(latest.current.gpsCoords))
+        paintMapbox(map,latest.current,lastSelection);
+      if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))
+        motion.current?.start();
+    }else if(backend.current==='leaflet'&&validPoint(gpsCoords)&&
+      !map._vanoVehicleMarker&&!map._vanoOriginMarker){
+      paintLeaflet(map,latest.current);
+    }
+  },[active,userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
   useEffect(()=>{if(navigation)controller?.current?.cancelCinematic?.();},[navigation]);
   // Changing the visual theme must never take control of a live GPS camera.
   // Away from navigation, the dark street style gains a useful 3D viewing angle.
