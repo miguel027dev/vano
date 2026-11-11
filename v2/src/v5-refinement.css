@@ -1,0 +1,221 @@
+/* VANO Maps V2.5 — review pass. Keep the V2.4 domain logic; correct cramped mobile chrome. */
+:root{--v5-orange:#e85f28;--v5-ink:#202620;--v5-muted:#707a72;--v5-surface:#fafaf8;--v5-line:#e6e9e5;--v5-ease:cubic-bezier(.22,.75,.27,1)}
+
+/* Entry: one-screen, calm editorial treatment; the route graphic is not another app card. */
+.v5-landing{min-height:100svh;min-height:100dvh;background:#fafaf8;color:#202620;display:flex;flex-direction:column;overflow-x:hidden;isolation:isolate}
+.v5-entry-header,.v5-entry-main,.v5-entry-footer{width:min(100%,1100px);margin-inline:auto}
+.v5-entry-header{display:flex;align-items:center;justify-content:space-between;padding:clamp(19px,3vw,35px) clamp(22px,5vw,65px) 10px}
+.v5-entry-header .brand-v3{gap:10px}
+.v5-entry-header .brand-v3>img{width:42px;height:42px}
+.v5-entry-signin{display:inline-flex;gap:8px;align-items:center;justify-content:center;padding:8px 11px;min-height:43px;font-size:.84rem;font-weight:740;color:#555f56;border-radius:10px;transition:color .2s,background .2s}
+.v5-entry-signin:hover{background:#f0f0ec;color:var(--v5-orange)}
+.v5-entry-main{display:grid;grid-template-columns:1fr .9fr;align-items:center;flex:1;gap:clamp(22px,6vw,100px);padding:18px clamp(22px,5vw,65px) 24px}
+.v5-entry-copy{min-width:0;animation:v5-fade-up .55s both var(--v5-ease)}
+.v5-kicker{font-size:.71rem;font-weight:770;letter-spacing:.15em;color:#89928b;display:flex;gap:9px;align-items:center}
+.v5-kicker-dot{width:7px;height:7px;border-radius:50%;background:var(--v5-orange)}
+.v5-entry-copy h1{font-family:Inter,system-ui,sans-serif;font-size:clamp(3rem,6.5vw,5.7rem);line-height:1.075;font-weight:790;letter-spacing:-.083em;margin:18px 0 18px;color:#222722}
+.v5-entry-copy h1 em{font-style:normal;color:var(--v5-orange)}
+.v5-entry-copy>p{max-width:395px;font-size:clamp(.96rem,1.4vw,1.07rem);line-height:1.55;color:#777f76;letter-spacing:-.015em;margin:0 0 26px}
+.v5-entry-buttons{display:flex;gap:10px;flex-wrap:wrap}
+.v5-primary,.v5-secondary{height:55px;padding:0 23px;border-radius:15px;display:inline-flex;align-items:center;justify-content:center;gap:12px;font-size:.9rem;font-weight:770;transition:transform .2s var(--v5-ease),background .2s,box-shadow .2s}
+.v5-primary{color:#fff;background:var(--v5-orange);box-shadow:0 10px 24px #e85f2823}
+.v5-secondary{color:#374038;background:#fff;border:1px solid #e1e5df}
+.v5-primary:hover{background:#d7521e;transform:translateY(-2px)}
+.v5-secondary:hover{background:#f3f4ef;transform:translateY(-2px)}
+.v5-primary:active,.v5-secondary:active{transform:scale(.985)}
+.v5-explore{margin-top:10px;min-height:42px;padding:0 1px;display:inline-flex;align-items:center;gap:9px;font-size:.8rem;font-weight:680;color:#757e76;transition:color .18s}
+.v5-explore:hover{color:var(--v5-orange)}
+.v5-entry-symbol{width:100%;align-self:center;position:relative;max-width:500px;justify-self:center;animation:v5-route-appear .78s .13s both var(--v5-ease)}
+.v5-entry-symbol:before{content:'';position:absolute;inset:10% -10%;background:radial-gradient(ellipse,#f8eee544,transparent 75%);z-index:-1}
+.v5-entry-symbol svg{display:block;width:100%;max-height:250px}
+.v5-entry-line{stroke-dasharray:850;stroke-dashoffset:850;animation:v5-route-draw 1.1s .35s ease-out forwards}
+.v5-route-caption{display:flex;justify-content:center;align-items:center;gap:22px;margin-top:-8px;color:#6c756d}
+.v5-route-caption span{display:inline-flex;gap:7px;align-items:center;font-size:.77rem;font-weight:700}
+.v5-route-caption svg{color:var(--v5-orange)}
+.v5-entry-footer{padding:12px clamp(22px,5vw,65px) max(21px,env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:12px;color:#a2aaa1;font-size:.72rem}
+.v5-entry-footer>div{display:flex;gap:20px}
+.v5-entry-footer a:hover{color:var(--v5-orange)}
+@keyframes v5-fade-up{from{opacity:0;transform:translateY(13px)}to{opacity:1;transform:translateY(0)}}
+@keyframes v5-route-draw{to{stroke-dashoffset:0}}
+@keyframes v5-route-appear{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+
+/* The map chrome lives in the top safe area. Only the original symbol appears here. */
+.map-page .map-top{padding:calc(env(safe-area-inset-top,0px) + 9px) max(12px,env(safe-area-inset-left,0px)) 0;max-width:790px}
+.map-page .map-header{margin-bottom:7px;min-height:38px}
+.map-page .map-header .brand-v3{gap:0;width:38px;height:38px;justify-content:center;display:flex}
+.map-page .map-header .brand-v3>img{width:34px;height:34px;border-radius:11px}
+.map-page .map-header .brand-v3-wordmark{display:none}
+.map-page .map-header .circle-btn{width:38px;height:38px;min-width:38px;box-shadow:0 4px 13px #172b3220}
+.map-page .map-search{height:51px;padding:0 14px;gap:10px;border-radius:17px;box-shadow:0 6px 22px #1a2c3020}
+.map-page .map-search>svg{color:#596661}
+.map-page .map-search input{font-size:16px;letter-spacing:-.03em}
+.map-page .quick-scroll{padding:9px 1px 4px;gap:7px}
+.map-page .quick-chip{min-height:37px;padding:8px 11px;border-radius:12px;font-size:.78rem;gap:7px;box-shadow:0 3px 11px #25342f0c}
+.map-page .quick-chip svg{width:16px;height:16px}
+.map-page .search-results{top:calc(env(safe-area-inset-top,0px) + 103px);width:calc(100% - 24px);max-width:766px;border-radius:17px;max-height:min(58dvh,420px)}
+.map-page .map-controls{right:max(13px,env(safe-area-inset-right,0px))}
+/* Editable endpoints and functional three-dot menus. */
+.v5-route-box{position:relative;z-index:2;border:1px solid #e5eae6;border-radius:18px;background:#fff;padding:4px 54px 4px 12px;box-shadow:0 6px 26px #18272b20;isolation:isolate}
+.v5-point-row{height:51px;display:flex;align-items:center;gap:10px;min-width:0;position:relative}
+.v5-point-row:first-child{border-bottom:1px solid #edf0ed}
+.v5-point-indicator{flex:none;width:12px;height:12px;margin-left:3px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.8px currentColor}
+.v5-point-start{color:#247bf5;background:#247bf5}
+.v5-point-end{color:#e76430;background:#e76430}
+.v5-point-label{display:flex;flex:1;min-width:0;text-align:left;flex-direction:column;align-items:flex-start;justify-content:center;height:100%;gap:2px;padding:0}
+.v5-point-label span{font-size:.87rem;font-weight:710;color:#252c27;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v5-point-label small{font-size:.65rem;color:#939b93;max-width:100%;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.v5-point-label:hover span{color:var(--v5-orange)}
+.v5-point-actions{position:relative;flex:none;z-index:7}
+.v5-point-more{width:35px;height:35px;display:grid;place-items:center;border-radius:11px;color:#69746f}
+.v5-point-more[aria-expanded='true'],.v5-point-more:hover{background:#fff0e7;color:#e7622d}
+.v5-point-popover{position:absolute;z-index:80;right:0;top:39px;background:#fff;border:1px solid #e7eae6;box-shadow:0 14px 42px #1c30322b;min-width:205px;padding:7px;border-radius:14px;animation:v5-pop .16s ease-out both}
+.v5-point-popover button{display:flex;align-items:center;gap:10px;width:100%;min-height:43px;padding:8px 10px;text-align:left;font-size:.81rem;font-weight:680;border-radius:9px;white-space:nowrap}
+.v5-point-popover button svg{color:#868f86;flex:none}
+.v5-point-popover button:hover{background:#fff3ec;color:var(--v5-orange)}
+.v5-swap{position:absolute;right:9px;top:50%;transform:translateY(-50%);height:37px;width:37px;border-radius:11px;display:grid;place-items:center;background:#f5f6f3;border:1px solid #e6e9e5;color:#3c4740;transition:background .18s,color .18s}
+.v5-swap:not(:disabled):hover{background:#fff0e8;color:var(--v5-orange)}
+.v5-swap:disabled{opacity:.4}
+@keyframes v5-pop{from{opacity:0;transform:translateY(-5px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+/* Search both origin and destination through the existing API, not a stale local list. */
+.v5-editor-overlay{padding-top:min(18dvh,155px)}
+.v5-editor{padding:21px;max-height:70dvh;display:flex;flex-direction:column;gap:12px}
+.v5-editor .modal-title h3{margin-bottom:0;font-size:1.06rem;letter-spacing:-.035em}
+.v5-editor .map-search{height:49px;min-height:49px;box-shadow:none}
+.v5-editor-results{overflow-y:auto;min-height:48px;max-height:38dvh;overscroll-behavior:contain}
+.v5-editor-busy{display:block;padding:19px 10px;color:#7c877d;font-size:.82rem}
+.v5-editor-map{display:flex;align-items:center;gap:9px;min-height:47px;border:1px solid #eee4da;background:#fff6ee;color:#ad532e;padding:8px 13px;border-radius:12px;font-size:.79rem;font-weight:760;text-align:left}
+.v5-editor-map svg:last-child{margin-left:auto}
+/* A denied permission cannot be overridden by the app. Make the fallback clear and small. */
+.map-page .gps-banner{top:calc(env(safe-area-inset-top,0px) + 156px);max-width:420px;padding:12px 14px;border-radius:15px;box-shadow:0 8px 25px #1a2c3020;max-height:min(38dvh,270px);overflow-y:auto}
+.map-page .gps-banner-heading{font-size:.82rem}
+.map-page .gps-banner-heading svg{width:17px;height:17px}
+.map-page .gps-banner p{font-size:.74rem;margin:6px 0 9px;line-height:1.35}
+.map-page .gps-actions{gap:6px}
+.map-page .gps-actions button{font-size:.72rem;min-height:35px;border-radius:9px;padding:7px 10px}
+.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + 156px)}
+/* Route choice must not clip buttons on compact phones. */
+.map-page .route-sheet{max-height:min(70dvh,570px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 12px);overscroll-behavior:contain}
+.map-page .route-option{min-height:120px;box-shadow:none;padding:12px;gap:8px}
+.map-page .route-options{gap:9px}
+.map-page .route-option-main>small{min-height:0;line-height:1.3}
+.map-page .route-sheet .start-btn{min-height:47px}
+/* Profile's vehicle image is a real cutout. No black dashboard / fake automotive vignette. */
+.v4-profile-top{margin-bottom:26px}
+.v4-profile-intro{margin-bottom:24px}
+.v4-stat-strip{margin-bottom:23px}
+.v4-route-feature{background:#f6f3ec!important;border-color:#ece9df!important;min-height:190px;padding:24px 29px;border-radius:21px;margin-bottom:29px}
+.v4-route-feature h2{color:#2b302d!important}
+.v4-route-feature p{color:#7e7d72!important}
+.v4-route-feature-image{right:1%;top:11%;height:84%;width:45%;z-index:2}
+.v4-route-feature-image img{mix-blend-mode:normal!important;filter:drop-shadow(0 14px 15px #28322420);transform:none;object-fit:contain}
+.v4-route-feature:hover .v4-route-feature-image img{transform:translateY(-3px)}
+.v4-route-feature-art{display:none}
+.v4-feature-link{color:#c65325}
+/* Mobile nav: one restrained floating surface with clear active hit area. */
+@media(max-width:1109px){
+ .bottom-nav.v5-bottom-nav{left:50%;right:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 9px);transform:translateX(-50%);width:min(calc(100% - 24px),440px);height:66px;padding:6px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:stretch;justify-items:stretch;border:1px solid #e9ece8;border-radius:22px;background:rgba(255,255,255,.97);box-shadow:0 5px 23px #1a292b1f;-webkit-backdrop-filter:blur(15px);backdrop-filter:blur(15px);z-index:650}
+ .v5-bottom-nav .nav-tab{min-width:0;gap:4px;display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:48px;border-radius:16px;color:#79857d;font-size:.64rem;font-weight:690;transition:background .18s,color .18s}
+ .v5-bottom-nav .nav-tab.active{background:#fff1e9;color:#e3652b}
+ .v5-bottom-nav .nav-tab.active svg{stroke-width:2.25}
+ .v5-bottom-nav .nav-tab:active{transform:scale(.98)}
+ .content-page{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 110px)}
+}
+@media(max-width:800px){
+ .v5-entry-main{grid-template-columns:1fr;gap:9px;padding-top:22px;padding-bottom:10px;align-content:center}
+ .v5-entry-copy{width:min(100%,580px);margin-inline:auto}
+ .v5-entry-copy h1{font-size:clamp(2.95rem,8.7vw,4.3rem)}
+ .v5-entry-symbol{width:min(100%,470px);max-height:170px}
+ .v5-entry-symbol svg{height:140px}
+ .v5-route-caption{margin-top:-11px}
+}
+@media(max-width:600px){
+ .v5-entry-header{padding:15px 21px 4px}
+ .v5-entry-header .brand-v3>img{width:38px;height:38px}
+ .v5-entry-header .brand-v3-wordmark strong{font-size:1.36rem}
+ .v5-entry-header .brand-v3-wordmark small{font-size:.49rem}
+ .v5-entry-signin{min-height:40px;font-size:.79rem}
+ .v5-entry-main{padding:13px 22px 7px;gap:5px}
+ .v5-entry-copy h1{font-size:clamp(2.65rem,11vw,3.55rem);margin:13px 0 12px;line-height:1.05}
+ .v5-entry-copy>p{font-size:.88rem;line-height:1.45;max-width:335px;margin-bottom:17px}
+ .v5-kicker{font-size:.61rem}
+ .v5-entry-buttons{display:grid;grid-template-columns:1fr;gap:8px}
+ .v5-primary,.v5-secondary{width:100%;height:48px;border-radius:13px;font-size:.85rem}
+ .v5-explore{display:flex;justify-content:center;width:100%;margin-top:7px;min-height:32px;font-size:.76rem}
+ .v5-entry-symbol{max-width:320px;margin-inline:auto}
+ .v5-entry-symbol svg{height:99px}
+ .v5-route-caption{gap:17px;margin-top:-13px}
+ .v5-route-caption span{font-size:.68rem}
+ .v5-entry-footer{padding:5px 22px max(12px,env(safe-area-inset-bottom,0px));font-size:.61rem}
+ .v5-entry-footer>div{gap:15px}
+ .v4-profile-top{margin-bottom:23px}
+ .v4-profile-intro{margin-bottom:21px}
+ .v4-route-feature{padding:19px 19px;min-height:170px;margin-bottom:26px}
+ .v4-route-feature h2{font-size:1.48rem}
+ .v4-route-feature-text{max-width:60%}
+ .v4-route-feature-image{right:-5%;width:51%;top:15%;height:75%}
+ .map-page .map-top{padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 0}
+ .map-page .map-header{margin-bottom:6px;min-height:35px}
+ .map-page .map-header .brand-v3>img{width:33px;height:33px}
+ .map-page .map-search{height:48px;border-radius:14px;padding:0 12px}
+ .map-page .quick-scroll{padding-top:8px;gap:6px}
+ .map-page .quick-chip{min-height:36px;padding:7px 10px;font-size:.74rem}
+ .map-page .gps-banner,.map-page .gps-manual-chip{top:calc(env(safe-area-inset-top,0px) + 148px)}
+ .map-page .search-results{top:calc(env(safe-area-inset-top,0px) + 98px)}
+ .v5-route-box{padding-left:11px;padding-right:49px}
+ .v5-point-row{height:48px}
+ .v5-point-label span{font-size:.82rem}
+ .v5-point-label small{font-size:.61rem}
+ .v5-swap{width:35px;height:35px;right:7px}
+ .map-page.has-sheet .map-controls{bottom:calc(min(70dvh,570px) + 15px)}
+ .map-page .route-sheet{max-height:66dvh}
+ .map-page .route-option{padding:10px 9px;min-height:115px;gap:5px}
+ .map-page .route-option-title{font-size:.86rem}
+ .map-page .route-option-main>small{font-size:.65rem;min-height:0}
+ .map-page .route-stats{margin-top:8px}
+}
+@media(max-width:370px){
+ .v5-entry-copy h1{font-size:2.5rem}
+ .v5-entry-copy>p{font-size:.85rem;margin-bottom:14px}
+ .v5-entry-symbol svg{height:76px}
+ .v5-entry-footer>span{display:none}
+ .v5-entry-footer{justify-content:center}
+ .v4-route-feature-image{width:47%;right:-7%}
+ .map-page .route-option-icon{display:none}
+ .v5-point-popover{min-width:190px}
+}
+@media(max-height:700px) and (max-width:800px){
+ .v5-entry-main{padding-top:5px;padding-bottom:0}
+ .v5-entry-copy h1{margin:9px 0;font-size:clamp(2.5rem,9vw,3.3rem)}
+ .v5-entry-copy>p{margin-bottom:12px}
+ .v5-entry-symbol svg{height:70px}
+ .v5-route-caption{margin-top:-10px}
+ .v5-entry-footer{padding-bottom:max(8px,env(safe-area-inset-bottom,0px))}
+}
+@media(max-height:590px) and (max-width:800px){.v5-entry-symbol{display:none}}
+/* Dark preference: keep readable forms without recreating a black hero. */
+[data-theme='dark'] .v5-landing{background:#19201c;color:#f6f7f2}
+[data-theme='dark'] .v5-entry-copy h1{color:#f3f4ef}
+[data-theme='dark'] .v5-entry-copy>p,[data-theme='dark'] .v5-explore{color:#b3bcb3}
+[data-theme='dark'] .v5-secondary{background:#2b332c;border-color:#455045;color:#eff1ec}
+[data-theme='dark'] .v5-entry-symbol:before{opacity:.3}
+[data-theme='dark'] .v4-route-feature{background:#ebe5da!important;border-color:#d9d2c7!important}
+[data-theme='dark'] .v5-bottom-nav{background:#222b24;border-color:#3b453d}
+[data-theme='dark'] .v5-bottom-nav .nav-tab.active{background:#472d20;color:#ff9968}
+@media(prefers-reduced-motion:reduce){
+ .v5-entry-copy,.v5-entry-symbol,.v5-point-popover{animation:none!important}
+ .v5-entry-line{animation:none!important;stroke-dashoffset:0}
+ .v5-primary,.v5-secondary,.v5-entry-signin,.v5-bottom-nav .nav-tab,.v5-swap{transition:none!important}
+}
+
+/* The selected vehicle has no painted environment baked into the artwork. */
+.setup-vehicle-figure.v5-vehicle-cutout{background:linear-gradient(145deg,#fbf7f3,#fffaf5);padding:9px}
+.setup-vehicle-figure.v5-vehicle-cutout img{mix-blend-mode:normal;object-fit:contain;width:100%;height:100%;filter:drop-shadow(0 14px 10px #32403618)}
+
+/* Keep every pixel of the transparent vehicle inside the preference card. */
+@media(max-width:600px){.v4-route-feature-image{right:2%;width:43%;top:15%;height:74%}}
+
+/* V2.6: confirmation and recovery actions remain accessible on small screens. */
+.v3-auth-recovery{display:flex;justify-content:flex-end;margin:0 0 10px;font-size:13px}
+.v3-auth-recovery a{color:inherit;text-underline-offset:3px}
+.account-danger-actions{display:flex;gap:12px;flex-wrap:wrap}
+.account-danger-actions button{flex:1;min-width:145px}

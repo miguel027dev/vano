@@ -1,0 +1,27 @@
+/* VANO 2.9 — quiet precision. Google first, accurate GPS status, legible map layer toggle, signature compass arrow. */
+.vano-direction-arrow{position:relative;width:80px;height:96px;display:grid;place-items:center;transform-origin:50% 50%;filter:none;pointer-events:none}
+.vano-direction-arrow::before{content:"";position:absolute;left:50%;top:50%;width:67px;height:67px;border-radius:50%;z-index:0;transform:translate(-50%,-50%);background:radial-gradient(circle,#fff8edcc 0 36%,#f7672a33 37% 60%,transparent 61%);box-shadow:0 0 0 1px #f7672a40,0 0 0 8px #f7672a15,0 10px 30px #30231a26}
+.vano-direction-arrow svg{position:relative;z-index:1;display:block;width:68px;height:82px;filter:drop-shadow(0 6px 3px #25211b36)}
+.vano-vehicle-moto.vano-direction-arrow svg{width:62px;height:76px}
+.vano-leaflet-vehicle{background:transparent;border:none;overflow:visible}
+.vano-leaflet-vehicle .vano-direction-arrow{width:80px;height:96px}
+.map-page .v29-layer-control{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1px;width:54px!important;height:55px!important;border:1px solid #eee6dc;background:#fffaf5;box-shadow:0 4px 18px #1e2b3224;border-radius:18px;color:#344139;transition:background .18s,border-color .18s,transform .18s}
+.map-page .v29-layer-control svg{flex:none}
+.map-page .v29-layer-control small{font-size:9px;font-weight:750;letter-spacing:-.035em;line-height:1;color:inherit}
+.map-page .v29-layer-control.is-satellite{color:#e65d28;background:#fff1e8;border-color:#f3c8b1}
+.map-page .v29-layer-control:focus-visible{outline:3px solid #e7643080;outline-offset:3px}
+.map-page .v29-layer-control:active{transform:scale(.95)}
+.v29-google-primary{position:relative;width:100%;min-height:59px;margin:2px 0 0;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:12px;background:#fff;border:1.5px solid #e3ded9;color:#222525;font-size:.97rem;font-weight:780;letter-spacing:-.015em;box-shadow:0 8px 26px #39261b14,0 2px 3px #39261b08;transition:border-color .18s,transform .18s,box-shadow .18s}
+.v29-google-primary:hover:not(:disabled),.v29-google-primary:focus-visible{border-color:#e85e27;box-shadow:0 10px 32px #dd6a2d2e;transform:translateY(-1px)}
+.v29-google-primary:focus-visible{outline:3px solid #f4ae87;outline-offset:3px}
+.v29-google-primary:active:not(:disabled){transform:scale(.992)}
+.v29-google-logo{display:grid;place-items:center;flex:none;width:27px;height:27px}
+.v29-google-unavailable .v29-google-primary{opacity:.68;box-shadow:none;cursor:not-allowed}
+.v29-google-unavailable small{display:block;font-size:.71rem;line-height:1.4;margin-top:7px;color:#7a7670}
+.v29-google-arrow{position:absolute;right:16px;color:#9ca19d}
+.v29-auth-divider{display:flex;align-items:center;gap:12px;margin:17px 0;color:#91938e;font-size:.72rem;font-weight:650;text-align:center}
+.v29-auth-divider::before,.v29-auth-divider::after{content:"";flex:1;height:1px;background:#e8e8e5}
+.v3-auth-form .v3-auth-submit{background:#292f2c;border:1px solid #292f2c;box-shadow:none}
+.v3-auth-form .v3-auth-submit:hover{background:#3a403c}
+@media(max-width:390px){.vano-direction-arrow svg{width:62px;height:76px}.v29-google-primary{min-height:56px}.v29-auth-divider{margin:13px 0}}
+@media(prefers-reduced-motion:reduce){.v29-google-primary,.v29-layer-control{transition:none!important}.v29-google-primary:hover{transform:none}}

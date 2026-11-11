@@ -1,0 +1,11 @@
+# VPS with DNS and Caddy on ports 80/443, only ONE Node backend instance.
+# Replace this hostname; Caddy provisions and renews HTTPS certificates automatically.
+vanomaps.example.com {
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:8878 {
+        header_up Host {host}
+        header_up X-Forwarded-Proto https
+        # Override untrusted client-provided X-Forwarded-For.
+        header_up X-Forwarded-For {remote_host}
+    }
+}

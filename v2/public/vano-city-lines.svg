@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 560" fill="none" role="img" aria-label="Ilustração abstrata de ruas e um caminho laranja">
+ <defs>
+  <pattern id="blocks" width="140" height="126" patternUnits="userSpaceOnUse" patternTransform="rotate(-13)">
+   <rect width="140" height="126" fill="#F4F4F0"/>
+   <path d="M0 17H140M0 88H140M15 0V126M100 0V126" stroke="#DFE2DB" stroke-width="2"/>
+   <path d="M52 17V88M15 53H100M100 111H140" stroke="#E9EAE5" stroke-width="2"/>
+  </pattern>
+  <linearGradient id="route" x1="20" y1="460" x2="690" y2="85" gradientUnits="userSpaceOnUse"><stop stop-color="#EF824A"/><stop offset="1" stop-color="#D95A22"/></linearGradient>
+  <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+ </defs>
+ <rect width="760" height="560" rx="38" fill="url(#blocks)"/>
+ <path d="M-40 292C117 249 193 294 289 228C381 165 444 173 505 128C576 76 654 106 803 28" stroke="#DFE5DC" stroke-width="45" stroke-linecap="round"/>
+ <path d="M-40 292C117 249 193 294 289 228C381 165 444 173 505 128C576 76 654 106 803 28" stroke="#FEFEFA" stroke-width="35" stroke-linecap="round"/>
+ <path d="M115 620C172 436 266 429 342 365C433 287 509 285 604 328C704 375 743 336 800 266" stroke="#E6E6DF" stroke-width="54" stroke-linecap="round"/>
+ <path d="M115 620C172 436 266 429 342 365C433 287 509 285 604 328C704 375 743 336 800 266" stroke="#FEFEFA" stroke-width="40" stroke-linecap="round"/>
+ <path d="M70 456L185 433C208 429 220 419 220 398V315C220 285 239 273 271 273H361C387 273 404 263 414 238L442 165C452 142 466 127 493 127H609" stroke="#D9622A" stroke-opacity=".22" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" filter="url(#shadow)"/>
+ <path d="M70 456L185 433C208 429 220 419 220 398V315C220 285 239 273 271 273H361C387 273 404 263 414 238L442 165C452 142 466 127 493 127H609" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+ <path d="M70 456L185 433C208 429 220 419 220 398V315C220 285 239 273 271 273H361C387 273 404 263 414 238L442 165C452 142 466 127 493 127H609" stroke="url(#route)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+ <circle cx="70" cy="456" r="19" fill="#F7F7F3"/><circle cx="70" cy="456" r="10" fill="#E97840"/>
+ <circle cx="609" cy="127" r="23" fill="#fff"/><circle cx="609" cy="127" r="14" fill="#DB5D25"/>
+ <path d="M609 112V141M594 127H624" stroke="white" stroke-width="3" stroke-linecap="round"/>
+</svg>

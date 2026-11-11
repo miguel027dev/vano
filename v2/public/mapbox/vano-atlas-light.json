@@ -1,0 +1,693 @@
+{
+  "version": 8,
+  "name": "VANO Atlas Light — Navegação",
+  "metadata": {
+    "vano:edition": "3.0",
+    "vano:description": "Estilo claro, otimizado para rotas e leitura durante a navegação. Sem dados pessoais e sem credenciais.",
+    "vano:brandOrange": "#E95B22"
+  },
+  "center": [
+    -46.6808,
+    -23.5857
+  ],
+  "zoom": 12,
+  "bearing": 0,
+  "pitch": 0,
+  "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+  "sources": {
+    "vano-streets": {
+      "type": "vector",
+      "url": "mapbox://mapbox.mapbox-streets-v8"
+    }
+  },
+  "layers": [
+    {
+      "id": "vano-canvas",
+      "type": "background",
+      "paint": {
+        "background-color": "#F6F7F5"
+      }
+    },
+    {
+      "id": "vano-landuse",
+      "type": "fill",
+      "source": "vano-streets",
+      "source-layer": "landuse",
+      "minzoom": 5,
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          [
+            "park",
+            "grass",
+            "garden",
+            "wood",
+            "forest",
+            "nature_reserve",
+            "national_park"
+          ],
+          "#E6F1E7",
+          [
+            "pitch",
+            "playground",
+            "golf_course"
+          ],
+          "#EBF3EA",
+          [
+            "cemetery"
+          ],
+          "#E8EFE9",
+          [
+            "hospital",
+            "school",
+            "university"
+          ],
+          "#F0F0ED",
+          "#F3F4F1"
+        ],
+        "fill-opacity": 0.92
+      }
+    },
+    {
+      "id": "vano-wetlands",
+      "type": "fill",
+      "source": "vano-streets",
+      "source-layer": "landuse_overlay",
+      "minzoom": 8,
+      "paint": {
+        "fill-color": "#E5EEE8",
+        "fill-opacity": 0.55
+      }
+    },
+    {
+      "id": "vano-water",
+      "type": "fill",
+      "source": "vano-streets",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#DCECF4",
+        "fill-opacity": 1
+      }
+    },
+    {
+      "id": "vano-road-base-case",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 9,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#DAE0DF",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          1.3,
+          12,
+          3.8,
+          15,
+          8,
+          18,
+          23,
+          21,
+          48
+        ],
+        "line-opacity": 0.9
+      }
+    },
+    {
+      "id": "vano-road-base",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 9,
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#FFFFFF",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          9,
+          0.9,
+          12,
+          2.9,
+          15,
+          6.7,
+          18,
+          20,
+          21,
+          43
+        ]
+      }
+    },
+    {
+      "id": "vano-arteries-case",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 6,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#CFD8D8",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1.2,
+          9,
+          3,
+          12,
+          6.2,
+          15,
+          14,
+          18,
+          30
+        ]
+      }
+    },
+    {
+      "id": "vano-arteries",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 6,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk",
+            "primary",
+            "secondary",
+            "tertiary"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#FFFEFB",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.7,
+          9,
+          2.2,
+          12,
+          4.9,
+          15,
+          11.6,
+          18,
+          26
+        ]
+      }
+    },
+    {
+      "id": "vano-motorway-case",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 6,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#E5CFBD",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1.6,
+          10,
+          3.6,
+          13,
+          8,
+          16,
+          19,
+          19,
+          36
+        ]
+      }
+    },
+    {
+      "id": "vano-motorway",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 6,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "motorway",
+            "trunk"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#F6E5D6",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.9,
+          10,
+          2.6,
+          13,
+          6.6,
+          16,
+          16,
+          19,
+          32
+        ]
+      }
+    },
+    {
+      "id": "vano-footpaths",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 13,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "path",
+            "pedestrian",
+            "steps",
+            "track"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#C6D0CA",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0.7,
+          16,
+          1.1,
+          19,
+          2.3
+        ],
+        "line-dasharray": [
+          1.6,
+          2
+        ],
+        "line-opacity": 0.7
+      }
+    },
+    {
+      "id": "vano-buildings",
+      "type": "fill",
+      "source": "vano-streets",
+      "source-layer": "building",
+      "minzoom": 13,
+      "paint": {
+        "fill-color": "#E8EAE8",
+        "fill-outline-color": "#DDE1DE",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0.35,
+          16,
+          0.72
+        ]
+      }
+    },
+    {
+      "id": "vano-buildings-3d",
+      "type": "fill-extrusion",
+      "source": "vano-streets",
+      "source-layer": "building",
+      "minzoom": 16,
+      "paint": {
+        "fill-extrusion-color": "#E6E9E5",
+        "fill-extrusion-height": [
+          "max",
+          0,
+          [
+            "to-number",
+            [
+              "get",
+              "height"
+            ],
+            0
+          ]
+        ],
+        "fill-extrusion-base": [
+          "max",
+          0,
+          [
+            "to-number",
+            [
+              "get",
+              "min_height"
+            ],
+            0
+          ]
+        ],
+        "fill-extrusion-opacity": 0.42,
+        "fill-extrusion-vertical-gradient": true
+      }
+    },
+    {
+      "id": "vano-neighborhood-names",
+      "type": "symbol",
+      "source": "vano-streets",
+      "source-layer": "place_label",
+      "minzoom": 11,
+      "maxzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "settlement_subdivision"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_en"
+          ],
+          ""
+        ],
+        "text-font": [
+          "DIN Pro Medium",
+          "Arial Unicode MS Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          11,
+          10,
+          14,
+          12,
+          16,
+          13
+        ],
+        "text-max-width": 10,
+        "text-letter-spacing": 0.04,
+        "text-allow-overlap": false
+      },
+      "paint": {
+        "text-color": "#7E8B84",
+        "text-halo-color": "#F6F7F5",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "vano-city-names",
+      "type": "symbol",
+      "source": "vano-streets",
+      "source-layer": "place_label",
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "settlement",
+            "country",
+            "state"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_en"
+          ],
+          ""
+        ],
+        "text-font": [
+          "DIN Pro Medium",
+          "Arial Unicode MS Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          3,
+          11,
+          7,
+          14,
+          13,
+          17
+        ],
+        "text-max-width": 9,
+        "text-letter-spacing": 0.015
+      },
+      "paint": {
+        "text-color": "#596862",
+        "text-halo-color": "#F6F7F5",
+        "text-halo-width": 1.5
+      }
+    },
+    {
+      "id": "vano-road-labels",
+      "type": "symbol",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 13.5,
+      "layout": {
+        "symbol-placement": "line",
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_en"
+          ],
+          ""
+        ],
+        "text-font": [
+          "DIN Pro Regular",
+          "Arial Unicode MS Regular"
+        ],
+        "text-size": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13.5,
+          10,
+          17,
+          12,
+          20,
+          13
+        ],
+        "text-max-angle": 26,
+        "symbol-spacing": 300,
+        "text-rotation-alignment": "map"
+      },
+      "paint": {
+        "text-color": "#73807B",
+        "text-halo-color": "#FFFFFF",
+        "text-halo-width": 2
+      }
+    },
+    {
+      "id": "vano-essentials",
+      "type": "symbol",
+      "source": "vano-streets",
+      "source-layer": "poi_label",
+      "minzoom": 15,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "hospital",
+            "school",
+            "university",
+            "park",
+            "supermarket",
+            "grocery",
+            "pharmacy",
+            "clinic"
+          ]
+        ]
+      ],
+      "layout": {
+        "text-field": [
+          "coalesce",
+          [
+            "get",
+            "name"
+          ],
+          [
+            "get",
+            "name_en"
+          ],
+          ""
+        ],
+        "text-font": [
+          "DIN Pro Regular",
+          "Arial Unicode MS Regular"
+        ],
+        "text-size": 11,
+        "text-max-width": 8,
+        "text-optional": true
+      },
+      "paint": {
+        "text-color": "#6F847C",
+        "text-halo-color": "#F6F7F5",
+        "text-halo-width": 1.5
+      }
+    }
+  ]
+}
