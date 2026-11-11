@@ -185,6 +185,6 @@ test('stopped route keeps the chase camera behind the actual trajectory',()=>{
  assert.equal(chase.bearing,markerBearing,'rear camera and marker face the same route leg');
  assert.deepEqual(chase.center,roadMatch.point);
  const source=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
- assert.match(source,/const matchedRoadHeading=realDriving&&state\\.roadMatch\\?/);
- assert.doesNotMatch(source,/state\\.roadMatch&&d\\.telemetry\\?\\.speed>1\\.5/);
+ assert.ok(source.includes('const matchedRoadHeading=realDriving&&state.roadMatch?'));
+ assert.ok(!source.includes('state.roadMatch&&d.telemetry?.speed>1.5'));
 });
