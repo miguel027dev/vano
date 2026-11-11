@@ -102,6 +102,7 @@ const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 /** Single camera writer: route launch, tracking, free-look and recenter all flow through it. */
 function motionController(map,latest,status){
   let frame=0,previous=0,pose={center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()},reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
+  let appliedPose=null,appliedPadding=null;
   let suspended=false,freeLook=false,active=false,completeAt=0,motoPlan=null;
   // A throttled observation of surrounding 3D buildings and upcoming route bend.
   // No queries in the RAF hot path between samples; the HUD/GPS are untouched.
@@ -474,7 +475,20 @@ function motionController(map,latest,status){
     chasePaddingGoal=targetPadding.top;
     chasePaddingTop=damp(chasePaddingTop,chasePaddingGoal,dt,reduced?85:290);
     const smoothPadding={...targetPadding,top:Math.round(chasePaddingTop)};
-    try{map.jumpTo({...pose,padding:smoothPadding});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
+    // Avoid expensive WebGL camera submissions when the pose has not visibly changed.
+    // The RAF and heading filter continue; no GPS fix or navigation timing is altered.
+    const cameraChanged=!appliedPose||
+      metersBetween(appliedPose.center,pose.center)>.06||
+      Math.abs(appliedPose.zoom-pose.zoom)>.0005||
+      Math.abs(appliedPose.pitch-pose.pitch)>.035||
+      Math.abs(shortestAngle(appliedPose.bearing,pose.bearing))>.045||
+      !appliedPadding||Object.keys(smoothPadding).some(k=>appliedPadding[k]!==smoothPadding[k]);
+    if(cameraChanged){
+      try{map.jumpTo({...pose,padding:smoothPadding});}
+      catch(e){console.warn('VANO motion:',e.message);active=false;return;}
+      appliedPose={...pose,center:[...pose.center]};
+      appliedPadding=smoothPadding;
+    }
     // The internal microzoom easing must finish even if the outer map
     // camera already reached an intermediate frame's target.
     const easingPending=Math.abs(realZoomGoal-realZoom)>.008||
