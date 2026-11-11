@@ -1172,8 +1172,12 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         state.lastChasePoint=point;state.lastChaseKick=now;
         motion.current?.start();
       }
-      const matchedRoadHeading=realDriving&&state.roadMatch&&d.telemetry?.speed>1.5?
-        bearingAtDrivenProgress(timeline,state.roadMeters):null;
+      // Camera and puck must face the SAME confirmed route segment.
+      // At a red light or GPS slowdown, losing the road bearing makes the
+      // camera face north while the selected route runs sideways on screen.
+      const matchedRoadHeading=realDriving&&state.roadMatch?
+        bearingAtDrivenProgress(timeline,
+          Number.isFinite(state.roadMeters)?state.roadMeters:state.roadMatch.meters):null;
       const sensorHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&
         d.telemetry?.speed>1.5?d.telemetry.heading:null;
       const heading=playPointer&&Number.isFinite(playPointer.bearing)?playPointer.bearing:
