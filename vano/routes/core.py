@@ -1,3 +1,4 @@
+from vano.services.map_poi_preferences import saved_poi_choices
 """VANO core/public application routes.
 
 Extracted from the historical monolithic app.py without changing route bodies or
@@ -167,6 +168,7 @@ def index():
         map_style_mode=map_style_pref,
         map_accent=map_accent_pref,
         map_accent_colors=MAPBOX_ACCENT_PRESETS[map_accent_pref],
+        poi_visible=saved_poi_choices(user) if user else None,
         nav_preferences={
             "avoid_ferries": bool(user and user["avoid_ferries"]),
             "avoid_tolls": bool(user and user["avoid_tolls"]),
