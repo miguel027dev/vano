@@ -178,6 +178,14 @@ export default function MapPage({active=true}){
       // A delayed callback for an earlier turn must not change the current one.
       if(id&&attempt?.utteranceId&&id!==attempt.utteranceId)return;
       if(id&&deviceVoiceFocusRef.current&&id!==deviceVoiceFocusRef.current.id)return;
+      // Once browser fallback owns this cue, delayed native cancellation must not
+      // release its audio focus or suppress the local speech.
+      if(attempt?.fallbackUsed)return;
+      if(value==='speaking'&&deviceVoiceFocusRef.current?.id===id){
+        attempt.started=true;
+        clearTimeout(deviceVoiceFocusRef.current.startupTimer);
+        deviceVoiceFocusRef.current.startupTimer=null;
+      }
       if(['done','canceled','unavailable','missing-language'].includes(value))releaseDeviceVoiceFocus(id);
       if(['unavailable','missing-language'].includes(value)){
         if(!fallbackNativeGuidance(id))setVoiceProblem(true);
@@ -1085,14 +1093,21 @@ export default function MapPage({active=true}){
     if(!lease||(id&&lease.id!==id))return;
     deviceVoiceFocusRef.current=null;
     clearTimeout(lease.timer);
+    clearTimeout(lease.startupTimer);
     lease.release();
   }
   function stopActiveGuidance(){
-    maneuverAudioRef.current?.abort();
-    const id=deviceVoiceFocusRef.current?.id;
-    // Target only the navigation utterance; do not cancel MAVI's speech.
-    stopNavigationVoice({native:isNativeShell()&&!!id,
-      sendNative:message=>notifyNative({...message,utteranceId:id})});
+    const cloud=maneuverAudioRef.current;
+    maneuverAudioRef.current=null;
+    cloud?.abort();
+    const lease=deviceVoiceFocusRef.current;
+    const id=lease?.id;
+    // Never cancel browser audio globally when only the MAVI assistant is speaking.
+    stopNavigationVoice({
+      native:isNativeShell()&&lease?.channel==='native',
+      cancelWebSpeech:lease?.channel==='web',
+      sendNative:message=>notifyNative({...message,utteranceId:id})
+    });
     releaseDeviceVoiceFocus();
   }
   function fallbackNativeGuidance(id){
@@ -1103,7 +1118,7 @@ export default function MapPage({active=true}){
     releaseDeviceVoiceFocus(attempt.utteranceId);
     const release=acquireNavigationAudioFocus();
     const timer=setTimeout(()=>releaseDeviceVoiceFocus(attempt.utteranceId),20000);
-    deviceVoiceFocusRef.current={id:attempt.utteranceId,release,timer};
+    deviceVoiceFocusRef.current={id:attempt.utteranceId,release,timer,channel:'web'};
     const result=speakNavigationVoice(attempt.text,language,{
       native:false,
       onStart:()=>{if(lastVoiceAttempt.current===attempt)setVoiceProblem(false);},
@@ -1122,11 +1137,13 @@ export default function MapPage({active=true}){
     }
     return result.ok;
   }
-  function speakManeuver(text,key=null){
+  function speakManeuver(text,key=null,{urgent=false}={}){
     if(simActive)return false; // Simulation must never request spoken directions.
     // Cloud outages / proof renewal cannot silence the next turn. Cool down only
     // cloud retries, not local speech.
-    if(jevMode&&route?.proof&&language==='pt-BR'&&Date.now()>=voiceRetryAfterRef.current){
+    // Imminent turns cannot wait for network TTS. Local Android/browser speech
+    // has priority and cancels any older cloud sentence still in progress.
+    if(!urgent&&jevMode&&route?.proof&&language==='pt-BR'&&Date.now()>=voiceRetryAfterRef.current){
       if(maneuverAudioRef.current){
         const interrupted=lastVoiceAttempt.current;
         maneuverAudioRef.current.abort();
@@ -1140,29 +1157,39 @@ export default function MapPage({active=true}){
       maneuverAudioRef.current=controller;
       if(key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
       void (async()=>{
+        let ticketTimedOut=false;
+        // Bound only ticket acquisition; audio playback retains its own timeout.
+        const ticketDeadline=setTimeout(()=>{ticketTimedOut=true;controller.abort();},2800);
         try{
           const result=await api('/v2/navigation/voice-ticket',{
             method:'POST',signal:controller.signal,
             body:{text,proof:voiceRouteProofRef.current.proof,language}
           });
+          clearTimeout(ticketDeadline);
           if(controller.signal.aborted||!result?.voiceTicket)throw Error('no_voice_ticket');
           if(typeof result.refreshedProof==='string'&&voiceRouteProofRef.current.route===route)
             voiceRouteProofRef.current.proof=result.refreshedProof;
           await playMaviVoice(result.voiceTicket,{signal:controller.signal});
           if(!controller.signal.aborted)setVoiceProblem(false);
         }catch{
-          if(!controller.signal.aborted){
+          // An obsolete or explicitly muted cue must never come back to life.
+          if(maneuverAudioRef.current===controller&&(!controller.signal.aborted||ticketTimedOut)){
             if(key){spoken.current.delete(key);setSpokenRevision(v=>v+1);}
             voiceRetryAfterRef.current=Date.now()+12000;
-            // Both the Android app and browser have a local voice path.
             if(!speakDeviceManeuver(text,key))setVoiceProblem(true);
           }
         }finally{
+          clearTimeout(ticketDeadline);
           releaseAudioFocus();
           if(maneuverAudioRef.current===controller)maneuverAudioRef.current=null;
         }
       })();
       return true;
+    }
+    if(urgent&&maneuverAudioRef.current){
+      const outdated=maneuverAudioRef.current;
+      maneuverAudioRef.current=null;
+      outdated.abort();
     }
     return speakDeviceManeuver(text,key);
   }
@@ -1177,8 +1204,8 @@ export default function MapPage({active=true}){
       markUnheardCue(key);
       setVoiceProblem(true);
     },20000);
-    deviceVoiceFocusRef.current={id:utteranceId,release,timer};
-    const attempt={text,key,utteranceId,fallbackUsed:false};
+    deviceVoiceFocusRef.current={id:utteranceId,release,timer,channel:isNativeShell()?'native':'web'};
+    const attempt={text,key,utteranceId,fallbackUsed:false,started:false};
     lastVoiceAttempt.current=attempt;
     const result=speakNavigationVoice(text,language,{
       native:isNativeShell(),sendNative:notifyNative,utteranceId,
@@ -1191,6 +1218,21 @@ export default function MapPage({active=true}){
         setVoiceProblem(true);
       }
     });
+    const lease=deviceVoiceFocusRef.current;
+    if(lease?.id===utteranceId){
+      lease.channel=result.channel||lease.channel;
+      if(result.ok&&result.channel==='native'&&!attempt.started){
+        // A bridge acknowledgment isn't audible speech. Recover quickly if
+        // the native TTS service fails to start or omits its status callback.
+        lease.startupTimer=setTimeout(()=>{
+          if(deviceVoiceFocusRef.current?.id!==utteranceId||
+            lastVoiceAttempt.current!==attempt||attempt.started||attempt.fallbackUsed)return;
+          const recovered=fallbackNativeGuidance(utteranceId);
+          notifyNative({action:'stopSpeech',utteranceId});
+          if(!recovered)setVoiceProblem(true);
+        },3200);
+      }
+    }
     // The browser must not mark an unsupported instruction as announced.
     if(result.ok&&key){spoken.current.add(key);setSpokenRevision(v=>v+1);}
     if(!result.ok)releaseDeviceVoiceFocus(utteranceId);
@@ -1207,11 +1249,14 @@ export default function MapPage({active=true}){
       // Avoid cutting off a recent combined announcement for the same turn.
       const interruptedSequence=cue.stage==='now'&&previous.stage==='soon'&&previous.stepIndex===cue.stepIndex&&elapsed<2400&&cue.distance>8;
       const lowPriorityOverlap=cue.stage==='soon'&&elapsed<1800;
-      if(!alreadyCovered&&!interruptedSequence&&!lowPriorityOverlap&&speakManeuver(cue.text,cue.key)){
+      if(!alreadyCovered&&!interruptedSequence&&!lowPriorityOverlap&&
+        speakManeuver(cue.text,cue.key,{urgent:cue.stage==='now'||cue.distance<100})){
         cuePlaybackRef.current={at:now,stepIndex:cue.stepIndex,stage:cue.stage,followingIndex:cue.followingIndex,key:cue.key};
       }
     }
-  },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,hasLiveGPS,muted,language,voiceProblem,recalculating]);
+  },[active,navMode,guidance?.stepIndex,guidance?.instruction,guidance?.distance,
+      guidance?.following?.stepIndex,guidance?.following?.gapMeters,
+      telemetry?.speed,hasLiveGPS,muted,language,voiceProblem,recalculating]);
   // Low-priority walking detail: play only for a mapped crossing, with fresh
   // accepted GPS progress. A real imminent turn or active voice has priority.
   useEffect(()=>{
