@@ -19,6 +19,7 @@ import {historyDestination} from '../lib/historyPresentation.mjs';
 import {locationSummary} from '../lib/locationSummary.mjs';
 import {geoErrorMessage, hasRecentGpsFix, gpsStateAfterError, evaluateGpsPosition} from '../lib/geolocation';
 import {startGpsSession} from '../lib/gpsSession';
+import {hasRecentNativePosition} from '../lib/nativePositionPriority.mjs';
 import {readWarmGps,saveWarmGps} from '../lib/gpsWarmStart.js';
 import {smoothGpsSpeedSample} from '../lib/mapSpeed.js';
 import {speedLimitAtGpsPosition} from '../lib/routeSpeedLimit.js';
@@ -440,7 +441,7 @@ export default function MapPage({active=true}){
     const stop=startGpsSession(navigator.geolocation,{
       // The native GPS stream wins while fresh; browser GPS stays as fallback.
       onPosition:position=>{
-        if(isNativeShell()&&Date.now()-nativeLastAcceptedAt.current<2800)return true;
+        if(isNativeShell()&&hasRecentNativePosition(nativeLastAcceptedAt.current,Date.now()))return true;
         return onPosition(position);
       },onError:onPositionError,
       onRecover:()=>{if(navMode&&!simActive&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
