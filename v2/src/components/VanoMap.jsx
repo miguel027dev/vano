@@ -102,7 +102,6 @@ const isLoaded=map=>{try{return map.isStyleLoaded();}catch{return false;}};
 /** Single camera writer: route launch, tracking, free-look and recenter all flow through it. */
 function motionController(map,latest,status){
   let frame=0,previous=0,pose={center:map.getCenter().toArray(),zoom:map.getZoom(),pitch:map.getPitch(),bearing:map.getBearing()},reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||false;
-  let appliedPose=null,appliedPadding=null;
   let suspended=false,freeLook=false,active=false,completeAt=0,motoPlan=null;
   // A throttled observation of surrounding 3D buildings and upcoming route bend.
   // No queries in the RAF hot path between samples; the HUD/GPS are untouched.
@@ -475,20 +474,7 @@ function motionController(map,latest,status){
     chasePaddingGoal=targetPadding.top;
     chasePaddingTop=damp(chasePaddingTop,chasePaddingGoal,dt,reduced?85:290);
     const smoothPadding={...targetPadding,top:Math.round(chasePaddingTop)};
-    // Avoid expensive WebGL camera submissions when the pose has not visibly changed.
-    // The RAF and heading filter continue; no GPS fix or navigation timing is altered.
-    const cameraChanged=!appliedPose||
-      metersBetween(appliedPose.center,pose.center)>.06||
-      Math.abs(appliedPose.zoom-pose.zoom)>.0005||
-      Math.abs(appliedPose.pitch-pose.pitch)>.035||
-      Math.abs(shortestAngle(appliedPose.bearing,pose.bearing))>.045||
-      !appliedPadding||Object.keys(smoothPadding).some(k=>appliedPadding[k]!==smoothPadding[k]);
-    if(cameraChanged){
-      try{map.jumpTo({...pose,padding:smoothPadding});}
-      catch(e){console.warn('VANO motion:',e.message);active=false;return;}
-      appliedPose={...pose,center:[...pose.center]};
-      appliedPadding=smoothPadding;
-    }
+    try{map.jumpTo({...pose,padding:smoothPadding});}catch(e){console.warn('VANO motion:',e.message);active=false;return;}
     // The internal microzoom easing must finish even if the outer map
     // camera already reached an intermediate frame's target.
     const easingPending=Math.abs(realZoomGoal-realZoom)>.008||
@@ -962,36 +948,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       padding:[46,46],maxZoom:15,animate:!reduced,duration:.55
     });
   },[previewRoute,previewFocus,navigation]);
-  // Heavy sources, route geometry and symbols change on route/UI events, not every GPS fix.
-  useEffect(()=>{
-    const map=mapRef.current;
-    if(!map)return;
-    if(backend.current==='mapbox'){
-      if(!isLoaded(map))return;
-      paintMapbox(map,latest.current,lastSelection);
-      if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();
-      else if(destination?.coords){
-        const fitKey=`${destination.id}|${selectedRoute}`;
-        if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}
-      }
-    }else paintLeaflet(map,latest.current);
-  },[manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,v2Experience,routeTraffic,vehicle,appearance,layer]);
-  // Hot GPS path: the lightweight RAF owns pointer position and chase camera.
-  // Only initialize an absent origin marker once; do not re-upload map layers per fix.
-  useEffect(()=>{
-    const map=mapRef.current;
-    if(!map||!active)return;
-    if(backend.current==='mapbox'){
-      if(!isLoaded(map))return;
-      if(!map._vanoMarker?.current&&validPoint(latest.current.gpsCoords))
-        paintMapbox(map,latest.current,lastSelection);
-      if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))
-        motion.current?.start();
-    }else if(backend.current==='leaflet'&&validPoint(gpsCoords)&&
-      !map._vanoVehicleMarker&&!map._vanoOriginMarker){
-      paintLeaflet(map,latest.current);
-    }
-  },[active,userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],telemetry?.heading,telemetry?.speed,telemetry?.accuracy]);
+  // Render route only when route changes, not every camera frame. Camera uses an independent RAF writer.
+  useEffect(()=>{const map=mapRef.current;if(!map)return;if(backend.current==='mapbox'){if(isLoaded(map)){paintMapbox(map,latest.current,lastSelection);if(shouldFollowLocation({navigation,destination,pickingOrigin,manualOrigin,position:gpsCoords}))motion.current?.start();else if(destination?.coords){const fitKey=`${destination.id}|${selectedRoute}`;if(lastFit.current!==fitKey){lastFit.current=fitKey;motion.current?.preview();}}}}else{paintLeaflet(map,latest.current);/* Navigation camera is owned by the motion RAF; do not queue Leaflet pan animations. */}},[userCoords?.[0],userCoords?.[1],gpsCoords?.[0],gpsCoords?.[1],manualOrigin?.[0],manualOrigin?.[1],pickingOrigin,destination?.id,routes,selectedRoute,navigation,telemetry?.heading,telemetry?.speed,telemetry?.accuracy,v2Experience,routeTraffic]);
   useEffect(()=>{if(navigation)controller?.current?.cancelCinematic?.();},[navigation]);
   // Changing the visual theme must never take control of a live GPS camera.
   // Away from navigation, the dark street style gains a useful 3D viewing angle.
@@ -1079,7 +1037,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     let raf=0,stopped=false;
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
-    const state={...visual.current,last:0,lastReport:0,lastPaint:0,lastPaintPoint:null,progress:0,
+    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,
       // Preserve a valid on-road visual target when the same route/RAF restarts.
       gpsMatchRaw:visual.current.gpsMatchRaw??null,
       gpsMatchGeometry:visual.current.gpsMatchGeometry??null,
@@ -1272,10 +1230,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
             state.lastMarkerBearing=nextBearing;
           }
         }
-        // Progress line is decorative: upload geometry only after visible movement.
-        // The GPS marker/camera still animate independently every frame.
-        if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=180&&
-          (!validPoint(state.lastPaintPoint)||metersBetween(state.lastPaintPoint,point)>=.6)){
+        if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
           const near=nearestOnRoute(point,route?.geometry);
           const maxOffset=Math.max(45,Math.min(100,Number(d.telemetry?.accuracy||15)*2));
           if(near.distance<=maxOffset){
@@ -1285,7 +1240,6 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
             if(points.length>1)map.getSource('vano-v2-traveled')?.setData(geo([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]));
           }
           state.lastPaint=now;
-          state.lastPaintPoint=point;
         }
       }else if(map&&backend.current==='leaflet'){
         const follow=shouldFollowLocation({navigation:d.navigation,destination:d.destination,pickingOrigin:d.pickingOrigin,manualOrigin:d.manualOrigin,position:d.gpsCoords});
