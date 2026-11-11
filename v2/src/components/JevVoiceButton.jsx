@@ -5,7 +5,6 @@ import {Mic,MicOff,Send,X,Check,Volume2,RefreshCw,AudioLines,ShieldCheck,AlertCi
 import {api} from '../lib/api.js';
 import {playMaviVoice} from '../lib/maviElevenPlayback.mjs';
 import {navigationAudioActive,onNavigationAudioStart} from '../lib/maviAudioFocus.mjs';
-import {maviLocalSpeechText,maviLocalSpeechTimeoutMs} from '../lib/maviSpeechPolicy.mjs';
 import {classifyMaviIntent,maviProposalDecision,maviProposalFollowup} from '../lib/maviAssistant.mjs';
 import {maviIncidentOffer,maviIncidentFollowupDecision} from '../lib/maviIncidentFollowup.mjs';
 import {microphoneMessage,mediaCaptureError,recorderMime} from '../lib/jevMicSupport.mjs';
@@ -99,42 +98,26 @@ export default function JevVoiceButton({onCommand,onAccept,onAction,onPreview,on
      if(enabledRef.current&&mountedRef.current)onComplete?.();
    };
    const trySpeak=()=>{
-     if(!synth||!Utterance){
-       setDiagnostic('Voz indisponível neste aparelho. A resposta da MAVI continua disponível em texto.');
-       finish();return;
-     }
+     if(!synth||!Utterance){finish();return;}
      if(finished||!enabledRef.current||voiceTurnRef.current!==turn)return;
      // Wait for the navigation announcement, rather than silently skip MAVI.
      if(navigationAudioActive()||synth.speaking){
-       if(++attempts>12){
-         setDiagnostic('A voz da MAVI aguardou as manobras e não conseguiu iniciar. A resposta está em texto.');
-         finish();return;
-       }
+       if(++attempts>12){finish();return;}
        speechTimerRef.current=setTimeout(trySpeak,750);
        return;
      }
      try{
-       const voiceText=maviLocalSpeechText(message);
-       if(!voiceText){finish();return;}
-       const speech=new Utterance(voiceText);
+       const speech=new Utterance(String(message||'').slice(0,400));
        speech.lang='pt-BR';speech.rate=1;speech.volume=1;
        const voices=synth.getVoices?.()||[];
        const selected=voices.find(x=>String(x.lang).toLowerCase()==='pt-br')||
          voices.find(x=>String(x.lang).toLowerCase().startsWith('pt'));
        if(selected)speech.voice=selected;
        speechRef.current=speech;setStatus('speaking');
-       speech.onend=finish;
-       speech.onerror=event=>{
-         if(!['canceled','interrupted'].includes(event?.error))
-           setDiagnostic('Áudio da MAVI falhou; a resposta continua disponível em texto.');
-         finish();
-       };
+       speech.onend=finish;speech.onerror=finish;
        synth.resume?.();synth.speak(speech);
        // Some WebViews omit onend; never trap the microphone or route proposal.
-       speechTimerRef.current=setTimeout(()=>{
-         setDiagnostic('A reprodução da MAVI excedeu o tempo de espera. A resposta está em texto.');
-         finish();
-       },maviLocalSpeechTimeoutMs(voiceText));
+       speechTimerRef.current=setTimeout(finish,15000);
      }catch{finish();}
    };
    if((typeof voiceTicket==='string'&&voiceTicket.length>10)||voiceTicket?.then){

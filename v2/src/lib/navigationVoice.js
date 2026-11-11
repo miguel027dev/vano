@@ -31,15 +31,12 @@ export function speakNavigationVoice(text,language='pt-BR',{
   const same=voices.find(v=>String(v.lang).toLowerCase()===locale.toLowerCase());
   const languageFamily=voices.find(v=>String(v.lang).toLowerCase().split('-')[0]===locale.split('-')[0].toLowerCase());
   if(same||languageFamily)speech.voice=same||languageFamily;
-  let completed=false;
-  const finish=()=>{if(completed)return;completed=true;onEnd();};
   speech.onstart=()=>onStart();
-  speech.onend=finish;
+  speech.onend=()=>onEnd();
   speech.onerror=event=>{
-   // Interrupted/canceled browser playback still releases navigation focus,
-   // but is not a failure of the speech engine.
+   // A newer instruction may preempt an old one; this is not a microphone/
+   // voice failure and must not trigger a false error banner.
    if(!['canceled','interrupted'].includes(event?.error))onFailure(event?.error||'synthesis');
-   finish();
   };
   synth.cancel(); // Do not queue obsolete turn-by-turn instructions.
   synth.speak(speech);
@@ -49,7 +46,7 @@ export function speakNavigationVoice(text,language='pt-BR',{
  }
 }
 export function stopNavigationVoice({native=false,sendNative=()=>false,
- scope=typeof window!=='undefined'?window:null,cancelWebSpeech=true}={}){
+ scope=typeof window!=='undefined'?window:null}={}){
  if(native){try{sendNative({action:'stopSpeech'});}catch{/* no host */}}
- if(cancelWebSpeech)try{scope?.speechSynthesis?.cancel?.();}catch{/* unsupported */ }
+ try{scope?.speechSynthesis?.cancel?.();}catch{/* unsupported */ }
 }

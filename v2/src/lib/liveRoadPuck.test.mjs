@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {buildRouteTimeline,sampleRoute} from './routeAnimation.js';
 import {matchLiveRoadPosition,bearingAtDrivenProgress,shouldHoldVisualRoadLock} from './liveRoadPuck.mjs';
 import {cameraTarget,metersBetween} from './navigationMotion.js';
-import {planV1CloseChase} from './v1CloseChase.mjs';
 import {easeGpsPoint} from './liveMotion.js';
 import {readFileSync} from 'node:fs';
 
@@ -168,23 +167,4 @@ test('a single missed map-match does not tear GPS marker off the route centerlin
  const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(map,/shouldHoldVisualRoadLock\(\{/);
  assert.match(map,/!state\.heldRoadLock/);
-});
-
-test('stopped route keeps the chase camera behind the actual trajectory',()=>{
- const parked=[start[0]+east(30),start[1]+north(2)];
- const roadMatch=matchLiveRoadPosition({...opts,position:parked,speed:0,heading:null});
- assert.ok(roadMatch,'a precise stationary fix can identify the road segment');
- const markerBearing=bearingAtDrivenProgress(timeline,roadMatch.meters);
- assert.ok(Math.abs(markerBearing-90)<.5,'the selected eastbound route faces east, not north');
- const base=cameraTarget({navigation:true,position:roadMatch.point,route,
-   telemetry:{speed:0,heading:null,accuracy:8},preferLiveHeading:true});
- const chase=planV1CloseChase({enabled:true,base,position:roadMatch.point,
-   route,accuracy:8,speed:0,markerBearing,vehicle:'carro',
-   viewport:{padding:{top:150,bottom:170,left:20,right:20},visibleHeight:410,markerRadius:42}});
- assert.equal(chase.cameraFollowMarker,true);
- assert.equal(chase.bearing,markerBearing,'rear camera and marker face the same route leg');
- assert.deepEqual(chase.center,roadMatch.point);
- const source=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
- assert.ok(source.includes('const matchedRoadHeading=realDriving&&state.roadMatch?'));
- assert.ok(!source.includes('state.roadMatch&&d.telemetry?.speed>1.5'));
 });

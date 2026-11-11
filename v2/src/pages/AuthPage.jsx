@@ -64,13 +64,14 @@ export function AuthPage({mode='login'}){
     }catch(ex){setError(t(ex.message||'Não foi possível continuar. Tente novamente.'));}
     finally{setBusy(false);}
   }
-  return <main className="v3-auth-page vano-auth-compact">
+  return <main className="v3-auth-page">
     <div className="v3-auth-main">
-      <header className="v3-auth-header"><Brand small to={backTo}/><Link to={backTo} className="v3-auth-back"><ArrowLeft size={17}/> {t('Voltar')}</Link></header>
+      <header className="v3-auth-header"><Brand to={backTo}/><Link to={backTo} className="v3-auth-back"><ArrowLeft size={17}/> {t('Voltar')}</Link></header>
       <section className="v3-auth-center" aria-label={register?t('Criar conta VANO'):t('Entrar na VANO')}>
         <div className="v3-auth-copy">
-          <h1>{t(register?'Criar conta':'Entrar')}</h1>
-          <p>{t(register?'Salve seus destinos e deixe tudo do seu jeito.':'Entre para continuar com suas rotas e seus lugares.')}</p>
+          <span className="v3-auth-eyebrow"><span className="v3-orange-dash"/> {t('CONTA VANO')}</span>
+          <h1>{t(register?'Crie seu espaço.':'Bom ter você de volta.')}</h1>
+          <p>{t(register?'Uma conta para salvar seus lugares e deixar cada trajeto mais seu.':'Entre para continuar com suas rotas e seus lugares.')}</p>
         </div>
         <nav className="v3-auth-switch" aria-label={t('Acesso à conta')}>
           <Link to="/entrar" className={!register?'active':''} aria-current={!register?'page':undefined}>{t('Entrar')}</Link>
@@ -90,23 +91,36 @@ export function AuthPage({mode='login'}){
           <Link to="/entrar">{t('Já confirmei meu e-mail. Entrar')}</Link>
           <Link className="v3-auth-explore" to="/mapa">{t('Explorar mapa enquanto isso')} <ArrowRight size={16}/></Link>
         </section>:<>
-        {googleReady&&<a className="v3-google-action v29-google-primary" href="/api/auth/google/start" aria-label={t('Continuar com Google')}><span className="v29-google-logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="23" height="23"><path fill="#4285F4" d="M21.35 12.23c0-.73-.06-1.43-.19-2.1H12v3.99h5.23a4.47 4.47 0 0 1-1.94 2.93v2.43h3.14c1.84-1.69 2.92-4.17 2.92-7.25Z"/><path fill="#34A853" d="M12 21.77c2.62 0 4.82-.87 6.43-2.35l-3.14-2.43c-.87.58-1.98.92-3.29.92-2.53 0-4.68-1.7-5.44-4h-3.2v2.5A9.77 9.77 0 0 0 12 21.77Z"/><path fill="#FBBC05" d="M6.56 13.91a5.86 5.86 0 0 1 0-3.73v-2.5h-3.2a9.77 9.77 0 0 0 0 8.73l3.2-2.5Z"/><path fill="#EA4335" d="M12 6.18c1.42 0 2.7.49 3.7 1.45l2.77-2.77A9.36 9.36 0 0 0 12 2.23a9.77 9.77 0 0 0-8.64 5.45l3.2 2.5c.76-2.29 2.91-4 5.44-4Z"/></svg></span><span>{t('Continuar com Google')}</span></a>}
-        {googleReady&&<div className="v29-auth-divider"><span>{t('Ou continue com e-mail')}</span></div>}
+        {googleReady?<a className="v3-google-action v29-google-primary" href="/api/auth/google/start" aria-label={t('Continuar com Google')}><span className="v29-google-logo" aria-hidden="true"><svg viewBox="0 0 24 24" width="23" height="23"><path fill="#4285F4" d="M21.35 12.23c0-.73-.06-1.43-.19-2.1H12v3.99h5.23a4.47 4.47 0 0 1-1.94 2.93v2.43h3.14c1.84-1.69 2.92-4.17 2.92-7.25Z"/><path fill="#34A853" d="M12 21.77c2.62 0 4.82-.87 6.43-2.35l-3.14-2.43c-.87.58-1.98.92-3.29.92-2.53 0-4.68-1.7-5.44-4h-3.2v2.5A9.77 9.77 0 0 0 12 21.77Z"/><path fill="#FBBC05" d="M6.56 13.91a5.86 5.86 0 0 1 0-3.73v-2.5h-3.2a9.77 9.77 0 0 0 0 8.73l3.2-2.5Z"/><path fill="#EA4335" d="M12 6.18c1.42 0 2.7.49 3.7 1.45l2.77-2.77A9.36 9.36 0 0 0 12 2.23a9.77 9.77 0 0 0-8.64 5.45l3.2 2.5c.76-2.29 2.91-4 5.44-4Z"/></svg></span><span>{t('Continuar com Google')}</span><ArrowRight size={18} className="v29-google-arrow"/></a>:<div className="v29-google-unavailable"><button type="button" className="v3-google-action v29-google-primary" disabled aria-disabled="true" title="Acesso com Google temporariamente indisponível"><span className="v29-google-logo" aria-hidden="true">G</span>{t('Continuar com Google')}</button><small role="status">O acesso com Google está temporariamente indisponível. Continue com e-mail.</small></div>}
+        <div className="v29-auth-divider"><span>{t('Ou continue com e-mail')}</span></div>
         <form className="v3-auth-form" onSubmit={submit} aria-busy={busy}>
           <EntryField label="E-mail" type="email" value={form.email} onChange={v=>update('email',v)} placeholder="seu@email.com" autoComplete="email" translator={t}/>
           <EntryField label="Senha" type="password" value={form.password} onChange={v=>update('password',v)} placeholder={register?'Pelo menos 12 caracteres':'Digite sua senha'} autoComplete={register?'new-password':'current-password'} minLength={register?12:undefined} maxLength={register?128:undefined} translator={t}/>
-          {register&&<p className="v3-password-help">{t('Pelo menos 12 caracteres')}</p>}
+          {register&&<p className="v3-password-help"><CheckCircle2 size={15}/> {t('Use uma senha exclusiva de 12 a 128 caracteres. Você pode mostrá-la para conferir.')}</p>}
+          {register&&<p className="v3-password-help">{t('Nome e idioma podem ser ajustados depois no perfil.')}</p>}
           {error&&<div className="v3-auth-error" role="alert"><AlertCircle size={19}/><span>{error}</span></div>}
           <button type="submit" className="v3-auth-submit" disabled={busy}>
             {busy?<><LoaderCircle size={18} className="v3-loading-icon"/> {t('Aguarde…')}</>:<>{t(register?'Criar minha conta':'Entrar')} <ArrowRight size={19}/></>}
           </button>
         </form>
         {!register&&<p className="v3-auth-recovery"><Link to="/recuperar-senha">{t('Esqueceu sua senha?')}</Link> · <Link to="/reenviar-confirmacao">{t('Confirmar meu e-mail')}</Link></p>}
+        <div className="v3-auth-alt"><span>{t(register?'Já faz parte do VANO?':'Primeira vez por aqui?')}</span><Link to={register?'/entrar':'/cadastro'}>{t(register?'Entre na sua conta':'Crie sua conta')} <ArrowUpRight size={15}/></Link></div>
         <Link className="v3-auth-explore" to="/mapa">{t('Explorar sem conta')} <ArrowRight size={16}/></Link>
         </>}
         <p className="v3-auth-legal">{t(register?'Ao criar uma conta, você concorda com os':'Ao entrar, você concorda com nossos')} <Link to="/termos">{t('Termos')}</Link> {t('e nossa')} <Link to="/privacidade">{t('Política de Privacidade')}</Link>.</p>
       </section>
+      <footer className="v3-auth-footer">VANO MAPS <span>{t('UMA CIDADE, MUITOS CAMINHOS.')}</span></footer>
     </div>
+    <aside className="v4-auth-art" aria-hidden="true">
+      <div className="v4-auth-art-top">VANO / {t('VANO / SEU PONTO DE PARTIDA').replace('VANO / ','')} <span>↗</span></div>
+      <div className="v4-auth-art-copy">
+        <span className="v4-eyebrow"><span className="v4-eyebrow-dot"/> {t('SEU CAMINHO É SÓ SEU')}</span>
+        <h2>{t('Uma cidade.')}<br/><em>{t('Mil maneiras')}</em><br/>{t('de chegar.')}</h2>
+        <p>{t('Escolha como ir. A VANO ajuda a encontrar alternativas.')}</p>
+      </div>
+      <div className="v4-auth-art-map"><img src="/vano-city-lines.svg" alt="" /></div>
+      <span className="v4-auth-art-foot">VANO MAPS · {t('CRIADO PARA A CIDADE EM MOVIMENTO')}</span>
+    </aside>
   </main>;
 }
 const vehicleChoices=[{id:'carro',name:'Carro',detail:'Cidade e estrada',image:'/vehicle-car-cutout.png',icon:CarFront},

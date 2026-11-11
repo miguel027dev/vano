@@ -25,7 +25,7 @@ test('MAVI v2 uses signed local cloud tickets and Cartesia route-proof cues, lea
  const page=read('../pages/MapPage.jsx'),server=read('../../server/index.mjs'),mic=read('../components/JevVoiceButton.jsx');
  assert.match(page,/vano-mavi-introduced/);
  assert.match(page,/voiceTicketPromise:/);
- assert.match(page,/if\(!urgent&&jevMode&&route\?\.proof&&language==='pt-BR'&&Date\.now\(\)>=voiceRetryAfterRef\.current\)\{/);
+ assert.match(page,/if\(jevMode&&route\?\.proof&&language==='pt-BR'&&Date\.now\(\)>=voiceRetryAfterRef\.current\)\{/);
  assert.match(page,/if\(!speakDeviceManeuver\(text,key\)\)setVoiceProblem\(true\)/);
  assert.match(page,/api\('\/v2\/navigation\/voice-ticket'/);
  assert.match(page,/await playMaviVoice\(result.voiceTicket,\{signal:controller.signal\}\)/);
