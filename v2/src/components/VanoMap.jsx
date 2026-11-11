@@ -1065,7 +1065,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     let raf=0,stopped=false;
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
-    const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,
+    const state={...visual.current,last:0,lastReport:0,lastPaint:0,lastPaintPoint:null,progress:0,
       // Preserve a valid on-road visual target when the same route/RAF restarts.
       gpsMatchRaw:visual.current.gpsMatchRaw??null,
       gpsMatchGeometry:visual.current.gpsMatchGeometry??null,
@@ -1258,7 +1258,10 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
             state.lastMarkerBearing=nextBearing;
           }
         }
-        if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
+        // Progress line is decorative: upload geometry only after visible movement.
+        // The GPS marker/camera still animate independently every frame.
+        if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=180&&
+          (!validPoint(state.lastPaintPoint)||metersBetween(state.lastPaintPoint,point)>=.6)){
           const near=nearestOnRoute(point,route?.geometry);
           const maxOffset=Math.max(45,Math.min(100,Number(d.telemetry?.accuracy||15)*2));
           if(near.distance<=maxOffset){
@@ -1268,6 +1271,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
             if(points.length>1)map.getSource('vano-v2-traveled')?.setData(geo([{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:points}}]));
           }
           state.lastPaint=now;
+          state.lastPaintPoint=point;
         }
       }else if(map&&backend.current==='leaflet'){
         const follow=shouldFollowLocation({navigation:d.navigation,destination:d.destination,pickingOrigin:d.pickingOrigin,manualOrigin:d.manualOrigin,position:d.gpsCoords});
