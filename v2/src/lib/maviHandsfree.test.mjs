@@ -40,8 +40,9 @@ test('card remains hidden until voice narration settles; accept/reject are expli
  const s=mic(),p=s.indexOf('setReply(message);speak(message,()=>{');
  assert.ok(p>0);
  assert.ok(s.indexOf('setOfferReady(true)',p)>p);
- assert.match(s,/speech\.onend=finish;speech\.onerror=finish/);
- assert.match(s,/speechTimerRef\.current=setTimeout\(finish,15000\)/);
+ assert.match(s,/speech\.onend=finish/);
+ assert.match(s,/speech\.onerror=event=>/);
+ assert.match(s,/maviLocalSpeechTimeoutMs\(voiceText\)/);
  assert.match(s,/enabled&&offerReady&&proposal&&offerTarget&&createPortal/);
  assert.match(s,/function chooseProposal\(decision\)/);
  assert.match(s,/handlersRef\.current\.onAccept\(selection\)/);
