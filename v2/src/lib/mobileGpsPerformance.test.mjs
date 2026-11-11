@@ -36,6 +36,14 @@ test('live GPS does not re-upload route layers on each sensor callback',()=>{
   assert.match(segment,/motion\.current\?\.start\(\)/);
 });
 
+test('stationary GPS does not repaint expensive route geometry or GL camera',()=>{
+  assert.match(map,/now-state\.lastPaint>=180/);
+  assert.match(map,/metersBetween\(state\.lastPaintPoint,point\)>=\.6/);
+  assert.match(map,/const cameraChanged=!appliedPose/);
+  assert.match(map,/if\(cameraChanged\)\{/);
+  assert.match(map,/map\.jumpTo\(\{\.\.\.pose,padding:smoothPadding\}\)/);
+});
+
 test('camera uses same nearest route segment for look-ahead bearing',()=>{
   const route={coordinates:[[-46.70,-23.60],[-46.69,-23.60],[-46.68,-23.60]]};
   const point=[-46.695,-23.60001],near=nearestOnRoute(point,{coordinates:route.coordinates});
