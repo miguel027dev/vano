@@ -284,6 +284,31 @@ def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_beta_feedback_created ON beta_feedback(created_at DESC);
 
+            CREATE TABLE IF NOT EXISTS intelligence_route_decisions (
+                id BIGSERIAL PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                route_mode TEXT NOT NULL DEFAULT '',
+                profile TEXT NOT NULL DEFAULT '',
+                engine TEXT NOT NULL DEFAULT '',
+                provider TEXT NOT NULL DEFAULT '',
+                candidate_count INTEGER NOT NULL DEFAULT 0,
+                selected_duration_s REAL NOT NULL DEFAULT 0,
+                selected_distance_m REAL NOT NULL DEFAULT 0,
+                alternative_min_eta_s REAL NOT NULL DEFAULT 0,
+                degraded INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_intelligence_decisions_created
+              ON intelligence_route_decisions(created_at DESC);
+            CREATE TABLE IF NOT EXISTS intelligence_navigation_events (
+                id BIGSERIAL PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                duration_s REAL NOT NULL DEFAULT 0,
+                predicted_duration_s REAL NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_intelligence_events_created
+              ON intelligence_navigation_events(created_at DESC);
+
             CREATE TABLE IF NOT EXISTS route_history (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,

@@ -1,0 +1,30 @@
+name: VANO Intelligence Smoke
+
+on:
+  pull_request:
+    paths:
+      - "vano/services/intelligence.py"
+      - "vano/routes/admin.py"
+      - "vano/infrastructure/database.py"
+      - "static/vano-intelligence.js"
+      - "templates/admin_intelligence.html"
+      - "tests/test_intelligence.py"
+      - ".github/workflows/intelligence-smoke.yml"
+  workflow_dispatch:
+
+jobs:
+  targeted-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -r requirements.txt
+      - run: python -m compileall -q vano/services/intelligence.py vano/routes/admin.py
+      - run: python -m unittest discover -s tests -p "test_intelligence.py" -v
+      - run: node --check static/vano-intelligence.js
