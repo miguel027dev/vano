@@ -116,7 +116,8 @@ test('temporary Overpass outage is negative-cached instead of repeated for every
  const area='-46.812,-23.712,-46.800,-23.700';
  const first=await queryPublicMap(area,{fetcher});
  const second=await queryPublicMap(area,{fetcher});
- assert.equal(calls,1);
+ // Both configured Overpass hosts are attempted once; the redraw makes no new calls.
+ assert.equal(calls,2);
  assert.equal(first.stale,true);
  assert.equal(second.stale,true);
  assert.deepEqual(second.features,[]);
@@ -140,8 +141,9 @@ test('failed OSM refresh keeps the last verified snapshot but clearly marks it s
  assert.equal(degraded.features[0].id,first.features[0].id);
  assert.equal(degraded.stale,true);
  assert.equal(degraded.cacheHit,true);
- assert.equal(calls,2);
+ // Initial success: one request. Failed refresh: one request per fallback host.
+ assert.equal(calls,3);
  const repeat=await queryPublicMap(area,{fetcher,now:()=>clock});
  assert.equal(repeat.stale,true);
- assert.equal(calls,2);
+ assert.equal(calls,3);
 });
