@@ -14,7 +14,7 @@ def test_localization_does_not_block_first_paint_for_pt_br():
 
 def test_repository_has_optimized_controlled_stylesheets():
     css_files = sorted(p.name for p in (ROOT / "static").glob("*.css"))
-    assert css_files == ["vano-foundation.css", "vano-runtime.css", "vano-v2.css", "vano.css"]
+    assert css_files == ["vano-foundation.css", "vano-profile-clean.css", "vano-runtime.css", "vano-v2.css", "vano.css"]
 
 
 def test_templates_reference_controlled_local_stylesheets():
@@ -22,7 +22,23 @@ def test_templates_reference_controlled_local_stylesheets():
     pattern = re.compile(r"filename=['\"]([^'\"]+\.css)['\"]")
     for path in (ROOT / "templates").glob("*.html"):
         refs.update(pattern.findall(path.read_text(encoding="utf-8", errors="ignore")))
-    assert refs == {"vano-runtime.css", "vano-foundation.css", "vano-v2.css"}
+    assert refs == {"vano-runtime.css", "vano-foundation.css", "vano-v2.css", "vano-profile-clean.css"}
+
+
+def test_profile_css_is_scoped_and_only_loaded_on_profile():
+    stylesheet_name = "vano-profile-clean.css"
+    css_path = ROOT / "static" / stylesheet_name
+    css = css_path.read_text(encoding="utf-8")
+    profile = (ROOT / "templates" / "profile.html").read_text(encoding="utf-8")
+    assert css_path.stat().st_size < 20_000
+    assert "profile360-clean" in css
+    assert 'filename=\'vano-profile-clean.css\'' in profile
+    assert "vano-profile350 vano-profile353 profile360-clean" in profile
+    assert "#v2Dock" not in css
+    assert "#destinationInput" not in css
+    for template in (ROOT / "templates").glob("*.html"):
+        if template.name != "profile.html":
+            assert stylesheet_name not in template.read_text(encoding="utf-8")
 
 
 def test_onboarding_stays_lightweight_outside_shared_stylesheet():
