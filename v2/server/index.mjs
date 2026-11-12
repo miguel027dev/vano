@@ -2068,7 +2068,10 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     let name;
     try { name=decodeURIComponent(requestPath); }
     catch { return err(res,400,'URL inválida.'); }
-    if(/^\/v2(?:\/|$)/i.test(name)&&!isAdminAccount(userSession(req)?.user))return err(res,403,'Mapa administrativo restrito.');
+    // These three preview documents have their own account guards in React.
+    // Keep the administrative /v2 map and all other /v2/* paths restricted.
+    const publicPreviewDocument=/^\/v2\/(?:perfil-preview|conta-preview|configuracoes-preview)\/?$/i.test(name);
+    if(/^\/v2(?:\/|$)/i.test(name)&&!publicPreviewDocument&&!isAdminAccount(userSession(req)?.user))return err(res,403,'Mapa administrativo restrito.');
     if(method==='GET'&&PUBLIC_PATHS.includes(name))runtimeMetrics.pageViews[name]=(runtimeMetrics.pageViews[name]||0)+1;
     if(name==='/')name='/index.html';
     let target=path.resolve(dist,'.'+name);
