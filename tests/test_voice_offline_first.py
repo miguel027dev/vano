@@ -134,7 +134,8 @@ def test_mavi_is_available_only_on_map_pages_without_voice_search_regressions():
     headers = (ROOT / "vano/security/headers.py").read_text()
     mavi = (ROOT / "static/vano-voice-companion.js").read_text()
     assert "vano-voice-companion.js" in base
-    assert "vano-mavi.css" in base
+    assert "const style=el('style')" in mavi
+    assert "vano-mavi.css" not in base
     assert "{% if vano_endpoint in ['index', 'map_page'] %}" in base
     assert "MAVI" in mavi
     assert "window.VANO_NATIVE_SPEECH" in mavi
