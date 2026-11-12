@@ -23,10 +23,11 @@ for(const profile of ['motorcycle','driving']){
 const base=fs.readFileSync('templates/base.html','utf8');
 const html=fs.readFileSync('templates/index.html','utf8');
 const sw=fs.readFileSync('static/vano-sw.js','utf8');
-assert.ok(!fs.existsSync('static/vano-voice-companion.js'));
-for(const token of ['vano-voice-companion.js','id="voiceSearchBtn"','id="soundBtn"','id="navVoicePopover"']){
+assert.ok(fs.existsSync('static/vano-voice-companion.js'),'MAVI assistant must be available on map pages');
+assert.ok(base.includes("vano-voice-companion.js"),'MAVI must load on the map');
+for(const token of ['id="voiceSearchBtn"','id="soundBtn"','id="navVoicePopover"']){
   assert.ok(!html.includes(token) && !base.includes(token),token+' should not be rendered');
 }
 assert.ok(!sw.includes('vano-voice-companion.js'),'do not precache deleted assistant');
 assert.ok(!sw.includes('/static/voices/vano/'),'do not precache unused speech audio');
-console.log('PASS: camera clamps agree with per-vehicle tuning, removed voice UI and offline asset cache');
+console.log('PASS: camera clamps, isolated MAVI assistant and offline asset cache');

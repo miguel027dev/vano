@@ -41,6 +41,7 @@ public final class MainActivity extends Activity {
     private SpeechRecognizer voiceRecognizer;
     private TextToSpeech localTts;
     private boolean ttsInitialized, pendingVoiceOffline;
+    private String pendingSpeechText="", pendingSpeechLang="pt-BR";
     private String pendingVoiceLang="pt-BR";
     private boolean destroyed, recovering, pageFailed;
     private final Handler handler=new Handler(Looper.getMainLooper());
@@ -238,27 +239,41 @@ public final class MainActivity extends Activity {
     private void speakNative(String text,String lang){
         if(text==null||text.isEmpty()||text.length()>700)return;
         if(localTts==null){
+            pendingSpeechText=text;pendingSpeechLang=lang;
             localTts=new TextToSpeech(this,status->{
                 ttsInitialized=status==TextToSpeech.SUCCESS;
-                if(ttsInitialized)speakNative(text,lang);
-                else dispatchVoice("","Voz offline indisponível neste aparelho.");
-            });return;
+                String latest=pendingSpeechText,latestLang=pendingSpeechLang;
+                pendingSpeechText="";
+                if(ttsInitialized){
+                    if(latest!=null&&!latest.isEmpty())speakNative(latest,latestLang);
+                }else if(latest!=null&&!latest.isEmpty()){
+                    dispatchVoice(latest,"Voz offline indisponível neste aparelho.");
+                }
+            });
+            return;
         }
-        if(!ttsInitialized)return;
+        // Keep the most recent instruction while Android initializes its local TTS.
+        if(!ttsInitialized){pendingSpeechText=text;pendingSpeechLang=lang;return;}
         Locale preferred=Locale.forLanguageTag(lang==null?"pt-BR":lang);
-        Voice local=null;
+        Voice local=null,languageFallback=null;
         try{
             java.util.Set<Voice> voices=localTts.getVoices();
-            if(voices!=null)for(Voice voice:voices)
-                if(voice!=null&&!voice.isNetworkConnectionRequired()&&voice.getLocale().getLanguage().equals(preferred.getLanguage())){
-                    local=voice;break;
-                }
+            if(voices!=null)for(Voice voice:voices){
+                if(voice==null||voice.isNetworkConnectionRequired())continue;
+                if(voice.getLocale().toLanguageTag().equalsIgnoreCase(preferred.toLanguageTag())){local=voice;break;}
+                if(languageFallback==null&&voice.getLocale().getLanguage().equals(preferred.getLanguage()))languageFallback=voice;
+            }
         }catch(Exception ignored){}
-        if(local==null){dispatchVoice("","Instale uma voz local para reproduzir sem internet.");return;}
-        localTts.stop();localTts.setVoice(local);
-        localTts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"vano-offline-tts");
+        if(local==null)local=languageFallback;
+        if(local==null){dispatchVoice(text,"Instale uma voz local para reproduzir sem internet.");return;}
+        localTts.stop();
+        if(localTts.setVoice(local)==TextToSpeech.ERROR||
+            localTts.speak(text,TextToSpeech.QUEUE_FLUSH,null,"vano-offline-tts")==TextToSpeech.ERROR){
+            dispatchVoice(text,"Voz offline indisponível neste aparelho.");
+        }
     }
     private void stopVoiceResources(){
+        pendingSpeechText="";
         if(voiceRecognizer!=null){voiceRecognizer.cancel();voiceRecognizer.destroy();voiceRecognizer=null;}
         if(localTts!=null)localTts.stop();
     }
