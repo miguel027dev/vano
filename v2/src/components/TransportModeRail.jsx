@@ -1,13 +1,12 @@
 import React from 'react';
-import {CarFront,BusFront,Footprints} from 'lucide-react';
+import {CarFront,Footprints} from 'lucide-react';
 import MotorcycleIcon from './MotorcycleIcon.jsx';
 import {fmtTime} from '../lib/api';
 
 const MODES=[
   {id:'carro',name:'Carro',Icon:CarFront},
   {id:'moto',name:'Moto',Icon:MotorcycleIcon},
-  {id:'a-pe',name:'A pé',Icon:Footprints},
-  {id:'publico',name:'Público',Icon:BusFront}
+  {id:'a-pe',name:'A pé',Icon:Footprints}
 ];
 
 function etaText(estimate,isPublic){
