@@ -36,3 +36,36 @@ test('V1 gets the assistant and microphone; V2 requires admin in the router',()=
  assert.match(serverCode,/isAdminAccount\(userSession\(req\)\?\.user\)/);
  assert.match(serverCode,/name==='\/v2'\|\|name==='\/mapa'/);
 });
+
+test('only named V2 profile preview documents bypass the administrator document guard',async()=>{
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const base='http://127.0.0.1:'+server.address().port;
+ try{
+  for(const path of ['/v2/perfil-preview','/v2/conta-preview','/v2/configuracoes-preview']){
+   const response=await fetch(base+path,{redirect:'manual'});
+   // Tests run before Vite build, so a missing dist may return 404 but not admin 403.
+   assert.notEqual(response.status,403,path);
+  }
+  for(const path of ['/v2/oculta','/v2/admin','/v2/conta-preview/extra']){
+   const response=await fetch(base+path,{redirect:'manual'});
+   assert.equal(response.status,403,path);
+  }
+ }finally{
+  await new Promise(resolve=>server.close(resolve));
+ }
+});
+test('V2 preview route contract stays separate from existing profile and settings routes',()=>{
+ const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
+ const navigation=readFileSync(new URL('../src/components/Navigation.jsx',import.meta.url),'utf8');
+ const legacyProfile=readFileSync(new URL('../src/pages/ProfilePage.jsx',import.meta.url),'utf8');
+ const preview=readFileSync(new URL('../src/pages/ProfilePreviewPage.jsx',import.meta.url),'utf8');
+ assert.match(app,/path="\/perfil"/);
+ assert.match(app,/path="\/conta"/);
+ assert.match(app,/path="\/configuracoes"/);
+ for(const path of ['/v2/perfil-preview','/v2/conta-preview','/v2/configuracoes-preview']){
+  assert.ok(app.includes('path="'+path+'"'),path);
+  assert.ok(preview.includes("'"+path+"'"),path);
+ }
+ assert.ok(navigation.includes("to:'/v2/perfil-preview'"));
+ assert.match(legacyProfile,/export default function ProfilePage/);
+});

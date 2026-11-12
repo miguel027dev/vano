@@ -1331,7 +1331,7 @@ export default function MapPage({active=true}){
        <Search size={22} aria-hidden="true"/>
        <button type="button" className="v3-search-open-button" onClick={()=>setSearchOpen(true)}
         aria-haspopup="dialog" aria-label="Buscar endereço, lugar ou destino">Buscar endereço, lugar ou destino</button>
-       <Link className="v31-profile-button" to="/perfil" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link>
+       <Link className="v31-profile-button" to="/v2/perfil-preview" aria-label="Abrir meu perfil" title="Meu perfil"><UserRound size={21} strokeWidth={1.9}/></Link>
       </div>
       {!searchOpen&&<div className="quick-scroll v31-shortcuts" role="group" aria-label="Atalhos de destinos">{shortcuts.map(s=><button type="button" className="quick-chip" key={s.name} onClick={()=>clickShortcut(s)}><s.icon size={16}/>{t(s.name)}</button>)}</div>}
       </>:<><div className="v32-route-layout">
@@ -1349,7 +1349,7 @@ export default function MapPage({active=true}){
         <button className="v5-swap" aria-label="Inverter origem e destino" title="Inverter origem e destino" onClick={swapPoints} disabled={!validPoint(origin)}><ArrowUpDown size={20}/></button>
       </div>
       <div className="v32-route-actions" role="group" aria-label="Ações da rota">
-        <Link className="circle-btn v31-route-profile" to="/perfil" aria-label="Abrir meu perfil"><UserRound size={20}/></Link>
+        <Link className="circle-btn v31-route-profile" to="/v2/perfil-preview" aria-label="Abrir meu perfil"><UserRound size={20}/></Link>
         <button type="button" className="circle-btn" onClick={reset} aria-label="Fechar rota"><X size={21}/></button>
       </div>
       </div></>}
