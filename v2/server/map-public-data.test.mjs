@@ -109,3 +109,39 @@ test('banks are real mapped public POIs, while crossings retain distinct types',
  const features=normalizeOsmElements([{type:'node',id:888,lon:-46.68,lat:-23.58,tags:{amenity:'bank'}}]);
  assert.equal(features[0].type,'banco');
 });
+
+test('temporary Overpass outage is negative-cached instead of repeated for every map redraw',async()=>{
+ let calls=0;
+ const fetcher=async()=>{calls++;throw Error('simulated provider outage');};
+ const area='-46.812,-23.712,-46.800,-23.700';
+ const first=await queryPublicMap(area,{fetcher});
+ const second=await queryPublicMap(area,{fetcher});
+ assert.equal(calls,1);
+ assert.equal(first.stale,true);
+ assert.equal(second.stale,true);
+ assert.deepEqual(second.features,[]);
+});
+
+test('failed OSM refresh keeps the last verified snapshot but clearly marks it stale',async()=>{
+ let clock=Date.now(),fail=false,calls=0;
+ const fetcher=async()=>{
+  calls++;
+  if(fail)throw Error('upstream failure');
+  return{ok:true,json:async()=>({elements:[elem(96113,'traffic_signals')]})};
+ };
+ const area='-46.855,-23.755,-46.843,-23.744';
+ const first=await queryPublicMap(area,{fetcher,now:()=>clock});
+ assert.equal(first.features.length,1);
+ assert.equal(first.stale,false);
+ clock+=5*60*1000+1;
+ fail=true;
+ const degraded=await queryPublicMap(area,{fetcher,now:()=>clock});
+ assert.equal(degraded.features.length,1);
+ assert.equal(degraded.features[0].id,first.features[0].id);
+ assert.equal(degraded.stale,true);
+ assert.equal(degraded.cacheHit,true);
+ assert.equal(calls,2);
+ const repeat=await queryPublicMap(area,{fetcher,now:()=>clock});
+ assert.equal(repeat.stale,true);
+ assert.equal(calls,2);
+});
