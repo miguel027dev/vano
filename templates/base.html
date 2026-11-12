@@ -16,7 +16,6 @@
   <link rel="alternate icon" href="{{ url_for('static', filename='vano-maps-icon-64.png') }}" type="image/png">
   <link rel="apple-touch-icon" sizes="192x192" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}">
   <link rel="manifest" href="{{ url_for('web_app_manifest') }}?v={{ vano_build_id }}">
-  {% if vano_endpoint in ['index', 'map_page'] %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-mavi.css') }}?v={{ vano_build_id }}">{% endif %}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="VANO MAPS">
   <meta property="og:locale" content="{{ active_locale|replace('-','_') }}">
