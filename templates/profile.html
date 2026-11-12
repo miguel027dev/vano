@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Perfil · VANO MAPS{% endblock %}
+{% block tail_head %}<link rel="stylesheet" href="{{ url_for('static', filename='vano-profile-clean.css') }}?v={{ vano_build_id }}">{% endblock %}
 {% block content %}
 {% set locale_meta = {
   'pt-BR': ('🇧🇷','Português','Brasil'),
@@ -11,11 +12,9 @@
   'es-ES': ('🇪🇸','Español','España')
 } %}
 {% set current_locale_meta = locale_meta.get(active_locale, locale_meta['pt-BR']) %}
-<main class="vano-profile350 vano-profile353" data-profile-root id="conteudo-principal" tabindex="-1">
+<main class="vano-profile350 vano-profile353 profile360-clean" data-profile-root id="conteudo-principal" tabindex="-1">
   <div class="profile350-shell">
     <header class="profile350-hero" id="profileOverview">
-      <div class="profile350-hero-orb profile350-orb-one" aria-hidden="true"></div>
-      <div class="profile350-hero-orb profile350-orb-two" aria-hidden="true"></div>
       <div class="profile350-identity">
         <div class="profile350-avatar-wrap">
           {% if current_user['avatar_url'] %}
@@ -26,7 +25,7 @@
           <span class="profile350-avatar-status" title="Conta ativa"></span>
         </div>
         <div class="profile350-identity-copy">
-          <span class="profile350-kicker"><i data-lucide="sparkles" width="13"></i> MEU VANO</span>
+          <span class="profile350-kicker"><i data-lucide="sparkles" width="13"></i> SEU PERFIL</span>
           <h1>{{ current_user['name'] }}</h1>
           <p>{{ current_user['email'] }}</p>
           <div class="profile350-chips">
@@ -36,24 +35,28 @@
           </div>
         </div>
       </div>
-      <div class="profile350-hero-actions"><span class="profile353-sync"><i data-lucide="cloud-upload" width="15"></i><span><b>Sincronizado</b><small>Preferências protegidas</small></span></span>
-        <a class="profile350-button is-quiet" href="{{ url_for('notifications_page') }}"><i data-lucide="bell" width="17"></i><span>Notificações</span></a>
+      <div class="profile350-hero-actions">
         <a class="profile350-button is-primary" href="{{ url_for('map_page') }}"><i data-lucide="navigation" width="17"></i><span>Voltar ao mapa</span></a>
       </div>
     </header>
+    <nav class="profile360-shortcuts" aria-label="Acesso rápido às áreas da conta">
+      <a href="#profileOverview"><span><i data-lucide="user-round" width="18"></i></span><b>Meu perfil</b><i data-lucide="arrow-up-right" width="15"></i></a>
+      <a href="#account"><span><i data-lucide="contact-round" width="18"></i></span><b>Dados da conta</b><i data-lucide="arrow-up-right" width="15"></i></a>
+      <a href="#preferences"><span><i data-lucide="sliders-horizontal" width="18"></i></span><b>Configurações</b><i data-lucide="arrow-up-right" width="15"></i></a>
+    </nav>
 
     <div class="profile350-layout">
       <aside class="profile350-sidebar" aria-label="Navegação do perfil">
         <div class="profile350-sidebar-card">
-          <div class="profile350-sidebar-title"><span>CONFIGURAÇÕES</span><b>Seu espaço VANO</b><small>Ajuste só o que importa para sua navegação.</small></div>
+          <div class="profile350-sidebar-title"><span>PAINEL PESSOAL</span><b>Seu espaço VANO</b><small>Tudo organizado em um só lugar.</small></div>
           <nav class="profile350-nav">
             <a href="#destinations" class="is-active"><span><i data-lucide="map-pin-house" width="17"></i></span><div><b>Destinos</b><small>Casa e trabalho</small></div><i data-lucide="chevron-right" width="15"></i></a>
-            <a href="#preferences"><span><i data-lucide="sliders-horizontal" width="17"></i></span><div><b>Preferências</b><small>Idioma, rota e mapa</small></div><i data-lucide="chevron-right" width="15"></i></a>
+            <a href="#preferences"><span><i data-lucide="sliders-horizontal" width="17"></i></span><div><b>Configurações</b><small>Idioma, rota e mapa</small></div><i data-lucide="chevron-right" width="15"></i></a>
             <a href="#security"><span><i data-lucide="shield-check" width="17"></i></span><div><b>Segurança</b><small>Emergência e vínculos</small></div><i data-lucide="chevron-right" width="15"></i></a>
             <a href="#vehicle"><span><i data-lucide="car-front" width="17"></i></span><div><b>Veículo</b><small>Dados e postos</small></div><i data-lucide="chevron-right" width="15"></i></a>
-            <a href="#account"><span><i data-lucide="circle-user-round" width="17"></i></span><div><b>Conta</b><small>Acesso e suporte</small></div><i data-lucide="chevron-right" width="15"></i></a>
+            <a href="#account"><span><i data-lucide="circle-user-round" width="17"></i></span><div><b>Dados da conta</b><small>Acesso e suporte</small></div><i data-lucide="chevron-right" width="15"></i></a>
           </nav>
-          <div class="profile350-sidebar-foot"><span class="profile350-live-dot"></span><span>Alterações sincronizadas</span><i data-lucide="cloud-upload" width="14"></i></div>
+          <div class="profile350-sidebar-foot"><span class="profile350-live-dot"></span><span>Salve para aplicar ajustes</span><i data-lucide="cloud-upload" width="14"></i></div>
         </div>
       </aside>
 
@@ -84,7 +87,7 @@
           <section class="profile350-section profile350-reveal" id="preferences" data-profile-section>
             <header class="profile350-section-head">
               <div class="profile350-section-icon"><i data-lucide="sliders-horizontal" width="20"></i></div>
-              <div><span>EXPERIÊNCIA</span><h2>Preferências do VANO</h2><p>Idioma, unidade, comportamento da rota e aparência do mapa.</p></div>
+              <div><span>PREFERÊNCIAS</span><h2>Configurações</h2><p>Personalize o VANO sem alterar a experiência de navegação.</p></div>
             </header>
 
             <div class="profile350-subsection">
@@ -118,6 +121,9 @@
               </div>
             </div>
 
+            <div class="profile360-theme-control"><button class="profile353-theme-action vano-theme-control vano-theme-control--row" type="button" data-vano-theme-toggle aria-label="Tema escuro" aria-pressed="false">{% include '_theme_icon.html' %}<div><b>Trocar tema</b><small data-theme-state>White padrão</small></div><i data-lucide="chevron-right" width="17"></i></button></div>
+            <details class="profile360-advanced" id="mapAppearance">
+              <summary><span><i data-lucide="palette" width="19"></i></span><div><b>Aparência avançada do mapa</b><small>Estilos do mapa e cores da rota · opcional</small></div><i data-lucide="chevron-down" width="17"></i></summary>
             {% set style_pref = current_user['map_style'] or 'auto' %}
             <div class="profile350-subsection">
               <div class="profile350-subhead"><div><span>MAPA</span><h3>Visual do mapa</h3><p>Escolha um clima fixo ou deixe o VANO adaptar automaticamente.</p></div></div>
@@ -139,6 +145,7 @@
                 {% endfor %}
               </div>
             </div>
+            </details>
           </section>
 
           <section class="profile350-section profile350-reveal" id="security" data-profile-section>
@@ -197,19 +204,21 @@
         <section class="profile350-section profile350-reveal" id="account" data-profile-section>
           <header class="profile350-section-head">
             <div class="profile350-section-icon"><i data-lucide="circle-user-round" width="20"></i></div>
-            <div><span>CONTA</span><h2>Acesso e suporte</h2><p>Informações da conta, ajuda e ações importantes.</p></div>
+            <div><span>CADASTRO</span><h2>Dados da conta</h2><p>Confira as informações de acesso e gerencie sua conta.</p></div>
           </header>
           <div class="profile350-account-card">
+            <div class="profile350-account-row"><span><i data-lucide="user-round" width="17"></i></span><div><small>Nome de cadastro</small><b>{{ current_user['name'] }}</b></div><em>Informação de perfil</em></div>
             <div class="profile350-account-row"><span><i data-lucide="mail" width="17"></i></span><div><small>E-mail</small><b>{{ current_user['email'] }}</b></div><em>{{ 'Verificado pelo Google' if (current_user['auth_provider'] or 'password') in ['google','hybrid'] else 'Cadastro por e-mail' }}</em></div>
             <div class="profile350-account-row"><span><i data-lucide="key-round" width="17"></i></span><div><small>Forma de acesso</small><b>{{ 'Google' if (current_user['auth_provider'] or 'password') == 'google' else 'E-mail e senha' }}</b></div><em>Ativo</em></div>
             <div class="profile350-account-row"><span><i data-lucide="shield-check" width="17"></i></span><div><small>Nível da conta</small><b>{{ 'Administrador' if current_user['role']=='admin' else 'Usuário VANO' }}</b></div><em>Protegida</em></div>
           </div>
+          <h3 class="profile360-account-subtitle">Acesso, privacidade e suporte</h3>
           <div class="profile350-action-links">
             {% if not current_user['google_sub'] %}<form method="post" action="{{ url_for('google_link') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost" type="submit">Vincular Google à minha conta</button><p class="tiny">Requer login recente e confirmação da mesma conta no Google.</p></form>{% endif %}
             <a href="{{ url_for('notifications_page') }}"><span><i data-lucide="bell" width="17"></i></span><div><b>Notificações</b><small>Alertas e avisos da conta</small></div><i data-lucide="chevron-right" width="17"></i></a>
             <a href="{{ url_for('help_page') }}"><span><i data-lucide="circle-help" width="17"></i></span><div><b>Ajuda e FAQ</b><small>Suporte e dúvidas frequentes</small></div><i data-lucide="chevron-right" width="17"></i></a>
             <a href="{{ url_for('privacy_policy') }}"><span><i data-lucide="lock-keyhole" width="17"></i></span><div><b>Privacidade</b><small>Dados, permissões e política</small></div><i data-lucide="chevron-right" width="17"></i></a>
-            <button class="profile353-theme-action vano-theme-control vano-theme-control--row" type="button" data-vano-theme-toggle aria-label="Tema escuro" aria-pressed="false">{% include '_theme_icon.html' %}<div><b>Trocar tema</b><small data-theme-state>White padrão</small></div><i data-lucide="chevron-right" width="17"></i></button>
+            
             <form class="profile353-logout-form" action="{{ url_for('logout') }}" method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit"><span><i data-lucide="log-out" width="17"></i></span><div><b>Sair desta conta</b><small>Encerra a sessão neste aparelho</small></div><i data-lucide="chevron-right" width="17"></i></button></form>
           </div>
         </section>
