@@ -8,7 +8,8 @@ export const OSM_ATTRIBUTION='© OpenStreetMap contributors (ODbL)';
 export const MAX_FEATURES=180;
 const ENDPOINT='https://overpass-api.de/api/interpreter';
 const ttlMs=5*60*1000,maxCache=100,cache=new Map();
-let lastUpstream=0,queued=Promise.resolve(),pending=0,quotaWindow=Date.now(),quotaUsed=0;
+const failureTtlMs=2*60*1000,staleTtlMs=60*60*1000,upstreamCooldownMs=3*60*1000;
+let lastUpstream=0,queued=Promise.resolve(),pending=0,quotaWindow=Date.now(),quotaUsed=0,upstreamDownUntil=0;
 const finite=Number.isFinite;
 export function parseBBox(raw,maxLongitudeSpan=.065,maxLatitudeSpan=.055){
  if(typeof raw!=='string'||raw.length>100)return null;
@@ -115,8 +116,20 @@ export function overpassQuery(bbox){
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function sweep(now){
- for(const [key,value] of cache)if(value.expires<now-60000)cache.delete(key);
+ // Keep the last successful snapshot briefly in memory for an upstream outage.
+ // Never label old OSM observations as fresh or as real-time road conditions.
+ for(const [key,value] of cache){
+   const keepUntil=value.updatedAt?value.updatedAt+staleTtlMs:value.expires+failureTtlMs;
+   if(keepUntil<now)cache.delete(key);
+ }
  while(cache.size>maxCache)cache.delete(cache.keys().next().value);
+}
+function unavailable(old,moment,reason){
+ const snapshot=old?.result&&old.updatedAt&&moment-old.updatedAt<staleTtlMs
+   ?old.result:null;
+ return snapshot
+   ?{...snapshot,cacheHit:true,stale:true,error:reason}
+   :{features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,stale:true,error:reason};
 }
 /** Fallback only when the primary OSM host fails.
  * A custom injected endpoint never falls through to a real network source.
@@ -127,13 +140,19 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
  const region=[Math.floor(normalized[0]*1000)/1000,Math.floor(normalized[1]*1000)/1000,
    Math.ceil(normalized[2]*1000)/1000,Math.ceil(normalized[3]*1000)/1000];
  const key=region.map(x=>x.toFixed(3)).join(',');
- const old=cache.get(key);
- if(old?.expires>now()&&old.result)return {...old.result,cacheHit:true};
+ const old=cache.get(key),moment=now();
+ if(old?.expires>moment&&old.result)return {...old.result,cacheHit:true};
  if(old?.pending)return old.pending;
- if(pending>=3)return {features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,stale:true,error:'Fonte ocupada'};
+ // This optional OSM layer must never queue dozens of 16-second requests when
+ // upstream hosts are unhealthy. Other map, routing and GPS features stay active.
+ if(fetcher===fetch&&url===ENDPOINT&&moment<upstreamDownUntil)
+   return unavailable(old,moment,'Fonte temporariamente indisponível');
+ if(pending>=3)return unavailable(old,moment,'Fonte ocupada');
  pending++;
  const endpoints=url===ENDPOINT?[ENDPOINT,'https://overpass.private.coffee/api/interpreter']:[url];
  const work=queued.then(async()=>{
+   if(fetcher===fetch&&url===ENDPOINT&&Date.now()<upstreamDownUntil)
+     throw Error('Overpass em pausa após falha');
    if(Date.now()-quotaWindow>=86400000){quotaWindow=Date.now();quotaUsed=0;}
    const query=new URLSearchParams({data:overpassQuery(region)});
    let lastError=null;
@@ -150,6 +169,7 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
        if(!response.ok)throw Error('Overpass status '+response.status);
        const data=JSON.parse(await readLimitedText(response,6*1024*1024));
        if(!Array.isArray(data?.elements))throw Error('Resposta Overpass inválida');
+       if(fetcher===fetch&&url===ENDPOINT)upstreamDownUntil=0;
        return {features:normalizeOsmElements(data.elements),source:'OpenStreetMap',
          attribution:OSM_ATTRIBUTION,licenseUrl:'https://www.openstreetmap.org/copyright',
          fetchedAt:new Date(now()).toISOString(),coverage:'mapeada',stale:false};
@@ -158,18 +178,25 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
        console.warn('VANO public map upstream',index+1,':',error?.message||String(error));
      }
    }
+   if(fetcher===fetch&&url===ENDPOINT)upstreamDownUntil=Date.now()+upstreamCooldownMs;
    throw lastError||new Error('Overpass indisponível');
  });
  queued=work.catch(()=>{});
  const pendingResult=work.then(result=>{
-   cache.set(key,{expires:now()+ttlMs,result});sweep(now());return result;
- }).catch(error=>{
-   if(old?.result){cache.set(key,{expires:now()+60000,result:old.result});return {...old.result,stale:true,error:'Fonte temporariamente indisponível'};}
-   cache.delete(key);
-   return {features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,
-     stale:true,error:'Fonte temporariamente indisponível'};
+   const moment=now();
+   cache.set(key,{expires:moment+ttlMs,updatedAt:moment,result});
+   sweep(moment);
+   return result;
+ }).catch(()=>{
+   const moment=now();
+   const result=unavailable(old,moment,'Fonte temporariamente indisponível');
+   // Negative-cache failures. A failed refresh must never overwrite the
+   // timestamp of a genuine OSM response or manufacture current map data.
+   cache.set(key,{expires:moment+failureTtlMs,updatedAt:old?.updatedAt||0,result});
+   sweep(moment);
+   return result;
  }).finally(()=>{pending--});
- cache.set(key,{pending:pendingResult,expires:now()+ttlMs});
+ cache.set(key,{...old,pending:pendingResult,expires:now()+ttlMs});
  return pendingResult;
 }
 export function filterVerifiedReports(reports=[],bbox=[],now=Date.now()){
