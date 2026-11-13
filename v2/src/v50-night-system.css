@@ -42,8 +42,12 @@
  background:linear-gradient(120deg,#2e302e,#382e2a 72%,#272e2d);
  border-color:#58504b
 }
+/* Override v5's unconditional !important title colour in both themes. */
+.content-page.v4-profile .v4-route-feature h2{
+ color:#111111!important
+}
 [data-theme='dark'] .content-page.v4-profile .v4-route-feature h2{
- color:#f8efea
+ color:#ffffff!important
 }
 [data-theme='dark'] .content-page.v4-profile .v4-route-feature p,
 [data-theme='dark'] .content-page.v4-profile .v4-intro-name>p,
