@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {compactEnabled,compactWorldScale,compactScreenLength,compactModelMatrix,multiplyMatrices,syncV2Compact,V2_COMPACT_ID} from './v2CompactLayer.mjs';
 import {compactVertexBytes,COMPACT_LENGTH,COMPACT_VERTEX_COUNT} from './v2CompactMesh.mjs';
-import {COMPACT_DETAIL_VERTEX_COUNT,COMPACT_DETAIL_TRIANGLES,compactDetailVertexBytes} from './v2CompactDetails.mjs';
+import {REFERENCE_COMPACT_VERTEX_COUNT,REFERENCE_COMPACT_TRIANGLES} from './v2CompactReference.mjs';
 
 test('compact is restricted to active V2 car experience',()=>{
  for(const d of [{},{v2Experience:false,vehicle:'carro'},{v2Experience:true,vehicle:'moto',navigation:true},{v2Experience:true,vehicle:'a-pe',navigation:true},{v2Experience:true,vehicle:'carro',navigation:false},{active:false,v2Experience:true,vehicle:'carro',navigation:true}])assert.equal(compactEnabled(d),false);
@@ -31,8 +31,8 @@ test('car front points north at zero bearing and east at ninety degrees',()=>{
 test('approved compact mesh has valid packed positions, normals and topology',()=>{
  const bytes=compactVertexBytes(),v=new DataView(bytes.buffer);
  assert.equal(bytes.length,COMPACT_VERTEX_COUNT*12);assert.equal(COMPACT_VERTEX_COUNT%3,0);
- assert.equal(COMPACT_VERTEX_COUNT,2310+COMPACT_DETAIL_VERTEX_COUNT);
- assert.ok(COMPACT_DETAIL_TRIANGLES>=200&&COMPACT_DETAIL_TRIANGLES<3000,'rich geometry within mobile GPU budget');
+ assert.equal(COMPACT_VERTEX_COUNT,REFERENCE_COMPACT_VERTEX_COUNT);
+ assert.ok(REFERENCE_COMPACT_TRIANGLES>=350&&REFERENCE_COMPACT_TRIANGLES<1300,'reference geometry remains mobile-safe');
  for(let i=0;i<bytes.length;i+=12){
   for(let j=0;j<3;j++)assert.ok(Math.abs(v.getInt16(i+j*2,true)/4096)<3);
   const norm=[6,7,8].map(j=>v.getInt8(i+j)/127);assert.ok(Math.abs(Math.hypot(...norm)-1)<.012);
