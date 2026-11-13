@@ -27,6 +27,7 @@ import {vectorStartupDecision,MAPBOX_VECTOR_PROBE_MS,WEBGL_CONTEXT_RESTORE_MS} f
 import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/night3DBuildings.js';
 import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
+import {syncV2Compact} from '../lib/v2CompactLayer.mjs';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
 import {attachCommunityReportOverlay} from '../lib/communityReportOverlay.js';
@@ -1230,6 +1231,11 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
             state.lastMarkerBearing=nextBearing;
           }
         }
+        // A native mesh follows the exact same interpolated pose as the arrow.
+        // Only /v2 + car; the DOM marker remains a fail-safe until a draw succeeds.
+        const carVisible=Boolean(marker?.getElement().classList.contains('vano-vehicle-marker'));
+        const nativeCompact=syncV2Compact(map,mapboxgl,d,point,state.bearing||0,carVisible);
+        if(marker){const element=marker.getElement();const opacity=nativeCompact?'0':'';if(element.style.opacity!==opacity)element.style.opacity=opacity;}
         if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
           const near=nearestOnRoute(point,route?.geometry);
           const maxOffset=Math.max(45,Math.min(100,Number(d.telemetry?.accuracy||15)*2));
@@ -1541,6 +1547,11 @@ function paintMapbox(map,data,selection){
 
   const marker=(key,point)=>{const stableLightGpsPuck=key==='current'&&data.appearance==='light';if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:stableLightGpsPuck||(type==='vehicle'&&data.droneSimulation)?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){const desiredPitch='viewport';if(map._vanoMarker[key]._vanoV2PitchAlignment!==desiredPitch){map._vanoMarker[key].setPitchAlignment?.(desiredPitch);map._vanoMarker[key]._vanoV2PitchAlignment=desiredPitch;}const visibility=data.droneSimulation||stableLightGpsPuck?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
+  const currentMarker=map._vanoMarker?.current;
+  const nativeCompact=syncV2Compact(map,mapboxgl,data,data.motionCoords||data.gpsCoords||data.userCoords,data.motionBearing||0,
+    Boolean(currentMarker?.getElement().classList.contains('vano-vehicle-marker')));
+  if(currentMarker)currentMarker.getElement().style.opacity=nativeCompact?'0':'';
+
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
   syncPrivateRoadSignMarkers(map,mapboxgl,data);
 }
