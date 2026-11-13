@@ -22,7 +22,7 @@ test('normal car start/heading only changes marker, NOT V1 camera, GPS, motion o
  assert.doesNotMatch(src,/motion\.current\?\.start\(markerPoint/);
 });
 test('React repaint uses same latched car pose as animation, preventing car/arrow flip-flop',()=>{
- assert.match(src,/map\._vanoStandardMapCarPose=d\.standardMapCar&&d\.navigation\?state\.standardCar:null/);
+ assert.match(src,/map\._vanoStandardMapCarPose=d\.standardMapCar&&d\.navigation&&state\.standardCar\?\.visible\?/);
  assert.match(src,/marker\('current',data\.standardMapCar&&data\.navigation&&map\._vanoStandardMapCarPose\?\.visible/);
  assert.match(src,/const carEligible=Boolean\(data\.navigation&&data\.vehicle==='carro'&&/);
  assert.match(src,/syncCompactCarFallback\(element,carEligible,nativeCompact\)/);
