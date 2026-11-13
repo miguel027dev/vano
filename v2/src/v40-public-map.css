@@ -256,11 +256,10 @@
 .map-page .mapboxgl-ctrl-bottom-right,
 .map-page .leaflet-bottom.leaflet-right{z-index:0!important}
 
-/* Keep the OpenStreetMap licence badge visible directly below the idle GPS
-   location card. No route panels, navigation controls, TomTom or map markers
-   are repositioned. Reserve the minimum footer space for the 23px icon. */
+/* Lower only the idle GPS card to the footer credit line. The mandatory
+   Mapbox / OpenStreetMap credits remain visible and interactive underneath. */
 .map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
-  bottom:calc(env(safe-area-inset-bottom,0px) + 44px);
+  bottom:calc(env(safe-area-inset-bottom,0px) + 29px);
 }
 .map-page:not(.in-navigation):not(.has-sheet) .v40-map-credit:not(.v40-tomtom-credit){
   left:calc(env(safe-area-inset-left,0px) + 28px);
