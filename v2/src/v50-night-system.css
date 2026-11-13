@@ -379,3 +379,45 @@
 [data-theme='dark'] .content-page.v4-profile .bottom-nav.v5-bottom-nav{
  background:var(--v4-paper)!important;
 }
+
+/* Settings: one trailing control column on desktop, phone and native WebView. */
+.content-page.settings-page{--settings-field:var(--bg);--settings-popover:var(--panel)}
+.settings-page .settings-header{gap:14px;margin-bottom:26px}
+.settings-page .settings-header h1{margin:0;font-size:clamp(1.65rem,4vw,2.2rem);letter-spacing:-.05em}
+.settings-page .settings-card{overflow:visible}
+.settings-page .settings-line{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,244px);align-items:center;gap:20px;min-height:86px;padding:18px 0}
+.settings-page .settings-line>div:first-child{min-width:0;gap:12px}
+.settings-page .settings-line>div:first-child>span{min-width:0}
+.settings-page .settings-line strong,.settings-page .settings-line small{overflow-wrap:anywhere}
+.settings-page .settings-line small{line-height:1.45;margin-top:2px}
+.settings-page .settings-line>.segment{width:100%;min-width:0;justify-self:end;align-self:center;border:1px solid var(--border);border-radius:14px;padding:4px;gap:3px;background:var(--settings-field)}
+.settings-page .segment button{flex:1;min-width:0;min-height:38px;padding:8px 9px;border-radius:10px;font-size:.76rem;line-height:1.25}
+.settings-page .segment button.active{box-shadow:0 2px 6px #00000014}
+.settings-page .settings-line>.switch{justify-self:end;align-self:center;min-width:52px;width:52px;height:30px;padding:4px}
+.settings-page .switch span{width:22px;height:22px;flex:none}
+.settings-page .switch.on span{transform:translateX(22px)}
+.settings-page .settings-language{position:relative;min-width:0;width:100%;justify-self:end}
+.settings-page .settings-language[open]{z-index:40}
+.settings-page .settings-language summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:11px 13px;border:1px solid var(--border);border-radius:14px;background:var(--settings-field);color:var(--ink);font-size:.8rem;font-weight:650;cursor:pointer;list-style:none}
+.settings-page .settings-language summary::-webkit-details-marker{display:none}
+.settings-page .settings-language summary>span{display:block;min-width:0;overflow-wrap:anywhere}
+.settings-page .settings-language-chevron{flex:none;color:var(--muted);font-size:20px;line-height:1}
+.settings-page .settings-language[open] summary{border-color:var(--orange);box-shadow:0 0 0 3px #e961291a}
+.settings-page .settings-language-options{position:absolute;top:calc(100% + 8px);right:0;width:280px;max-width:calc(100vw - 54px);padding:6px;display:grid;gap:3px;border:1px solid var(--border);border-radius:17px;background:var(--settings-popover);box-shadow:0 12px 36px #0003}
+.settings-page .settings-language-options label{position:relative;display:flex;align-items:center;gap:10px;min-height:46px;padding:10px;border:1px solid transparent;border-radius:11px;color:var(--ink);font-size:.82rem;cursor:pointer}
+.settings-page .settings-language-options label>span{display:block;flex:1}
+.settings-page .settings-language-options input{position:absolute;width:1px;height:1px;opacity:0}
+.settings-page .settings-language-options label>svg{opacity:0;flex:none}
+.settings-page .settings-language-options label:hover{background:var(--settings-field)}
+.settings-page .settings-language-options label.is-selected{background:#e9612914;border-color:#e9612940}
+.settings-page .settings-language-options label.is-selected>svg{opacity:1;color:var(--orange)}
+.settings-page .settings-language summary:focus-visible,.settings-page .settings-language-options label:focus-within{outline:2px solid var(--orange);outline-offset:2px}
+@media(max-width:600px){
+ .settings-page .settings-line{grid-template-columns:minmax(0,1fr) minmax(0,46%);gap:12px;min-height:86px}
+ .settings-page .settings-line>div:first-child{gap:9px}
+ .settings-page .settings-line>div:first-child>svg{width:19px;height:19px}
+ .settings-page .settings-line strong{font-size:.8rem;line-height:1.35}
+ .settings-page .settings-line small{font-size:.67rem}
+ .settings-page .segment button{font-size:.7rem;padding:7px 4px;min-height:38px}
+ .settings-page .settings-language summary{font-size:.74rem;padding:10px;gap:6px}
+}
