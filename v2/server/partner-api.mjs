@@ -354,6 +354,10 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
   }catch(e){
    if(res.headersSent){res.end();return true;}
    const known=e instanceof PartnerError,status=known?e.status:503,code=known?e.code:'SERVICE_UNAVAILABLE';
+   if(p.startsWith(PARTNER_BASE+'/')){
+    const segment=p.slice(PARTNER_BASE.length+1).split('/')[0]||'root';
+    console.warn('[VANO partner request]',segment,'status='+status,'code='+code,'partner='+String(req.vanoVerifiedPartnerId||'unauthenticated').slice(0,6));
+   }
    res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, private','X-Request-ID':requestId,...(status===429?{'Retry-After':String(e.retryAfter||10)}:{})});
    res.end(JSON.stringify({error:{code,message:known?e.message:'Serviço temporariamente indisponível.'},meta:{request_id:requestId}}));return true;
   }
