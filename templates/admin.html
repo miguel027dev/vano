@@ -195,7 +195,7 @@
         <div class="admin350-feed">{% for r in recent_routes %}<div class="admin350-feed-row"><span class="admin350-feed-icon"><i data-lucide="route" width="15"></i></span><div><b>{{ r['origin_label'] or 'Origem' }} → {{ r['destination_label'] or 'Destino' }}</b><small>{{ r['user_name'] }} · {{ (r['distance_m']/1000)|round(1) }} km · {{ (r['duration_s']/60)|round|int }} min</small></div><time>{{ r['created_at'][:16].replace('T',' ') }}</time></div>{% else %}<div class="admin350-empty">Nenhuma rota recente.</div>{% endfor %}</div>
       </article>
       <article class="admin350-card">
-        <header class="admin350-card-head"><div><span>MODERAÇÃO</span><h2>Alertas recentes</h2><p>Ocorrências que podem precisar de revisão.</p></div><a class="admin350-text-link" href="{{ url_for('admin_reports') }}">Ver todos</a></header>
+        <header class="admin350-card-head"><div><span>MODERAÇÃO</span><h2>Alertas recentes</h2><p>Ocorrências que podem precisar de revisão.</p></div><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><a class="admin350-text-link" href="{{ url_for('admin_reports') }}">Ver todos</a><form method="post" action="{{ url_for('admin_clear_map_occurrences') }}" data-admin-clear-map-form><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="confirmation" value=""><button type="submit" class="admin350-text-link" style="border:0;background:none;cursor:pointer;color:#b8484f">Limpar ocorrências do mapa</button></form></div></header>
         <div class="admin350-feed">{% for r in reports %}<div class="admin350-feed-row"><span class="admin350-feed-icon is-alert"><i data-lucide="triangle-alert" width="15"></i></span><div><b>{{ r['title'] }}</b><small>{{ r['reporter_name'] }} · {{ categories.get(r['category'],categories['other'])['label'] }}</small></div><time>{{ r['created_at'][:16].replace('T',' ') }}</time></div>{% else %}<div class="admin350-empty">Nenhum alerta recente.</div>{% endfor %}</div>
       </article>
     </section>
@@ -290,6 +290,7 @@
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.27.0/mapbox-gl.js"></script>
 <script src="{{ url_for('static', filename='vano-admin-infrastructure.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-admin-reset.js') }}?v={{ vano_build_id }}"></script>
+<script src="{{ url_for('static', filename='vano-admin-clear-reports.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-admin-experience.js') }}?v={{ vano_build_id }}"></script>
 <script src="{{ url_for('static', filename='vano-admin-glass.js') }}?v={{ vano_build_id }}"></script>
 {% endblock %}

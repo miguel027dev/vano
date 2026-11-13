@@ -917,6 +917,46 @@ def admin_reports():
     return render_template("admin_reports.html", reports=reports, categories=CATEGORY_META)
 
 
+
+@app.route("/admin/reports/clear-map", methods=["POST"])
+@admin_required
+def admin_clear_map_occurrences():
+    """Resolve visible community occurrences while preserving radar reports and history."""
+    if not validate_csrf():
+        abort(400)
+    if str(request.form.get("confirmation", "")).strip().upper() != "LIMPAR":
+        flash("Limpeza cancelada. Digite LIMPAR para confirmar.", "warning")
+        return redirect(url_for("admin_reports"))
+
+    db = get_db()
+    try:
+        # Keeping the records allows moderation/audit and avoids orphaning votes.
+        # The map and route context only use active reports.
+        cursor = db.execute(
+            "UPDATE reports SET status='resolved' "
+            "WHERE status='active' AND category <> ?",
+            ("speed_camera",),
+        )
+        changed = max(0, int(cursor.rowcount or 0))
+        db.commit()
+    except Exception:
+        db.rollback()
+        app.logger.exception("Falha ao limpar ocorrências comunitárias do mapa")
+        flash("Não foi possível limpar as ocorrências. Tente novamente.", "danger")
+        return redirect(url_for("admin_reports"))
+
+    invalidate_route_context("reports")
+    audit("admin_clear_map_occurrences", {
+        "resolved_reports": changed,
+        "preserved_category": "speed_camera",
+    })
+    flash(
+        f"{changed} ocorrência(s) removida(s) do mapa. Radares e histórico preservados.",
+        "success",
+    )
+    return redirect(url_for("admin_reports"))
+
+
 @app.route("/admin/reports/<int:report_id>/status", methods=["POST"])
 @admin_required
 def admin_report_status(report_id):
