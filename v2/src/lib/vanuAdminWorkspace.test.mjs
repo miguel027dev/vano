@@ -24,7 +24,7 @@ test('admin shell keeps main sections inside one panel and benchmark external',(
  assert.match(page,/window\.history\.pushState/);
 });
 test('existing functional modules mount in admin and map remains interactive',()=>{
- for(const key of ['<IntelligencePage embedded/>','<DevSyncPage embedded/>','<SupportInboxPage/>','<SettingsPage/>','<AdminOccurrences stats={stats}/>','<AdminLiveTrips embedded']){
+ for(const key of ['<IntelligencePage embedded/>','<DevSyncPage embedded/>','<SupportInboxPage/>','<SettingsPage/>','<AdminOccurrences stats={stats} onChanged={()=>refresh(0)}/>','<AdminLiveTrips embedded']){
   assert.ok(page.includes(key),key);
  }
  assert.match(page,/<iframe title="Mapa principal VANO" src="\/mapa"/);
