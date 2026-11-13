@@ -80,7 +80,8 @@ test('GPS camera and marker have one smoothed real-time path, without touching s
  const src=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(src,/smoothLiveRoadProgress\(state\.roadMeters,desired,dt/);
  assert.match(src,/smoothLiveBearing\(state\.bearing,heading,dt/);
- assert.match(src,/roadMatch:visual\.current\.roadMatch\?\?null/);
+ assert.match(src,/roadMatch:sameRoadRun\?visual\.current\.roadMatch:null/);
+ assert.match(src,/gpsMatchRaw:sameRoadRun\?visual\.current\.gpsMatchRaw:null/);
  assert.match(src,/liveFollow\?\(motorcycle\?210:190\)/);
  assert.match(src,/point=sampleRoute\(timeline,state\.roadMeters\)\?\.point/);
 });
