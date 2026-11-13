@@ -431,7 +431,7 @@
 .settings-page .settings-theme-segment .settings-theme-indicator{
  position:absolute;display:block;left:4px;top:4px;bottom:4px;
  width:calc((100% - 8px)/3);border-radius:10px;background:var(--orange);
- box-shadow:0 2px 6px #0002;pointer-events:none;z-index:-1;
+ box-shadow:0 2px 6px #0002;z-index:-1;
  transition:transform 200ms var(--ease-out,cubic-bezier(.23,1,.32,1));
 }
 .settings-page .settings-theme-segment button,
