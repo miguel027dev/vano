@@ -9,16 +9,14 @@ const map=readFileSync(new URL('../components/TransitMap.jsx',import.meta.url),'
 const styles=readFileSync(new URL('../transit-preview.css',import.meta.url),'utf8');
 
 test('public transit remains inaccessible from the V2 public shell',()=>{
- assert.match(app,/<Route path="\\/transporte" element=\\{<Navigate to="\\/mapa" replace\\/>\\}/);
- assert.match(app,/<Route path="\\/planejar-transporte" element=\\{<Navigate to="\\/mapa" replace\\/>\\}/);
- assert.doesNotMatch(app,/<Route path="\\/transporte" element=\\{<TransitPage\\/>\\}/);
+ assert.ok(app.includes('<Route path="/transporte" element={<Navigate to="/mapa" replace/>}'));
+ assert.ok(app.includes('<Route path="/planejar-transporte" element={<Navigate to="/mapa" replace/>}'));
+ assert.ok(!app.includes('<TransitPage/>'));
  // Archived implementation may remain for later development, but the public
  // routing mode selector contains only car, motorcycle and walking.
  const rail=readFileSync(new URL('../components/TransportModeRail.jsx',import.meta.url),'utf8');
- assert.match(rail,/id:'carro'/);
- assert.match(rail,/id:'moto'/);
- assert.match(rail,/id:'a-pe'/);
- assert.doesNotMatch(rail,/\\{id:'publico'/);
+ for(const mode of ["carro","moto","a-pe"])assert.ok(rail.includes("{id:'"+mode+"'"));
+ assert.ok(!rail.includes("{id:'publico'"));
 });
 test('route overview honors line colors, station badges and original map attribution',()=>{
  assert.match(map,/transitGeojson\(itinerary\)/);
