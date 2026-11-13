@@ -9,7 +9,7 @@ export function standardMapCarPose({previous=null,position,route,match,trackingP
  trackingBearing,accuracy,speed,heading,sourceAt,now=Date.now(),navigation=false,
  vehicle='carro',simulation=false}={}){
  const empty={visible:false,point:null,bearing:null,entryHeld:false,entryPoint:null,
-   lastRoadPoint:null,lastSourceAt:null,offRouteFixes:0};
+   lastRoadPoint:null,lastSourceAt:null,offRouteFixes:0,offRouteSuppressed:false};
  if(!navigation||simulation||vehicle!=='carro'||!validPoint(position)||
    !Array.isArray(route?.geometry?.coordinates)||route.geometry.coordinates.length<2)
    return empty;
@@ -22,10 +22,10 @@ export function standardMapCarPose({previous=null,position,route,match,trackingP
    roadOffset<=clamp(accuracy*.85+5,9,30));
  // Acquire on the route start before the first movement; never substitute
  // a far-away origin, an expired GPS fix or an unrelated route leg.
- const start=!old.visible?visualRouteStartPoint({
+ const start=!old.visible&&!old.offRouteSuppressed?visualRouteStartPoint({
    position,route,accuracy,speed,heading,sourceAt,now,navigation:true}):null;
  const visible=Boolean(old.visible||start||roadConfirmed);
- if(!visible)return {...empty,lastSourceAt:fresh?sourceAt:old.lastSourceAt};
+ if(!visible)return {...empty,offRouteSuppressed:Boolean(old.offRouteSuppressed),lastSourceAt:fresh?sourceAt:old.lastSourceAt};
 
  const entryPoint=validPoint(old.entryPoint)?old.entryPoint:start;
  let entryHeld=Boolean((old.entryHeld||start)&&validPoint(entryPoint));
@@ -41,7 +41,7 @@ export function standardMapCarPose({previous=null,position,route,match,trackingP
  const offRouteFixes=newFix?(offRoute?(old.offRouteFixes||0)+1:0):(old.offRouteFixes||0);
  // Only an established driver who has left the entrance can be released to
  // the arrow after FOUR separate, accurate off-route measurements.
- if(!entryHeld&&offRouteFixes>=4)return {...empty,lastSourceAt:sourceAt,offRouteFixes};
+ if(!entryHeld&&offRouteFixes>=4)return {...empty,lastSourceAt:sourceAt,offRouteFixes,offRouteSuppressed:true};
 
  const lastRoadPoint=roadConfirmed&&validPoint(trackingPoint)?trackingPoint:
    validPoint(old.lastRoadPoint)?old.lastRoadPoint:
@@ -55,5 +55,5 @@ export function standardMapCarPose({previous=null,position,route,match,trackingP
    Number.isFinite(match?.bearing)?match.bearing:0;
  return {visible:true,point,bearing,entryHeld,entryPoint,
    lastRoadPoint:validPoint(lastRoadPoint)?lastRoadPoint:null,
-   lastSourceAt:fresh?sourceAt:old.lastSourceAt,offRouteFixes};
+   lastSourceAt:fresh?sourceAt:old.lastSourceAt,offRouteFixes,offRouteSuppressed:false};
 }
