@@ -31,6 +31,7 @@ import {syncV2Compact,V2_COMPACT_ID} from '../lib/v2CompactLayer.mjs';
 import '../v2-compact-fallback.css';
 import {visualRouteStartPoint,assessV2CarOnStreet} from '../lib/v2RoadEntry.mjs';
 import {standardMapCarPose} from '../lib/standardMapCar.mjs';
+import {smoothStandardCarDrive} from '../lib/standardCarMotion.mjs';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
 import {attachCommunityReportOverlay} from '../lib/communityReportOverlay.js';
@@ -1062,6 +1063,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       roadRunGeometry:navigation?route?.geometry:null,roadRunVehicle:navigation?vehicle:null,
       roadCar:sameRoadRun?visual.current.roadCar:null,
       standardCar:sameRoadRun&&standardMapCar?visual.current.standardCar:null,
+      standardSmooth:sameRoadRun&&standardMapCar?visual.current.standardSmooth:null,
       entryLastSnappedAt:sameRoadRun?visual.current.entryLastSnappedAt:0,
       // A new trip must re-evaluate its first GPS fix; inheriting an old
       // gpsMatchRaw prevented any new road/car confirmation until GPS changed.
@@ -1287,12 +1289,23 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           now:fixNow,navigation:true,vehicle:d.vehicle
         });
       }else state.standardCar=null;
+      // Marker-only 60 Hz motor: smoothly cover ground between infrequent GPS
+      // callbacks, respecting actual speed and bending along the route.
+      // d.motionCoords above still owns the original V1 camera and routing.
+      state.standardSmooth=d.standardMapCar&&state.standardCar?.visible?
+        smoothStandardCarDrive({
+          previous:state.standardSmooth,point:state.standardCar.point,timeline,
+          speed:d.telemetry?.speed,dtMs:dt,sourceAt:d.telemetry?.sourceAt,
+          now:fixNow,entryHeld:state.standardCar.entryHeld,
+          reducedMotion:reduced,bearing:state.standardCar.bearing
+        }):null;
       const markerPoint=d.standardMapCar&&state.standardCar?.visible?
-        state.standardCar.point:point;
+        (state.standardSmooth?.point||state.standardCar.point):point;
       const markerBearing=d.standardMapCar&&state.standardCar?.visible?
-        state.standardCar.bearing:state.bearing||0;
+        (state.standardSmooth?.bearing??state.standardCar.bearing):state.bearing||0;
       const map=mapRef.current;
-      if(map)map._vanoStandardMapCarPose=d.standardMapCar&&d.navigation?state.standardCar:null;
+      if(map)map._vanoStandardMapCarPose=d.standardMapCar&&d.navigation&&state.standardCar?.visible?
+        {...state.standardCar,point:markerPoint,bearing:markerBearing}:null;
       if(map)map._vanoRoadCarConfirmed=Boolean(realDriving&&d.v2Experience&&d.vehicle==='carro'&&
         (nearStart||entryHandoff||(state.roadCar?.visible&&
           fixNow-(state.roadCar.lastFixAt||0)<=5000)));
