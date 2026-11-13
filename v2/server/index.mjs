@@ -335,6 +335,13 @@ class HttpError extends Error { constructor(status, message) { super(message); t
 function getBody(req) {
   return new Promise((resolve, reject) => {
     if (!(req.headers['content-type'] || '').toLowerCase().startsWith('application/json')) return reject(new HttpError(415, 'Envie Content-Type application/json.'));
+    // Reject oversized declared payloads before streaming. Drain without keeping
+    // their bytes so clients receive a reliable 413 instead of ECONNRESET.
+    const declaredBytes = Number(req.headers['content-length']);
+    if (Number.isFinite(declaredBytes) && declaredBytes > 32768) {
+      req.resume();
+      return reject(new HttpError(413, 'Dados muito grandes.'));
+    }
     let bytes = 0, chunks = [], overflow = false;
     req.on('data', ch => {
       bytes += ch.length;

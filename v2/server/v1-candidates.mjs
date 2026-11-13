@@ -44,7 +44,7 @@ export function overlap(a,b){
   let intersection=0;for(const c of x)if(y.has(c))intersection++;
   return intersection/Math.max(1,Math.min(x.size,y.size));
 }
-const congestionWeights={unknown:15,low:15,moderate:48,heavy:76,severe:94};
+const congestionWeights={low:15,moderate:48,heavy:76,severe:94};
 export function traffic(route){
   const samples=[];
   for(const leg of route?.legs||[]){
@@ -52,14 +52,20 @@ export function traffic(route){
     let start=samples.length?samples.at(-1).end:0;
     for(let i=0;i<Math.max(d.length,cn.length,c.length);i++){
       const dist=Math.max(.2,n(d[i])||1),label=String(c[i]||'unknown').toLowerCase();
-      const score=Number.isFinite(cn[i])?Math.max(0,Math.min(100,cn[i])):(congestionWeights[label]??20);
+      const numericScore=Number.isFinite(cn[i])&&cn[i]>=0&&cn[i]<=100?cn[i]:null;
+      // Missing congestion is not evidence of free-flow traffic.
+      const score=numericScore??(Object.hasOwn(congestionWeights,label)?congestionWeights[label]:null);
       samples.push({start,end:start+dist,distance:dist,score,label});start+=dist;
     }
   }
-  if(!samples.length)return {score:0,severe:0,clusters:[],hasTraffic:false};
+  if(!samples.length)return {score:0,severe:0,clusters:[],hasTraffic:false,knownRatio:0};
   const total=samples.reduce((s,x)=>s+x.distance,0);
-  const score=samples.reduce((s,x)=>s+x.score*x.distance,0)/Math.max(total,1);
-  const heavy=samples.filter(x=>x.score>=65||['heavy','severe'].includes(x.label));
+  const knownMeters=samples.reduce((sum,x)=>sum+(x.score===null?0:x.distance),0);
+  const knownRatio=knownMeters/Math.max(total,1);
+  // Match the bottleneck validator's 80% evidence threshold.
+  const hasTraffic=knownRatio>=.8;
+  const score=knownMeters>0?samples.reduce((sum,x)=>sum+(x.score===null?0:x.score*x.distance),0)/knownMeters:0;
+  const heavy=samples.filter(x=>x.score!==null&&x.score>=65);
   const merged=[];
   for(const edge of heavy){
     if(merged.length&&edge.start-merged.at(-1).end<=140){
@@ -79,13 +85,13 @@ export function traffic(route){
     const point=pointAt((x.start+x.end)/2);
     return {point,score:x.score,start:x.start,end:x.end,priority:x.score*Math.min(2.2,.75+(x.end-x.start)/550)};
   }).filter(x=>pointOK(x.point)).sort((a,b)=>b.priority-a.priority).slice(0,6);
-  return {score,severe:heavy.length,clusters,hasTraffic:true};
+  return {score,severe:heavy.length,clusters,hasTraffic,knownRatio};
 }
 export function denseSpecs(routes,limit=8){
   const ranked=uniqueCandidates(routes),base=ranked[0];
   if(!base||base.duration<300)return [];
   const t=traffic(base);
-  if(t.score<34&&t.severe===0)return [];
+  if(!t.hasTraffic||(t.score<34&&t.severe===0))return [];
   const dyn=t.score>=82||t.severe>=5?6:t.score>=68||t.severe>=3?5:t.score>=52||t.severe>=2?4:2;
   const budget=Math.min(Math.max(2,Math.min(12,limit)),dyn);
   const seeds=[];for(const r of ranked){if(seeds.every(x=>overlap(x,r)<.965))seeds.push(r);if(seeds.length>=2)break;}
@@ -110,7 +116,7 @@ export function denseSpecs(routes,limit=8){
 export function adaptiveSpecs(routes,budget=2){
   const ranked=uniqueCandidates(routes),base=ranked[0];if(!base||base.duration<420)return [];
   const t=traffic(base);
-  if(t.score<42&&t.severe===0)return [];
+  if(!t.hasTraffic||(t.score<42&&t.severe===0))return [];
   const diverse=[];for(const r of ranked){if(diverse.every(x=>overlap(x,r)<.91))diverse.push(r);}
   if(diverse.length>=3)return [];
   const coords=base.geometry.coordinates;

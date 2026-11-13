@@ -5,6 +5,7 @@
  */
 import {pointOK} from './routing.mjs';
 import {adaptiveSpecs,denseSpecs,overlap,traffic,uniqueCandidates,signature} from './route-candidates.mjs';
+import {hasProviderRouteViolation} from './urban-route-exploration.mjs';
 
 const cache=new Map(), CACHE_TTL=15000,MAX_CACHE=48;
 const clone=x=>structuredClone(x);
@@ -62,8 +63,9 @@ async function request(url,fetcher,timeoutMs){
   if(!r.ok)throw Error('Mapbox HTTP '+r.status);
   const body=await r.json();
   if(body.code&&body.code!=='Ok')throw Error('Mapbox '+body.code);
-  const routes=uniqueCandidates(body.routes);
-  if(!routes.length)throw Error('Mapbox não retornou rotas válidas.');
+  // Keep the native V2 engine aligned with the active fallback's provider safety gate.
+  const routes=uniqueCandidates((body.routes||[]).filter(r=>!hasProviderRouteViolation(r)));
+  if(!routes.length)throw Error('Mapbox não retornou rotas válidas sem violação de acesso.');
   return routes;
 }
 async function probeGroup(origin,destination,access,language,vehicle,telemetry,options,specs,fetcher,baseline,kind){
