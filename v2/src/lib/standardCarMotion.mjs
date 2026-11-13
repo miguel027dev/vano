@@ -29,7 +29,7 @@ export function smoothStandardCarDrive({
  const forward=destination-previous.meters;
  // Real GPS re-localizations/new route geometry should not drag the car
  // through multiple unrelated blocks at visible animation speed.
- if(Math.abs(forward)>145)return {point,meters:destination,bearing:targetHeading,timeline:timeline.points};
+ if(Math.abs(forward)>125)return {point,meters:destination,bearing:targetHeading,timeline:timeline.points};
  let meters=previous.meters;
  if(entryHeld){
   // Keep the car locked to the actual first street point while indoors.
