@@ -32,8 +32,8 @@ function Split({rows,empty='Ainda não há registros neste intervalo.'}){return 
  {rows.map((row,i)=><div className="vai-stat-row" key={i}><span>{row[0]}</span><strong>{row[1]}</strong></div>)}
  </div>:<p className="vai-empty">{empty}</p>}
 function EmptyList({children}){return <p className="vai-empty">{children||'Nenhum registro disponível.'}</p>}
-export default function AdminInsights({stats,users,offset,busy,filter,setFilter,refresh,visible=true}){
- const [active,setActive]=useState('overview');
+export default function AdminInsights({stats,users,offset,busy,filter,setFilter,refresh,visible=true,initialTab='overview'}){
+ const [active,setActive]=useState(initialTab);
  const [motionActive,setMotionActive]=useState(()=>
   visible && (typeof window==='undefined'||!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
  );
