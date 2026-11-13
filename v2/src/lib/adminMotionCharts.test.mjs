@@ -23,7 +23,7 @@ test('KPI counts animate only once per visible view and expose the actual value'
  assert.match(charts,/aria-hidden="true"/);
  assert.match(charts,/className="sr-only"/);
  assert.match(charts,/cancelAnimationFrame\(raf\)/);
- assert.match(admin,/visible=\{activeSection==='dashboard'\|\|activeSection==='indicators'\}/);
+ assert.match(admin,/visible=\{\['dashboard','indicators','acquisition','interactions','infrastructure'\]\.includes\(activeSection\)\}/);
 });
 test('visual motion is compositor-first and respects reduced motion',()=>{
  assert.match(css,/@keyframes vaiBarRise/);
