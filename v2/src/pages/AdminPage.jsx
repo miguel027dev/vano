@@ -21,7 +21,8 @@ const DevSyncPage=lazy(()=>import('./DevSyncPage'));
 const SupportInboxPage=lazy(()=>import('./SupportInboxPage'));
 const SettingsPage=lazy(()=>import('./SettingsPage').then(mod=>({default:mod.SettingsPage})));
 const AdminOccurrences=lazy(()=>import('../components/AdminOccurrences'));
-const ADMIN_SECTIONS=new Set(['dashboard','routes','training','intelligence','incidents','devsync','indicators','support','settings','map','apis-outbound','apis-partners']);
+const AdminRetention=lazy(()=>import('../components/AdminRetention'));
+const ADMIN_SECTIONS=new Set(['dashboard','routes','retention','users','acquisition','interactions','eta','infrastructure','training','intelligence','incidents','devsync','indicators','support','settings','map','apis-outbound','apis-partners']);
 const sectionForHash=()=>{
  const value=typeof window==='undefined'?'':window.location.hash.slice(1);
  const canonical={'acompanhar-rotas':'routes','ocorrencias':'incidents','atendimento':'support','configuracoes':'settings','indicadores':'indicators','mapa':'map','treinamento':'training','apis-consumidas':'apis-outbound','apis-parceiros':'apis-partners'}[value]||value;
@@ -29,7 +30,13 @@ const sectionForHash=()=>{
 };
 const sectionHash={routes:'acompanhar-rotas',incidents:'ocorrencias',support:'atendimento',settings:'configuracoes',indicators:'indicadores',map:'mapa',training:'treinamento','apis-outbound':'apis-consumidas','apis-partners':'apis-parceiros'};
 const SECTION_HEADERS={
- dashboard:['Painel de controle','Indicadores, operação, infraestrutura e atividade da plataforma.'],
+ dashboard:['Visão geral','Adoção, navegação, retenção e operação da plataforma.'],
+ retention:['Retenção e jornada','Primeira abertura, permanência, recorrência e rotas iniciadas.'],
+ users:['Usuários','Pesquise contas e consulte a jornada individual sem expor dados de localização.'],
+ acquisition:['Aquisição','Cadastros por origem e atividade; instalações exigem dados oficiais da Play Store.'],
+ interactions:['Interações','Eventos agregados de API e utilização observada.'],
+ eta:['Rotas e ETA','Diagnóstico de tempo estimado, motores e microdesvios.'],
+ infrastructure:['Infraestrutura','Configuração, saúde e métricas da instância de aplicação.'],
  routes:['Acompanhar rotas','Mapa 3D original do VANO e viagens ativas autorizadas.'],
  training:['Treinamento e diagnóstico','Ferramentas de simulação e investigação de rotas.'],
  intelligence:['VANO Intelligence','Chat de análise operacional com informações reais e fontes agregadas.'],
@@ -141,22 +148,34 @@ export default function AdminPage(){
    <Link to="/admin" className="vanu-control-brand" onClick={()=>openArea('dashboard')}>
     <span className="vanu-control-mark"><img src="/vano-logo-original.webp" width="42" height="42" alt=""/></span><span><b>VANO</b><small>CONTROL CENTER</small></span>
    </Link>
-   <div className="vanu-control-nav-label">PAINEL ADMINISTRATIVO</div>
-   <nav aria-label="Navegação administrativa" className="vanu-control-nav">
-    <SectionLink area="dashboard" icon={LayoutDashboard} active={activeSection==='dashboard'} onSelect={openArea}>Dashboard</SectionLink>
+   <div className="vanu-control-nav-label">PRINCIPAL</div>
+   <nav aria-label="Módulos principais" className="vanu-control-nav">
+    <SectionLink area="dashboard" icon={LayoutDashboard} active={activeSection==='dashboard'} onSelect={openArea}>Visão geral</SectionLink>
     <SectionLink area="routes" icon={MapPinned} active={activeSection==='routes'} onSelect={openArea}>Acompanhar rotas</SectionLink>
-    <SectionLink area="training" icon={FlaskConical} active={activeSection==='training'} onSelect={openArea}>Treinamento</SectionLink>
-    <SectionLink area="intelligence" icon={Sparkles} active={activeSection==='intelligence'} onSelect={openArea}>VANO Intelligence</SectionLink>
-    <Link to="/benchmark-de-rotas" className="vanu-control-link"><ChartNoAxesCombined size={18}/> Benchmark <ArrowUpRight className="vanu-external-mark" size={13}/></Link>
-    <SectionLink area="incidents" icon={AlertTriangle} active={activeSection==='incidents'} onSelect={openArea}>Ocorrências</SectionLink>
-    <SectionLink area="devsync" icon={MessageSquareText} active={activeSection==='devsync'} onSelect={openArea}>DevSync</SectionLink>
+    <SectionLink area="retention" icon={Activity} active={activeSection==='retention'} onSelect={openArea}>Retenção e jornada</SectionLink>
+    <SectionLink area="users" icon={Users} active={activeSection==='users'} onSelect={openArea}>Usuários</SectionLink>
    </nav>
-   <div className="vanu-control-nav-label vanu-control-group-label">OPERAÇÃO E CONTA</div>
-   <nav aria-label="Ferramentas de operação" className="vanu-control-nav">
-    <SectionLink area="indicators" icon={Activity} active={activeSection==='indicators'} onSelect={openArea}>Indicadores</SectionLink>
+   <div className="vanu-control-nav-label vanu-control-group-label">ANÁLISE GERAL</div>
+   <nav aria-label="Análise geral" className="vanu-control-nav">
+    <SectionLink area="indicators" icon={ChartNoAxesCombined} active={activeSection==='indicators'} onSelect={openArea}>Indicadores</SectionLink>
+    <SectionLink area="acquisition" icon={UserRoundCheck} active={activeSection==='acquisition'} onSelect={openArea}>Aquisição</SectionLink>
+    <SectionLink area="interactions" icon={Activity} active={activeSection==='interactions'} onSelect={openArea}>Interações</SectionLink>
+    <SectionLink area="eta" icon={Route} active={activeSection==='eta'} onSelect={openArea}>Rotas e ETA</SectionLink>
+   </nav>
+   <div className="vanu-control-nav-label vanu-control-group-label">OPERAÇÃO</div>
+   <nav aria-label="Operação e infraestrutura" className="vanu-control-nav">
+    <SectionLink area="infrastructure" icon={Database} active={activeSection==='infrastructure'} onSelect={openArea}>Infraestrutura</SectionLink>
     <SectionLink area="apis-outbound" icon={Network} active={activeSection==='apis-outbound'} onSelect={openArea}>APIs consumidas</SectionLink>
     <SectionLink area="apis-partners" icon={Plug} active={activeSection==='apis-partners'} onSelect={openArea}>APIs de parceiros</SectionLink>
+    <SectionLink area="incidents" icon={AlertTriangle} active={activeSection==='incidents'} onSelect={openArea}>Ocorrências</SectionLink>
     <SectionLink area="support" icon={Headset} active={activeSection==='support'} onSelect={openArea}>Atendimento</SectionLink>
+   </nav>
+   <div className="vanu-control-nav-label vanu-control-group-label">FERRAMENTAS</div>
+   <nav aria-label="Ferramentas administrativas" className="vanu-control-nav">
+    <SectionLink area="intelligence" icon={Sparkles} active={activeSection==='intelligence'} onSelect={openArea}>VANO Intelligence</SectionLink>
+    <SectionLink area="training" icon={FlaskConical} active={activeSection==='training'} onSelect={openArea}>Treinamento</SectionLink>
+    <SectionLink area="devsync" icon={MessageSquareText} active={activeSection==='devsync'} onSelect={openArea}>DevSync</SectionLink>
+    <Link to="/benchmark-de-rotas" className="vanu-control-link"><ChartNoAxesCombined size={18}/> Benchmark <ArrowUpRight className="vanu-external-mark" size={13}/></Link>
     <SectionLink area="settings" icon={Settings2} active={activeSection==='settings'} onSelect={openArea}>Configurações</SectionLink>
    </nav>
    <div className="vanu-control-bottom">
@@ -181,6 +200,8 @@ export default function AdminPage(){
     <div className="vanu-route-view-head"><div><span className="vanu-control-eyebrow">VISÃO OPERACIONAL · MAPA 3D</span><h2>Monitoramento de viagens</h2><p>Interaja com o mapa, selecione viagens e consulte os dados atualizados a cada 5 segundos.</p></div><span className="vanu-route-refresh"><span className="vanu-control-status-dot"/>5 s · atualização</span></div>
     <Suspense fallback={<div className="vanu-map-loading" role="status">Preparando o mapa 3D…</div>}><AdminLiveTrips embedded onClose={()=>openArea('dashboard')}/></Suspense>
    </section>}
+  {(activeSection==='retention'||activeSection==='users')&&<Suspense fallback={<div className="v44-admin-loading" role="status">Carregando retenção e usuários…</div>}><AdminRetention key={activeSection}/></Suspense>}
+  {activeSection==='eta'&&<div className="vanu-section-mount vanu-training-area"><AdminEtaConsole/></div>}
   {activeSection==='training'&&<div className="vanu-section-mount vanu-training-area"><AdminEtaConsole/><SafeRoutingTestPanel/></div>}
   {(activeSection==='apis-outbound'||activeSection==='apis-partners')&&<Suspense fallback={<div className="v44-admin-loading" role="status">Preparando observabilidade…</div>}><AdminApiObservability key={activeSection} type={activeSection==='apis-partners'?'partners':'providers'}/></Suspense>}
   {activeSection==='intelligence'&&<div className="vanu-section-mount vanu-ai-focus"><Suspense fallback={<div role="status">Abrindo VANO Intelligence…</div>}><IntelligencePage embedded/></Suspense></div>}
@@ -197,7 +218,7 @@ export default function AdminPage(){
     </div></div>
    <iframe title="Mapa principal VANO" src="/mapa" allow="geolocation; fullscreen" loading="lazy"/>
   </section>}
-  <div className="vanu-dashboard-panel" hidden={activeSection!=='dashboard'&&activeSection!=='indicators'}>
+  <div className="vanu-dashboard-panel" hidden={!['dashboard','indicators','acquisition','interactions','infrastructure'].includes(activeSection)}>
   {activeSection==='dashboard'&&<section className="vanu-admin-hero" aria-label="Resumo de operações">
    <div className="vanu-hero-main"><span className="vanu-control-eyebrow">PLATAFORMA · VISÃO GERAL</span><h2>Operação em<br/><em>movimento.</em></h2><p>O pulso do VANO em uma central de controle, com métricas reais e visualização de operações.</p><button type="button" className="vanu-hero-action" onClick={()=>openArea('routes')}>Acompanhar rotas <ArrowUpRight size={18}/></button></div>
    <div className="vanu-hero-stats" aria-label="Estatísticas reais do VANO">
@@ -210,7 +231,7 @@ export default function AdminPage(){
   {showLegacy&&activeSection==='dashboard'&&<SafeRoutingTestPanel/>}
   {!stats&&!failure&&<div className="v44-admin-loading" role="status">Consultando os indicadores…</div>}
   {stats&&<>
-   <div id="vanuAdminInsights"><AdminInsights stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh} visible={activeSection==='dashboard'||activeSection==='indicators'}/></div>
+   <div id="vanuAdminInsights"><AdminInsights key={activeSection} stats={stats} users={users} offset={offset} busy={busy} filter={filter} setFilter={setFilter} refresh={refresh} visible={['dashboard','indicators','acquisition','interactions','infrastructure'].includes(activeSection)} initialTab={{acquisition:'audience',interactions:'events',infrastructure:'system'}[activeSection]||'overview'}/></div>
    {activeSection==='dashboard'&&<div className="v90-classic-toggle"><button type="button" onClick={()=>setShowLegacy(v=>!v)} aria-expanded={showLegacy}>{showLegacy?'Ocultar console anterior':'Abrir console clássico'}</button><span>O painel anterior continua disponível para diagnóstico e rollback visual.</span></div>}
    {showLegacy&&activeSection==='dashboard'&&<>
    <section className="v3-kpi-grid" aria-label="Indicadores gerais">
