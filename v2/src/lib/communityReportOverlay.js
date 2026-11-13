@@ -1,10 +1,11 @@
+import {reportArtworkSvg,reportArtworkScale} from './communityReportArtwork.js';
 /** Dedicated community overlay: stable, modern map pins and live updates.
  * Mapbox and Leaflet keep their route/GPS/POI layers untouched.
  */
 import L from 'leaflet';
 import {post} from './api.js';
 import mapboxgl from 'mapbox-gl';
-import {closeReports,metersApart,reportIconSvg,reportQueryBBox,reportType,validReportCoords} from './communityReports.js';
+import {closeReports,metersApart,reportQueryBBox,reportType,validReportCoords} from './communityReports.js';
 
 const REPORT_QUESTIONS={
   via_fechada:'A rua continua fechada?',
@@ -25,7 +26,7 @@ function popupNode(report,onVote){
   const icon=document.createElement('span');
   icon.className='vano-community-popup-icon';
   icon.style.setProperty('--community-pin-color',reportType(report.type)?.color||'#d97751');
-  icon.innerHTML=reportIconSvg(report.type); // Static catalog SVG, no user-provided markup.
+  icon.innerHTML=reportArtworkSvg(report.type); // Static approved artwork, no user-provided markup.
   const heading=document.createElement('div');
   heading.className='vano-community-popup-heading';
   const title=document.createElement('strong');
@@ -101,8 +102,8 @@ function pinNode(report){
   root.setAttribute('aria-label',(kind?.name||'Ocorrência')+' · alerta colaborativo');
   root.title=(kind?.name||'Ocorrência')+' · local aproximado';
   const symbol=document.createElement('span');symbol.className='vano-community-symbol';
-  // Six static SVG paths in the closed catalog. User text is never inserted as markup.
-  symbol.innerHTML=reportIconSvg(report.type);
+  // Closed artwork catalog. User text is never inserted as markup.
+  symbol.innerHTML=reportArtworkSvg(report.type);
   const label=document.createElement('span');label.className='vano-community-map-label';
   label.textContent=kind?.name||'Ocorrência';
   root.append(symbol,label);
@@ -139,20 +140,35 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
       const point=report.coords,element=pinNode(report);
       let marker;
       if(backend==='mapbox'){
-        marker=new mapboxgl.Marker({element,anchor:'bottom'})
+        marker=new mapboxgl.Marker({element,anchor:'bottom',rotationAlignment:'viewport',pitchAlignment:'viewport',occludedOpacity:.25})
           .setLngLat(point)
           .setPopup(new mapboxgl.Popup({offset:22,maxWidth:'290px',className:'vano-community-map-popup'}).setDOMContent(popupNode(report,onVote)))
           .addTo(map);
       }else{
         marker=L.marker([point[1],point[0]],{icon:L.divIcon({
           className:'vano-community-leaflet-wrap',html:element.outerHTML,
-          iconSize:[52,62],iconAnchor:[26,62],popupAnchor:[0,-42]
+          iconSize:[44,48],iconAnchor:[22,44],popupAnchor:[0,-34]
         })}).bindPopup(L.popup({className:'vano-community-map-popup',maxWidth:290}).setContent(popupNode(report,onVote))).addTo(map);
       }
+      marker._vanoElement=backend==='mapbox'?element:marker.getElement?.()?.querySelector('.vano-community-pin');
       marker._vanoPayloadSignature=signature;
       markers.set(report.id,marker);
     }
+    syncPerspective();
   }
+  // A single map listener updates existing nodes without rebuilding popup/markers.
+  function syncPerspective(){
+    if(disposed||backend!=='mapbox')return;
+    const height=map.getContainer?.()?.clientHeight||1;
+    for(const marker of markers.values()){
+      const element=marker._vanoElement;
+      if(!element)continue;
+      const point=map.project(marker.getLngLat());
+      const scale=reportArtworkScale(map.getZoom(),map.getPitch(),point.y/height);
+      element.style.setProperty('--report-artwork-scale',scale.toFixed(3));
+    }
+  }
+  if(backend==='mapbox')map.on('move',syncPerspective);
   function closeStream(){
     stream?.close();stream=null;streamOrigin=null;
   }
@@ -223,7 +239,7 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
   document.addEventListener('visibilitychange',onVisibility);
   void refresh(true);
   return ()=>{
-    disposed=true;clearInterval(interval);request?.abort();closeStream();
+    disposed=true;if(backend==='mapbox')map.off('move',syncPerspective);clearInterval(interval);request?.abort();closeStream();
     window.removeEventListener('vano:report-created',onReport);
     window.removeEventListener('online',onOnline);
     document.removeEventListener('visibilitychange',onVisibility);

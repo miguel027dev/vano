@@ -1,9 +1,10 @@
+import {reportArtworkSvg} from '../lib/communityReportArtwork.js';
 import React,{useState} from 'react';
 import {MapPin,Flag,CheckCircle2} from 'lucide-react';
 import {useVano} from '../context';
 import {PageHeader,Section,Notice,Empty} from '../components/Ui';
 import {timeAgo} from '../lib/api';
-import {REPORT_TYPES,reportIconSvg,reportType} from '../lib/communityReports.js';
+import {REPORT_TYPES,reportType} from '../lib/communityReports.js';
 import '../community-reports.css';
 
 export function ReportsPage(){
@@ -47,7 +48,7 @@ export function ReportsPage(){
             className={type===item.id?'active':''}
             style={{'--community-pin-color':item.color}}
             aria-pressed={type===item.id} onClick={()=>{setType(item.id);setDone(false);}}>
-            <span className="report-glyph" dangerouslySetInnerHTML={{__html:reportIconSvg(item.id)}}/>
+            <span className="report-glyph" dangerouslySetInnerHTML={{__html:reportArtworkSvg(item.id)}}/>
             <span>{item.name}</span>
           </button>)}
         </div>
@@ -70,7 +71,7 @@ export function ReportsPage(){
           const kind=reportType(item.type);
           return <div key={item.id} className="report-row">
             <span className="report-row-icon" style={{'--community-pin-color':kind?.color||'#a08a80'}}
-              dangerouslySetInnerHTML={{__html:reportIconSvg(item.type)}}/>
+              dangerouslySetInnerHTML={{__html:reportArtworkSvg(item.type)}}/>
             <div>
               <strong>{kind?.name||'Ocorrência'}</strong>
               <p>{item.description||'Sem descrição.'}</p>

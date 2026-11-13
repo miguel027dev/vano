@@ -1,6 +1,7 @@
+import {reportArtworkSvg} from '../lib/communityReportArtwork.js';
 import React,{useEffect,useRef,useState} from 'react';
 import {AlertTriangle,Check,CheckCircle2,ChevronLeft,LocateFixed,MapPin,X} from 'lucide-react';
-import {REPORT_TYPES,reportIconSvg,reportType} from '../lib/communityReports.js';
+import {REPORT_TYPES,reportType} from '../lib/communityReports.js';
 import '../community-reports.css';
 
 export default function QuickReportSheet({onClose,onSubmit,readPosition,onRetryLocation,moving=false}){
@@ -36,29 +37,24 @@ export default function QuickReportSheet({onClose,onSubmit,readPosition,onRetryL
     finally{busy.current=false;setSending(false);}
   }
   return <div className="vano-quick-report-shell" onPointerDown={event=>{if(event.target===event.currentTarget&&!busy.current)onClose();}}>
-    <section ref={panel} className="vano-quick-report-card" role="dialog" aria-modal="true" aria-labelledby="vano-quick-report-title" aria-describedby="vano-quick-report-description">
+    <section ref={panel} className="vano-quick-report-card" role="dialog" aria-modal="true" aria-labelledby="vano-quick-report-title" aria-describedby={type&&!done?"vano-quick-report-description":undefined}>
       <header className="vano-quick-report-head">
-        <div className="vano-quick-report-head-icon" aria-hidden="true"><AlertTriangle size={19} strokeWidth={2.1}/></div>
-        <div><small>ALERTA COLABORATIVO</small><h2 id="vano-quick-report-title">{done?'Ocorrência enviada':type?'Confirmar ocorrência':'O que está acontecendo?'}</h2></div>
+        <div className="vano-quick-report-heading"><h2 id="vano-quick-report-title">{done?'Ocorrência enviada':type?'Confirmar ocorrência':'O que está acontecendo?'}</h2></div>
         <button type="button" className="vano-quick-report-close" aria-label="Fechar ocorrências" disabled={sending} onClick={onClose}><X size={21}/></button>
       </header>
-      <p id="vano-quick-report-description" className="vano-quick-report-intro">
-        {done?'Obrigado por colaborar com a comunidade.':
-          type?'Confira o tipo selecionado e publique usando sua localização atual.':
-          'Selecione a ocorrência que você deseja informar.'}
-      </p>
+      {type&&!done&&<p id="vano-quick-report-description" className="vano-quick-report-intro">Confirme o alerta na sua localização.</p>}
       {done?<div className="vano-quick-report-success" role="status"><CheckCircle2 size={36}/><strong>Relato publicado!</strong><span>Outros usuários próximos poderão visualizar o alerta como não verificado.</span></div>:
       !type?<div className="vano-quick-report-options" role="group" aria-label="Escolha o tipo de ocorrência">
         {REPORT_TYPES.map((item,index)=><button type="button" key={item.id} ref={index===0?firstChoice:null}
           className="vano-quick-report-option" style={{'--community-pin-color':item.color}}
           onClick={()=>{setType(item.id);setError('');}}>
-          <span className="vano-quick-report-option-icon" dangerouslySetInnerHTML={{__html:reportIconSvg(item.id)}}/>
+          <span className="vano-quick-report-option-icon" dangerouslySetInnerHTML={{__html:reportArtworkSvg(item.id)}}/>
           <span>{item.name}</span>
         </button>)}
       </div>:
       <>
         <div className="vano-quick-report-selected" style={{'--community-pin-color':reportType(type)?.color}}>
-          <span className="vano-quick-report-selected-icon" dangerouslySetInnerHTML={{__html:reportIconSvg(type)}}/>
+          <span className="vano-quick-report-selected-icon" dangerouslySetInnerHTML={{__html:reportArtworkSvg(type)}}/>
           <strong>{reportType(type)?.name}</strong><Check size={18}/>
         </div>
         <div className="vano-quick-report-location">
