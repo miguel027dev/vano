@@ -28,6 +28,7 @@ import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/nigh
 import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {syncV2Compact} from '../lib/v2CompactLayer.mjs';
+import {visualRouteStartPoint,assessV2CarOnStreet} from '../lib/v2RoadEntry.mjs';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
 import {attachCommunityReportOverlay} from '../lib/communityReportOverlay.js';
@@ -1038,7 +1039,10 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     let raf=0,stopped=false;
     const preference=window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reduced=preference?.matches||false;
+    const sameRoadRun=Boolean(navigation&&route?.geometry&&visual.current.roadRunGeometry===route.geometry&&visual.current.roadRunVehicle===vehicle);
     const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,
+      roadRunGeometry:navigation?route?.geometry:null,roadRunVehicle:navigation?vehicle:null,
+      roadCar:sameRoadRun?visual.current.roadCar:null,
       // Preserve a valid on-road visual target when the same route/RAF restarts.
       gpsMatchRaw:visual.current.gpsMatchRaw??null,
       gpsMatchGeometry:visual.current.gpsMatchGeometry??null,
@@ -1048,6 +1052,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     function preferenceChanged(){reduced=Boolean(preference?.matches);}
     preference?.addEventListener?.('change',preferenceChanged);
     visual.current=state;
+    if(!sameRoadRun&&mapRef.current)mapRef.current._vanoRoadCarConfirmed=false;
     function animate(now){
       if(stopped)return;
       raf=requestAnimationFrame(animate);
@@ -1130,6 +1135,16 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           state.gpsMatchRaw=target;
           state.gpsMatchGeometry=geometry;
           if(!state.roadMatch||!sameGeometry)state.roadMeters=null;
+          // Road proximity alone is not proof that the driver is on the street.
+          // Use independent sensor confidence before replacing the arrow with 3D car.
+          const realCarFix=d.v2Experience&&d.navigation&&d.vehicle==='carro'&&
+            !d.simulationPreview&&!d.droneSimulation;
+          state.roadCar=realCarFix?assessV2CarOnStreet({
+            previous:sameGeometry?state.roadCar:null,position:target,
+            match:state.roadMatch,accuracy:d.telemetry?.accuracy,
+            speed:d.telemetry?.speed,heading:d.telemetry?.heading,
+            sourceAt:d.telemetry?.sourceAt,now:fixNow
+          }):null;
         }
         if(state.roadMatch&&timeline.total>0){
           const measured=state.roadMatch.meters;
@@ -1163,9 +1178,16 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           });
         }
       }
+      const realDriving=d.navigation&&!d.simulationPreview&&!d.droneSimulation;
+      // At trip start a nearby indoor fix may render the ARROW on the first
+      // street coordinate. The unmodified GPS fix still drives all navigation.
+      if(realDriving&&d.v2Experience&&d.vehicle==='carro'&&!state.roadCar?.everConfirmed){
+        const startPoint=visualRouteStartPoint({position:target,route,
+          accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,navigation:true});
+        if(startPoint){point=startPoint;if(state.roadMatch)state.roadMeters=0;}
+      }
       if(!validPoint(point))return;
       state.point=point;
-      const realDriving=d.navigation&&!d.simulationPreview&&!d.droneSimulation;
       // Keep the camera in phase with the smoothly moving pointer even when
       // React GPS events arrive just once per second.
       if(realDriving&&now-(state.lastChaseKick||0)>=90&&
@@ -1217,6 +1239,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       }
       d.motionCoords=point;d.motionBearing=state.bearing||0;
       const map=mapRef.current;
+      if(map)map._vanoRoadCarConfirmed=Boolean(realDriving&&d.v2Experience&&d.vehicle==='carro'&&
+        state.roadCar?.visible&&Date.now()-(state.roadCar.lastFixAt||0)<=5000);
       if(map&&backend.current==='mapbox'){
         const marker=map._vanoMarker?.current;
         if(marker){
@@ -1233,7 +1257,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         }
         // A native mesh follows the exact same interpolated pose as the arrow.
         // Only /v2 + car; the DOM marker remains a fail-safe until a draw succeeds.
-        const carVisible=Boolean(marker?.getElement().classList.contains('vano-vehicle-marker'));
+        const carVisible=Boolean(d.navigation&&marker?.getElement().classList.contains('vano-vehicle-marker')&&
+          (d.simulationPreview||d.droneSimulation||map._vanoRoadCarConfirmed));
         const nativeCompact=syncV2Compact(map,mapboxgl,d,point,state.bearing||0,carVisible);
         if(marker){const element=marker.getElement();const visibility=nativeCompact?'hidden':'';if(element.style.visibility!==visibility)element.style.visibility=visibility;}
         if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
@@ -1280,12 +1305,13 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     raf=requestAnimationFrame(animate);
     return()=>{
       stopped=true;cancelAnimationFrame(raf);
+      if(mapRef.current)mapRef.current._vanoRoadCarConfirmed=false;
       const highlight=mapRef.current?._vanoFlowLine?.getElement?.();
       if(highlight)highlight.style.animationPlayState='paused';
       preference?.removeEventListener?.('change',preferenceChanged);
       visual.current={...state,last:0,lastPaint:0,lastReport:0};
     };
-  },[active,navigation,selectedRoute,routes,token]);
+  },[active,navigation,selectedRoute,routes,token,vehicle,v2Experience]);
   useEffect(()=>{onMotionState?.(status.current);},[navigation]);
   // Show the interactive map immediately. GPS acquisition is asynchronous and
   // must never cover/lock the map while permissions or network are pending.
@@ -1549,7 +1575,8 @@ function paintMapbox(map,data,selection){
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   const currentMarker=map._vanoMarker?.current;
   const nativeCompact=syncV2Compact(map,mapboxgl,data,data.motionCoords||data.gpsCoords||data.userCoords,data.motionBearing||0,
-    Boolean(currentMarker?.getElement().classList.contains('vano-vehicle-marker')));
+    Boolean(data.navigation&&currentMarker?.getElement().classList.contains('vano-vehicle-marker')&&
+      (data.simulationPreview||data.droneSimulation||map._vanoRoadCarConfirmed)));
   if(currentMarker)currentMarker.getElement().style.visibility=nativeCompact?'hidden':'';
 
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}

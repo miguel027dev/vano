@@ -4,8 +4,8 @@ import {compactEnabled,compactWorldScale,compactScreenLength,compactModelMatrix,
 import {compactVertexBytes,COMPACT_LENGTH,COMPACT_VERTEX_COUNT} from './v2CompactMesh.mjs';
 
 test('compact is restricted to active V2 car experience',()=>{
- for(const d of [{},{v2Experience:false,vehicle:'carro'},{v2Experience:true,vehicle:'moto'},{v2Experience:true,vehicle:'a-pe'},{active:false,v2Experience:true,vehicle:'carro'}])assert.equal(compactEnabled(d),false);
- assert.equal(compactEnabled({v2Experience:true,vehicle:'carro'}),true);
+ for(const d of [{},{v2Experience:false,vehicle:'carro'},{v2Experience:true,vehicle:'moto',navigation:true},{v2Experience:true,vehicle:'a-pe',navigation:true},{v2Experience:true,vehicle:'carro',navigation:false},{active:false,v2Experience:true,vehicle:'carro',navigation:true}])assert.equal(compactEnabled(d),false);
+ assert.equal(compactEnabled({v2Experience:true,vehicle:'carro',navigation:true}),true);
  const map={};assert.equal(syncV2Compact(map,{}, {vehicle:'carro'},[-46,-23]),false);assert.equal(map._vanoCompact,undefined);
  assert.equal(syncV2Compact(map,{}, {v2Experience:true,vehicle:'carro'},[NaN,-23]),false);assert.equal(map._vanoCompact,undefined);
 });
