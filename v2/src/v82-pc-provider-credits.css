@@ -45,3 +45,11 @@
     min-width: 54px;
   }
 }
+
+/* Fixed pixel offset for the text-only TomTom attribution in every map state. */
+.map-page .v40-map-credit.v40-tomtom-credit {
+  position: fixed;
+  translate: -50px -10px;
+  transition: none;
+  animation: none;
+}
