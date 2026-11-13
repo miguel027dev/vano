@@ -228,7 +228,9 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
      payload(res,200,{features:[],available:true,notice:'Camadas desabilitadas para esta credencial.'},requestId);return true;
     }
     const result=await read(bbox);
-    payload(res,200,name==='map-features'?{...result,features:filterPartnerMapFeatures(result.features,k.scopes)}:result,requestId);return true;
+    const output=name==='map-features'?{...result,features:filterPartnerMapFeatures(result.features,k.scopes)}:result;
+    console.info('[VANO partner feed]',name,'status=200','features='+Number(output?.features?.length||0),'partner='+k.id.slice(0,6),'stale='+Boolean(output?.stale),'sourceError='+Boolean(output?.error));
+    payload(res,200,output,requestId);return true;
    }
    if(p===base+'/capabilities'&&req.method==='GET'){
     payload(res,200,{partner_id:k.id,scopes:k.scopes,modes:Object.keys(MODES),profiles:{car:['fastest','safe'],motorcycle:['fastest','safe'],walking:['fastest']},
@@ -340,7 +342,9 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
     scope(k,service.scope);quota('read:'+k.id+':'+serviceName,20);
     let bbox;if(service.bbox){bbox=parseBBox(u.searchParams.get('bbox'));if(!bbox)fail(422,'INVALID_BBOX','Área inválida; máximo 0.065 × 0.055 graus.');}
     const result=await service.run(bbox,u.searchParams);
-    payload(res,200,serviceName==='pois'?{...result,features:filterPartnerMapFeatures(result.features,k.scopes)}:result,requestId);return true;
+    const output=serviceName==='pois'?{...result,features:filterPartnerMapFeatures(result.features,k.scopes)}:result;
+    if(['radars','pois','signals','signs','traffic'].includes(serviceName))console.info('[VANO partner feed]',serviceName,'status=200','features='+Number(output?.features?.length||output?.tomtom?.features?.length||0),'partner='+k.id.slice(0,6),'stale='+Boolean(output?.stale),'sourceError='+Boolean(output?.error));
+    payload(res,200,output,requestId);return true;
    }
    if(p===base+'/transit/plan'&&req.method==='POST'){
     scope(k,'transit:read');quota('transit:'+k.id,6);payload(res,200,await services.transitPlan(await readBody(req)),requestId);return true;
