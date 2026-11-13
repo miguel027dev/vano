@@ -46,7 +46,7 @@ test('V1 and private V2 microphone policies are enabled, STT disabled and audio 
    assert.equal(response.status,503);
    assert.match((await response.json()).error,/não configurada/);
    const source=await readFile(path.join(root,'server/index.mjs'),'utf8');
-   assert.match(source,/voiceDocument=\(name==='\/v2'\|\|name==='\/mapa'\)/);
+   assert.match(source,/voiceDocument=\(requestPath==='\/v2'\|\|requestPath==='\/mapa'\|\|requestPath==='\/mapa\/'\)/);
    assert.match(source,/microphone=\(self\)/);
    // SPA navigation keeps the original document policy: self mic requires browser consent.
    const security=await readFile(path.join(root,'server/security.mjs'),'utf8');
