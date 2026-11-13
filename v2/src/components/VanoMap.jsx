@@ -30,6 +30,7 @@ import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
 import {syncV2Compact,V2_COMPACT_ID} from '../lib/v2CompactLayer.mjs';
 import '../v2-compact-fallback.css';
 import {visualRouteStartPoint,assessV2CarOnStreet} from '../lib/v2RoadEntry.mjs';
+import {standardMapCarPose} from '../lib/standardMapCar.mjs';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
 import {attachCommunityReportOverlay} from '../lib/communityReportOverlay.js';
@@ -516,7 +517,7 @@ function motionController(map,latest,status){
   return {start,setFree,recenter,preview,suspend,resume,end,zoom,tilt,get freeLook(){return freeLook;}};
 }
 
-export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false,userCoords,focusMode=false,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null,poiVisible=null,onSearchAreaChange=null}){
+export default function VanoMap({active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,standardMapCar=false,readableRouteStroke=false,userCoords,focusMode=false,gpsCoords=null,manualOrigin=null,destination,routes=[],selectedRoute='safe',navigation=false,layer='streets',appearance='light',trafficEnabled=true,onTrafficStatus,controller,telemetry={},vehicle='carro',onMotionState,pickingOrigin=false,onPickOrigin,onPublicPlaceSelect=null,onNavigationProgress,guidance=null,awaitingInitialGps=false,previewRoute=null,previewFocus=false,privateRoadSigns=false,roadCards=false,routeTraffic=null,poiVisible=null,onSearchAreaChange=null}){
   const root=useRef(null),mapRef=useRef(null),backend=useRef(null),motion=useRef(null),lastSelection=useRef(''),lastFit=useRef(''),status=useRef(CAMERA_STATES.IDLE),latest=useRef({});
   const firstGpsCenter=useRef(0),municipalFeed=useRef(null),maviPreviewCameraKey=useRef(null);
   const viewportRef=useRef(computeSafeViewport({width:360,height:640}));
@@ -542,7 +543,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   const visual=useRef({point:null,bearing:0,last:0,lastReport:0,lastPaint:0,progress:0});
   useEffect(()=>{mapRef.current?._vanoRefreshPublicPins?.();},[poiVisible]);
   const visibleRoadCards=roadCards&&!focusMode;
-  latest.current={active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords,focusMode,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards:visibleRoadCards,routeTraffic,poiVisible,onSearchAreaChange,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
+  latest.current={active,simulationPreview,droneSimulation,v2Experience,standardMapCar,readableRouteStroke,userCoords,focusMode,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards:visibleRoadCards,routeTraffic,poiVisible,onSearchAreaChange,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false,styleRecoveryAt=0;const initial=coord(latest.current.userCoords);
@@ -1060,6 +1061,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,
       roadRunGeometry:navigation?route?.geometry:null,roadRunVehicle:navigation?vehicle:null,
       roadCar:sameRoadRun?visual.current.roadCar:null,
+      standardCar:sameRoadRun&&standardMapCar?visual.current.standardCar:null,
       entryLastSnappedAt:sameRoadRun?visual.current.entryLastSnappedAt:0,
       // A new trip must re-evaluate its first GPS fix; inheriting an old
       // gpsMatchRaw prevented any new road/car confirmation until GPS changed.
@@ -1072,6 +1074,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     preference?.addEventListener?.('change',preferenceChanged);
     visual.current=state;
     if(!sameRoadRun&&mapRef.current)mapRef.current._vanoRoadCarConfirmed=false;
+    if((!sameRoadRun||!standardMapCar)&&mapRef.current)mapRef.current._vanoStandardMapCarPose=null;
     function animate(now){
       if(stopped)return;
       raf=requestAnimationFrame(animate);
@@ -1273,29 +1276,46 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         }
       }
       d.motionCoords=point;d.motionBearing=state.bearing||0;
+      // /mapa uses a separate visual marker pose. Camera motion and real GPS
+      // still receive exactly the unmodified motionCoords/motionBearing.
+      if(d.standardMapCar&&realDriving&&d.vehicle==='carro'){
+        state.standardCar=standardMapCarPose({
+          previous:state.standardCar,position:target,route,match:state.roadMatch,
+          trackingPoint:point,trackingBearing:state.bearing||0,
+          accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,
+          heading:d.telemetry?.heading,sourceAt:d.telemetry?.sourceAt,
+          now:fixNow,navigation:true,vehicle:d.vehicle
+        });
+      }else state.standardCar=null;
+      const markerPoint=d.standardMapCar&&state.standardCar?.visible?
+        state.standardCar.point:point;
+      const markerBearing=d.standardMapCar&&state.standardCar?.visible?
+        state.standardCar.bearing:state.bearing||0;
       const map=mapRef.current;
+      if(map)map._vanoStandardMapCarPose=d.standardMapCar&&d.navigation?state.standardCar:null;
       if(map)map._vanoRoadCarConfirmed=Boolean(realDriving&&d.v2Experience&&d.vehicle==='carro'&&
         (nearStart||entryHandoff||(state.roadCar?.visible&&
           fixNow-(state.roadCar.lastFixAt||0)<=5000)));
       if(map&&backend.current==='mapbox'){
         const marker=map._vanoMarker?.current;
         if(marker){
-          if(!validPoint(state.lastMarkerPoint)||metersBetween(state.lastMarkerPoint,point)>.035){
-            marker.setLngLat(point);
-            state.lastMarkerPoint=point;
+          if(!validPoint(state.lastMarkerPoint)||metersBetween(state.lastMarkerPoint,markerPoint)>.035){
+            marker.setLngLat(markerPoint);
+            state.lastMarkerPoint=markerPoint;
           }
-          const nextBearing=state.bearing||0;
+          const nextBearing=markerBearing;
           if(marker.getElement().classList.contains('vano-vehicle-marker')&&
              (!Number.isFinite(state.lastMarkerBearing)||Math.abs(shortestAngle(state.lastMarkerBearing,nextBearing))>.25)){
-            marker.setRotation(state.bearing||0);
+            marker.setRotation(nextBearing);
             state.lastMarkerBearing=nextBearing;
           }
         }
         // A native mesh follows the exact same interpolated pose as the arrow.
         // Only /v2 + car; the DOM marker remains a fail-safe until a draw succeeds.
         const carVisible=Boolean(d.navigation&&marker?.getElement().classList.contains('vano-vehicle-marker')&&
-          (d.simulationPreview||d.droneSimulation||map._vanoRoadCarConfirmed));
-        const nativeCompact=syncV2Compact(map,mapboxgl,d,point,state.bearing||0,carVisible);
+          ((d.standardMapCar&&state.standardCar?.visible)||
+            d.simulationPreview||d.droneSimulation||map._vanoRoadCarConfirmed));
+        const nativeCompact=syncV2Compact(map,mapboxgl,d,markerPoint,markerBearing,carVisible);
         if(marker){const element=marker.getElement();syncCompactCarFallback(element,carVisible,nativeCompact);const visibility=nativeCompact?'hidden':'';if(element.style.visibility!==visibility)element.style.visibility=visibility;}
         if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
           const near=nearestOnRoute(point,route?.geometry);
@@ -1313,12 +1333,12 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         if(follow){
           if(map._vanoOriginMarker){map._vanoOriginMarker.remove();map._vanoOriginMarker=null;}
           if(map._vanoVehicleMarker&&map._vanoVehicleKind!==d.vehicle){map._vanoVehicleMarker.remove();map._vanoVehicleMarker=null;}
-          if(!map._vanoVehicleMarker){map._vanoVehicleKind=d.vehicle;map._vanoVehicleMarker=L.marker(ll(point),{interactive:false,icon:L.divIcon({
+          if(!map._vanoVehicleMarker){map._vanoVehicleKind=d.vehicle;map._vanoVehicleMarker=L.marker(ll(markerPoint),{interactive:false,icon:L.divIcon({
             className:'vano-leaflet-vehicle',html:markerElement('vehicle',d.vehicle).outerHTML,iconSize:[70,82],iconAnchor:[35,41]
           })}).addTo(map);}
-          map._vanoVehicleMarker.setLatLng(ll(point));
+          map._vanoVehicleMarker.setLatLng(ll(markerPoint));
           const arrow=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
-          if(arrow){arrow.style.transform='rotate('+(state.bearing||0)+'deg)';syncCompactCarFallback(arrow,Boolean(d.v2Experience&&d.vehicle==='carro'&&map._vanoRoadCarConfirmed),false);}
+          if(arrow){arrow.style.transform='rotate('+markerBearing+'deg)';syncCompactCarFallback(arrow,Boolean((d.standardMapCar&&state.standardCar?.visible)||(d.v2Experience&&d.vehicle==='carro'&&map._vanoRoadCarConfirmed)),false);}
           if(now-state.lastPaint>120&&!map._vanoFreeLook){
             state.lastPaint=now;
             const viewport=d.viewport?.padding||{top:0,bottom:0};
@@ -1347,7 +1367,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       preference?.removeEventListener?.('change',preferenceChanged);
       visual.current={...state,last:0,lastPaint:0,lastReport:0};
     };
-  },[active,navigation,selectedRoute,routes,token,vehicle,v2Experience]);
+  },[active,navigation,selectedRoute,routes,token,vehicle,v2Experience,standardMapCar]);
   useEffect(()=>{onMotionState?.(status.current);},[navigation]);
   // Show the interactive map immediately. GPS acquisition is asynchronous and
   // must never cover/lock the map while permissions or network are pending.
@@ -1607,14 +1627,15 @@ function paintMapbox(map,data,selection){
     }
   }
 
-  const marker=(key,point)=>{const stableLightGpsPuck=key==='current'&&data.appearance==='light';if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:stableLightGpsPuck||(type==='vehicle'&&data.droneSimulation)?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){const desiredPitch='viewport';if(map._vanoMarker[key]._vanoV2PitchAlignment!==desiredPitch){map._vanoMarker[key].setPitchAlignment?.(desiredPitch);map._vanoMarker[key]._vanoV2PitchAlignment=desiredPitch;}const visibility=data.droneSimulation||stableLightGpsPuck?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
-  marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
+  const marker=(key,point)=>{const stableLightGpsPuck=key==='current'&&data.appearance==='light';if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords})||Boolean(key==='current'&&data.standardMapCar&&data.navigation&&map._vanoStandardMapCarPose?.visible);const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:stableLightGpsPuck||(type==='vehicle'&&data.droneSimulation)?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){const desiredPitch='viewport';if(map._vanoMarker[key]._vanoV2PitchAlignment!==desiredPitch){map._vanoMarker[key].setPitchAlignment?.(desiredPitch);map._vanoMarker[key]._vanoV2PitchAlignment=desiredPitch;}const visibility=data.droneSimulation||stableLightGpsPuck?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
+  marker('current',data.standardMapCar&&data.navigation&&map._vanoStandardMapCarPose?.visible&&validPoint(map._vanoStandardMapCarPose.point)?map._vanoStandardMapCarPose.point:data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   const currentMarker=map._vanoMarker?.current;
   // The animation loop owns the custom car layer. An unrelated React paint
   // (GPS/theme/card updates) must not remove/recreate it before its first draw.
   if(!data.navigation)syncV2Compact(map,mapboxgl,data,data.gpsCoords,data.motionBearing||0,false);
-  const carEligible=Boolean(data.navigation&&data.v2Experience&&data.vehicle==='carro'&&
-    (data.simulationPreview||data.droneSimulation||map._vanoRoadCarConfirmed));
+  const carEligible=Boolean(data.navigation&&data.vehicle==='carro'&&
+    ((data.standardMapCar&&map._vanoStandardMapCarPose?.visible)||
+      (data.v2Experience&&(data.simulationPreview||data.droneSimulation||map._vanoRoadCarConfirmed))));
   const nativeCompact=Boolean(carEligible&&map._vanoCompact?.enabled&&
     map.getLayer?.(V2_COMPACT_ID)&&map._vanoCompact?.layer?.ready);
   if(currentMarker){const element=currentMarker.getElement();syncCompactCarFallback(element,carEligible,nativeCompact);element.style.visibility=nativeCompact?'hidden':'';}
