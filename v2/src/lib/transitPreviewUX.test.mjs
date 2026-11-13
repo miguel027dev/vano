@@ -8,13 +8,13 @@ const stage=readFileSync(new URL('../components/TransitJourneyPreview.jsx',impor
 const map=readFileSync(new URL('../components/TransitMap.jsx',import.meta.url),'utf8');
 const styles=readFileSync(new URL('../transit-preview.css',import.meta.url),'utf8');
 
-test('bus launches isolated feature-gated multimodal preview without calling road router',()=>{
- assert.match(app,/VITE_TRANSIT_PREVIEW/);
- assert.match(app,/\'\/transporte\'/);
- assert.match(app,/<Route path="\/transporte"/);
- assert.match(page,/className="v47-transit-mode"/);
- assert.match(page,/to="\/transporte"/);
- assert.match(page,/state=\{\{from:validPoint\(origin\)/);
+test('public transit preview stays disconnected from current V1 navigation',()=>{
+ assert.doesNotMatch(app,/VITE_TRANSIT_PREVIEW/);
+ assert.match(app,/<Route path="\/transporte" element=\{<Navigate to="\/mapa" replace\/>\}/);
+ assert.match(app,/<Route path="\/planejar-transporte" element=\{<Navigate to="\/mapa" replace\/>\}/);
+ assert.doesNotMatch(page,/className="v47-transit-mode"/);
+ assert.doesNotMatch(page,/to="\/transporte"/);
+ // Dormant modules are preserved for future isolated tests, not linked to users.
  assert.match(transit,/post\('\/transit\/plan',request\)/);
  assert.match(transit,/TransitJourneyPreview itinerary=\{itinerary\}/);
 });
