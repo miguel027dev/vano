@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0"><div id="map" class="map-page" style="position:absolute;inset:0"></div><script type="module">
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import '../../src/community-reports.css';
+import {attachCommunityReportOverlay} from '../../src/lib/communityReportOverlay.js';
+mapboxgl.accessToken=window.__anchorTestToken||import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN;
+const gps=[-46.6557,-23.5615];
+const types=['via_fechada','transito','fiscalizacao','acidente','alagamento','obstaculo'];
+window.anchorReports=types.map((type,i)=>({id:'fixture-'+i,type,coords:[gps[0]+(i%3-1)*.0004,gps[1]+(i<3?.0004:-.0004)],status:'nao_verificado',createdAt:new Date().toISOString()}));
+const originalFetch=window.fetch;
+window.fetch=(url,init)=>String(url).includes('/api/reports/nearby')?Promise.resolve(new Response(JSON.stringify({reports:window.anchorReports}))):originalFetch(url,init);
+window.EventSource=undefined;
+const map=window.anchorMap=new mapboxgl.Map({container:'map',center:gps,zoom:17,attributionControl:false,style:{version:8,sources:{},layers:[{id:'bg',type:'background',paint:{'background-color':'#e8e9e2'}}]}});
+map.on('load',()=>{attachCommunityReportOverlay(map,'mapbox',()=>gps,()=>true);window.anchorReady=true;});
+</script></body></html>

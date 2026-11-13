@@ -140,7 +140,7 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
       const point=report.coords,element=pinNode(report);
       let marker;
       if(backend==='mapbox'){
-        marker=new mapboxgl.Marker({element,anchor:'bottom',rotationAlignment:'viewport',pitchAlignment:'viewport',occludedOpacity:.25})
+        marker=new mapboxgl.Marker({element,anchor:'bottom',rotationAlignment:'viewport',pitchAlignment:'viewport',occludedOpacity:0})
           .setLngLat(point)
           .setPopup(new mapboxgl.Popup({offset:22,maxWidth:'290px',className:'vano-community-map-popup'}).setDOMContent(popupNode(report,onVote)))
           .addTo(map);
@@ -159,16 +159,25 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
   // A single map listener updates existing nodes without rebuilding popup/markers.
   function syncPerspective(){
     if(disposed||backend!=='mapbox')return;
-    const height=map.getContainer?.()?.clientHeight||1;
+    const container=map.getContainer();
+    const width=container.clientWidth,height=container.clientHeight;
+    const bounds=map.getBounds();
     for(const marker of markers.values()){
       const element=marker._vanoElement;
       if(!element)continue;
-      const point=map.project(marker.getLngLat());
+      const location=marker.getLngLat();
+      const point=map.project(location);
+      // Source coordinates remain geographic. Hide offscreen/other-hemisphere
+      // reports instead of allowing projected DOM artwork to trail the camera.
+      const visible=bounds.contains(location)&&Number.isFinite(point.x)&&Number.isFinite(point.y)
+        &&point.x>=-44&&point.x<=width+44&&point.y>=-48&&point.y<=height+48;
+      element.style.visibility=visible?'':'hidden';
+      if(!visible){marker.getPopup()?.remove();continue;}
       const scale=reportArtworkScale(map.getZoom(),map.getPitch(),point.y/height);
       element.style.setProperty('--report-artwork-scale',scale.toFixed(3));
     }
   }
-  if(backend==='mapbox')map.on('move',syncPerspective);
+  if(backend==='mapbox'){map.on('move',syncPerspective);map.on('resize',syncPerspective);}
   function closeStream(){
     stream?.close();stream=null;streamOrigin=null;
   }
@@ -239,7 +248,7 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
   document.addEventListener('visibilitychange',onVisibility);
   void refresh(true);
   return ()=>{
-    disposed=true;if(backend==='mapbox')map.off('move',syncPerspective);clearInterval(interval);request?.abort();closeStream();
+    disposed=true;if(backend==='mapbox'){map.off('move',syncPerspective);map.off('resize',syncPerspective);}clearInterval(interval);request?.abort();closeStream();
     window.removeEventListener('vano:report-created',onReport);
     window.removeEventListener('online',onOnline);
     document.removeEventListener('visibilitychange',onVisibility);
