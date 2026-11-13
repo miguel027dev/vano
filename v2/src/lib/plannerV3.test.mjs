@@ -17,11 +17,11 @@ test('V3 search fills the viewport while keeping original query and results stat
   assert.match(search,/searchRef\?\.current\?\.focus/);
 });
 
-test('four transport choices contain no cycling mode or invented ETA numbers',()=>{
+test('supported road and walking modes exclude bicycle and disabled public transit',()=>{
   assert.match(rail,/id:'carro'/);
   assert.match(rail,/id:'moto'/);
   assert.match(rail,/id:'a-pe'/);
-  assert.match(rail,/id:'publico'/);
+  assert.doesNotMatch(rail,/id:'publico'/);
   assert.doesNotMatch(rail,/id:'bicicleta'/);
   assert.match(rail,/status==='loading'/);
   assert.match(rail,/status==='unavailable'/);
@@ -33,6 +33,6 @@ test('preview uses actual vehicle route API and transit is isolated from road ro
   assert.match(page,/routeOptions:\{adaptive:false,variantBudget:2/);
   assert.match(page,/const seconds=Math.min\(\.\.\.\(response\?\.routes/);
   assert.match(page,/controller.abort\(\)/);
-  assert.match(page,/navigate\('\/planejar-transporte'/);
-  assert.match(shell,/<Route path="\/planejar-transporte" element=\{<TransitPage\/>\}/);
+  assert.doesNotMatch(page,/navigate\('\/planejar-transporte'/);
+  assert.match(shell,/<Route path="\/planejar-transporte" element=\{<Navigate to="\/mapa" replace\/>\}/);
 });
