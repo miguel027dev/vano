@@ -176,12 +176,24 @@
 .map-page[data-map-appearance='dark'] .v5-editor .map-search input::placeholder{
  color:#b5c3ca;opacity:1;-webkit-text-fill-color:#b5c3ca
 }
-.map-page[data-map-appearance='dark'] .map-search.v31-search>button{
+/* Only icon-sized controls may receive the 34px fixed basis. The destination
+   search button must retain full flexible width in night mode. */
+.map-page[data-map-appearance='dark'] .map-search.v31-search>button:not(.v3-search-open-button){
  color:#deebef;background:var(--v50-elevated);border-radius:10px;
  flex:0 0 34px
 }
-.map-page[data-map-appearance='dark'] .map-search.v31-search>button:hover{
+.map-page[data-map-appearance='dark'] .map-search.v31-search>button:not(.v3-search-open-button):hover{
  background:var(--v50-hover)
+}
+.map-page[data-map-appearance='dark'] .map-search.v31-search>.v3-search-open-button{
+ flex:1 1 0;
+ width:auto;
+ min-width:0;
+ height:auto;
+ text-align:left;
+ justify-content:flex-start;
+ background:transparent;
+ color:var(--v50-text);
 }
 .map-page[data-map-appearance='dark'] .v31-profile-button,
 .map-page[data-map-appearance='dark'] .v31-route-profile,
