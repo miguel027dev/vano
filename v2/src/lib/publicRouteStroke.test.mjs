@@ -7,7 +7,7 @@ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
 const map=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
 
 test('public /mapa enables the exact V2 route stroke for every user, without admin access',()=>{
-  assert.match(page,/v2Experience=\{location\.pathname==='\/v2'\}\s+readableRouteStroke=\{location\.pathname==='\/mapa'\|\|location\.pathname==='\/v2'\}/);
+  assert.match(page,/v2Experience=\{location\.pathname==='\/v2'\}\s+standardMapCar=\{location\.pathname==='\/mapa'\}\s+readableRouteStroke=\{location\.pathname==='\/mapa'\|\|location\.pathname==='\/v2'\}/);
   assert.ok(shouldHighlightSelectedRoute({readableRouteStroke:true,v2Experience:false}));
   assert.ok(shouldHighlightSelectedRoute({readableRouteStroke:false,v2Experience:true}));
   assert.ok(!shouldHighlightSelectedRoute({readableRouteStroke:false,v2Experience:false}));
@@ -38,8 +38,8 @@ test('Leaflet fallback uses identical outline, unmodified route geometry and no 
 });
 
 test('real GPS, camera and private V2 traffic remain isolated from new public stroke',()=>{
-  assert.match(map,/export default function VanoMap\(\{active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,readableRouteStroke=false/);
-  assert.match(map,/latest\.current=\{active,simulationPreview,droneSimulation,v2Experience,readableRouteStroke,userCoords/);
+  assert.match(map,/export default function VanoMap\(\{active=true,simulationPreview=false,droneSimulation=false,v2Experience=false,standardMapCar=false,readableRouteStroke=false/);
+  assert.match(map,/latest\.current=\{active,simulationPreview,droneSimulation,v2Experience,standardMapCar,readableRouteStroke,userCoords/);
   // Traffic gradients continue to depend on V2 mode and existing verified evidence.
   assert.match(map,/const traffic=data\.v2Experience&&data\.vehicle!=='a-pe'\?data\.routeTraffic:null/);
   assert.match(map,/map\.setPaintProperty\('vano-v2-line','line-gradient',traffic\.gradient\)/);
