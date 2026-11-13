@@ -106,3 +106,56 @@
 
 .vanu-map-external-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
 @media(max-width:700px){.vanu-map-external-actions{width:100%}.vanu-map-external-actions a{flex:1;justify-content:center}}
+
+
+/* Explicit, administrator-only destructive action in the occurrences panel. */
+.vanu-occurrence-header-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.vanu-module-heading .vanu-occurrences-delete{
+ border-color:#f58e8e70;background:#9d35352d;color:#ffe1e1;
+}
+.vanu-module-heading .vanu-occurrences-delete:hover:not(:disabled){
+ background:#b13b3b48;border-color:#faa5a5b8;
+}
+.vanu-occurrences-success{
+ margin:10px 0;padding:12px 14px;border:1px solid #8dd1a157;
+ border-radius:11px;background:#246a3e24;color:#c0f4d1;font-size:12px;
+}
+.vanu-occurrences-confirm-overlay{
+ position:fixed;inset:0;z-index:9999;display:grid;place-items:center;
+ padding:18px;background:#0b0b0de8;backdrop-filter:blur(9px);
+}
+.vanu-occurrences-confirm{
+ width:min(100%,460px);padding:22px;border:1px solid #eaa99a62;
+ border-radius:18px;background:#211b1e;box-shadow:0 24px 65px #0009;
+ color:#f4e8e6;
+}
+.vanu-occurrences-confirm-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.vanu-occurrences-confirm-top h3{display:flex;align-items:center;gap:9px;margin:0;font-size:18px}
+.vanu-occurrences-confirm-top h3 svg{color:#f3978c;flex:none}
+.vanu-occurrences-confirm-top>button{
+ display:grid;place-items:center;background:transparent;border:0;
+ color:#e9d0ca;cursor:pointer;padding:5px;
+}
+.vanu-occurrences-confirm p{color:#c8b9b9;line-height:1.65;font-size:12px;margin:17px 0}
+.vanu-occurrences-confirm label{display:block;color:#f1d2c9;font-size:12px;margin:0 0 8px}
+.vanu-occurrences-confirm input{
+ width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid #eabca96b;
+ color:#fff;background:#161418;font-size:13px;outline-offset:3px;
+}
+.vanu-occurrences-confirm-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
+.vanu-occurrences-confirm-actions button{
+ display:inline-flex;align-items:center;gap:7px;border:1px solid #ffffff38;
+ border-radius:10px;color:#f5e7e2;background:#ffffff10;padding:11px 13px;
+ cursor:pointer;font-size:12px;
+}
+.vanu-occurrences-confirm-actions .vanu-occurrences-confirm-danger{
+ border-color:#fa7878aa;background:#b33939;color:#fff;
+}
+.vanu-occurrences-confirm button:disabled,.vanu-occurrences-delete:disabled{
+ opacity:.48;cursor:not-allowed;
+}
+@media(max-width:650px){
+ .vanu-occurrence-header-actions{width:100%}
+ .vanu-occurrence-header-actions button{flex:1;justify-content:center}
+ .vanu-occurrences-confirm-actions button{flex:1;justify-content:center}
+}

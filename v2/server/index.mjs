@@ -983,6 +983,29 @@ async function route(req, res) {
     if(pathname==='/api/admin/reports')return json(res,200,adminReportList(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit'),status:u.searchParams.get('status')}),{'Cache-Control':'no-store'});
     return json(res,200,adminMetrics(db,runtimeMetrics,{now:Date.now(),startedAt:startupMs,status:{google:googleReady,mapbox:!!process.env.VITE_MAPBOX_PUBLIC_TOKEN,v1Router:!!process.env.VANO_V1_API_URL,email:mailReady,persistentDb:store.persistent===true,storage:store.persistent?'PostgreSQL (vano_v2.app_state)':'JSON da instância atual — dados podem desaparecer com reinícios no Render Free'}}));
   }
+  // Admin-only bulk cleanup: community reports only; never remove radars,
+  // provider incidents, OSM features or any other map infrastructure.
+  if(pathname==='/api/admin/reports/clear-all'&&req.method==='POST'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
+    if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
+    if(!protectedWrite(req,res)||!limits(req,res,'admin-reports-clear-all',2,60000))return;
+    const body=await getBody(req);
+    if(!body||body.confirmation!=='EXCLUIR TODAS')
+      return err(res,400,'Confirmação de exclusão inválida.');
+    const previous=db.reports;
+    const deleted=previous.length;
+    if(!deleted)return json(res,200,{ok:true,deleted:0},{'Cache-Control':'private, no-store'});
+    db.reports=[];
+    try{await persist();}
+    catch{
+      db.reports=previous;
+      return err(res,503,'Não foi possível persistir a limpeza. Nenhuma ocorrência foi excluída.');
+    }
+    reportStreams.publishAll();
+    console.info('VANO admin: community reports cleared, count='+deleted);
+    return json(res,200,{ok:true,deleted},{'Cache-Control':'private, no-store'});
+  }
   if (pathname === '/api/bootstrap' && req.method === 'GET') {
     const session=userSession(req);let refreshCookie=null;
     if(session){
@@ -1204,7 +1227,7 @@ async function route(req, res) {
     const publicData=await queryPublicMap(bbox);
     const verified=filterVerifiedReports(db.reports,bbox);
     return json(res,200,{...publicData,features:[...publicData.features,...verified],verifiedReports:verified.length},
-      {'Cache-Control':'public, max-age=65'});
+      {'Cache-Control':'public, no-store'});
   }
   // Open traffic sources are OPTIONAL. Historical datasets never enter the
   // live overlay. The server owns the vetted feed URL, never the browser.

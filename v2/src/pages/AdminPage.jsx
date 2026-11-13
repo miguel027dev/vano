@@ -206,7 +206,7 @@ export default function AdminPage(){
   {activeSection==='training'&&<div className="vanu-section-mount vanu-training-area"><AdminEtaConsole/><SafeRoutingTestPanel/></div>}
   {(activeSection==='apis-outbound'||activeSection==='apis-partners')&&<Suspense fallback={<div className="v44-admin-loading" role="status">Preparando observabilidade…</div>}><AdminApiObservability key={activeSection} type={activeSection==='apis-partners'?'partners':'providers'}/></Suspense>}
   {activeSection==='intelligence'&&<div className="vanu-section-mount vanu-ai-focus"><Suspense fallback={<div role="status">Abrindo VANO Intelligence…</div>}><IntelligencePage embedded/></Suspense></div>}
-  {activeSection==='incidents'&&<div className="vanu-section-mount"><Suspense fallback={<div role="status">Carregando ocorrências…</div>}><AdminOccurrences stats={stats}/></Suspense></div>}
+  {activeSection==='incidents'&&<div className="vanu-section-mount"><Suspense fallback={<div role="status">Carregando ocorrências…</div>}><AdminOccurrences stats={stats} onChanged={()=>refresh(0)}/></Suspense></div>}
   {activeSection==='devsync'&&<div className="vanu-section-mount vanu-devsync-area"><Suspense fallback={<div role="status">Carregando DevSync…</div>}><DevSyncPage embedded/></Suspense></div>}
   {activeSection==='support'&&<div className="vanu-section-mount vanu-support-area"><Suspense fallback={<div role="status">Carregando atendimento…</div>}><SupportInboxPage/></Suspense></div>}
   {activeSection==='settings'&&<div className="vanu-section-mount vanu-settings-area"><Suspense fallback={<div role="status">Carregando configurações…</div>}><SettingsPage/></Suspense></div>}

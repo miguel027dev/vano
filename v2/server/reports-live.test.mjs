@@ -45,3 +45,19 @@ test('SSE enforces active streams per client and frees the slot on disconnect',(
   b.emit('close');c.emit('close');d.emit('close');
   assert.equal(hub.subscriberCount(),0);
 });
+
+
+test('admin report purge invalidates ALL subscribed regions without disclosing removed reports',()=>{
+ const hub=createReportStreamHub({capacity:5,heartbeatMs:100000});
+ const reqA=new EventEmitter(),reqB=new EventEmitter();
+ const a=fakeStream(),b=fakeStream();
+ assert.equal(hub.subscribe(reqA,a,[-47,-24,-46,-23]),true);
+ assert.equal(hub.subscribe(reqB,b,[10,10,11,11]),true);
+ assert.equal(hub.publishAll(),2);
+ for(const client of [a,b]){
+  assert.match(client.chunks.join(''),/event: reports-changed\ndata: \{\}\n\n/);
+  assert.doesNotMatch(client.chunks.join(''),/owner|coords|description|private/i);
+ }
+ a.emit('close');b.emit('close');
+ assert.equal(hub.publishAll(),0);
+});

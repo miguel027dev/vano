@@ -59,5 +59,16 @@ export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20
     }
     return count;
   }
-  return {subscribe,publish,subscriberCount:()=>peers.size};
+  // Administrative global purge invalidates every subscribed region, including
+  // subscribers with no reports in the current viewport.
+  function publishAll(){
+    let count=0;
+    for(const peer of peers){
+      if(peer.res.destroyed||peer.res.writableEnded){peer.close?.();continue;}
+      try{peer.res.write('event: reports-changed\ndata: {}\n\n');count++;}
+      catch{peer.close?.();}
+    }
+    return count;
+  }
+  return {subscribe,publish,publishAll,subscriberCount:()=>peers.size};
 }
