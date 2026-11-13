@@ -34,7 +34,7 @@ test('V1 gets the assistant and microphone; V2 requires admin in the router',()=
  assert.match(admin,/<Link to="\/v2"[^>]*>.*Entrar no mapa de administrador/);
  assert.match(app,/user\?\.isAdmin===true\?\(mobile\?null:<MapPage\/>\)/);
  assert.match(serverCode,/isAdminAccount\(userSession\(req\)\?\.user\)/);
- assert.match(serverCode,/name==='\/v2'\|\|name==='\/mapa'/);
+ assert.match(serverCode,/voiceDocument=\(requestPath==='\/v2'\|\|requestPath==='\/mapa'\|\|requestPath==='\/mapa\/'\)/);
 });
 
 test('only named V2 profile preview documents bypass the administrator document guard',async()=>{
