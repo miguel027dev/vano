@@ -12,7 +12,7 @@ test('global viewport is bounded and blocks invalid, huge or inverted geometry',
 });
 test('radar, signage, traffic calming, road work and critical public services use actual OSM tags',()=>{
  const expected=[
-  [{highway:'speed_camera'},'radar'],[{highway:'traffic_signals'},'semaforo'],
+  [{highway:'speed_camera'},'radar'],[{barrier:'toll_booth'},'pedagio'],[{highway:'traffic_signals'},'semaforo'],
   [{traffic_calming:'bump'},'lombada'],[{highway:'stop'},'pare'],
   [{highway:'give_way'},'preferencia'],[{traffic_sign:'BR:R-1'},'placa'],
   [{railway:'level_crossing'},'ferrovia'],[{highway:'construction'},'obra'],
@@ -51,6 +51,7 @@ test('radars sort first and duplicated / spoofed or malformed features do not en
 test('Overpass asks only for known tags within an explicitly bounded area',()=>{
  const query=overpassQuery(parseBBox(bbox));
  assert.match(query,/speed_camera/);
+  assert.match(query,/barrier"="toll_booth/);
  assert.match(query,/traffic_calming/);
  assert.match(query,/amenity/);
  assert.match(query,/railway/);
