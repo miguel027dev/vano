@@ -46,12 +46,18 @@ function entryHtml({title,description,canonicalPath,heading,bodyText,ctaHref,cta
  return template.replace(/<title>[^<]*<\/title>/,`<title>${esc(title)}</title>`).replace(/<meta name="description"[^>]*\/>/,`<meta name="description" content="${esc(description)}"/>`).replace('</head>',metas+'</head>').replace(/<div id="root">(?:<main class="v42-preboot"[\s\S]*?<\/main>)?<\/div>/,`<div id="root">${visible}</div>`);
 }
 const home=entryHtml({title:'VANO Maps — mapas e rotas para seu caminho',description:'Explore o VANO Maps para buscar lugares, comparar rotas, acompanhar o trajeto e conhecer opções para evitar trânsito.',canonicalPath:'/mapa',heading:'Escolha seu caminho com mais contexto',bodyText:'Busque destinos, compare duração e distância das rotas disponíveis e abra o mapa para planejar seu próximo trajeto.',ctaHref:'/mapa',ctaText:'Abrir mapa'});
-fs.writeFileSync(path.join(dist,'index.html'),home);
+// The compiled root document belongs to React. The SEO landing is not the app entry.
 fs.mkdirSync(path.join(dist,'inicio'),{recursive:true});
 fs.writeFileSync(path.join(dist,'inicio','index.html'),home);
 const mapHtml=entryHtml({title:'VANO Maps — GPS, Rotas e Trânsito Online',description:'Abra o VANO Maps para pesquisar endereços, comparar rotas alternativas e planejar trajetos com informações de trânsito, conforme a cobertura disponível.',canonicalPath:'/mapa',heading:'VANO Maps: abra o mapa e planeje sua rota',bodyText:'Pesquise endereços e destinos no VANO Maps, compare duração e distância dos caminhos disponíveis e planeje sua navegação. As estimativas variam conforme o trânsito e os provedores conectados.',ctaHref:'/mapa',ctaText:'Abrir VANO Maps'});
-fs.mkdirSync(path.join(dist,'mapa'),{recursive:true});
-fs.writeFileSync(path.join(dist,'mapa','index.html'),mapHtml);
+// Keep SEO metadata (and structured WebApplication data) without injecting
+// the public marketing hero into React's mount node. Otherwise /mapa becomes
+// an infinite 'Abrir VANO Maps' landing page instead of the GPS.
+const appHtml=mapHtml.replace(/<div id="root">[\s\S]*?<\/div>/,'<div id="root"></div>');
+if(appHtml===mapHtml||!appHtml.includes('src="/assets/'))throw Error('VANO map entry must retain its compiled React bundle');
+fs.writeFileSync(path.join(dist,'index.html'),appHtml);
+// Legacy pre-render from an earlier build must not shadow the app route.
+fs.rmSync(path.join(dist,'mapa','index.html'),{force:true});
 for(const route of PUBLIC_PATHS){
  const page=pageForPath(route);
  if(!/^\/[a-z0-9-]+$/.test(route))throw Error(`Invalid public path: ${route}`);

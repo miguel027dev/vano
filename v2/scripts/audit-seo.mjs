@@ -14,7 +14,7 @@ const machine=fs.readFileSync(path.join(dist,'llms.txt'),'utf8');
 assert.equal(new Set(PUBLIC_PATHS).size,PUBLIC_PATHS.length,'duplicate public routes');
 assert.equal(new Set(PUBLIC_PAGES.map(p=>p.title)).size,PUBLIC_PAGES.length,'duplicate titles');
 assert.ok(robots.includes('Sitemap:'));assert.ok(machine.includes('# VANO Maps'));
-for(const [route,canonical,heading] of [['','/mapa','Escolha seu caminho com mais contexto'],['inicio','/mapa','Escolha seu caminho com mais contexto'],['mapa','/mapa','VANO Maps: abra o mapa e planeje sua rota']]){
+for(const [route,canonical,heading] of [['inicio','/mapa','Escolha seu caminho com mais contexto']]){
  const content=fs.readFileSync(path.join(dist,route,'index.html'),'utf8');
  assert.ok(content.includes('<h1>'+heading+'</h1>'),'Missing crawlable entry: '+route);
  assert.ok(content.includes('rel="canonical" href="'+site+canonical+'"'),'Bad entry canonical: '+route);
@@ -24,12 +24,17 @@ assert.ok(!sitemap.includes('<loc>'+site+'/</loc>'),'Redirecting root must not b
 assert.ok(sitemap.includes('<loc>'+site+'/mapa</loc>'),'Missing map in sitemap');
 const sitemapURLs=[...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(match=>match[1]);
 assert.deepEqual(sitemapURLs,[site+'/mapa',...PUBLIC_PAGES.map(p=>site+p.path)],'Sitemap must list unique canonical non-redirecting URLs');
-const mapHtml=fs.readFileSync(path.join(dist,'mapa','index.html'),'utf8');
+// Regression gate: /mapa must load the compiled React GPS, never a static
+// marketing page whose "Abrir VANO Maps" link points back to itself.
+const mapHtml=fs.readFileSync(path.join(dist,'index.html'),'utf8');
 assert.ok(mapHtml.includes('<title>VANO Maps — GPS, Rotas e Trânsito Online</title>'),'Primary map title must lead with VANO Maps');
 assert.ok(mapHtml.includes('content="Abra o VANO Maps para pesquisar endereços'),'Primary map description must introduce the map');
-assert.ok(mapHtml.includes('href="/mapa">Abrir VANO Maps'),'Primary map should offer a clear entry action');
-assert.ok(mapHtml.includes('href="/comparar-rotas"')&&mapHtml.includes('href="/rotas-em-sao-paulo"'),'Map should link to useful guides');
-assert.ok(mapHtml.includes('property="og:image"')&&mapHtml.includes('name="twitter:image"'),'Map must have sharing metadata');
+assert.ok(mapHtml.includes('<div id="root"></div>'),'Map must have an empty React mount node');
+assert.ok(/<script[^>]*type="module"[^>]*src="\/assets\//.test(mapHtml),'Map must load the compiled React entry bundle');
+assert.ok(!mapHtml.includes('<h1>VANO Maps: abra o mapa e planeje sua rota</h1>'),'Marketing hero must never replace the live map');
+assert.ok(!fs.existsSync(path.join(dist,'mapa','index.html')),'Pre-rendered /mapa/index.html must not shadow React');
+assert.ok(mapHtml.includes('rel="canonical" href="'+site+'/mapa"'),'Map canonical URL must be preserved');
+assert.ok(mapHtml.includes('property="og:image"')&&mapHtml.includes('name="twitter:image"'),'Map must keep sharing metadata');
 assert.ok(mapHtml.includes('"@type":"WebApplication"'),'Map must identify its app in structured data');
 for(const page of PUBLIC_PAGES){
  assert.ok(page.title.length>=12&&page.title.length<=70,'Poor title: '+page.path);

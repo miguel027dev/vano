@@ -2115,6 +2115,12 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
       res.writeHead(301,{...headers,'Location':`/mapa${parsedRequestUrl.search}`,'Cache-Control':'no-store'});
       return res.end();
     }
+    // Android/PWA startup must never resolve to a pre-rendered SEO landing page.
+    // The server-owned map route always mounts the real React navigation app.
+    if(requestPath==='/mobile/entry'||requestPath==='/mobile/entry/'){
+      res.writeHead(302,{...headers,'Location':`/mapa${parsedRequestUrl.search}`,'Cache-Control':'no-store, max-age=0'});
+      return res.end();
+    }
     const dist=path.join(root,'dist');
     let name;
     try { name=decodeURIComponent(requestPath); }
@@ -2124,7 +2130,7 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     const publicPreviewDocument=/^\/v2\/(?:perfil-preview|conta-preview|configuracoes-preview)\/?$/i.test(name);
     if(/^\/v2(?:\/|$)/i.test(name)&&!publicPreviewDocument&&!isAdminAccount(userSession(req)?.user))return err(res,403,'Mapa administrativo restrito.');
     if(method==='GET'&&PUBLIC_PATHS.includes(name))runtimeMetrics.pageViews[name]=(runtimeMetrics.pageViews[name]||0)+1;
-    if(name==='/')name='/index.html';
+    if(name==='/'||name==='/mapa'||name==='/mapa/')name='/index.html';
     let target=path.resolve(dist,'.'+name);
     // Pre-rendered guides have a folder index so crawlers receive real content before JavaScript.
     if(target.startsWith(dist+path.sep) && fs.existsSync(target) && fs.statSync(target).isDirectory())target=path.join(target,'index.html');
@@ -2134,9 +2140,9 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     const privatePage=/^\/(v2|admin|perfil|conta|entrar|cadastro|recuperar-senha|redefinir-senha|personalizar|atividade|favoritos|rotinas|configuracoes|relatar)(\/|$)/.test(name);
     // The public V1 map and private administrator V2 map opt in to microphone
     // access. Voice capture still requires an explicit browser permission and tap.
-    const voiceDocument=(name==='/v2'||name==='/mapa') && target.endsWith('index.html');
+    const voiceDocument=(requestPath==='/v2'||requestPath==='/mapa'||requestPath==='/mapa/') && target.endsWith('index.html');
     const sdkAsset=requestPath.startsWith('/assets/')||requestPath.startsWith('/mapbox/');
-    res.writeHead(200,{...headers,...(sdkAsset?{'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}:{}),...(voiceDocument?{'Permissions-Policy':'camera=(), microphone=(self), payment=(), geolocation=(self)'}:{}),'Content-Type':contentType,'Cache-Control':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
+    res.writeHead(200,{...headers,...(sdkAsset?{'Access-Control-Allow-Origin':'*','Cross-Origin-Resource-Policy':'cross-origin'}:{}),...(voiceDocument?{'Permissions-Policy':'camera=(), microphone=(self), payment=(), geolocation=(self)'}:{}),'Content-Type':contentType,'Cache-Control':(requestPath==='/mapa'||requestPath==='/mapa/')?'no-store, max-age=0':target.endsWith('index.html')?'no-cache':'public, max-age=3600',...(privatePage?{'X-Robots-Tag':'noindex, nofollow'}:{})});
     if(method==='HEAD')return res.end();
     pipeline(fs.createReadStream(target),res,streamError=>{
       if(streamError && !['ERR_STREAM_PREMATURE_CLOSE','ECONNRESET'].includes(streamError.code))
