@@ -42,7 +42,7 @@ public final class OfflineCache {
         }
         return raw;
     }
-    private String key(String url)throws Exception{byte[] bytes=MessageDigest.getInstance("SHA-256").digest(canonical(url).getBytes(StandardCharsets.UTF_8));StringBuilder s=new StringBuilder();for(byte b:bytes)s.append(String.format(Locale.ROOT,"%02x",b&255));return s.toString();}
+    private String key(String url)throws Exception{byte[] bytes=MessageDigest.getInstance("SHA-256").digest(canonical(url).getBytes(StandardCharsets.UTF_8));StringBuilder s=new StringBuilder(64);for(byte b:bytes){s.append(Character.forDigit((b&255)>>>4,16));s.append(Character.forDigit(b&15,16));}return s.toString();}
     private boolean eligible(Uri u){
         if(!"https".equals(u.getScheme())||u.getUserInfo()!=null||(u.getPort()!=-1&&u.getPort()!=443))return false;
         String h=u.getHost(),p=u.getPath();if(p==null)return false;
@@ -75,7 +75,7 @@ public final class OfflineCache {
             // Respect freshness when online; immutable app resources stay reusable between launches.
             if(cached!=null&&cached.optLong("freshUntil")>System.currentTimeMillis()){return cached(id,cached,url,preparation);}
             try{
-                connection=(HttpURLConnection)new URL(url).openConnection();connection.setConnectTimeout(4500);connection.setReadTimeout(8000);connection.setInstanceFollowRedirects(false);connection.setRequestProperty("Accept-Encoding","identity");
+                connection=(HttpURLConnection)new URL(url).openConnection();connection.setConnectTimeout(4500);connection.setReadTimeout(8000);connection.setInstanceFollowRedirects(false);
                 for(Map.Entry<String,String> e:requestHeaders.entrySet())if(!e.getKey().equalsIgnoreCase("Cookie")&&!e.getKey().equalsIgnoreCase("Authorization")&&!e.getKey().equalsIgnoreCase("Accept-Encoding"))connection.setRequestProperty(e.getKey(),e.getValue());
                 int status=connection.getResponseCode();
                 if(status==304&&cached!=null){cached.put("freshUntil",freshUntil(Objects.toString(connection.getHeaderField("Cache-Control"),"")));return cached(id,cached,url,preparation);}

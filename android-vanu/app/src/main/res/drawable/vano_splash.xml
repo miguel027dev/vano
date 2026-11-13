@@ -1,0 +1,3 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_vano" android:width="96dp" android:height="96dp" android:gravity="center" />
+</layer-list>

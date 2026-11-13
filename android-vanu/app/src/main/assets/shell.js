@@ -19,8 +19,21 @@
   function install(){
     if(!document.body)return;
     document.documentElement.classList.add('vano-android-shell');
+    let lastBars='';
+    const syncBars=()=>{
+      const html=document.documentElement;
+      const map=document.querySelector('.map-page');
+      const onMap=location.pathname==='/mapa'||location.pathname==='/v2';
+      const dark=onMap&&map?map.dataset.mapAppearance==='dark':html.dataset.theme==='dark';
+      const canvas=dark?'#10171b':'#f9f7f4';
+      const signature=dark+canvas;
+      if(signature!==lastBars){lastBars=signature;call({action:'systemBars',dark,background:canvas});}
+    };
+    new MutationObserver(syncBars).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+    new MutationObserver(syncBars).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['data-map-appearance']});
     let lastRoute='',lastWake=null,readyRoute='';
     const sync=()=>{
+      syncBars();
       if(lastRoute!==location.pathname){lastRoute=location.pathname;call({action:'route',path:lastRoute});}
       const active=!document.hidden&&!!document.querySelector('.map-page.in-navigation')&&!document.querySelector('.vano-retained-map[aria-hidden="true"]');
       if(active!==lastWake){lastWake=active;call({action:'wake',active});}
