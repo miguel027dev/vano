@@ -75,6 +75,7 @@ import {parseGlobalBBox,queryGlobalContext,GLOBAL_CONTEXT_SOURCES} from './globa
 import {seismicSnapshot,SEISMIC_SOURCE} from './global-earthquakes.mjs';
 import {parseRegionalRoadBBox,keylessRegionalSnapshot,KEYLESS_ROAD_SOURCES} from './regional-road-events.mjs';
 import {isAdminAccount,adminMetrics,adminUsers,adminReportList,recordOperationalEvent} from './admin.mjs';
+import {recordRetentionPulse,retentionOverview,retentionUsers,retentionUserDetail} from './retention.mjs';
 import {createDevSync} from './devsync.mjs';
 import {INTELLIGENCE_TOOLS,recordRouteDecision,recordNavigationOutcome,intelligenceSnapshot,askIntelligence} from './intelligence.mjs';
 import {historicalIntelligence,HISTORICAL_SOURCES} from './intelligence-history.mjs';
@@ -929,6 +930,33 @@ async function route(req, res) {
     if(!event||typeof event!=='object'||!recordNavigationOutcome(db,event))return err(res,400,'Evento inválido ou consentimento ausente.');
     try{await persist();}catch{return err(res,503,'Não foi possível registrar o evento.');}
     return json(res,200,{ok:true});
+  }
+  // Account-level foreground activity. No IP, GPS, device ID or URL is saved.
+  if(pathname==='/api/activity/pulse'&&req.method==='POST'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre para registrar atividade.');
+    if(!protectedWrite(req,res)||!limits(req,res,'activity-pulse',120,60000))return;
+    const body=await getBody(req);
+    if(!body||typeof body!=='object'||Array.isArray(body))return err(res,400,'Evento inválido.');
+    const result=recordRetentionPulse(session.user,body.sessionId,now());
+    if(!result.ok)return err(res,400,'Identificador de sessão inválido.');
+    if(result.changed){
+      try{await persist();}catch{return err(res,503,'Não foi possível registrar atividade.');}
+    }
+    return json(res,200,{ok:true,recorded:result.changed},{'Cache-Control':'no-store'});
+  }
+  // Strict admin read endpoints: aggregated cohorts and private account summaries only.
+  if(req.method==='GET'&&(pathname==='/api/admin/retention'||pathname==='/api/admin/retention/users'||/^\/api\/admin\/retention\/users\/[a-zA-Z0-9_-]{1,80}$/.test(pathname))){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
+    if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
+    if(!limits(req,res,'admin-retention',45,60000))return;
+    const headers={'Cache-Control':'private, no-store'};
+    if(pathname==='/api/admin/retention')return json(res,200,retentionOverview(db,{now:now(),days:u.searchParams.get('days')}),headers);
+    if(pathname==='/api/admin/retention/users')return json(res,200,retentionUsers(db,{offset:u.searchParams.get('offset'),limit:u.searchParams.get('limit'),search:u.searchParams.get('search')}),headers);
+    const id=pathname.split('/').at(-1);
+    const user=retentionUserDetail(db,id);
+    return user?json(res,200,{user},headers):err(res,404,'Conta não encontrada.');
   }
   if(pathname==='/api/admin/api-observability'&&req.method==='GET'){
     const session=userSession(req);
