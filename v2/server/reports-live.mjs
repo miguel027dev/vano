@@ -65,7 +65,7 @@ export function createReportStreamHub({capacity=REPORT_STREAM_CAP,heartbeatMs=20
     let count=0;
     for(const peer of peers){
       if(peer.res.destroyed||peer.res.writableEnded){peer.close?.();continue;}
-      try{peer.res.write('event: reports-changed\\ndata: {}\\n\\n');count++;}
+      try{peer.res.write('event: reports-changed\ndata: {}\n\n');count++;}
       catch{peer.close?.();}
     }
     return count;
