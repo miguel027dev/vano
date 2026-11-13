@@ -18,7 +18,10 @@
 }
 /* Profile and account. Previous v4 white hardcodes survived theme changes. */
 [data-theme='dark'] .content-page.v4-profile{
- background:var(--v4-paper);color:var(--v4-ink)
+ /* v4 sets green tokens locally; use the same night canvas as the outer shell. */
+ --v4-paper:var(--bg);--v4-white:var(--bg);--panel:var(--bg);
+ --v4-ink:var(--ink);--v4-muted:var(--muted);--v4-line:var(--border);
+ background:var(--bg);color:var(--v4-ink)
 }
 [data-theme='dark'] .content-page.v4-profile .v4-profile-intro h1,
 [data-theme='dark'] .content-page.v4-profile .v4-profile-section-heading h2,
@@ -361,4 +364,14 @@
  [data-theme='dark'] .content-page.v4-profile .v4-route-feature-image img{
   transition:none
  }
+}
+
+/* Profile canvas: keep the centre, cards and navigation on the outer-edge tone. */
+[data-theme='dark'] .content-page.v4-profile .v4-route-feature{
+ background:var(--bg)!important;
+ border-color:var(--border)!important;
+}
+[data-theme='dark'] .app-shell:has(>.v4-profile) .side-nav,
+[data-theme='dark'] .content-page.v4-profile .bottom-nav.v5-bottom-nav{
+ background:var(--v4-paper)!important;
 }
