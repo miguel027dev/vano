@@ -6,7 +6,7 @@
 const DAY=86400000;
 const DAY_FORMAT=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'});
 const validTime=value=>{const t=Date.parse(value||'');return Number.isFinite(t)?t:null;};
-const dayKey=ms=>DAY_FORMAT.format(new Date(ms));
+const dayKey=ms=>{const parts=Object.fromEntries(DAY_FORMAT.formatToParts(new Date(ms)).filter(p=>p.type!=='literal').map(p=>[p.type,p.value]));return `${parts.year}-${parts.month}-${parts.day}`;};
 const round=v=>Math.round(v*10)/10;
 const safeInt=(v,max=1000000)=>Math.min(max,Math.max(0,Math.floor(Number(v)||0)));
 const safeDate=ms=>new Date(ms).toISOString();
