@@ -12,16 +12,20 @@ const observe=(previous,position,match,more={})=>
  assessV2CarOnStreet({previous,position,match,accuracy:7,speed:4,heading:90,
  sourceAt:1000,now:1000,...more});
 
-test('nearby house projects only the visual arrow to first street point',()=>{
+test('nearby home starts immediately on the first road point without modifying GPS',()=>{
  const house=[origin[0]+east(5),origin[1]+north(12)];
  assert.deepEqual(entry(house),origin);
  assert.ok(metersBetween(house,entry(house))>10);
  assert.deepEqual(house,[origin[0]+east(5),origin[1]+north(12)]);
- assert.equal(entry([origin[0]+east(35),origin[1]+north(30)]),null);
- assert.equal(entry(house,{speed:6}),null);
+ assert.equal(entry([origin[0]+east(35),origin[1]+north(30)]),origin,'nearby street beyond former 32 m limit');
+ assert.equal(entry([origin[0]+east(110),origin[1]+north(80)]),null,'far locations stay at raw GPS');
+ assert.equal(entry(house,{speed:9}),null);
  assert.equal(entry(house,{accuracy:70}),null);
  assert.equal(entry(house,{navigation:false}),null);
  assert.equal(entry(house,{simulation:true}),null);
+ assert.equal(entry(house,{sourceAt:1000,now:11000}),null,'stale fix cannot jump to the road');
+ assert.equal(entry(house,{speed:4,heading:270}),null,'wrong-way driving cannot jump backwards');
+ assert.deepEqual(entry(house,{speed:4,heading:90}),origin,'moving in the right direction may start');
 });
 test('compact car requires two fresh moving street observations and aligned direction',()=>{
  const raw=[origin[0]+east(15),origin[1]+north(3)];
@@ -53,4 +57,15 @@ test('stationary road confirmation is conservative; traffic light retains a conf
  car=observe(car,[raw[0],origin[1]+north(22)],match,{speed:0,heading:null,sourceAt:6000,now:6000});
  assert.equal(car.visible,false);
  assert.equal(car.everConfirmed,true);
+});
+
+test('one GPS sample cannot be counted multiple times to reveal the car',()=>{
+ const raw=[origin[0]+east(15),origin[1]+north(2)];
+ const match={point:[raw[0],origin[1]],bearing:90};
+ const first=observe(null,raw,match,{sourceAt:1000,now:1000});
+ const duplicate=observe(first,raw,match,{sourceAt:1000,now:1300});
+ assert.equal(duplicate.visible,false);
+ assert.equal(duplicate.hits,1);
+ const next=observe(duplicate,raw,match,{sourceAt:2000,now:2000});
+ assert.equal(next.visible,true);
 });
