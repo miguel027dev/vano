@@ -255,3 +255,15 @@
 /* Credits only: minimum visible stack over the map canvas, below VANO controls. */
 .map-page .mapboxgl-ctrl-bottom-right,
 .map-page .leaflet-bottom.leaflet-right{z-index:0!important}
+
+/* Keep the OpenStreetMap licence badge visible directly below the idle GPS
+   location card. No route panels, navigation controls, TomTom or map markers
+   are repositioned. Reserve the minimum footer space for the 23px icon. */
+.map-page:not(.in-navigation):not(.has-sheet) .v31-location-card{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 44px);
+}
+.map-page:not(.in-navigation):not(.has-sheet) .v40-map-credit:not(.v40-tomtom-credit){
+  left:calc(env(safe-area-inset-left,0px) + 28px);
+  right:auto;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 5px);
+}
