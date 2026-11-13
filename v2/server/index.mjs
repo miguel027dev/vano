@@ -1227,7 +1227,7 @@ async function route(req, res) {
     const publicData=await queryPublicMap(bbox);
     const verified=filterVerifiedReports(db.reports,bbox);
     return json(res,200,{...publicData,features:[...publicData.features,...verified],verifiedReports:verified.length},
-      {'Cache-Control':'public, max-age=65'});
+      {'Cache-Control':'public, no-store'});
   }
   // Open traffic sources are OPTIONAL. Historical datasets never enter the
   // live overlay. The server owns the vetted feed URL, never the browser.
