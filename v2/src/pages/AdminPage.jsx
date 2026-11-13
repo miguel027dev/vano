@@ -11,6 +11,7 @@ import {useVano} from '../context';
 import '../admin-console.css';
 import '../admin-vanu-glass.css';
 import '../admin-vanu-modules.css';
+import '../admin-navigation-v3.css';
 import SafeRoutingTestPanel from '../components/SafeRoutingTestPanel';
 import AdminInsights from '../components/AdminInsights';
 import AdminEtaConsole from '../components/AdminEtaConsole';
