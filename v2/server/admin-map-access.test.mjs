@@ -54,18 +54,18 @@ test('only named V2 profile preview documents bypass the administrator document 
   await new Promise(resolve=>server.close(resolve));
  }
 });
-test('V2 preview route contract stays separate from existing profile and settings routes',()=>{
+test('retired V2 preview URLs redirect to unchanged original profile and settings',()=>{
  const app=readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
  const navigation=readFileSync(new URL('../src/components/Navigation.jsx',import.meta.url),'utf8');
  const legacyProfile=readFileSync(new URL('../src/pages/ProfilePage.jsx',import.meta.url),'utf8');
- const preview=readFileSync(new URL('../src/pages/ProfilePreviewPage.jsx',import.meta.url),'utf8');
  assert.match(app,/path="\/perfil"/);
  assert.match(app,/path="\/conta"/);
  assert.match(app,/path="\/configuracoes"/);
- for(const path of ['/v2/perfil-preview','/v2/conta-preview','/v2/configuracoes-preview']){
-  assert.ok(app.includes('path="'+path+'"'),path);
-  assert.ok(preview.includes("'"+path+"'"),path);
+ for(const [preview,original] of [['perfil-preview','perfil'],['conta-preview','conta'],['configuracoes-preview','configuracoes']]){
+  assert.ok(app.includes('<Route path="/v2/'+preview+'" element={<Navigate to="/'+original+'" replace/>}/>'),preview);
  }
- assert.ok(navigation.includes("to:'/v2/perfil-preview'"));
+ assert.doesNotMatch(app,/ProfilePreviewPage/);
+ assert.ok(navigation.includes("to:'/perfil'"));
+ assert.ok(navigation.includes('to="/configuracoes"'));
  assert.match(legacyProfile,/export default function ProfilePage/);
 });
