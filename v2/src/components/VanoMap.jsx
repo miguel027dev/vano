@@ -27,7 +27,8 @@ import {vectorStartupDecision,MAPBOX_VECTOR_PROBE_MS,WEBGL_CONTEXT_RESTORE_MS} f
 import {night3dEnabled,syncNight3DBuildings,syncNight3DCamera} from '../lib/night3DBuildings.js';
 import {syncNight3DScene} from '../lib/night3DScene.js';
 import {navigationArrowSvg} from '../lib/navigationArrow3d.js';
-import {syncV2Compact} from '../lib/v2CompactLayer.mjs';
+import {syncV2Compact,V2_COMPACT_ID} from '../lib/v2CompactLayer.mjs';
+import '../v2-compact-fallback.css';
 import {visualRouteStartPoint,assessV2CarOnStreet} from '../lib/v2RoadEntry.mjs';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
@@ -64,6 +65,22 @@ const markerElement=(kind,vehicle='carro')=>{
  }
  return el;
 };
+// Temporary visual counterpart of the approved compact car while its WebGL
+// layer is initializing or unavailable. The existing arrow is the last resort.
+function syncCompactCarFallback(element,eligible,nativeReady=false){
+ if(!element?.classList?.contains('vano-vehicle-car'))return;
+ const show=Boolean(eligible&&!nativeReady&&element.dataset.compactFallbackFailed!=='1');
+ if(show&&!element.querySelector('.vano-v2-compact-fallback')){
+   const image=document.createElement('img');
+   image.className='vano-v2-compact-fallback';
+   image.src='/vehicle-car-cutout.png';
+   image.alt='';image.setAttribute('aria-hidden','true');
+   image.decoding='async';image.draggable=false;
+   image.onerror=()=>{element.dataset.compactFallbackFailed='1';element.classList.remove('vano-v2-compact-fallback-active');};
+   element.appendChild(image);
+ }
+ element.classList.toggle('vano-v2-compact-fallback-active',show);
+}
 const styleFor=(layer,appearance='light')=>mapboxStyleFor(layer,(import.meta.env.VITE_MAPBOX_STYLE_URL||'').trim()||VANO_ATLAS_STYLE,appearance);
 // Recover a raster basemap without recreating route/GPS/POI overlays.
 // Never request the volunteer-run OSM tile host in the fallback renderer.
@@ -1043,11 +1060,13 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     const state={...visual.current,last:0,lastReport:0,lastPaint:0,progress:0,
       roadRunGeometry:navigation?route?.geometry:null,roadRunVehicle:navigation?vehicle:null,
       roadCar:sameRoadRun?visual.current.roadCar:null,
-      // Preserve a valid on-road visual target when the same route/RAF restarts.
-      gpsMatchRaw:visual.current.gpsMatchRaw??null,
-      gpsMatchGeometry:visual.current.gpsMatchGeometry??null,
-      roadMatch:visual.current.roadMatch??null,
-      roadMeters:Number.isFinite(visual.current.roadMeters)?visual.current.roadMeters:null};
+      entryLastSnappedAt:sameRoadRun?visual.current.entryLastSnappedAt:0,
+      // A new trip must re-evaluate its first GPS fix; inheriting an old
+      // gpsMatchRaw prevented any new road/car confirmation until GPS changed.
+      gpsMatchRaw:sameRoadRun?visual.current.gpsMatchRaw:null,
+      gpsMatchGeometry:sameRoadRun?visual.current.gpsMatchGeometry:null,
+      roadMatch:sameRoadRun?visual.current.roadMatch:null,
+      roadMeters:sameRoadRun&&Number.isFinite(visual.current.roadMeters)?visual.current.roadMeters:null};
     // Reduced-motion still controls GPS/camera smoothing, not static markings.
     function preferenceChanged(){reduced=Boolean(preference?.matches);}
     preference?.addEventListener?.('change',preferenceChanged);
@@ -1179,13 +1198,27 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         }
       }
       const realDriving=d.navigation&&!d.simulationPreview&&!d.droneSimulation;
-      // At trip start a nearby indoor fix may render the ARROW on the first
-      // street coordinate. The unmodified GPS fix still drives all navigation.
-      if(realDriving&&d.v2Experience&&d.vehicle==='carro'&&!state.roadCar?.everConfirmed){
-        const startPoint=visualRouteStartPoint({position:target,route,
-          accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,navigation:true});
-        if(startPoint){point=startPoint;if(state.roadMatch)state.roadMeters=0;}
+      // At the very first route frame the near-road visual puck AND the 3D
+      // car start together. Navigation still reads the original sensor fix.
+      const fixNow=Date.now();
+      const nearStart=realDriving&&d.v2Experience&&d.vehicle==='carro'&&
+        !state.roadCar?.everConfirmed?
+        visualRouteStartPoint({position:target,route,
+          accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,
+          heading:d.telemetry?.heading,sourceAt:d.telemetry?.sourceAt,
+          now:fixNow,navigation:true}):null;
+      if(nearStart){
+        point=nearStart;
+        state.entryLastSnappedAt=fixNow;
+        if(state.roadMatch)state.roadMeters=0;
       }
+      const recentFix=Number.isFinite(d.telemetry?.sourceAt)&&
+        fixNow-d.telemetry.sourceAt<=5000&&fixNow-d.telemetry.sourceAt>=-1200;
+      const entryHandoff=Boolean(!nearStart&&recentFix&&
+        fixNow-(state.entryLastSnappedAt||0)<4500&&
+        validPoint(state.roadMatch?.point)&&
+        metersBetween(target,state.roadMatch.point)<=
+          Math.max(9,Math.min(22,(Number(d.telemetry?.accuracy)||15)*.65+6)));
       if(!validPoint(point))return;
       state.point=point;
       // Keep the camera in phase with the smoothly moving pointer even when
@@ -1197,12 +1230,14 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       }
       const matchedRoadHeading=realDriving&&state.roadMatch&&d.telemetry?.speed>1.5?
         bearingAtDrivenProgress(timeline,state.roadMeters):null;
+      const entryHeading=nearStart?nextRouteBearing(nearStart,route?.geometry,26):null;
       const sensorHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&
         d.telemetry?.speed>1.5?d.telemetry.heading:null;
       const heading=playPointer&&Number.isFinite(playPointer.bearing)?playPointer.bearing:
         d.droneSimulation&&Number.isFinite(state.droneMeters)
         ?simulationPointerBearing(timeline,state.droneMeters)
-        :realDriving?(Number.isFinite(matchedRoadHeading)?matchedRoadHeading:sensorHeading)
+        :realDriving?(Number.isFinite(matchedRoadHeading)?matchedRoadHeading:
+          Number.isFinite(entryHeading)?entryHeading:sensorHeading)
         :sensorHeading??nextRouteBearing(point,route?.geometry,Math.max(30,(Number(d.telemetry?.speed)||0)*4));
       if(d.droneSimulation&&Number.isFinite(heading)){
         // Do not pre-rotate at upcoming intersections. Even a 90° ramp turn
@@ -1240,7 +1275,8 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       d.motionCoords=point;d.motionBearing=state.bearing||0;
       const map=mapRef.current;
       if(map)map._vanoRoadCarConfirmed=Boolean(realDriving&&d.v2Experience&&d.vehicle==='carro'&&
-        state.roadCar?.visible&&Date.now()-(state.roadCar.lastFixAt||0)<=5000);
+        (nearStart||entryHandoff||(state.roadCar?.visible&&
+          fixNow-(state.roadCar.lastFixAt||0)<=5000)));
       if(map&&backend.current==='mapbox'){
         const marker=map._vanoMarker?.current;
         if(marker){
@@ -1260,7 +1296,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         const carVisible=Boolean(d.navigation&&marker?.getElement().classList.contains('vano-vehicle-marker')&&
           (d.simulationPreview||d.droneSimulation||map._vanoRoadCarConfirmed));
         const nativeCompact=syncV2Compact(map,mapboxgl,d,point,state.bearing||0,carVisible);
-        if(marker){const element=marker.getElement();const visibility=nativeCompact?'hidden':'';if(element.style.visibility!==visibility)element.style.visibility=visibility;}
+        if(marker){const element=marker.getElement();syncCompactCarFallback(element,carVisible,nativeCompact);const visibility=nativeCompact?'hidden':'';if(element.style.visibility!==visibility)element.style.visibility=visibility;}
         if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
           const near=nearestOnRoute(point,route?.geometry);
           const maxOffset=Math.max(45,Math.min(100,Number(d.telemetry?.accuracy||15)*2));
@@ -1282,7 +1318,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           })}).addTo(map);}
           map._vanoVehicleMarker.setLatLng(ll(point));
           const arrow=map._vanoVehicleMarker.getElement()?.querySelector('.vano-vehicle-marker');
-          if(arrow)arrow.style.transform='rotate('+(state.bearing||0)+'deg)';
+          if(arrow){arrow.style.transform='rotate('+(state.bearing||0)+'deg)';syncCompactCarFallback(arrow,Boolean(d.v2Experience&&d.vehicle==='carro'&&map._vanoRoadCarConfirmed),false);}
           if(now-state.lastPaint>120&&!map._vanoFreeLook){
             state.lastPaint=now;
             const viewport=d.viewport?.padding||{top:0,bottom:0};
@@ -1574,10 +1610,14 @@ function paintMapbox(map,data,selection){
   const marker=(key,point)=>{const stableLightGpsPuck=key==='current'&&data.appearance==='light';if(!validPoint(point)){map._vanoMarker?.[key]?.remove();if(map._vanoMarker)delete map._vanoMarker[key];return;}map._vanoMarker??={};const follow=shouldFollowLocation({navigation:data.navigation,destination:data.destination,pickingOrigin:data.pickingOrigin,manualOrigin:data.manualOrigin,position:data.gpsCoords});const type=key==='manual'?'origin':key==='current'?(follow?'vehicle':'origin'):'destination';const current=map._vanoMarker[key];if(current&&(!current.getElement().classList.contains(type==='vehicle'?'vano-vehicle-marker':`map-pin-${type}`)||(type==='vehicle'&&!current.getElement().classList.contains(data.vehicle==='moto'?'vano-vehicle-moto':'vano-vehicle-car')))){current.remove();delete map._vanoMarker[key];}if(!map._vanoMarker[key])map._vanoMarker[key]=new mapboxgl.Marker({element:markerElement(type,data.vehicle),anchor:type==='destination'?'bottom':'center',offset:type==='destination'?[0,5]:[0,0],rotationAlignment:type==='vehicle'?'map':'viewport',pitchAlignment:'viewport',rotation:type==='vehicle'&&Number.isFinite(data.motionBearing)?data.motionBearing:0,occludedOpacity:stableLightGpsPuck||(type==='vehicle'&&data.droneSimulation)?1:.2}).setLngLat(point).addTo(map);else map._vanoMarker[key].setLngLat(point);if(type==='vehicle'){const desiredPitch='viewport';if(map._vanoMarker[key]._vanoV2PitchAlignment!==desiredPitch){map._vanoMarker[key].setPitchAlignment?.(desiredPitch);map._vanoMarker[key]._vanoV2PitchAlignment=desiredPitch;}const visibility=data.droneSimulation||stableLightGpsPuck?1:.2;if(map._vanoMarker[key].getOccludedOpacity?.()!==visibility)map._vanoMarker[key].setOccludedOpacity?.(visibility);}};
   marker('current',data.motionCoords||data.gpsCoords||data.userCoords);marker('manual',validPoint(data.gpsCoords)?data.manualOrigin:null);marker('destination',data.destination?.coords);
   const currentMarker=map._vanoMarker?.current;
-  const nativeCompact=syncV2Compact(map,mapboxgl,data,data.motionCoords||data.gpsCoords||data.userCoords,data.motionBearing||0,
-    Boolean(data.navigation&&currentMarker?.getElement().classList.contains('vano-vehicle-marker')&&
-      (data.simulationPreview||data.droneSimulation||map._vanoRoadCarConfirmed)));
-  if(currentMarker)currentMarker.getElement().style.visibility=nativeCompact?'hidden':'';
+  // The animation loop owns the custom car layer. An unrelated React paint
+  // (GPS/theme/card updates) must not remove/recreate it before its first draw.
+  if(!data.navigation)syncV2Compact(map,mapboxgl,data,data.gpsCoords,data.motionBearing||0,false);
+  const carEligible=Boolean(data.navigation&&data.v2Experience&&data.vehicle==='carro'&&
+    (data.simulationPreview||data.droneSimulation||map._vanoRoadCarConfirmed));
+  const nativeCompact=Boolean(carEligible&&map._vanoCompact?.enabled&&
+    map.getLayer?.(V2_COMPACT_ID)&&map._vanoCompact?.layer?.ready);
+  if(currentMarker){const element=currentMarker.getElement();syncCompactCarFallback(element,carEligible,nativeCompact);element.style.visibility=nativeCompact?'hidden':'';}
 
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
   syncPrivateRoadSignMarkers(map,mapboxgl,data);
