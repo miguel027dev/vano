@@ -53,7 +53,7 @@ const mapHtml=entryHtml({title:'VANO Maps — GPS, Rotas e Trânsito Online',des
 // Keep SEO metadata (and structured WebApplication data) without injecting
 // the public marketing hero into React's mount node. Otherwise /mapa becomes
 // an infinite 'Abrir VANO Maps' landing page instead of the GPS.
-const appHtml=mapHtml.replace(/<div id="root">[\s\S]*?<\/div>/,'<div id="root"></div>');
+const appHtml=mapHtml.replace(/<div id="root"><main id="conteudo"[\s\S]*?<\/main><\/div>/,'<div id="root"></div>');
 if(appHtml===mapHtml||!appHtml.includes('src="/assets/'))throw Error('VANO map entry must retain its compiled React bundle');
 fs.writeFileSync(path.join(dist,'index.html'),appHtml);
 // Legacy pre-render from an earlier build must not shadow the app route.
