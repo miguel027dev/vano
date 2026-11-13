@@ -1477,7 +1477,6 @@ export default function MapPage({active=true}){
       step={b1Stage} vehicle={routeVehicle} routeData={routeData} choice={choice}
       loading={loadingRoute} error={routeError} language={language}
       onVehicle={chooseB1Vehicle} plannerV3={plannerV3Enabled} modeEstimates={modeEstimates}
-      onTransit={()=>navigate('/planejar-transporte',{state:{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}})}
       onChoice={id=>{mapControl.current?.cancelCinematic?.();setChoice(id);}}
       onStart={begin} onRetry={()=>{b1CameraArmed.current=true;calculateRoute(dest,origin,routeVehicle);}}
       onBack={()=>{
@@ -1488,12 +1487,11 @@ export default function MapPage({active=true}){
       }}/>:<div className="route-sheet"><div className="sheet-handle"/><div className="sheet-title"><div><span className="eyebrow">{adminV2RoadSigns?'SEU TRAJETO':t('DESTINO SELECIONADO')}</span><h2>{adminV2RoadSigns?'Escolha seu caminho':t('Escolha a sua rota')}</h2>{adminV2RoadSigns&&<span className="v95-route-destination" title={dest?.name}>{dest?.name}</span>}</div><button type="button" className="sheet-close" aria-label="Recolher opções de rota" title="Recolher opções" onClick={()=>setSheetOpen(false)}>{adminV2RoadSigns?<X size={20}/>:<ChevronDown size={23}/>}</button></div>
       {plannerV3Enabled?<div className="v3-route-mode-wrap">
         <small>COMO VOCÊ VAI?</small>
-        <TransportModeRail selected={routeVehicle} onSelect={chooseRouteVehicle} estimates={modeEstimates}
-          onPublic={()=>navigate('/planejar-transporte',{state:{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}})}/>
+        <TransportModeRail selected={routeVehicle} onSelect={chooseRouteVehicle} estimates={modeEstimates}/>
       </div>:<>
       <div className="v47-route-vehicle" aria-label="Modo de transporte para calcular a rota">
         <span className="v47-route-vehicle-caption">{t('Modo')}</span>
-        <div className={`v47-route-vehicle-switch ${false?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label={import.meta.env.VITE_TRANSIT_PREVIEW==='1'?'Selecionar carro, moto, ônibus ou a pé':'Selecionar carro, moto ou a pé'} aria-busy={loadingRoute}>
+        <div className={`v47-route-vehicle-switch ${false?'has-transit':''} ${routeVehicle==='moto'?'is-moto':routeVehicle==='a-pe'?'is-walking':''}`} role="group" aria-label="Selecionar carro, moto ou a pé" aria-busy={loadingRoute}>
           <button type="button" className={routeVehicle==='carro'?'is-selected':''} onClick={()=>chooseRouteVehicle('carro')}
             aria-pressed={routeVehicle==='carro'} aria-label="Calcular rota de carro">
             <CarFront size={18} strokeWidth={2} aria-hidden="true"/><span>{t('Carro')}</span>
@@ -1502,7 +1500,6 @@ export default function MapPage({active=true}){
             aria-pressed={routeVehicle==='moto'} aria-label="Calcular rota de moto">
             <MotorcycleIcon size={22}/><span>{t('Moto')}</span>
           </button>
-          {import.meta.env.VITE_TRANSIT_PREVIEW==='1'&&<Link to="/transporte" state={{from:validPoint(origin)?{name:'Sua localização',coords:origin}:null,to:dest}} className="v47-transit-mode" aria-label="Planejar rota de ônibus, metrô e trem" title="Planejar viagem em transporte público"><BusFront size={19} aria-hidden="true"/><span>Ônibus</span></Link>}
           <button type="button" className={routeVehicle==='a-pe'?'is-selected':''} onClick={()=>chooseRouteVehicle('a-pe')}
             aria-pressed={routeVehicle==='a-pe'} aria-label="Calcular rota a pé">
             <Footprints size={19} strokeWidth={2} aria-hidden="true"/><span>{t('A pé')}</span>
