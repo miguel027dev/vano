@@ -28,7 +28,7 @@ test('existing functional modules mount in admin and map remains interactive',()
   assert.ok(page.includes(key),key);
  }
  assert.match(page,/<iframe title="Mapa principal VANO" src="\/mapa"/);
- assert.match(page,/hidden=\{activeSection/);
+ assert.match(page,/hidden=\{!\['dashboard','indicators','acquisition','interactions','infrastructure'\]\.includes\(activeSection\)\}/);
  assert.match(intelligence,/post\('\/admin\/intelligence\/ask'/);
  assert.match(devsync,/api\('\/admin\/dev-sync\/handoff'/);
  assert.match(css,/\.vanu-ai-focus \.vint-chat/);
