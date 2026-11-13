@@ -1,0 +1,20 @@
+/* Navigation V3: keep all four clusters reachable without covering the map. */
+.vanu-admin-page .vanu-control-sidebar{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;min-height:0;height:calc(100dvh - 68px)}
+.vanu-admin-page .vanu-control-group-label{margin-top:14px;margin-bottom:6px}
+.vanu-admin-page .vanu-control-nav{gap:2px;flex-shrink:0}
+.vanu-admin-page .vanu-control-nav .vanu-control-link{min-height:38px;padding:8px 10px}
+.vanu-admin-page .vanu-control-bottom{flex-shrink:0;padding-bottom:8px}
+.vanu-admin-page .vanu-control-presence{margin-top:3px}
+@media(max-width:1000px){
+ .vanu-admin-page .vanu-control-sidebar{height:auto;max-height:none;overflow:visible}
+ .vanu-admin-page .vanu-control-nav-label.vanu-control-group-label{display:block;margin:5px 0 0 4px}
+ .vanu-admin-page .vanu-control-nav{width:100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:thin;padding:3px 0 8px}
+ .vanu-admin-page .vanu-control-nav .vanu-control-link{min-height:43px;white-space:nowrap}
+ .vanu-admin-page .vanu-control-sidebar .vanu-control-bottom{display:flex;align-items:center;gap:10px}
+ .vanu-admin-page .vanu-control-sidebar .vanu-control-presence{flex:1}
+}
+@media(max-width:640px){
+ .vanu-admin-page .vanu-control-nav-label{font-size:9px}
+ .vanu-admin-page .vanu-control-sidebar .vanu-control-presence{display:none}
+ .vanu-admin-page .vanu-control-group-label{margin-top:3px}
+}
