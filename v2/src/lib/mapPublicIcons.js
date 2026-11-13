@@ -3,7 +3,7 @@
  */
 import {personalizedPoiAllowed} from './mapPoiPreferences.mjs';
 export const ICON_THEME=Object.freeze({
- radar:['radar-device','#ff781e'],semaforo:['signal','#283f52'],lombada:['bump','#f6a000'],pare:['stop','#ed3345'],
+ radar:['radar-device','#ff781e'],pedagio:['toll','#ec8b24'],semaforo:['signal','#283f52'],lombada:['bump','#f6a000'],pare:['stop','#ed3345'],
  preferencia:['yield','#f6a000'],placa:['sign','#e58d00'],travessia:['crossing','#283440'],
  ferrovia:['rail','#CB713E'],rotatoria:['roundabout','#506879'],obra:['works','#fa8021'],hospital:['medical','#dc3245'],
  saude:['medical','#21a469'],bombeiros:['fire','#ec3a35'],'policia-base':['shield','#2279dc'],
@@ -35,6 +35,7 @@ export const ICON_THEME=Object.freeze({
 const GLYPHS={
  camera:'<rect x="3" y="6" width="15" height="12" rx="2.8"/><circle cx="10.5" cy="12" r="3"/><path d="M20 9q3 3 0 6"/>',
  'radar-device':'<rect x="5" y="3" width="14" height="12" rx="2.1"/><path d="M5 6h14"/><circle cx="12" cy="10" r="2.5"/><path d="M12 15v6M8.5 21h7"/>',
+ toll:'<path d="M3 20h18M5 20V9l7-4 7 4v11M3 10h18M9 20v-6h6v6M8 12h2m4 0h2"/>',
  signal:'<rect x="7" y="2" width="10" height="20" rx="4"/><circle cx="12" cy="6.4" r="1.3" fill="#f34043" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="#ffcb2a" stroke="none"/><circle cx="12" cy="17.6" r="1.3" fill="#21b55f" stroke="none"/>',
  bump:'<path d="M2 18h20M4 17q2-11 8-11t8 11"/><path d="M9 10v6m6-6v6"/>',
  stop:'<path d="m8 2 8 0 6 6v8l-6 6H8l-6-6V8z"/><path d="M8 12h8"/>',
@@ -113,7 +114,7 @@ export function publicPinDensity(viewport,zoom=14,max=52,{navigation=false}={}){
   typeMax:Math.max(3,Math.ceil(total*(navigation?.28:.20)))
  };
 }
-const PIN_URGENT=new Set(['radar','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar','obra','alerta-via']);
+const PIN_URGENT=new Set(['radar','pedagio','relato-acidente','relato-risco','relato-obra','relato-transito','relato-radar','obra','alerta-via']);
 const PIN_SERVICES=new Set([
  'hospital','saude','bombeiros','policia-base','combustivel','eletroposto','estacionamento',
  'farmacia','escola','estacao-recarga','carregador-eletrico','terminal-onibus',
