@@ -6,7 +6,7 @@ const page=readFileSync(new URL('../pages/MapPage.jsx',import.meta.url),'utf8');
 
 test('/mapa alone explicitly opts into the normal compact car',()=>{
  assert.match(page,/v2Experience=\{location\.pathname==='\/v2'\} standardMapCar=\{location\.pathname==='\/mapa'\}/);
- assert.match(src,/standardMapCar:sameRoadRun&&standardMapCar\?visual\.current\.standardCar:null/);
+ assert.match(src,/standardCar:sameRoadRun&&standardMapCar\?visual\.current\.standardCar:null/);
  assert.match(src,/state\.standardCar=standardMapCarPose\(/);
  assert.match(src,/const carVisible=Boolean\([\s\S]*?\(d\.standardMapCar&&state\.standardCar\?\.visible\)/);
 });
