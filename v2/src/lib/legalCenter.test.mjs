@@ -29,9 +29,9 @@ test('legal shell has section table of contents, document links and theme via ap
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(app,/document\.documentElement\.dataset\.theme/);
 });
-test('radars never show destination action; place cards still can',()=>{
+test('radars and toll booths never show destination action; place cards still can',()=>{
  const overlay=source('../lib/mapPublicOverlay.js');
- assert.match(overlay,/!\['radar','relato-radar'\]\.includes\(item\.type\)&&typeof onSelect==='function'/);
+ assert.match(overlay,/!\['radar','relato-radar','pedagio'\]\.includes\(item\.type\)&&typeof onSelect==='function'/);
  assert.match(overlay,/label\.textContent='Ir para este destino'/);
  assert.match(overlay,/onPickPlace\(\{id:item\.id/);
  assert.match(overlay,/getNavigation\(\)\)return/);
