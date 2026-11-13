@@ -23,7 +23,7 @@ test('final complete dark-mode sheet overrides every earlier light stylesheet',(
  assert.equal(entry.slice(b+"import './v50-night-system.css';".length).includes("import './"),false);
 });
 test('profile dark theme covers rendered buttons, account cards and headings',()=>{
- for(const component of ['v4-profile-intro','v4-route-feature','v4-action-row',
+ for(const component of ['v4-profile-intro','v4-route-feature','v96-profile-signout',
   'v4-stat-strip','v4-empty-link','v4-icon-button','v4-place-chip','v4-recent-trip']){
   assert.ok(profile.includes(component),'profile does not contain '+component);
   assert.ok(css.includes(component),'night theme lacks '+component);
