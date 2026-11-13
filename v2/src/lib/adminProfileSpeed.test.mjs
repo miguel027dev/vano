@@ -13,8 +13,8 @@ const at=200000;
 const gps=(sourceAt,speed,prev=null,accuracy=9)=>
   smoothGpsSpeedSample(prev,speed,{sourceAt,accuracy,now:sourceAt+25});
 
-test('profile entry requires server-authorized verified admin, not local email text',()=>{
- assert.match(profile,/user\?\.isAdmin===true&&<Action icon=\{LockKeyhole\} title="Admin" subtitle="Painel de administração" to="\/admin"\/>/);
+test('profile omits admin entry while server still requires verified admin authorization',()=>{
+ assert.doesNotMatch(profile,/to="\/admin"/);
  assert.doesNotMatch(profile,/user\?\.email\s*===\s*['"]miguelpinxs@gmail.com/);
  assert.match(server,/isAdmin:isAdminAccount\(u\)/);
  assert.match(server,/if\(!isAdminAccount\(session\.user\)\)return err\(res,403/);
