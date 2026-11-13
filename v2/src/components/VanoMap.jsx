@@ -1235,7 +1235,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         // Only /v2 + car; the DOM marker remains a fail-safe until a draw succeeds.
         const carVisible=Boolean(marker?.getElement().classList.contains('vano-vehicle-marker'));
         const nativeCompact=syncV2Compact(map,mapboxgl,d,point,state.bearing||0,carVisible);
-        if(marker){const element=marker.getElement();const opacity=nativeCompact?'0':'';if(element.style.opacity!==opacity)element.style.opacity=opacity;}
+        if(marker){const element=marker.getElement();const visibility=nativeCompact?'hidden':'';if(element.style.visibility!==visibility)element.style.visibility=visibility;}
         if(d.navigation&&timeline.total>0&&isLoaded(map)&&now-state.lastPaint>=110){
           const near=nearestOnRoute(point,route?.geometry);
           const maxOffset=Math.max(45,Math.min(100,Number(d.telemetry?.accuracy||15)*2));
@@ -1550,7 +1550,7 @@ function paintMapbox(map,data,selection){
   const currentMarker=map._vanoMarker?.current;
   const nativeCompact=syncV2Compact(map,mapboxgl,data,data.motionCoords||data.gpsCoords||data.userCoords,data.motionBearing||0,
     Boolean(currentMarker?.getElement().classList.contains('vano-vehicle-marker')));
-  if(currentMarker)currentMarker.getElement().style.opacity=nativeCompact?'0':'';
+  if(currentMarker)currentMarker.getElement().style.visibility=nativeCompact?'hidden':'';
 
   if(selection.current!==data.selectedRoute){selection.current=data.selectedRoute;map.setPaintProperty('vano-v2-line','line-opacity',.84);requestAnimationFrame(()=>{if(isLoaded(map)&&map.getLayer('vano-v2-line'))map.setPaintProperty('vano-v2-line','line-opacity',1);});}
   syncPrivateRoadSignMarkers(map,mapboxgl,data);
