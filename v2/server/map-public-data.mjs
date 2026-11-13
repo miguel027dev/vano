@@ -23,6 +23,7 @@ const safeTag=(v,max=100)=>typeof v==='string'?v.replace(/[\u0000-\u001F\u007F<>
 export function classifyOsm(t={}){
  const h=t.highway||'',s=String(t.traffic_sign||'').toLowerCase();
  if(h==='speed_camera'||t.enforcement==='maxspeed')return ['radar',100,'Radar fixo'];
+  if(t.barrier==='toll_booth')return ['pedagio',91,'Praça de pedágio'];
  if(h==='traffic_signals')return ['semaforo',74,'Semáforo'];
  if(['bump','hump','table','dynamic_bump'].includes(t.traffic_calming))return ['lombada',76,'Lombada'];
  if(h==='stop'||s.includes('stop'))return ['pare',72,'Parada obrigatória'];
@@ -75,7 +76,7 @@ export function normalizeOsmElements(elements=[],limit=MAX_FEATURES){
  items.sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
  // Dense cities may have thousands of signals/stops. Reserve slots for
  // hospitals and other services instead of allowing one tag to occupy all 180.
- const quota={radar:70,semaforo:35,lombada:25,pare:12,preferencia:10,placa:8,travessia:12,
+ const quota={radar:70,pedagio:20,semaforo:35,lombada:25,pare:12,preferencia:10,placa:8,travessia:12,
   ferrovia:10,obra:15,hospital:22,saude:14,bombeiros:10,'policia-base':12,
   combustivel:14,estacionamento:9,banco:12,eletroposto:12,
   farmacia:7,escola:8,mercado:8,supermercado:7,shopping:5,
@@ -97,7 +98,7 @@ export function overpassQuery(bbox){
  // Guarantee that sparse radars are included BEFORE hundreds of stoplights,
  // amenities and ordinary signs fill the bounded query response.
  return '[out:json][timeout:12];'+
- '(node["highway"="speed_camera"]('+area+');node["enforcement"="maxspeed"]('+area+'););out body 150;'+
+ '(node["highway"="speed_camera"]('+area+');node["enforcement"="maxspeed"]('+area+');node["barrier"="toll_booth"]('+area+'););out body 150;'+
  '(node["amenity"~"^(hospital|clinic|fire_station|police|fuel|parking|bank|charging_station)$"]('+area+');'+
  'node["traffic_calming"~"^(bump|hump|table|dynamic_bump)$"]('+area+');'+
  'node["highway"~"^(traffic_signals|stop|give_way|crossing|construction)$"]('+area+');'+
