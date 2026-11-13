@@ -42,3 +42,13 @@ test('leaving V2 removes its native layer and restores the marker path',()=>{
  assert.equal(syncV2Compact(map,{}, {v2Experience:false,vehicle:'carro'},[-46,-23]),false);
  assert.equal(removed,1);assert.equal(state.enabled,false);assert.equal(state.layer,null);
 });
+
+test('normal /mapa opts into compact car without enabling unrelated routes or camera flags',()=>{
+ assert.equal(compactEnabled({standardMapCar:true,v2Experience:false,navigation:true,vehicle:'carro'}),true);
+ for(const change of [
+  {standardMapCar:false},{v2Experience:false,standardMapCar:false},
+  {vehicle:'moto'},{navigation:false},{active:false}
+ ]){
+  assert.equal(compactEnabled({standardMapCar:true,v2Experience:false,navigation:true,vehicle:'carro',...change}),false);
+ }
+});

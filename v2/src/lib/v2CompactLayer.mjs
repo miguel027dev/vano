@@ -1,9 +1,10 @@
-/** V2-only native WebGL marker. Shares the map context and existing GPS animation.
+/** Native WebGL car used by /v2 and the explicitly opted-in /mapa route. Shares the map context and existing GPS animation.
  * No extra renderer, canvas, RAF, textures, GLB loader or third-party dependency.
  */
 export const V2_COMPACT_ID='vano-v2-compact';
 const validPoint=p=>Array.isArray(p)&&p.length>=2&&p.slice(0,2).every(Number.isFinite)&&Math.abs(p[0])<=180&&Math.abs(p[1])<85.051129;
-export const compactEnabled=d=>Boolean(d?.active!==false&&d?.v2Experience&&d?.navigation===true&&d?.vehicle==='carro');
+export const compactEnabled=d=>Boolean(d?.active!==false&&d?.navigation===true&&d?.vehicle==='carro'&&
+ (d?.v2Experience===true||(d?.standardMapCar===true&&d?.v2Experience!==true)));
 export function compactScreenLength(width=400){return width<390?46:52;}
 export function compactWorldScale({zoom=17,pitch=0,width=400,length=3.7}={}){
  const safeZoom=Number.isFinite(zoom)?Math.max(0,Math.min(24,zoom)):17;

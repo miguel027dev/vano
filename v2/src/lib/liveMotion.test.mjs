@@ -110,5 +110,5 @@ test('free GPS prediction refuses stationary, noisy, stale and contradictory fix
 test('live map writes the animated vehicle with sub-decimeter continuity',()=>{
  const source=readFileSync(new URL('../components/VanoMap.jsx',import.meta.url),'utf8');
  assert.match(source,/predictFreeGpsVisual\(target,state\.previousRawFix/);
- assert.match(source,/metersBetween\(state\.lastMarkerPoint,point\)>\.035/);
+ assert.match(source,/metersBetween\(state\.lastMarkerPoint,markerPoint\)>\.035/);
 });

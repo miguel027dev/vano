@@ -28,13 +28,13 @@ test('Mapbox pointer rotates with heading while staying upright in both maps',()
   assert.match(map,/const desiredPitch='viewport'/);
   assert.match(map,/setPitchAlignment\?\.\(desiredPitch\)/);
   assert.match(map,/rotationAlignment:type==='vehicle'\?'map':'viewport'/);
-  assert.match(map,/marker\.setRotation\(state\.bearing\|\|0\)/);
-  assert.match(map,/marker\.setLngLat\(point\)/);
+  assert.match(map,/marker\.setRotation\(nextBearing\)/);
+  assert.match(map,/marker\.setLngLat\(markerPoint\)/);
 });
 test('Leaflet fallback retains real GPS heading while sharing the same SVG',()=>{
   assert.match(map,/html:markerElement\('vehicle',d\.vehicle\)\.outerHTML/);
   assert.match(map,/arrow\.style\.transform='rotate\('/);
-  assert.match(map,/map\._vanoVehicleMarker\.setLatLng\(ll\(point\)\)/);
+  assert.match(map,/map\._vanoVehicleMarker\.setLatLng\(ll\(markerPoint\)\)/);
 });
 test('camera styles override legacy arrow and do not animate independently from GPS',()=>{
   assert.match(entry,/import '\.\/v39-vehicle3d\.css';/);
