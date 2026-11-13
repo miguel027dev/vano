@@ -4,7 +4,7 @@ import {metersBetween} from './navigationMotion.js';
 import {standardMapCarPose} from './standardMapCar.mjs';
 const origin=[-46.68,-23.58],north=m=>m/111320;
 const east=m=>m/(111320*Math.cos(origin[1]*Math.PI/180));
-const route={geometry:{type:'LineString',coordinates:[origin,[origin[0]+east(150),origin[1]]}};
+const route={geometry:{type:'LineString',coordinates:[origin,[origin[0]+east(150),origin[1]]]}};
 const house=[origin[0]+east(10),origin[1]+north(48)];
 const run=(previous,position=house,more={})=>standardMapCarPose({
  previous,position,route,trackingPoint:position,trackingBearing:90,
