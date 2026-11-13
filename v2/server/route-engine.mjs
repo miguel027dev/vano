@@ -64,7 +64,7 @@ async function request(url,fetcher,timeoutMs){
   const body=await r.json();
   if(body.code&&body.code!=='Ok')throw Error('Mapbox '+body.code);
   // Keep the native V2 engine aligned with the active fallback's provider safety gate.
-  const routes=uniqueCandidates(body.routes).filter(r=>!hasProviderRouteViolation(r));
+  const routes=uniqueCandidates((body.routes||[]).filter(r=>!hasProviderRouteViolation(r)));
   if(!routes.length)throw Error('Mapbox não retornou rotas válidas sem violação de acesso.');
   return routes;
 }
