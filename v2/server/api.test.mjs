@@ -209,7 +209,8 @@ test('Cabeçalhos defensivos, permissões e bloqueio de conteúdo malformado',as
   const report=await a.call('/api/reports','POST',{type:'risco',coords,description:'Teste interno'});
   assert.equal(report.status,201);assert.equal(report.data.owner,undefined);
   assert.equal(report.data.coords[0],-46.656);assert.ok(Math.abs(report.data.coords[1]-coords[1])<=0.001);
-  const large=await a.call('/api/preferences','PATCH',{routineTags:Array(12000).fill('Casa')});
+  // Exercise the 32 KiB JSON limit below the separate 64 KiB hard socket cutoff.
+  const large=await a.call('/api/preferences','PATCH',{routineTags:Array(6000).fill('Casa')});
   assert.equal(large.status,413);
   assert.equal((await a.call('/api/preferences','PATCH',{vehicle:'carro'})).status,200);
  }finally{await s.stop();}
