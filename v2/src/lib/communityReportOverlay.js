@@ -147,7 +147,7 @@ export function attachCommunityReportOverlay(map,backend,getGPS=()=>null,isActiv
       }else{
         marker=L.marker([point[1],point[0]],{icon:L.divIcon({
           className:'vano-community-leaflet-wrap',html:element.outerHTML,
-          iconSize:[44,48],iconAnchor:[22,44],popupAnchor:[0,-34]
+          iconSize:[44,48],iconAnchor:[22,48],popupAnchor:[0,-34]
         })}).bindPopup(L.popup({className:'vano-community-map-popup',maxWidth:290}).setContent(popupNode(report,onVote))).addTo(map);
       }
       marker._vanoElement=backend==='mapbox'?element:marker.getElement?.()?.querySelector('.vano-community-pin');

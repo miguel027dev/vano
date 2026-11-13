@@ -1,7 +1,7 @@
 /** Approved VANO artwork. Viewports reuse one cached atlas without redrawing icons.
  * The closed catalog never interpolates user-provided markup or URLs. */
-const ATLAS='/assets/incidents/vano-incidents-v1.png';
-const POLICE='/assets/incidents/vano-police-v1.png';
+const ATLAS='/assets/incidents/vano-incidents-6a217198.png';
+const POLICE='/assets/incidents/vano-police-ff9ba5ef.png';
 const CELLS=Object.freeze({
   acidente:['0 225 445 355',ATLAS,1254,1254],
   obstaculo:['455 205 355 375',ATLAS,1254,1254],
