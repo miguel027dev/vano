@@ -27,6 +27,9 @@ def test_manifest_is_single_source_of_truth_for_base_styles():
         assert style["imports"][0]["config"]["showRoadLabels"] is True
         assert style["imports"][0]["config"]["showPointOfInterestLabels"] is False
         assert style["imports"][0]["config"]["show3dBuildings"] is True
+        assert style["imports"][0]["config"]["show3dTrees"] is True
+        assert style["imports"][0]["config"]["show3dFacades"] is True
+        assert style["imports"][0]["config"]["showPedestrianRoads"] is True
         assert style["sources"]["vano-terrain"]["type"] == "raster-dem"
 
 
@@ -59,6 +62,9 @@ def test_mapbox_routes_and_js_theme_wiring():
     assert "mapVisualRules:{{ map_visual_rules|tojson }}" in boot
     js = (ROOT / "static" / "vano-map.js").read_text(encoding="utf-8")
     assert "STYLE_SET?.black||STYLE_SET?.night" in js
+    assert "show3dTrees:true" in js
+    assert "show3dFacades:true" in js
+    assert "showPedestrianRoads:true" in js
     assert "MAP_ROUTE_RULES=MAP_VISUAL_RULES.route||{}" in js
     for rule in ("selectedRouteWidthByZoom", "navigationRouteWidthByZoom", "navigationCasingWidthByZoom"):
         assert f"vanoRouteWidth('{rule}'" in js
