@@ -123,7 +123,10 @@ export function syncNight3DScene(map,{appearance='light',layer='streets',navigat
  try{updateAtmosphere(map,enabled);}catch{/* unsupported Mapbox style: retain existing fog */}
  syncGround(map,enabled);
  const budget=nightSceneTreeBudget({memory,cores,saveData});
- const treesOn=enabled&&navigation&&budget>0&&(map.getZoom?.()??0)>=NIGHT_TREE_ZOOM&&!!map.getSource('composite');
+ // The V2 Atlas has its own vector source. Decorations are grounded in mapped
+ // park/wood landuse and stay visible in the planner as well as navigation.
+ const mappedLanduseSource=map.getSource('vano-streets')?'vano-streets':map.getSource('composite')?'composite':null;
+ const treesOn=layer!=='satellite'&&budget>0&&(map.getZoom?.()??0)>=NIGHT_TREE_ZOOM&&!!mappedLanduseSource;
  if(!treesOn){clearTrees(map);return enabled;}
  if(!map.getSource(NIGHT_TREES_SOURCE))map.addSource(NIGHT_TREES_SOURCE,{type:'geojson',data:empty()});
  const before=labelBefore(map);
@@ -131,19 +134,21 @@ export function syncNight3DScene(map,{appearance='light',layer='streets',navigat
   id:NIGHT_TREE_TRUNK,type:'fill-extrusion',source:NIGHT_TREES_SOURCE,minzoom:NIGHT_TREE_ZOOM,
   filter:['==',['get','kind'],'trunk'],
   paint:{'fill-extrusion-height':['get','height'],'fill-extrusion-base':['get','base'],
-   'fill-extrusion-color':'#344736','fill-extrusion-opacity':.86}
+   'fill-extrusion-color':enabled?'#344736':'#786B5B','fill-extrusion-opacity':.86}
  },before);
  if(!map.getLayer(NIGHT_TREE_CANOPY))map.addLayer({
   id:NIGHT_TREE_CANOPY,type:'fill-extrusion',source:NIGHT_TREES_SOURCE,minzoom:NIGHT_TREE_ZOOM,
   filter:['==',['get','kind'],'canopy'],
   paint:{'fill-extrusion-height':['get','height'],'fill-extrusion-base':['get','base'],
-   'fill-extrusion-color':['match',['get','tone'],0,'#254e37',1,'#2d6042',2,'#335e40','#3a6b49'],
+   'fill-extrusion-color':enabled
+     ?['match',['get','tone'],0,'#254e37',1,'#2d6042',2,'#335e40','#3a6b49']
+     :['match',['get','tone'],0,'#5C8D58',1,'#699C63',2,'#759C68','#588651'],
    'fill-extrusion-vertical-gradient':true,'fill-extrusion-opacity':.9}
  },before);
  const source=map.getSource(NIGHT_TREES_SOURCE);
  if(now-(map._vanoNightTreeStamp||0)<2200)return true;
  let features=[];
- try{features=map.querySourceFeatures?.('composite',{sourceLayer:'landuse'})||[];}catch{/* tiles not yet loaded */}
+ try{features=map.querySourceFeatures?.(mappedLanduseSource,{sourceLayer:'landuse'})||[];}catch{/* tiles not yet loaded */}
  if(features.length){
   map._vanoNightTreeStamp=now;
   source?.setData?.(decorativeTreeCollection(features,viewBounds(map),{limit:budget}));
