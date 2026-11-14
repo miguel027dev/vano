@@ -4,7 +4,8 @@
   "metadata": {
     "vano:edition": "3.0",
     "vano:description": "Estilo claro, otimizado para rotas e leitura durante a navegação. Sem dados pessoais e sem credenciais.",
-    "vano:brandOrange": "#E95B22"
+    "vano:brandOrange": "#E95B22",
+    "vano:streetscape-enhancements": "mapped-park-trees-and-street-edges-v1"
   },
   "center": [
     -46.6808,
@@ -91,6 +92,67 @@
       "paint": {
         "fill-color": "#DCECF4",
         "fill-opacity": 1
+      }
+    },
+    {
+      "id": "vano-sidewalk-edge",
+      "type": "line",
+      "source": "vano-streets",
+      "source-layer": "road",
+      "minzoom": 16,
+      "filter": [
+        "in",
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "street",
+            "street_limited",
+            "residential",
+            "service",
+            "pedestrian"
+          ]
+        ]
+      ],
+      "layout": {
+        "line-cap": "round",
+        "line-join": "round"
+      },
+      "paint": {
+        "line-color": "#D3DCD2",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          14,
+          18,
+          29,
+          20,
+          48
+        ],
+        "line-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          16,
+          0.32,
+          17,
+          0.65,
+          19,
+          0.82
+        ]
       }
     },
     {
@@ -393,15 +455,15 @@
           13,
           0.7,
           16,
-          1.1,
+          1.5,
           19,
-          2.3
+          3
         ],
         "line-dasharray": [
           1.6,
           2
         ],
-        "line-opacity": 0.7
+        "line-opacity": 0.84
       }
     },
     {
@@ -460,7 +522,7 @@
             0
           ]
         ],
-        "fill-extrusion-opacity": 0.42,
+        "fill-extrusion-opacity": 0.56,
         "fill-extrusion-vertical-gradient": true
       }
     },
