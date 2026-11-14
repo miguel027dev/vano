@@ -15,6 +15,7 @@ const MODES={car:'carro',motorcycle:'moto',walking:'a-pe'};
 const hash=x=>createHash('sha256').update(String(x)).digest('hex');
 const equal=(a,b)=>typeof a==='string'&&typeof b==='string'&&a.length===b.length&&timingSafeEqual(Buffer.from(a),Buffer.from(b));
 const TTL=300_000;
+const PARTNER_BRANDING=Object.freeze({name:'VANO MAPS',url:'https://vanomaps.online',logo_url:'https://vanomaps.online/static/vano-maps-icon-64.png'});
 export class PartnerError extends Error {constructor(status,code,message){super(message);this.status=status;this.code=code;}}
 const fail=(status,code,message)=>{throw new PartnerError(status,code,message);};
 const object=x=>Boolean(x&&typeof x==='object'&&!Array.isArray(x));
@@ -96,7 +97,7 @@ export function createPartnerAPI({db,persist,secret,origin,production=false,pers
  }
  function payload(res,status,data,requestId,extra={}){
   res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store, private','X-Request-ID':requestId,'X-Robots-Tag':'noindex, nofollow',...extra});
-  const body=JSON.stringify({data,meta:{request_id:requestId,api_version:'v1',generated_at:new Date(clock()).toISOString()}});
+  const body=JSON.stringify({data,meta:{request_id:requestId,api_version:'v1',generated_at:new Date(clock()).toISOString(),branding:PARTNER_BRANDING}});
   res.vanoResponseBytes=Buffer.byteLength(body);
   res.end(body);
  }
