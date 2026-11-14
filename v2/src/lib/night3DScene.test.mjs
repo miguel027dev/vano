@@ -62,7 +62,7 @@ test('dark scene adds fog, landuse, subtle road depth and 3D trees below labels'
  assert.equal(map.getLayer(NIGHT_ROAD_ID),undefined);
  assert.equal(map.fogs.at(-1),null,'restore default atmosphere');
 });
-test('trees disappear when leaving navigation and low-end phones get a light scene',()=>{
+test('mapped park trees remain visible outside navigation while low-end phones stay light',()=>{
  assert.equal(nightSceneTreeBudget({memory:2,cores:8}),0);
  assert.equal(nightSceneTreeBudget({memory:8,cores:2}),0);
  assert.equal(nightSceneTreeBudget({memory:8,cores:8,saveData:true}),0);
@@ -75,7 +75,7 @@ test('trees disappear when leaving navigation and low-end phones get a light sce
  syncNight3DScene(high,{appearance:'dark',navigation:true,memory:8,now:5000});
  assert.ok(high.getLayer(NIGHT_TREE_CANOPY));
  syncNight3DScene(high,{appearance:'dark',navigation:false,memory:8,now:6000});
- assert.equal(high.getSource(NIGHT_TREES_SOURCE),undefined);
+ assert.ok(high.getSource(NIGHT_TREES_SOURCE),'free look still shows trees in mapped parks');
 });
 test('dark camera keeps the original maneuver safety and reduced-motion settings',()=>{
  const point=[-46.68,-23.58],destination=[-46.67,-23.58];
