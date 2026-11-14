@@ -65,7 +65,9 @@
               "show3dObjects": true,
               "show3dBuildings": true,
               "show3dLandmarks": true,
-              "show3dTrees": false
+              "show3dTrees": true,
+              "show3dFacades": true,
+              "showPedestrianRoads": true
             }
           }
         ],
@@ -134,7 +136,9 @@
               "show3dObjects": true,
               "show3dBuildings": true,
               "show3dLandmarks": true,
-              "show3dTrees": false
+              "show3dTrees": true,
+              "show3dFacades": true,
+              "showPedestrianRoads": true
             }
           }
         ],

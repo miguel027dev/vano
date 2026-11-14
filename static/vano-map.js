@@ -209,7 +209,7 @@ let currentMapMood=VANO_BLACK_THEME?'black':'day';
 function mapStyleForMood(m){return m==='black'||m==='night'?(STYLE_SET?.black||STYLE_SET?.night||STYLE_SET?.day||STYLE):(STYLE_SET?.day||STYLE)}
 function applyVanoLightBasemapConfig(){
   if(!map||document.body.dataset.mood==='night'||currentMapMood==='night'||currentMapMood==='black')return;
-  const cfg={lightPreset:'day',theme:'faded',font:'Inter',showPlaceLabels:true,showRoadLabels:true,showPointOfInterestLabels:false,showTransitLabels:false,showLandmarkIcons:false,showLandmarkIconLabels:false,showAdminBoundaries:false,showIndoor:false,showIndoorLabels:false,show3dObjects:true,show3dBuildings:true,show3dTrees:false,show3dLandmarks:true,show3dFacades:false};
+  const cfg={lightPreset:'day',theme:'faded',font:'Inter',showPlaceLabels:true,showRoadLabels:true,showPointOfInterestLabels:false,showTransitLabels:false,showLandmarkIcons:false,showLandmarkIconLabels:false,showAdminBoundaries:false,showIndoor:false,showIndoorLabels:false,show3dObjects:true,show3dBuildings:true,show3dTrees:true,show3dLandmarks:true,show3dFacades:true,showPedestrianRoads:true};
   for(const [k,v] of Object.entries(cfg)){try{map.setConfigProperty?.('basemap',k,v)}catch{}}
 }
 let currentStyleUri=mapStyleForMood(currentMapMood),styleSwitching=false,weatherController=null,lastWeatherFetchAt=0,lastWeatherPos=null,moodTimer=null,signalPulseTimer=null,signalPulseState=false;
