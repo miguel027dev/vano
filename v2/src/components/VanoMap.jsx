@@ -1,3 +1,4 @@
+import {attachLocalWeather} from '../lib/localWeather.mjs';
 import React,{useEffect,useRef,useState} from 'react';
 import L from 'leaflet';
 import mapboxgl from 'mapbox-gl';
@@ -547,6 +548,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
   latest.current={active,simulationPreview,droneSimulation,v2Experience,standardMapCar,readableRouteStroke,userCoords,focusMode,gpsCoords,manualOrigin,destination,routes,selectedRoute,navigation,layer,appearance,trafficEnabled,onTrafficStatus,telemetry,vehicle,pickingOrigin,onPickOrigin,onPublicPlaceSelect,onNavigationProgress,guidance,previewRoute,previewFocus,privateRoadSigns,roadCards:visibleRoadCards,routeTraffic,poiVisible,onSearchAreaChange,viewport:viewportRef.current,motionCoords:visual.current.point,motionBearing:visual.current.bearing};
   const token=(import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN||'').trim();
   useEffect(()=>{
+    let stopWeather=null;
     let map,deleted=false,canvas=null,wheelHandler=null,leafletWheelHandler=null,streetCardTimer=null,styleWatchdog=null,contextLostHandler=null,contextRestoredHandler=null,webglRecoveryTimer=null,styleRecoveryAttempted=false,styleRecoveryAt=0;const initial=coord(latest.current.userCoords);
     const report=e=>{if(!deleted){
    const message=e?.error?.message||e?.message||'';
@@ -591,7 +593,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       try{
         mapboxgl.accessToken=token;
         const nightStart=night3dEnabled(latest.current.appearance,latest.current.layer);
-        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer,latest.current.appearance),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:nightStart?48:0,attributionControl:true,logoPosition:'bottom-left',antialias:false});
+        map=new mapboxgl.Map({container:root.current,style:styleFor(latest.current.layer,latest.current.appearance),center:initial,zoom:validPoint(latest.current.userCoords)?14.5:12.4,pitch:nightStart?48:0,attributionControl:true,logoPosition:'bottom-left',customAttribution:'Clima: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>',antialias:false});
         if(nightStart)map._vanoNight3DAutoPitch=0;
         map._vanoStyle=styleFor(latest.current.layer,latest.current.appearance);
         const attachOpenRouterMark=()=>{
@@ -606,6 +608,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         };
         map.on('error',report);
         backend.current='mapbox';mapRef.current=map;
+        stopWeather=attachLocalWeather(map,{getPoint:()=>latest.current.gpsCoords,isActive:()=>latest.current.active});
         motion.current=motionController(map,latest,status);
         const ensureNight3d=()=>{
           if(deleted||!isLoaded(map))return;
@@ -858,7 +861,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
     }
     function visibility(){if(document.hidden||!latest.current.active)motion.current?.suspend();else motion.current?.resume();}
     document.addEventListener('visibilitychange',visibility);
-    return()=>{deleted=true;detachSearchArea();clearTimeout(streetCardTimer);
+    return()=>{deleted=true;stopWeather?.();detachSearchArea();clearTimeout(streetCardTimer);
      map.off('zoomend',refreshRouteTrafficMarkers);map.off('moveend',refreshPrivateSigns);
      if(backend.current==='mapbox'){
        map.off('idle',scheduleVisibleCards);map.off('moveend',scheduleVisibleCards);map.off('style.load',scheduleVisibleCards);

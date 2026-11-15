@@ -1,3 +1,5 @@
+import {createLocalWeather,weatherPoint} from './local-weather.mjs';
+const localWeather=createLocalWeather();
 /** VANO API — hardened, single-process implementation.
  * Public deployments require HTTPS reverse proxy + persistent private storage.
  * This small local store is deliberately NOT a multi-instance database.
@@ -1289,6 +1291,13 @@ async function route(req, res) {
     return json(res,200,{...result,features,
       sources:[...official.sources,...result.sources],affectsRouting:false},
       {'Cache-Control':'private, max-age=5'});
+  }
+  if(pathname==='/api/weather/current'&&req.method==='GET'){
+    if(!limits(req,res,'local-weather',12,60000))return;
+    const point=weatherPoint(u.searchParams);
+    if(!point)return err(res,400,'Coordenadas inválidas.');
+    const weather=await localWeather(point);
+    return json(res,200,{weather},{'Cache-Control':'private, max-age=60'});
   }
   if(pathname==='/api/context/sources'&&req.method==='GET')
     return json(res,200,{sources:[...GLOBAL_CONTEXT_SOURCES,SEISMIC_SOURCE]});
