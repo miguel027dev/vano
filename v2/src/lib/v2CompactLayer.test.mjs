@@ -9,14 +9,18 @@ test('compact is restricted to active V2 car experience',()=>{
  const map={};assert.equal(syncV2Compact(map,{}, {vehicle:'carro'},[-46,-23]),false);assert.equal(map._vanoCompact,undefined);
  assert.equal(syncV2Compact(map,{}, {v2Experience:true,vehicle:'carro'},[NaN,-23]),false);assert.equal(map._vanoCompact,undefined);
 });
-test('fixed screen budget stays compact across zoom and device widths',()=>{
+test('car grows gradually by up to 25 percent near the camera',()=>{
  assert.equal(compactScreenLength(360),46);assert.equal(compactScreenLength(900),52);
  for(const width of [320,390,900])for(const zoom of [3,12,17,22])for(const pitch of [0,30,65,85]){
   const scale=compactWorldScale({zoom,pitch,width,length:COMPACT_LENGTH});
   const projectedGroundLength=scale*512*2**zoom*COMPACT_LENGTH;
-  assert.ok(projectedGroundLength>=46&&projectedGroundLength<=75);
+  assert.ok(projectedGroundLength>=46&&projectedGroundLength<=93);
  }
- assert.equal(compactWorldScale({zoom:18})*2,compactWorldScale({zoom:17}));
+ assert.equal(compactWorldScale({zoom:15})*2,compactWorldScale({zoom:14}));
+ const screen=zoom=>compactWorldScale({zoom})*512*2**zoom*COMPACT_LENGTH;
+ assert.ok(screen(17)>screen(16));assert.ok(screen(18)>screen(17));
+ assert.ok(Math.abs(screen(19)/screen(16)-1.25)<1e-12);
+ assert.equal(screen(22),screen(19));
 });
 test('car front points north at zero bearing and east at ninety degrees',()=>{
  const at={x:.4,y:.5,z:0},s=.001;

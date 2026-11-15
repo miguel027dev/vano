@@ -11,7 +11,10 @@ export function compactWorldScale({zoom=17,pitch=0,width=400,length=3.7}={}){
  const safePitch=Number.isFinite(pitch)?Math.max(0,Math.min(85,pitch)):0;
  // Compensate foreshortening gently; never inflate the car at steep pitch.
  const compensation=Math.max(.70,Math.cos(safePitch*Math.PI/180));
- return compactScreenLength(width)/(512*2**safeZoom*length*compensation);
+ // Reveal more detail as the navigation camera approaches street level.
+ const proximity=Math.max(0,Math.min(1,(safeZoom-16)/3));
+ const detailScale=1+.25*proximity;
+ return compactScreenLength(width)*detailScale/(512*2**safeZoom*length*compensation);
 }
 export function compactModelMatrix(point,heading,scale,out=new Float64Array(16)){
  const a=(Number.isFinite(heading)?heading:0)*Math.PI/180,c=Math.cos(a)*scale,s=Math.sin(a)*scale;
