@@ -8,7 +8,7 @@ test('/mapa alone explicitly opts into the normal compact car',()=>{
  assert.match(page,/v2Experience=\{location\.pathname==='\/v2'\} standardMapCar=\{location\.pathname==='\/mapa'\}/);
  assert.match(src,/standardCar:sameRoadRun&&standardMapCar\?visual\.current\.standardCar:null/);
  assert.match(src,/state\.standardCar=standardMapCarPose\(/);
- assert.match(src,/const carVisible=Boolean\([\s\S]*?\(d\.standardMapCar&&state\.standardCar\?\.visible\)/);
+ assert.match(src,/d\.standardMapCar\|\|d\.v2Experience/);
 });
 test('normal car start/heading only changes marker, NOT V1 camera, GPS, motion or navigation',()=>{
  assert.match(src,/d\.motionCoords=point;d\.motionBearing=state\.bearing\|\|0;/);
@@ -25,6 +25,6 @@ test('React repaint uses same latched car pose as animation, preventing car/arro
  assert.match(src,/map\._vanoStandardMapCarPose=d\.standardMapCar&&d\.navigation&&state\.standardCar\?\.visible\?/);
  assert.match(src,/marker\('current',data\.standardMapCar&&data\.navigation&&map\._vanoStandardMapCarPose\?\.visible/);
  assert.match(src,/const carEligible=Boolean\(data\.navigation&&data\.vehicle==='carro'&&/);
- assert.match(src,/syncCompactCarFallback\(element,carEligible,nativeCompact\)/);
- assert.match(src,/if\(!data\.navigation\)syncV2Compact/);
+ assert.doesNotMatch(src,/syncCompactCarFallback|vehicle-car-cutout/);
+ assert.match(src,/syncV2Compact\(map,mapboxgl,data,carPoint,carHeading,carEligible\)/);
 });

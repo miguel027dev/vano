@@ -1,3 +1,4 @@
+import * as compactMesh from './v2CompactMesh.mjs';
 /** Native WebGL car used by /v2 and the explicitly opted-in /mapa route. Shares the map context and existing GPS animation.
  * No extra renderer, canvas, RAF, textures, GLB loader or third-party dependency.
  */
@@ -43,8 +44,7 @@ void main(){vec3 p=position,n=normal;
  gl_Position=matrix*vec4(p,1.);}`;
 const FRAGMENT=`precision mediump float;varying vec3 shade;
 void main(){gl_FragColor=vec4(shade,1.);}`;
-let meshPromise;
-const loadMesh=()=>meshPromise??=(import('./v2CompactMesh.mjs'));
+// Eager, cached geometry is ready before the map or navigation starts.
 
 export function createCompactLayer(mesh,mapboxgl,state){
  const model=new Float64Array(16),matrix=new Float32Array(16);
@@ -92,13 +92,14 @@ export function createCompactLayer(mesh,mapboxgl,state){
     gl.uniform1f(locations.roll,state.reducedMotion?0:-steerRad*effSpeed*.14);
     gl.uniform1f(locations.bodyPitch,state.reducedMotion?0:Math.sin(now*.008)*effSpeed*.008);
     gl.uniform3f(locations.light,-.35*Math.cos(a)-.25*Math.sin(a),.902,.35*Math.sin(a)-.25*Math.cos(a));
-    gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(true);
+    // Keep the navigation car visible above buildings, retaining its own depth.
+    gl.depthRange(0,.01);gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.depthMask(true);
     gl.disable(gl.CULL_FACE);gl.disable(gl.BLEND);
     gl.drawArrays(gl.TRIANGLES,0,mesh.COMPACT_VERTEX_COUNT);drawn=true;
-    gl.bindVertexArray(null);gl.useProgram(null);
+    gl.depthRange(0,1);gl.bindVertexArray(null);gl.useProgram(null);
     if(speed>.01||Math.abs(steering)>.01)map.triggerRepaint?.();
     // Mapbox resets its tracked GL state after custom layers. Never clear its depth/color.
-   }catch{state.failed=true;drawn=false;}
+   }catch{gl.depthRange(0,1);state.failed=true;drawn=false;}
   },
   onRemove(){dispose();}
  };return layer;
@@ -111,13 +112,12 @@ export function syncV2Compact(map,mapboxgl,data,point,heading=0,visible=true){
  const enabled=visible&&compactEnabled(data)&&validPoint(point)&&(!map.getProjection||map.getProjection()?.name==='mercator');
  let state=map._vanoCompact;
  if(!enabled){if(state){state.enabled=false;if(map.getLayer?.(V2_COMPACT_ID))map.removeLayer(V2_COMPACT_ID);state.layer=null;}return false;}
- if(!state){state=map._vanoCompact={enabled:true,point,heading,failed:false,mesh:null,layer:null,disposed:false,needsOrder:false};
+ if(!state){state=map._vanoCompact={enabled:true,point,heading,failed:false,mesh:compactMesh,layer:null,disposed:false,needsOrder:false};
   // Diffed themes emit styledata without necessarily emitting style.load.
   // Compare layer IDs only on style events, outside the animation hot path.
   const styleChanged=()=>{const stamp=map.getStyle?.()?.layers?.map(l=>l.id).join('|');if(stamp!==state.styleStamp){state.styleStamp=stamp;state.needsOrder=true;}};
   map.on?.('styledata',styleChanged);map.on?.('style.load',styleChanged);
   map.once?.('remove',()=>{state.disposed=true;state.enabled=false;map.off?.('styledata',styleChanged);map.off?.('style.load',styleChanged);});
-  loadMesh().then(mesh=>{if(!state.disposed){state.mesh=mesh;map.triggerRepaint?.();}}).catch(()=>{state.failed=true;});
  }
  const changed=!state.enabled||state.point?.[0]!==point[0]||state.point?.[1]!==point[1]||state.heading!==heading;
  state.speed=Number.isFinite(data?.telemetry?.speed)?data.telemetry.speed:0;
