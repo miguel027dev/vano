@@ -87,7 +87,7 @@ export const PUBLIC_PAGES = [
   },
 ];
 PUBLIC_PAGES.push({
-  path:'/benchmark-resultados',category:'Transparência',title:"Resultados públicos de rotas | VANO Maps",
+  path:'/benchmark-resultados',category:'Transparência',title:"Resultados públicos de benchmark de rotas | VANO Maps",
   description:"Consulte resultados verificáveis dos testes de rotas VANO Maps, com tempo estimado, fonte, data, distância e metodologia.",
   lead:"Resultados reais, metodologia aberta e nenhuma promessa de economia sem medição.",
   sections:[
