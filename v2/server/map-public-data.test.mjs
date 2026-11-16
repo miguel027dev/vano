@@ -148,3 +148,23 @@ test('failed OSM refresh keeps the last verified snapshot but clearly marks it s
  assert.equal(repeat.stale,true);
  assert.equal(calls,3);
 });
+
+
+test('concurrent expired-cache requests share the refresh instead of receiving old data as fresh',async()=>{
+ let clock=Date.now(),release,calls=0;
+ const fetcher=async()=>{
+  calls++;
+  if(calls===2)await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({elements:[elem(99100+calls,'traffic_signals')]})};
+ };
+ const area='-46.905,-23.805,-46.893,-23.794';
+ const first=await queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api'});
+ clock+=300001;
+ const updating=queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api'});
+ const concurrent=queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api'});
+ while(!release)await new Promise(resolve=>setTimeout(resolve,10));
+ release();
+ const [a,b]=await Promise.all([updating,concurrent]);
+ assert.equal(calls,2);assert.equal(a.fetchedAt,b.fetchedAt);
+ assert.notEqual(first.features[0].id,b.features[0].id);
+});

@@ -1,4 +1,9 @@
-import {readLimitedText} from './read-limited.mjs';
+import {createOverpassGateway} from './overpass-gateway.mjs';
+const gateways=new WeakMap();
+function gatewayFor(fetcher){
+ if(!gateways.has(fetcher))gateways.set(fetcher,createOverpassGateway({fetcher}));
+ return gateways.get(fetcher);
+}
 /** VANO Global Map Features. Overpass is a small-area source, not planet-scale hosting.
  * For large production demand, import OSM extracts into a managed spatial store.
  * OSM data must remain attributed: https://www.openstreetmap.org/copyright
@@ -8,8 +13,8 @@ export const OSM_ATTRIBUTION='© OpenStreetMap contributors (ODbL)';
 export const MAX_FEATURES=180;
 const ENDPOINT='https://overpass-api.de/api/interpreter';
 const ttlMs=5*60*1000,maxCache=100,cache=new Map();
-const failureTtlMs=2*60*1000,staleTtlMs=60*60*1000,upstreamCooldownMs=3*60*1000;
-let lastUpstream=0,queued=Promise.resolve(),pending=0,quotaWindow=Date.now(),quotaUsed=0,upstreamDownUntil=0;
+const failureTtlMs=2*60*1000,staleTtlMs=60*60*1000;
+let lastUpstream=0,queued=Promise.resolve(),pending=0,quotaWindow=Date.now(),quotaUsed=0;
 const finite=Number.isFinite;
 export function parseBBox(raw,maxLongitudeSpan=.065,maxLatitudeSpan=.055){
  if(typeof raw!=='string'||raw.length>100)return null;
@@ -132,7 +137,7 @@ function unavailable(old,moment,reason){
    ?{...snapshot,cacheHit:true,stale:true,error:reason}
    :{features:[],source:'OpenStreetMap',attribution:OSM_ATTRIBUTION,stale:true,error:reason};
 }
-/** Fallback only when the primary OSM host fails.
+/** Hedged fallback with a shared deadline and independent provider circuits.
  * A custom injected endpoint never falls through to a real network source.
  */
 export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=ENDPOINT}={}){
@@ -146,41 +151,21 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
  if(old?.pending)return old.pending;
  // This optional OSM layer must never queue dozens of 16-second requests when
  // upstream hosts are unhealthy. Other map, routing and GPS features stay active.
- if(fetcher===fetch&&url===ENDPOINT&&moment<upstreamDownUntil)
-   return unavailable(old,moment,'Fonte temporariamente indisponível');
  if(pending>=3)return unavailable(old,moment,'Fonte ocupada');
  pending++;
  const endpoints=url===ENDPOINT?[ENDPOINT,'https://overpass.private.coffee/api/interpreter']:[url];
  const work=queued.then(async()=>{
-   if(fetcher===fetch&&url===ENDPOINT&&Date.now()<upstreamDownUntil)
-     throw Error('Overpass em pausa após falha');
    if(Date.now()-quotaWindow>=86400000){quotaWindow=Date.now();quotaUsed=0;}
    const query=new URLSearchParams({data:overpassQuery(region)});
-   let lastError=null;
-   for(const [index,endpoint] of endpoints.entries()){
+   const elements=await gatewayFor(fetcher).query(endpoints,query,{beforeAttempt:async()=>{
      if(quotaUsed>=2400)throw Error('Limite diário de consultas públicas atingido');
      quotaUsed++;
      const gap=Date.now()-lastUpstream;if(gap<900)await pause(900-gap);
      lastUpstream=Date.now();
-     try{
-       const response=await fetcher(endpoint,{method:'POST',headers:{
-         'Content-Type':'application/x-www-form-urlencoded','Accept':'application/json',
-         'User-Agent':'VANO Maps public road-safety map (https://vanomaps.online)'
-       },body:query,signal:AbortSignal.timeout(index?8500:7500)});
-       if(!response.ok)throw Error('Overpass status '+response.status);
-       const data=JSON.parse(await readLimitedText(response,6*1024*1024));
-       if(!Array.isArray(data?.elements))throw Error('Resposta Overpass inválida');
-       if(fetcher===fetch&&url===ENDPOINT)upstreamDownUntil=0;
-       return {features:normalizeOsmElements(data.elements),source:'OpenStreetMap',
-         attribution:OSM_ATTRIBUTION,licenseUrl:'https://www.openstreetmap.org/copyright',
-         fetchedAt:new Date(now()).toISOString(),coverage:'mapeada',stale:false};
-     }catch(error){
-       lastError=error;
-       console.warn('VANO public map upstream',index+1,':',error?.message||String(error));
-     }
-   }
-   if(fetcher===fetch&&url===ENDPOINT)upstreamDownUntil=Date.now()+upstreamCooldownMs;
-   throw lastError||new Error('Overpass indisponível');
+   }});
+   return {features:normalizeOsmElements(elements),source:'OpenStreetMap',
+     attribution:OSM_ATTRIBUTION,licenseUrl:'https://www.openstreetmap.org/copyright',
+     fetchedAt:new Date(now()).toISOString(),coverage:'mapeada',stale:false};
  });
  queued=work.catch(()=>{});
  const pendingResult=work.then(result=>{
@@ -197,7 +182,7 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
    sweep(moment);
    return result;
  }).finally(()=>{pending--});
- cache.set(key,{...old,pending:pendingResult,expires:now()+ttlMs});
+ cache.set(key,{...old,pending:pendingResult});
  return pendingResult;
 }
 export function filterVerifiedReports(reports=[],bbox=[],now=Date.now()){
@@ -221,3 +206,4 @@ export const PUBLIC_MAP_SOURCES=Object.freeze([
  {id:'overture-transport',name:'Overture Maps Transportation',coverage:'mundial, variável',mode:'ETL de arquivos GeoParquet',
    active:false,license:'CDLA-Permissive / ODbL conforme origem',url:'https://docs.overturemaps.org/guides/transportation/'}
 ]);
+
