@@ -1,0 +1,27 @@
+name: Analytics production HTTPS smoke
+on:
+  push:
+    branches: [verify/analytics-production-20261116]
+permissions:
+  contents: read
+jobs:
+  public-http-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify health, public entrypoint and disabled collection
+        shell: bash
+        run: |
+          set -euo pipefail
+          target='https://vanu-73xu.onrender.com'
+          curl --proto '=https' --proto-redir '=https' -fsSL --retry 2 --retry-delay 2 --max-time 20 "$target/api/health" -o /tmp/vano-health.json
+          jq -e '.ok == true' /tmp/vano-health.json >/dev/null
+          echo 'PASS: health endpoint responds ok=true over verified HTTPS'
+          status=$(curl --proto '=https' --proto-redir '=https' -sSL --retry 2 --retry-delay 2 --max-time 20 -o /tmp/vano-analytics.json -w '%{http_code}' "$target/api/observability/consent")
+          test "$status" = '404'
+          jq -e '.error | contains("Observabilidade")' /tmp/vano-analytics.json >/dev/null
+          echo 'PASS: new analytics collection remains disabled (HTTP 404)'
+          curl --proto '=https' --proto-redir '=https' -fsSL --retry 2 --retry-delay 2 --max-time 20 "$target/mapa" -o /tmp/vano-map.html
+          grep -qi '<html' /tmp/vano-map.html
+          echo 'PASS: public map entrypoint serves HTML'
+          rm -f /tmp/vano-health.json /tmp/vano-analytics.json /tmp/vano-map.html
