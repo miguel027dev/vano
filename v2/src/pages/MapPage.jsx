@@ -1,3 +1,4 @@
+import {analyticsEvent} from '../lib/analytics.mjs';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, ChevronRight, ChevronLeft, SlidersHorizontal, CalendarDays } from 'lucide-react';
@@ -1253,6 +1254,7 @@ export default function MapPage({active=true}){
     if(!hasLiveGPS){requestGPS(true);return;}
     if(measuredTrip.current)return;
     measuredTrip.current={id:crypto.randomUUID(),vehicle:routeVehicle,simulated:routeData?.source==='demonstracao',startedAt:Date.now()};
+    if(!measuredTrip.current.simulated)analyticsEvent('navigation_started',{vehicle:routeVehicle});
     odometer.current={meters:0,anchor:null,lastSeenAt:null};distanceSync.current=Date.now();
     queueTripWrite({journeyId:measuredTrip.current.id,destination:dest,routeType:choice,proof:route.proof});
     setGuidance(null);setNavMode(true);setSheetOpen(false);
@@ -1263,7 +1265,7 @@ export default function MapPage({active=true}){
     if(!muted&&(!Number.isFinite(first?.distance)||first.distance>150))
       speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){if(simActive){stopRouteSimulation();return;}routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopActiveGuidance();spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){if(simActive){stopRouteSimulation();return;}if(measuredTrip.current&&!measuredTrip.current.simulated){const duration_ms=Date.now()-measuredTrip.current.startedAt;analyticsEvent('navigation_ended',{duration_ms,vehicle:routeVehicle});}routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopActiveGuidance();spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
@@ -1289,9 +1291,11 @@ export default function MapPage({active=true}){
       if(epoch===routeEpoch.current){
         spoken.current.clear();voiceLocalFailuresRef.current.clear();cuePlaybackRef.current={at:0,stepIndex:null,stage:null,followingIndex:null};
         voiceRouteProofRef.current={route:null,proof:null};voiceRetryAfterRef.current=0;
+        analyticsEvent('route_recalculated',{vehicle:routeVehicle});
         setRouteData(next);setGuidance(null);setToast('Rota recalculada conforme sua posição.');
       }
     }catch(e){
+      analyticsEvent('navigation_error',{error_code:'provider',vehicle:routeVehicle});
       console.warn('[VANO:navigation-reroute]',e);
       if(epoch===routeEpoch.current&&!b1User)setToast('Rota atual mantida.');
     }finally{

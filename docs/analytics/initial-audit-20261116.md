@@ -1,3 +1,5 @@
+> Registro histórico da auditoria antes da retomada do login. Para o estado atual, consulte [implementation-status-20261116.md](implementation-status-20261116.md).
+
 # Auditoria inicial — Analytics Android — 2026-11-16
 
 Status: execução parcial, bloqueada pela autenticação Google expirada. Nenhum SDK integrado, projeto Firebase criado, exportação ativada ou AAB gerado/publicado.

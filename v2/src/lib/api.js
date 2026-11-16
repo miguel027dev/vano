@@ -1,3 +1,4 @@
+import {observeRouteRequest} from './analytics.mjs';
 import {readOffline,writeOffline,cachedBootstrap} from './offlineStore.js';
 import { formatTravelTime } from './formatTime.mjs';
 const BASE = import.meta.env.VITE_API_URL || '/api';
@@ -17,13 +18,17 @@ export async function api(path, opts = {}) {
   const binary = typeof Blob !== 'undefined' && opts.body instanceof Blob;
   const init = { credentials:'include', ...opts, headers: { ...(opts.body ? {'Content-Type':binary?(opts.body.type||'application/octet-stream'):'application/json'} : {}), ...(write ? {'X-VANO-CSRF':csrfToken} : {}), ...opts.headers } };
   if (init.body && typeof init.body !== 'string' && !binary) init.body = JSON.stringify(init.body);
+  const routeObservation=observeRouteRequest(path);
   let res;
   try{res=await fetch(`${BASE}${path}`,init);}catch(error){
+    routeObservation({ok:false,error_code:error?.name==='TimeoutError'?'timeout':error?.name==='AbortError'?'unknown':'network'});
     if(!write&&['/bootstrap','/places'].includes(path)){const cached=await readOffline(path.slice(1));if(cached)return path==='/bootstrap'?{...cached,offline:true}:cached;}
     const failure=new Error('Este recurso precisa de conexão. Seu trajeto atual continua salvo.');failure.offline=true;throw failure;
   }
   if(!write&&res.status>=500&&['/bootstrap','/places'].includes(path)){const cached=await readOffline(path.slice(1));if(cached)return path==='/bootstrap'?{...cached,offline:true}:cached;}
-  const data = await res.json().catch(()=>({ error: 'O servidor retornou uma resposta inválida.' }));
+  let validAnalyticsResponse=true;
+  const data = await res.json().catch(()=>{validAnalyticsResponse=false;return { error: 'O servidor retornou uma resposta inválida.' };});
+  routeObservation({ok:res.ok&&validAnalyticsResponse,status:res.status,error_code:!validAnalyticsResponse?'invalid_response':res.ok?undefined:res.status>=500?'http_5xx':'http_4xx'});
   if (data.csrfToken) csrfToken = data.csrfToken;
   if(res.ok&&!write&&['/bootstrap','/places'].includes(path))await writeOffline(path.slice(1),path==='/bootstrap'?cachedBootstrap(data):data);
   if (!res.ok) { if(res.status === 403 && String(data.error || '').includes('segurança')) csrfToken=''; throw new Error(data.error || `Erro ${res.status}`); }
