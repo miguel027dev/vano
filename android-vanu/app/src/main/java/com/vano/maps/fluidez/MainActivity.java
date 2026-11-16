@@ -54,7 +54,8 @@ public final class MainActivity extends Activity {
         @Override public void run(){
             if(!gpsWanted()||!gpsRunning)return;
             long now=SystemClock.elapsedRealtime();
-            if(now-Math.max(lastAcceptedGpsAt,gpsStartedAt)>=15000){
+            long silenceLimit=lastAcceptedGpsAt>0?15000:45000;
+            if(now-Math.max(lastAcceptedGpsAt,gpsStartedAt)>=silenceLimit){
                 gpsStatus("reconnecting");
                 stopGps();
                 startGps();

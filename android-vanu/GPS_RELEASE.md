@@ -10,8 +10,8 @@ Base: feat/android-analytics-3.1.8-20261116 @ 0e4e0ede20b4957e90492379108cd2077c
 - Independent satellite/network registration and recent cached bootstrap (monotonic age at most 8 seconds).
 - Sensor arbitration rejects invalid, stale, future and out-of-order samples. A noisier network fix cannot displace a recent precise satellite fix.
 - Missing/stationary/unreliable bearing is null rather than turning the car on sensor noise.
-- Silent subscriptions are restarted after 15 seconds, with 5-second checks.
-- System provider-change receiver recovers when location is enabled again; pending permission prompts do not report premature denial.
+- Silent subscriptions recover after 15 seconds once a fix exists; initial satellite acquisition gets 45 seconds before restart, with 5-second checks.
+- Provider-change broadcasts recover when GPS is re-enabled, including when both providers were initially off. Pending permission prompts do not report premature denial.
 - Pause, document navigation and destroy remove native subscriptions/watchdog.
 - Sensor positions and speed are not interpolated; existing web visual filters, road matching and camera retain responsibility for rendering.
 
@@ -37,4 +37,5 @@ Compare installed production with this candidate on the same devices and route:
 Do not claim parity with Waze without comparable device measurements.
 
 ## Validation evidence
-Initial CI attempts could not resolve Maven artifacts (including Kotlin stdlib and Apache HttpMime), before compiling app source. A separate javac-only GPS policy job is provided so sensor tests do not depend on Android/Maven resolution. Android compilation and real device results remain unverified until a successful run is recorded.
+The javac-only job successfully compiled the actual GpsFixPolicy source and passed all 5 scenario groups on commit f02e8506fc53bc05f6783fd714090922aa4e813c (run 43974573359, job 133675115785). This policy source is unchanged in the follow-up commit.
+Initial Android Gradle validation failed during dependency resolution, before app compilation, with missing Maven artifacts including Kotlin stdlib and Apache HttpMime. Full Android build, JUnit integration and real device validation are not yet established. This document does not claim camera improvements were measured or that the AAB is ready.
