@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#F4F5F8">
   {% include '_theme_boot.html' %}
   {% include '_performance_probe.html' %}
-  <meta name="description" content="{% block meta_description %}VANO MAPS — GPS, mapas, rotas rápidas, trânsito em tempo real e navegação inteligente.{% endblock %}">
+  <meta name="description" content="{% block meta_description %}VANO Maps: GPS, rotas alternativas e trânsito para aproveitar melhor seu tempo.{% endblock %}">
   <meta name="robots" content="{% if seo_indexable %}index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1{% else %}noindex,nofollow{% endif %}">
   {% if seo_indexable %}<link rel="canonical" href="{{ seo_canonical_url }}">{% endif %}
   <link rel="icon" href="{{ url_for('static', filename='vano-maps-icon-192.png') }}" type="image/png">
@@ -22,8 +22,8 @@
   <meta property="og:url" content="{{ seo_canonical_url }}">
   <meta property="og:image" content="{{ public_site_url }}/static/vano-maps-icon-512.png">
   <meta property="og:image:alt" content="Símbolo laranja do VANO MAPS">
-  <meta property="og:title" content="{% block og_title %}VANO MAPS — navegação inteligente{% endblock %}">
-  <meta property="og:description" content="{% block og_description %}GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto.{% endblock %}">
+  <meta property="og:title" content="{% block og_title %}VANO Maps — O trânsito vem. Seu caminho muda.{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Menos tempo no trânsito. Mais tempo para você. GPS, rotas alternativas e informações de trânsito.{% endblock %}">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="{{ self.og_title()|striptags }}">
   <meta name="twitter:description" content="{{ self.meta_description()|striptags }}">
@@ -43,7 +43,7 @@
     "name": "VANO MAPS",
     "url": public_site_url ~ "/",
     "inLanguage": active_locale,
-    "description": "GPS e mapas com comparação de rotas, trânsito em tempo real, ETA e navegação para carro e moto."
+    "description": "Menos tempo no trânsito. Mais tempo para você. GPS, rotas alternativas e informações de trânsito."
   } | tojson }}</script>
   {# Breadcrumb schema follows the visible public-page trail; private pages remain noindex. #}
   {% set vano_public_breadcrumb_names = {
@@ -250,7 +250,7 @@
 {% block content %}{% endblock %}
 {% if current_user and not vano_admin_surface and vano_endpoint != 'onboarding' %}<nav class="mobile-dock vano-mobile-nav {% if current_user['role']=='admin' %}admin-dock{% endif %}" aria-label="Navegação mobile"><a class="{% if vano_endpoint in ['index','map_page'] %}active{% endif %}" {% if vano_endpoint in ['index','map_page'] %}aria-current="page"{% endif %} href="{{ url_for('map_page') }}"><i data-lucide="navigation"></i><span>Rotas</span></a><a class="{% if vano_endpoint == 'alerts_page' %}active{% endif %}" {% if vano_endpoint == 'alerts_page' %}aria-current="page"{% endif %} href="{{ url_for('alerts_page') }}"><i data-lucide="triangle-alert"></i><span>Alertas</span></a><a class="vano-mobile-report {% if vano_endpoint == 'report_page' %}active{% endif %}" {% if vano_endpoint == 'report_page' %}aria-current="page"{% endif %} href="{{ url_for('report_page') }}"><span class="vano-mobile-report-icon"><i data-lucide="plus"></i></span><span>Reportar</span></a><a class="{% if vano_endpoint == 'profile' %}active{% endif %}" {% if vano_endpoint == 'profile' %}aria-current="page"{% endif %} href="{{ url_for('profile') }}"><i data-lucide="circle-user-round"></i><span>Perfil</span></a>{% if current_user['role']=='admin' %}<a class="{% if vano_endpoint.startswith('admin_') %}active{% endif %}" href="{{ url_for('admin_dashboard') }}"><i data-lucide="shield-check"></i><span>Admin</span></a>{% endif %}</nav>{% endif %}
 
-{% if vano_endpoint != 'onboarding' %}<footer><div class="container footer-row"><span>© {{ current_year }} VANO MAPS · navegação adaptativa</span><span><a href="{{ url_for('what_is_vano') }}">O que é o VANO</a> · <a href="{{ url_for('seo_waze_alternative') }}">Alternativa ao Waze</a> · <a href="{{ url_for('seo_fastest_route') }}">Rota mais rápida</a> · <a href="{{ url_for('seo_avoid_traffic') }}">Evitar trânsito</a> · <a href="{{ url_for('seo_motorcycle_gps') }}">GPS para moto</a> · <a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('beta_page') }}">Teste Android</a> · <a href="{{ url_for('contact_page') }}">Contato</a> · <a href="{{ url_for('press_page') }}">Imprensa</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a></span></div></footer>{% endif %}
+{% if vano_endpoint != 'onboarding' %}<footer><div class="container footer-row"><span>© {{ current_year }} VANO Maps · O trânsito vem. Seu caminho muda.</span><span><a href="{{ url_for('what_is_vano') }}">O que é o VANO</a> · <a href="{{ url_for('seo_waze_alternative') }}">Alternativa ao Waze</a> · <a href="{{ url_for('seo_fastest_route') }}">Rota mais rápida</a> · <a href="{{ url_for('seo_avoid_traffic') }}">Evitar trânsito</a> · <a href="{{ url_for('seo_motorcycle_gps') }}">GPS para moto</a> · <a href="{{ url_for('sobre') }}">Sobre</a> · <a href="{{ url_for('beta_page') }}">Teste Android</a> · <a href="{{ url_for('contact_page') }}">Contato</a> · <a href="{{ url_for('press_page') }}">Imprensa</a> · <a href="{{ url_for('help_page') }}">Ajuda</a> · <a href="{{ url_for('privacy_policy') }}">Privacidade</a> · <a href="{{ url_for('terms_of_use') }}">Termos</a></span></div></footer>{% endif %}
 <script>window.VANO={csrf:{{ csrf_token()|tojson }},build:{{ vano_build_id|tojson }}};</script>
 {% if vano_endpoint != 'onboarding' %}<script src="{{ url_for('static', filename='vano-runtime.js') }}?v={{ vano_build_id }}"></script>{% endif %}
 <script src="{{ url_for('static', filename='vano-theme.js') }}?v={{ vano_build_id }}"></script>
