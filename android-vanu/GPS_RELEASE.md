@@ -20,7 +20,7 @@ This branch retains the 3.1.8 telemetry candidate and its release guards. It doe
 Version code 20270010 is provisional until checking every Play track.
 The web deployment must include hasNativeSingleGps plus mapTracking effects. Confirm its deployed commit before release; source inspected in preview/vano-react-v2-7 is compatible.
 No runtime, connected Android device, original signing material or Play Console interaction is available in this session.
-CI compilation intentionally skips only debug Google Services configuration; it cannot validate Firebase initialization, release packaging or signing.
+CI compilation uses the official missing-config IGNORE strategy only in its temporary debug runner configuration. It cannot validate Firebase initialization, release packaging or signing.
 No signed AAB has been created. No Play upload, review submission, web deploy or rollout has occurred.
 
 ## Required device checks before publishing
@@ -38,4 +38,8 @@ Do not claim parity with Waze without comparable device measurements.
 
 ## Validation evidence
 The javac-only job successfully compiled the actual GpsFixPolicy source and passed all 5 scenario groups on commit f02e8506fc53bc05f6783fd714090922aa4e813c (run 43974573359, job 133675115785). This policy source is unchanged in the follow-up commit.
-Initial Android Gradle validation failed during dependency resolution, before app compilation, with missing Maven artifacts including Kotlin stdlib and Apache HttpMime. Full Android build, JUnit integration and real device validation are not yet established. This document does not claim camera improvements were measured or that the AAB is ready.
+Initial Android Gradle validation failed during Maven dependency resolution. The next attempt exposed that excluding processDebugGoogleServices prevents Gradle from finalizing generated resources; the CI-only missing-config strategy corrected this.
+
+Final validated code commit: b3d65b376b8a516352ba4508494c90d74bf11d9f.
+Run 43974898955, job 133676236775: compileDebugJavaWithJavac and testDebugUnitTest completed successfully (BUILD SUCCESSFUL in 42s). The separate javac-only GPS policy job also passed. Test reports are stored as the gps-unit-results artifact on that run.
+Only documentation changed after the validated commit. No real-device, signed release, Firebase runtime or camera performance validation is claimed. The AAB is not ready for publication.
