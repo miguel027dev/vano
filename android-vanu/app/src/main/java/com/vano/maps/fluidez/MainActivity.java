@@ -43,8 +43,22 @@ public final class MainActivity extends Activity {
     private boolean microphonePrompt=false;
     private LocationManager gps;
     private boolean routeTracking=false,mapTracking=false;
+    private boolean geoPermissionPrompted=false;
+    private long lastGoodGpsElapsed=0L;
     private final LocationListener gpsListener=new LocationListener(){
-        @Override public void onLocationChanged(Location fix){dispatchPosition(fix);}
+        @Override public void onLocationChanged(Location fix){
+            if(fix==null)return;
+            final long receivedAt=SystemClock.elapsedRealtime();
+            if(LocationManager.GPS_PROVIDER.equals(fix.getProvider())){
+                if(fix.hasAccuracy()&&fix.getAccuracy()<=50f)lastGoodGpsElapsed=receivedAt;
+            }else if(LocationManager.NETWORK_PROVIDER.equals(fix.getProvider())&&
+                    lastGoodGpsElapsed>0&&receivedAt-lastGoodGpsElapsed<6000L){
+                // A precise satellite fix is fresh; do not interleave noisier
+                // Wi-Fi/cell coordinates into the same visual navigation stream.
+                return;
+            }
+            dispatchPosition(fix);
+        }
         @Override public void onStatusChanged(String provider,int status,Bundle extras){}
         @Override public void onProviderEnabled(String provider){}
         @Override public void onProviderDisabled(String provider){}
@@ -174,7 +188,10 @@ public final class MainActivity extends Activity {
                 if(geoCallback!=null)geoCallback.invoke(geoOrigin,false,false);
                 geoCallback=callback;geoOrigin=origin;
                 if(locationGranted())finishGeo(true);
-                else requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);
+                else if(!geoPermissionPrompted){
+                    geoPermissionPrompted=true;
+                    requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);
+                }
             }
             @Override public void onGeolocationPermissionsHidePrompt(){finishGeo(false);}
             @Override public boolean onJsPrompt(WebView view,String url,String message,String defaultValue,JsPromptResult result){
@@ -281,7 +298,16 @@ public final class MainActivity extends Activity {
         try{JSONObject coords=new JSONObject().put("latitude",fix.getLatitude()).put("longitude",fix.getLongitude()).put("accuracy",fix.getAccuracy()).put("heading",fix.hasBearing()?fix.getBearing():JSONObject.NULL).put("speed",fix.hasSpeed()?fix.getSpeed():JSONObject.NULL);dispatch("vano:native-position",new JSONObject().put("coords",coords).put("timestamp",fix.getTime()));}catch(Exception ignored){}
     }
     private void startGps(){
-        if((!routeTracking&&!mapTracking)||!locationGranted())return;
+        if(!routeTracking&&!mapTracking)return;
+        // WebView watchPosition is intentionally disabled in the native shell.
+        // Ask for the Android permission directly when the map first tracks.
+        if(!locationGranted()){
+            if(!geoPermissionPrompted){
+                geoPermissionPrompted=true;
+                requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);
+            }
+            return;
+        }
         if(gps==null)gps=(LocationManager)getSystemService(LOCATION_SERVICE);
         try{gps.removeUpdates(gpsListener);if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED&&gps.isProviderEnabled(LocationManager.GPS_PROVIDER))gps.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,gpsListener,Looper.getMainLooper());if(gps.isProviderEnabled(LocationManager.NETWORK_PROVIDER))gps.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,0,gpsListener,Looper.getMainLooper());}catch(Exception ignored){}
     }
@@ -336,7 +362,7 @@ public final class MainActivity extends Activity {
     }
     private boolean locationGranted(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
     private void finishGeo(boolean allow){if(geoCallback!=null){geoCallback.invoke(geoOrigin,allow,false);geoCallback=null;geoOrigin=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());startGps();}else if(request==MIC_REQUEST)finishMicrophone(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED);}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());if(locationGranted())startGps();else try{dispatch("vano:native-gps-status",new JSONObject().put("status","denied"));}catch(Exception ignored){}}else if(request==MIC_REQUEST)finishMicrophone(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED);}
 
     @Override public void onActivityResult(int req,int result,Intent data){
         super.onActivityResult(req,result,data);
