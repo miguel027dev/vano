@@ -52,7 +52,7 @@ import {maneuverVariant,laneVariants,displayManeuverDistance,maneuverText} from 
 import {modeManeuverDetail,nextMappedCrossing,crossingLabel,crossingSafetyNote,crossingVoiceCue} from '../lib/routeModeDetails.mjs';
 import '../route-mode-detail.css';
 import ManeuverGlyph from '../components/ManeuverGlyph';
-import {isNativeShell,notifyNative} from '../lib/nativeShell';
+import {isNativeShell,hasNativeSingleGps,notifyNative} from '../lib/nativeShell';
 import {startNavigationWakeLock} from '../lib/navigationWakeLock.mjs';
 import {dynamicManeuverIsland} from '../lib/dynamicManeuverIsland.mjs';
 import {useRouteTraffic} from '../lib/useRouteTraffic.js';
@@ -99,7 +99,7 @@ export default function MapPage({active=true}){
     }finally{setSavingMapTheme(false);}
   }
 
-  const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),onPositionRef=useRef(null),onPositionErrorRef=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),lastNativeReceivedAt=useRef(0),onPositionRef=useRef(null),onPositionErrorRef=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const voiceTrafficReport=useRef({pending:false,lastAt:0,lastCoords:null});
   const latestEtaGuidance=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
@@ -196,7 +196,7 @@ export default function MapPage({active=true}){
   },[navMode,muted,language]);
   // The native bridge listener is mounted once, but must always call the latest
   // React handler (navigation mode and route state change after first render).
-  useEffect(()=>{const native=e=>onPositionRef.current?.(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
+  useEffect(()=>{const native=e=>onPositionRef.current?.(e.detail,'native');const status=e=>{if(e.detail?.status==='denied')onPositionErrorRef.current?.({code:1});};window.addEventListener('vano:native-position',native);window.addEventListener('vano:native-gps-status',status);return()=>{window.removeEventListener('vano:native-position',native);window.removeEventListener('vano:native-gps-status',status);};},[]);
   // Keep Android's location feed active on both maps, even before a trip starts.
   useEffect(()=>{notifyNative({action:'mapTracking',active:active&&!simActive});return()=>notifyNative({action:'mapTracking',active:false});},[active,simActive]);
   useEffect(()=>{notifyNative({action:'navigation',active:navMode&&!simActive});return()=>notifyNative({action:'navigation',active:false});},[navMode,simActive]);
@@ -323,10 +323,14 @@ export default function MapPage({active=true}){
     Date.now()-speedSample.sourceAt<18000&&Date.now()>=speedSample.sourceAt
       ?speedSample.kmh:null;
   const shownSpeedKmh=simActive?simulationSpeedKmh(routeVehicle):speedKmh;
-  function onPosition(p){
+  function onPosition(p,source='web'){
+    // Compatibility with released Android shells: the native GPS wins over
+    // any overlapping WebView callback while its accepted feed remains fresh.
+    if(source!=='native'&&isNativeShell()&&Date.now()-lastNativeReceivedAt.current<4500)return null;
     const result=evaluateGpsPosition(p,lastGpsFix.current);
     if(!result.ok)return null;
     const {fix}=result;
+    if(source==='native')lastNativeReceivedAt.current=Date.now();
     adminTripSender.current?.add({coords:fix.coords,accuracy:fix.accuracy,timestamp:fix.sourceAt});
     lastGpsFix.current=fix;
     setUserCoords(fix.coords);
@@ -366,7 +370,8 @@ export default function MapPage({active=true}){
     // An old pending request or a temporary indoors accuracy error is not loss of an already valid fix.
     if(state==='granted'){setGpsStatus(lastGpsFix.current?.accuracy<=50?'granted':'approximate');setGpsMessage('');return;}
     setGpsStatus(state);
-    setGpsMessage(geoErrorMessage(error));
+    setGpsMessage(state==='denied'&&isNativeShell()?
+      'O Android não autorizou a localização. Ative a permissão nas configurações do aplicativo.':geoErrorMessage(error));
   }
   onPositionErrorRef.current=onPositionError;
   function requestGPS(switchToGPS=true){
@@ -379,7 +384,7 @@ export default function MapPage({active=true}){
     }
     // Inside the Android shell only native LocationManager owns the GPS feed.
     // Do not start a one-off WebView location callback alongside it.
-    if(isNativeShell()){
+    if(hasNativeSingleGps()){
       notifyNative({action:'mapTracking',active:true});
       if(!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
         setGpsStatus('checking');setGpsMessage('Aguardando localização do Android.');
@@ -426,7 +431,7 @@ export default function MapPage({active=true}){
     if(!active&&!navMode)return;
     // First login: ONE permission prompt / continuous watch; delayed recovery only if no valid fix.
     // Every callback is deactivated on unmount and when changing navigation modes.
-    const nativeTracking=isNativeShell();
+    const nativeTracking=hasNativeSingleGps();
     if(!nativeTracking&&!window.isSecureContext){
       setGpsStatus('insecure');
       setGpsMessage('A localização exige HTTPS. Use um endereço seguro ou escolha a origem no mapa.');
