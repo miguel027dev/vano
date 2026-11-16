@@ -1,4 +1,5 @@
 import {createLocalWeather,weatherPoint} from './local-weather.mjs';
+import {handlePlayStoreDownload} from './play-store-download.mjs';
 const localWeather=createLocalWeather();
 /** VANO API — hardened, single-process implementation.
  * Public deployments require HTTPS reverse proxy + persistent private storage.
@@ -2105,6 +2106,8 @@ const server=http.createServer({maxHeaderSize:8192,requestTimeout:15000,headersT
     try { parsedRequestUrl=new URL(req.url||'/','http://localhost'); }
     catch { return err(res,400,'URL inválida.'); }
     const requestPath=parsedRequestUrl.pathname;
+    // Fixed Google Play shortlink works on /baixar and the dedicated download subdomain.
+    if(handlePlayStoreDownload(req,res,requestPath,headers))return;
     recordOperationalEvent(runtimeMetrics,{path:requestPath,method,userAgent:req.headers['user-agent'],accept:req.headers.accept});
     if(requestPath.startsWith('/api/partner/v1')||requestPath.startsWith('/api/admin/partner-keys')||requestPath==='/integracoes'||requestPath.startsWith('/embed/')||requestPath==='/sdk/vano-map.js'){
       if(requestPath.startsWith('/api/partner/v1/')){
