@@ -44,7 +44,10 @@ public final class MainActivity extends Activity {
     private boolean microphonePrompt=false;
     private LocationManager gps;
     private boolean routeTracking=false,mapTracking=false,foreground=false,gpsRunning=false;
-    private boolean geoPermissionPrompted=false;
+    private boolean geoPermissionPrompted=false,geoPermissionInFlight=false,providerReceiverRegistered=false;
+    private final BroadcastReceiver providerReceiver=new BroadcastReceiver(){
+        @Override public void onReceive(Context context,Intent intent){if(gpsWanted()){stopGps();startGps();}}
+    };
     private final GpsFixPolicy gpsPolicy=new GpsFixPolicy();
     private long lastAcceptedGpsAt=0,gpsStartedAt=0;
     private final Runnable gpsWatchdog=new Runnable(){
@@ -224,8 +227,8 @@ public final class MainActivity extends Activity {
                 if(geoCallback!=null)geoCallback.invoke(geoOrigin,false,false);
                 geoCallback=callback;geoOrigin=origin;
                 if(locationGranted())finishGeo(true);
-                else if(!geoPermissionPrompted){geoPermissionPrompted=true;requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);}
-                else finishGeo(false);
+                else if(!geoPermissionPrompted){geoPermissionPrompted=true;geoPermissionInFlight=true;requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);}
+                else if(!geoPermissionInFlight)finishGeo(false);
             }
             @Override public void onGeolocationPermissionsHidePrompt(){finishGeo(false);}
             @Override public boolean onJsPrompt(WebView view,String url,String message,String defaultValue,JsPromptResult result){
@@ -375,9 +378,9 @@ public final class MainActivity extends Activity {
         if(!locationGranted()){
             stopGps();
             if(!geoPermissionPrompted){
-                geoPermissionPrompted=true;
+                geoPermissionPrompted=true;geoPermissionInFlight=true;
                 requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);
-            }else gpsStatus("denied");
+            }else if(!geoPermissionInFlight)gpsStatus("denied");
             return;
         }
         // Map mount, navigation mode and recenter can all request tracking.
@@ -460,7 +463,7 @@ public final class MainActivity extends Activity {
     }
     private boolean locationGranted(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
     private void finishGeo(boolean allow){if(geoCallback!=null){geoCallback.invoke(geoOrigin,allow,false);geoCallback=null;geoOrigin=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());if(!locationGranted())gpsStatus("denied");else startGps();}else if(request==MIC_REQUEST)finishMicrophone(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED);}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){geoPermissionInFlight=false;finishGeo(locationGranted());if(!locationGranted())gpsStatus("denied");else startGps();}else if(request==MIC_REQUEST)finishMicrophone(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED);}
 
     @Override public void onActivityResult(int req,int result,Intent data){
         super.onActivityResult(req,result,data);
@@ -526,7 +529,15 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed(){handleBack();}
     @Override protected void onSaveInstanceState(Bundle state){if(web!=null){Bundle saved=new Bundle();web.saveState(saved);state.putBundle("web",saved);}super.onSaveInstanceState(state);}
     @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);root.requestApplyInsets();if(web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);}
-    @Override protected void onResume(){super.onResume();foreground=true;if(web!=null)web.onResume();syncScreenAwake();startGps();}
-    @Override protected void onPause(){foreground=false;getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();if(speech!=null)speech.cancel();super.onPause();}
+    @Override protected void onResume(){super.onResume();foreground=true;
+        if(!providerReceiverRegistered){
+            IntentFilter filter=new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION);
+            if(Build.VERSION.SDK_INT>=33)registerReceiver(providerReceiver,filter,Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(providerReceiver,filter);
+            providerReceiverRegistered=true;
+        }
+        if(web!=null)web.onResume();syncScreenAwake();startGps();}
+    @Override protected void onPause(){foreground=false;
+        if(providerReceiverRegistered){unregisterReceiver(providerReceiver);providerReceiverRegistered=false;}getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();if(speech!=null)speech.cancel();super.onPause();}
     @Override protected void onDestroy(){destroyed=true;stopGps();pendingSpeechId="";if(speech!=null)speech.cancel();if(audioPermission!=null){audioPermission.deny();audioPermission=null;}if(voice!=null)voice.close();if(offlineCache!=null)offlineCache.close();handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
 }

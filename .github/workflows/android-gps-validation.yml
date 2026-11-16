@@ -8,6 +8,20 @@ on:
 permissions:
   contents: read
 jobs:
+  pure-gps-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run sensor arbitration scenarios without Android or downloaded dependencies
+        run: |
+          mkdir -p /tmp/vano-gps-tests
+          javac -d /tmp/vano-gps-tests android-vanu/app/src/main/java/com/vano/maps/fluidez/GpsFixPolicy.java android-vanu/tests/gps/com/vano/maps/fluidez/GpsFixPolicySelfTest.java
+          java -cp /tmp/vano-gps-tests com.vano.maps.fluidez.GpsFixPolicySelfTest
   gps-unit-and-compile:
     runs-on: ubuntu-latest
     timeout-minutes: 20
