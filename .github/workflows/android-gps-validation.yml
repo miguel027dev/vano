@@ -36,9 +36,15 @@ jobs:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
       - name: Validate Java policy and compile debug Android source
         working-directory: android-vanu
-        # No Firebase fixture credentials and no release/signing bypass.
-        # This compilation cannot validate SDK initialization or a distributable AAB.
-        run: bash ./gradlew :app:testDebugUnitTest :app:compileDebugJavaWithJavac -x :app:processDebugGoogleServices --no-daemon
+        # CI-only debug configuration: no credentials, SDK startup or release artifact.
+        # Original release guards remain required for every release build.
+        run: |
+          cat >> app/build.gradle <<'GRADLE'
+          googleServices {
+              missingGoogleServicesStrategy = com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy.IGNORE
+          }
+          GRADLE
+          bash ./gradlew :app:testDebugUnitTest :app:compileDebugJavaWithJavac --no-daemon
       - uses: actions/upload-artifact@v4
         if: always()
         with:
