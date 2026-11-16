@@ -34,6 +34,7 @@ public final class MainActivity extends Activity {
     private static final String BASE="https://vanu-73xu.onrender.com", ENTRY=BASE+"/mapa";
     private static final int GEO_REQUEST=10, FILE_REQUEST=11, MIC_REQUEST=12;
     private final ExecutorService network=Executors.newSingleThreadExecutor();
+    private NativeTelemetry telemetry;
     private WebView web;
     private OfflineCache offlineCache;
     private LocalVoice voice;
@@ -95,6 +96,7 @@ public final class MainActivity extends Activity {
         if(saved==null||web.restoreState(saved)==null||!trusted(web.getUrl())||"/".equals(Uri.parse(web.getUrl()).getPath())||"/inicio".equals(Uri.parse(web.getUrl()).getPath()))web.loadUrl(ENTRY);
         if(Build.VERSION.SDK_INT>=33)getOnBackInvokedDispatcher().registerOnBackInvokedCallback(0,this::handleBack);
         handleAuthReturn(getIntent());
+        handler.post(()->{if(!destroyed)telemetry=NativeTelemetry.create(this);});
     }
     private boolean isSystemDark(){return (getResources().getConfiguration().uiMode&Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;}
     @SuppressWarnings("deprecation")
@@ -145,7 +147,15 @@ public final class MainActivity extends Activity {
         if(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)){
             WebViewCompat.addWebMessageListener(web,"VanoHost",Collections.singleton(BASE),(view,message,origin,mainFrame,reply)->{
                 if(mainFrame&&trusted(origin)&&trusted(view.getUrl())){
-                    try{String value=message.getData();if(value!=null&&value.length()<=130000)handleNative(view,new JSONObject(value));}catch(Exception ignored){}
+                    try{String value=message.getData();if(value!=null&&value.length()<=130000){
+                        JSONObject data=new JSONObject(value);
+                        // Telemetry is accepted only here: trusted HTTPS origin AND main frame.
+                        // The legacy prompt fallback cannot grant consent or submit events.
+                        String action=data.optString("action");
+                        if("observabilityConsent".equals(action)){if(telemetry!=null)telemetry.consent(data.optBoolean("granted",false));}
+                        else if("observabilityEvent".equals(action)){if(telemetry!=null&&value.length()<=2048)telemetry.receive(data);}
+                        else handleNative(view,data);
+                    }}catch(Exception ignored){}
                 }
             });
         }
@@ -175,15 +185,16 @@ public final class MainActivity extends Activity {
                 }
             }
             @Override public void onReceivedError(WebView view,WebResourceRequest req,WebResourceError err){
-                if(req.isForMainFrame()){pageFailed=true;showError("Não foi possível conectar ao VANO. Confira sua conexão e tente novamente.");}
+                if(req.isForMainFrame()){if(telemetry!=null)telemetry.diagnostic("communication_error",0);pageFailed=true;showError("Não foi possível conectar ao VANO. Confira sua conexão e tente novamente.");}
             }
             @Override public void onReceivedHttpError(WebView view,WebResourceRequest req,WebResourceResponse resp){
-                if(req.isForMainFrame()&&resp.getStatusCode()>=400){pageFailed=true;showError("O servidor está temporariamente indisponível.");}
+                if(req.isForMainFrame()&&resp.getStatusCode()>=400){if(telemetry!=null)telemetry.diagnostic("api_error",resp.getStatusCode());pageFailed=true;showError("O servidor está temporariamente indisponível.");}
             }
             @Override public void onReceivedSslError(WebView view,android.webkit.SslErrorHandler h,android.net.http.SslError err){
                 h.cancel();pageFailed=true;showError("Não foi possível verificar a conexão segura.");
             }
             @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){
+                if(telemetry!=null)telemetry.diagnostic("webview_renderer_gone",detail.didCrash()?1:0);
                 root.removeView(view);view.destroy();web=null;
                 if(!destroyed&&!recovering){recovering=true;handler.post(()->{if(destroyed)return;createWebView();web.loadUrl(currentUrl);});}
                 else if(!destroyed)showError("O mapa precisou ser reiniciado. Toque em tentar novamente.");
@@ -259,6 +270,7 @@ public final class MainActivity extends Activity {
             int background=Color.parseColor(color);
             runOnUiThread(()->{if(!destroyed){applySystemBars(dark,background);getPreferences(MODE_PRIVATE).edit().putBoolean("barsDark",dark).putInt("barsBackground",background).apply();}});
         }else if("firstFrame".equals(action)){
+            if(!firstFrameSeen&&telemetry!=null)telemetry.webReady();
             firstFrameSeen=true;revealReady(view);
         }else if("pageReady".equals(action)){
             if(!"/mapa".equals(Uri.parse(view.getUrl()).getPath()))revealReady(view);

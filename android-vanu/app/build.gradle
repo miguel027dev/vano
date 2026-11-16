@@ -1,4 +1,8 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
+}
 android {
     namespace 'com.vano.maps.fluidez'
     compileSdk 36
@@ -6,8 +10,8 @@ android {
         applicationId 'com.vano.maps'
         minSdk 24
         targetSdk 36
-        versionCode 20270008
-        versionName '3.1.7'
+        versionCode 20270009
+        versionName '3.1.8'
     }
     signingConfigs {
         release {
@@ -34,4 +38,20 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
-dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+    implementation platform('com.google.firebase:firebase-bom:35.2.0')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-crashlytics'
+}
+// Publishing must fail closed instead of silently creating an unsigned release.
+tasks.register('verifyReleaseInputs') {
+    doLast {
+        if (!file('google-services.json').isFile()) throw new GradleException('Firebase configuration is missing')
+        def key = System.getenv('VANO_UPLOAD_KEYSTORE')
+        def password = System.getenv('VANO_UPLOAD_PASSWORD_FILE')
+        if (!key || !password || !file(key).isFile() || !file(password).isFile())
+            throw new GradleException('Original upload signing inputs are required')
+    }
+}
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach { dependsOn 'verifyReleaseInputs' }
