@@ -1,32 +1,32 @@
 {% extends 'base.html' %}
-{% block title %}Ajuda · VANO MAPS{% endblock %}
-{% block meta_description %}Central de ajuda do VANO MAPS: GPS, rotas, modo seguro, Spark, offline, conta, privacidade, SOS e solução de problemas.{% endblock %}
+{% block title %}Central de ajuda | VANO Maps{% endblock %}
+{% block meta_description %}Tire dúvidas sobre GPS, rotas alternativas, trânsito, conta, privacidade e navegação no VANO Maps.{% endblock %}
 {% block tail_head %}<style>
 .faq-shell{max-width:900px;margin:auto}.faq-hero{margin-bottom:18px}.faq-hero h1{font-size:clamp(34px,7vw,52px);margin:5px 0 8px;letter-spacing:-2px}.faq-hero p{color:#8e97a2;line-height:1.6}.faq-search-wrap{position:relative;margin:17px 0}.faq-search-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#69727d}.faq-search{width:100%;height:50px;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:#0d0f12;color:#fff;padding:0 14px 0 43px;outline:none}.faq-search:focus{border-color:rgba(245,154,98,.55);box-shadow:0 0 0 3px rgba(245,154,98,.07)}.faq-groups{display:grid;gap:18px}.faq-group{border:1px solid rgba(255,255,255,.07);border-radius:22px;background:rgba(255,255,255,.015);overflow:hidden}.faq-group-head{padding:15px 17px;border-bottom:1px solid rgba(255,255,255,.055);display:flex;align-items:center;gap:10px}.faq-group-head i{color:var(--orange-2)}.faq-group-head b{font-size:12px}.faq{display:grid}.faq details{padding:0 17px;border-bottom:1px solid rgba(255,255,255,.045)}.faq details:last-child{border-bottom:0}.faq summary{cursor:pointer;padding:15px 28px 15px 0;font-weight:800;font-size:12px;list-style:none;position:relative}.faq summary:after{content:'+';position:absolute;right:0;top:13px;color:#717a85;font-size:18px;font-weight:400}.faq details[open] summary:after{content:'−'}.faq summary::-webkit-details-marker{display:none}.faq details p{margin:0 0 15px;color:#89929e;font-size:11px;line-height:1.6}.faq details[open]{background:rgba(255,255,255,.012)}.faq-empty{display:none;color:#7f8893;text-align:center;padding:32px;border:1px dashed rgba(255,255,255,.08);border-radius:18px}.help-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.help-actions a{padding:15px;border:1px solid rgba(255,255,255,.07);border-radius:16px;background:rgba(255,255,255,.018)}.help-actions b{display:block;font-size:11px}.help-actions span{display:block;margin-top:3px;color:#737c87;font-size:9px;line-height:1.4}@media(max-width:650px){.help-actions{grid-template-columns:1fr}.faq-shell{width:100%}}
 </style>{% endblock %}
 {% block content %}
 <main class="page" id="conteudo-principal" tabindex="-1"><div class="container faq-shell">
   <nav class="vano-public-breadcrumb" aria-label="Trilha de navegação"><a href="{{ url_for('index') }}">Início</a><span class="vano-breadcrumb-sep" aria-hidden="true">/</span><span aria-current="page">Central de ajuda</span></nav>
-  <header class="faq-hero"><div class="eyebrow">Central de ajuda</div><h1>Resolva rápido. Volte para a rota.</h1><p>Pesquise dúvidas sobre GPS, navegação, modo seguro, Spark, conta, privacidade, offline e recursos de emergência.</p></header>
+  <header class="faq-hero"><div class="eyebrow">Central de ajuda</div><h1>A resposta que você precisa para seguir em frente.</h1><p>Encontre orientações sobre localização, escolha de rotas, tempo estimado, configurações, privacidade e recursos do VANO.</p></header>
   <div class="faq-search-wrap"><i data-lucide="search" width="17"></i><input type="search" class="faq-search" id="faqSearch" placeholder="Pesquisar: GPS, rota, privacidade, offline…" autocomplete="off" aria-label="Pesquisar na central de ajuda" aria-controls="faqList" aria-describedby="faqSearchStatus"></div>
   <p id="faqSearchStatus" class="faq-search-status" role="status" aria-live="polite" aria-atomic="true"></p>
 
   {% set groups = [
     ('navigation','Navegação e GPS',[
       ('Por que o GPS demora para aparecer?','O VANO tenta mostrar a última posição válida e, em paralelo, busca uma leitura nova. Verifique a permissão de localização, o modo de economia de bateria e se o navegador pode usar localização precisa.'),
-      ('O que acontece se eu sair da rota?','O VANO compara sua posição com a geometria ativa. Quando o afastamento é consistente — evitando reagir a um salto isolado do GPS — a rota pode ser recalculada automaticamente.'),
+      ('O que acontece se eu sair da rota?','Quando sua posição indica que você saiu do caminho, o VANO pode recalcular a rota. Pequenas falhas de GPS são consideradas para evitar mudanças desnecessárias.'),
       ('A câmera acompanha minha velocidade?','Sim. Durante a navegação, zoom, inclinação e distância à frente podem se adaptar à velocidade e à proximidade da próxima manobra.'),
-      ('Por que o marcador às vezes não fica exatamente na minha posição?','O sistema usa suavização e map matching para reduzir pulos de GPS. Em ruas paralelas, túneis ou locais com sinal ruim, a posição pode levar alguns segundos para estabilizar.'),
+      ('Por que o marcador às vezes não fica exatamente na minha posição?','O VANO tenta manter o marcador alinhado com o trajeto. Em túneis, ruas próximas ou áreas com sinal ruim, a posição pode levar alguns segundos para se ajustar.'),
       ('O VANO continua funcionando sem internet?','A sessão e recursos já carregados podem continuar disponíveis por algum tempo, incluindo partes do mapa que já foram visitadas. Pesquisar um destino novo ou recalcular completamente pode exigir conexão.'),
-      ('Como cancelo uma rota?','Durante a navegação, use o botão de encerrar/cancelar no HUD. O VANO preserva os destinos recentes para facilitar uma nova busca.')
+      ('Como cancelo uma rota?','Durante a navegação, toque no botão de encerrar ou cancelar rota. Você pode buscar novamente o destino quando precisar.')
     ]),
     ('route','Rotas, Spark e segurança',[
-      ('Qual a diferença entre Rápida, Segura e Spark?','Rápida prioriza ETA. Segura aceita pequenos desvios quando existe ganho objetivo de segurança. Spark busca equilíbrio entre tempo, trânsito, segurança e confiança dos dados.'),
+      ('Qual a diferença entre Rápida, Segura e Spark?','Rápida prioriza o menor tempo estimado. Segura considera sinais de atenção disponíveis no trajeto. Spark busca equilibrar duração, trânsito e outros fatores para comparação.'),
       ('O que significa “mais segura”?','É uma comparação entre alternativas usando os sinais disponíveis. Não significa que a rota esteja livre de crime, acidente, alagamento ou outros eventos.'),
-      ('Como funciona o controle Rapidez ↔ Segurança?','No modo Spark, esse controle ajusta o peso relativo usado para comparar alternativas. Ele não transforma uma rota bloqueada ou inválida em rota permitida.'),
-      ('A IA cria as rotas?','Não. As rotas são geradas pelo motor cartográfico. Quando habilitada, a IA apenas ajuda a reranquear candidatas já válidas usando métricas compactas; se ela falhar ou demorar, o VANO usa o algoritmo normal.'),
-      ('Por que uma rota segura pode levar alguns minutos a mais?','O VANO pode trocar um pequeno aumento de ETA por menor exposição a sinais de risco. A interface deve mostrar essa troca para você decidir.'),
-      ('Por que duas alternativas parecem iguais?','Provedores podem retornar caminhos com muitos trechos em comum. O VANO tenta remover duplicatas e procurar corredores diferentes quando houver benefício real.')
+      ('Como funciona o controle Rapidez ↔ Segurança?','No Spark, você ajusta a importância do tempo e de sinais de segurança na comparação. O controle não autoriza caminhos bloqueados ou proibidos.'),
+      ('A IA cria as rotas?','Não. O motor cartográfico encontra caminhos válidos. Quando habilitada, a IA pode ajudar a ordenar as alternativas, mas não inventa ruas nem ignora restrições.'),
+      ('Por que uma rota segura pode levar alguns minutos a mais?','Uma alternativa pode levar mais tempo para reduzir a exposição a alertas disponíveis. Compare os trajetos antes de decidir; nenhum modo garante ausência de riscos.'),
+      ('Por que duas alternativas parecem iguais?','Algumas alternativas compartilham as mesmas ruas. O VANO procura destacar diferenças relevantes entre os caminhos quando elas estão disponíveis.')
     ]),
     ('user-round','Conta e privacidade',[
       ('Quais dados o VANO usa?','Depende dos recursos usados: dados de conta, preferências, localização necessária à navegação, histórico associado à conta, alertas comunitários e dados técnicos de segurança/desempenho. Veja a Política de Privacidade para detalhes.'),
@@ -46,7 +46,7 @@
       ('Como troco o estilo do mapa?','Em Perfil > Configurações você pode escolher modo automático ou um estilo por período. O modo automático pode alternar entre dia, tarde/noite e condições configuradas pelo VANO.'),
       ('Posso usar quilômetros ou milhas?','Sim. A unidade pode ser alterada no perfil e afeta velocidade e distância exibidas.'),
       ('Posso salvar casa e trabalho?','Sim. Os atalhos ficam associados à sua conta e aparecem no mapa para iniciar rotas mais rapidamente.'),
-      ('Como deixo o app mais rápido?','Mantenha o navegador atualizado, evite economia extrema de bateria durante a navegação e permita localização precisa. Em aparelhos mais fracos, o VANO reduz alguns efeitos automaticamente.')
+      ('Como melhorar o desempenho do aplicativo?','Mantenha o navegador atualizado, evite economia extrema de bateria durante a navegação e permita localização precisa. Em aparelhos mais fracos, o VANO reduz alguns efeitos automaticamente.')
     ])
   ] %}
 
