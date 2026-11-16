@@ -140,7 +140,7 @@ function unavailable(old,moment,reason){
 /** Hedged fallback with a shared deadline and independent provider circuits.
  * A custom injected endpoint never falls through to a real network source.
  */
-export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=ENDPOINT}={}){
+export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=ENDPOINT,waitForRefresh=false}={}){
  const normalized=parseBBox(Array.isArray(bbox)?bbox.join(','):bbox);
  if(!normalized)throw new RangeError('Área inválida ou maior que o limite permitido.');
  const region=[Math.floor(normalized[0]*1000)/1000,Math.floor(normalized[1]*1000)/1000,
@@ -148,7 +148,9 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
  const key=region.map(x=>x.toFixed(3)).join(',');
  const old=cache.get(key),moment=now();
  if(old?.expires>moment&&old.result)return {...old.result,cacheHit:true};
- if(old?.pending)return old.pending;
+ const staleAvailable=old?.updatedAt&&moment-old.updatedAt<staleTtlMs;
+ if(old?.pending)return !waitForRefresh&&staleAvailable
+   ?{...unavailable(old,moment,'Atualização em andamento'),refreshing:true}:old.pending;
  // This optional OSM layer must never queue dozens of 16-second requests when
  // upstream hosts are unhealthy. Other map, routing and GPS features stay active.
  if(pending>=3)return unavailable(old,moment,'Fonte ocupada');
@@ -183,7 +185,8 @@ export async function queryPublicMap(bbox,{fetcher=fetch,now=()=>Date.now(),url=
    return result;
  }).finally(()=>{pending--});
  cache.set(key,{...old,pending:pendingResult});
- return pendingResult;
+ return !waitForRefresh&&staleAvailable
+   ?{...unavailable(old,moment,'Atualização em andamento'),refreshing:true}:pendingResult;
 }
 export function filterVerifiedReports(reports=[],bbox=[],now=Date.now()){
  const [w,s,e,n]=bbox,age=14*86400000;

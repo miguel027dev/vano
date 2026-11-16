@@ -132,19 +132,19 @@ test('failed OSM refresh keeps the last verified snapshot but clearly marks it s
   return{ok:true,json:async()=>({elements:[elem(96113,'traffic_signals')]})};
  };
  const area='-46.855,-23.755,-46.843,-23.744';
- const first=await queryPublicMap(area,{fetcher,now:()=>clock});
+ const first=await queryPublicMap(area,{fetcher,now:()=>clock,waitForRefresh:true});
  assert.equal(first.features.length,1);
  assert.equal(first.stale,false);
  clock+=5*60*1000+1;
  fail=true;
- const degraded=await queryPublicMap(area,{fetcher,now:()=>clock});
+ const degraded=await queryPublicMap(area,{fetcher,now:()=>clock,waitForRefresh:true});
  assert.equal(degraded.features.length,1);
  assert.equal(degraded.features[0].id,first.features[0].id);
  assert.equal(degraded.stale,true);
  assert.equal(degraded.cacheHit,true);
  // Initial success: one request. Failed refresh: one request per fallback host.
  assert.equal(calls,3);
- const repeat=await queryPublicMap(area,{fetcher,now:()=>clock});
+ const repeat=await queryPublicMap(area,{fetcher,now:()=>clock,waitForRefresh:true});
  assert.equal(repeat.stale,true);
  assert.equal(calls,3);
 });
@@ -158,13 +158,35 @@ test('concurrent expired-cache requests share the refresh instead of receiving o
   return {ok:true,json:async()=>({elements:[elem(99100+calls,'traffic_signals')]})};
  };
  const area='-46.905,-23.805,-46.893,-23.794';
- const first=await queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api'});
+ const first=await queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api',waitForRefresh:true});
  clock+=300001;
- const updating=queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api'});
- const concurrent=queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api'});
+ const updating=queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api',waitForRefresh:true});
+ const concurrent=queryPublicMap(area,{fetcher,now:()=>clock,url:'https://test.example/api',waitForRefresh:true});
  while(!release)await new Promise(resolve=>setTimeout(resolve,10));
  release();
  const [a,b]=await Promise.all([updating,concurrent]);
  assert.equal(calls,2);assert.equal(a.fetchedAt,b.fetchedAt);
  assert.notEqual(first.features[0].id,b.features[0].id);
+});
+
+
+test('expired successful snapshots are served immediately while refresh runs in background',async()=>{
+ let clock=Date.now(),release,calls=0;
+ const fetcher=async()=>{
+  calls++;
+  if(calls===2)await new Promise(resolve=>{release=resolve;});
+  return {ok:true,json:async()=>({elements:[elem(99500+calls,'traffic_signals')]})};
+ };
+ const area='-46.945,-23.845,-46.933,-23.834';
+ const options={fetcher,now:()=>clock,url:'https://stale.example/api'};
+ const first=await queryPublicMap(area,options);clock+=300001;
+ const stale=await queryPublicMap(area,options);
+ assert.equal(stale.stale,true);assert.equal(stale.refreshing,true);
+ assert.equal(stale.fetchedAt,first.fetchedAt);
+ while(!release)await new Promise(resolve=>setTimeout(resolve,10));
+ const concurrent=await queryPublicMap(area,options);
+ assert.equal(concurrent.stale,true);assert.equal(concurrent.refreshing,true);
+ release();
+ const refreshed=await queryPublicMap(area,{...options,waitForRefresh:true});
+ assert.equal(refreshed.stale,false);assert.equal(calls,2);
 });
