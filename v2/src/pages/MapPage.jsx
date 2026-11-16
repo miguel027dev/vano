@@ -99,7 +99,7 @@ export default function MapPage({active=true}){
     }finally{setSavingMapTheme(false);}
   }
 
-  const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
+  const rerouteRequest=useRef(null),routeRequest=useRef(null),routeVehicleTimer=useRef(null),mapPageRef=useRef(null),mapControl=useRef(null),searchInput=useRef(null),searchCache=useRef(new Map()),routeEpoch=useRef(0),rerouteState=useRef({outsideSince:0,outsideCount:0,lastFixAt:0,lastAttempt:0}),lastGpsFix=useRef(null),onPositionRef=useRef(null),onPositionErrorRef=useRef(null),gpsRequestSeq=useRef(0),awaitingGpsDestination=useRef(false),manualCoordsRef=useRef(null),speedSampleRef=useRef(null),speedExpiryTimer=useRef(null),routeCalculator=useRef(null),addressLookup=useRef(null),addressController=useRef(null);
   const voiceTrafficReport=useRef({pending:false,lastAt:0,lastCoords:null});
   const latestEtaGuidance=useRef(null);
   const maviResponseTurn=useRef(0),maviTalkHistory=useRef([]),maneuverAudioRef=useRef(null),guidanceTrackerRef=useRef({route:null,tracker:null}),cuePlaybackRef=useRef({at:0,stepIndex:null,stage:null,followingIndex:null}),voiceRouteProofRef=useRef({route:null,proof:null}),voiceRetryAfterRef=useRef(0);
@@ -194,7 +194,9 @@ export default function MapPage({active=true}){
       window.removeEventListener('vano:native-dictation',nativeFailure);
     };
   },[navMode,muted,language]);
-  useEffect(()=>{const native=e=>onPosition(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
+  // The native bridge listener is mounted once, but must always call the latest
+  // React handler (navigation mode and route state change after first render).
+  useEffect(()=>{const native=e=>onPositionRef.current?.(e.detail);window.addEventListener('vano:native-position',native);return()=>window.removeEventListener('vano:native-position',native);},[]);
   // Keep Android's location feed active on both maps, even before a trip starts.
   useEffect(()=>{notifyNative({action:'mapTracking',active:active&&!simActive});return()=>notifyNative({action:'mapTracking',active:false});},[active,simActive]);
   useEffect(()=>{notifyNative({action:'navigation',active:navMode&&!simActive});return()=>notifyNative({action:'navigation',active:false});},[navMode,simActive]);
@@ -358,6 +360,7 @@ export default function MapPage({active=true}){
     }
     return fix;
   }
+  onPositionRef.current=onPosition;
   function onPositionError(error){
     const state=gpsStateAfterError(error,lastGpsFix.current);
     // An old pending request or a temporary indoors accuracy error is not loss of an already valid fix.
@@ -365,12 +368,22 @@ export default function MapPage({active=true}){
     setGpsStatus(state);
     setGpsMessage(geoErrorMessage(error));
   }
+  onPositionErrorRef.current=onPositionError;
   function requestGPS(switchToGPS=true){
     if(switchToGPS&&hasRecentGpsFix(lastGpsFix.current,Date.now(),20000)&&lastGpsFix.current.accuracy<=50){
       const coords=lastGpsFix.current.coords;
       setManualCoords(null);setPickOriginMode(false);setGpsStatus('granted');setGpsMessage('');
       if(destRef.current&&(!b1User||b1Stage==='route'))calculateRoute(destRef.current,coords);
       mapControl.current?.center?.();
+      return;
+    }
+    // Inside the Android shell only native LocationManager owns the GPS feed.
+    // Do not start a one-off WebView location callback alongside it.
+    if(isNativeShell()){
+      notifyNative({action:'mapTracking',active:true});
+      if(!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
+        setGpsStatus('checking');setGpsMessage('Aguardando localização do Android.');
+      }
       return;
     }
     if(!window.isSecureContext){if(!hasRecentGpsFix(lastGpsFix.current)){setGpsStatus('insecure');setGpsMessage('No celular, o IP por HTTP bloqueia o GPS. Use HTTPS confiável ou selecione a origem manualmente.');}return;}
@@ -413,12 +426,13 @@ export default function MapPage({active=true}){
     if(!active&&!navMode)return;
     // First login: ONE permission prompt / continuous watch; delayed recovery only if no valid fix.
     // Every callback is deactivated on unmount and when changing navigation modes.
-    if(!window.isSecureContext){
+    const nativeTracking=isNativeShell();
+    if(!nativeTracking&&!window.isSecureContext){
       setGpsStatus('insecure');
       setGpsMessage('A localização exige HTTPS. Use um endereço seguro ou escolha a origem no mapa.');
       return;
     }
-    if(!navigator.geolocation){
+    if(!nativeTracking&&!navigator.geolocation){
       setGpsStatus('unsupported');
       setGpsMessage('Este navegador não oferece acesso ao GPS.');
       return;
@@ -427,8 +441,11 @@ export default function MapPage({active=true}){
       setGpsStatus('checking');
       setGpsMessage('');
     }
+    // A native shell receives vano:native-position from Android; never run
+    // WebView watchPosition/getCurrentPosition concurrently with that feed.
+    if(nativeTracking)return;
     const stop=startGpsSession(navigator.geolocation,{
-      onPosition,onError:onPositionError,
+      onPosition:p=>onPositionRef.current?.(p),onError:e=>onPositionErrorRef.current?.(e),
       onRecover:()=>{if(navMode&&!simActive&&!hasRecentGpsFix(lastGpsFix.current,Date.now(),35000)){
         setGpsStatus('reconnecting');setGpsMessage('Reconectando ao GPS. Mantendo o último ponto conhecido.');
       }}
