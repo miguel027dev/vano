@@ -119,7 +119,7 @@ A política atual também não detalha os novos SDKs, finalidade, retenção e t
 | Suíte web final | 1.202 aprovados; zero falhas; uma integração PostgreSQL nativa ignorada por falta de banco local de teste |
 | Build web/SEO | Aprovado; aviso de chunk grande já existente, sem alterar divisão do app |
 | Teste SQL PostgreSQL/WASM | Aprovou deduplicação no lote e após recriar worker, agregação única, sanitização e TTL de 30 dias; lock consultivo foi simulado, não valida concorrência PostgreSQL completa |
-| CI PostgreSQL nativo | Workflow preparado com PostgreSQL 16 descartável; resultado do CI deve ser consultado no PR |
+| CI PostgreSQL nativo | **Aprovado**, PostgreSQL 16 descartável, run `43870346580`, job `133309539495`: deduplicação após reinício, workers concorrentes, agregação, sanitização e TTL |
 | Android debug | `assembleDebug` aprovado com configuração fictícia; não valida Firebase real |
 | Testes Java | Dois aprovados, zero falhas, para a política de filtragem |
 | Android lint | **Falha: 12 erros NewApi já reproduzidos na base 3.1.7.** Mesmos 12 erros no candidato; oito avisos contra sete na base, pois uma dependência adiciona detector sobre chamada de drawable já existente |
@@ -130,6 +130,10 @@ A política atual também não detalha os novos SDKs, finalidade, retenção e t
 | Inicialização, RAM, bateria, GPS em estrada e comparação visual | Pendentes em dispositivo; não são certificados pelos testes de código |
 
 CSS, JSX renderizado, assets de mapa/veículo, recursos visuais Android e algoritmos de GPS/câmera/roteamento não foram alterados. Nos componentes web existem apenas importações e chamadas observacionais; na Activity as adições são coleta condicionada e encaminhamento de erros. Essa revisão de diff é evidência de escopo preservado, **não substitui comparação funcional/visual no aparelho**. Os erros de estilos existentes não foram ocultados nem corrigidos nesta missão.
+
+Os seis workflows web do commit `0b417f4426615611e6cbcd2a164f0eba50e61d7e` concluíram com sucesso: Analytics isolated validation, VANO React V2 Checks, VANU live navigation validation, VANO React Build, VANO CI e VANO V2 Preview checks. Isso não substitui os gates Android pendentes.
+
+Commits de implementação: web/backend `0b417f4426615611e6cbcd2a164f0eba50e61d7e`; Android `0e4e0ede20b4957e90492379108cd2077c746b34`. Rascunhos: [PR web #245](https://github.com/miguel027dev/vano/pull/245) e [PR Android #246](https://github.com/miguel027dev/vano/pull/246).
 
 ## Arquivos principais
 
