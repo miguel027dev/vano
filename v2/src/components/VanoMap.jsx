@@ -32,6 +32,7 @@ import {syncV2Compact,V2_COMPACT_ID} from '../lib/v2CompactLayer.mjs';
 import {visualRouteStartPoint,assessV2CarOnStreet} from '../lib/v2RoadEntry.mjs';
 import {standardMapCarPose} from '../lib/standardMapCar.mjs';
 import {smoothStandardCarDrive} from '../lib/standardCarMotion.mjs';
+import {estimateVisualRouteSpeed} from '../lib/visualRouteSpeed.mjs';
 import {arrivalMarkerSvg,ARRIVAL_PIN_WIDTH,ARRIVAL_PIN_HEIGHT,ARRIVAL_PIN_ANCHOR} from '../lib/arrivalMarker.js';
 import {attachPublicMapOverlay} from '../lib/mapPublicOverlay.js';
 import {attachCommunityReportOverlay} from '../lib/communityReportOverlay.js';
@@ -1056,7 +1057,9 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       gpsMatchRaw:sameRoadRun?visual.current.gpsMatchRaw:null,
       gpsMatchGeometry:sameRoadRun?visual.current.gpsMatchGeometry:null,
       roadMatch:sameRoadRun?visual.current.roadMatch:null,
-      roadMeters:sameRoadRun&&Number.isFinite(visual.current.roadMeters)?visual.current.roadMeters:null};
+      roadMeters:sameRoadRun&&Number.isFinite(visual.current.roadMeters)?visual.current.roadMeters:null,
+      lastVisualSpeedFix:sameRoadRun?visual.current.lastVisualSpeedFix:null,
+      visualRouteSpeed:sameRoadRun?visual.current.visualRouteSpeed:null};
     // Reduced-motion still controls GPS/camera smoothing, not static markings.
     function preferenceChanged(){reduced=Boolean(preference?.matches);}
     preference?.addEventListener?.('change',preferenceChanged);
@@ -1068,7 +1071,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       raf=requestAnimationFrame(animate);
       if(document.hidden||!latest.current.active){state.last=now;return;}
       const dt=state.last?Math.min(now-state.last,100):16;
-      if(dt<13)return;
+      if(dt<=0)return;
       state.last=now;
       const d=latest.current,target=d.gpsCoords;
       // Emergency stability gate: avoid continuous GL paint mutations until
@@ -1081,6 +1084,9 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       // turns and guarantees heading belongs to the SAME animated position.
       const simulationMeters=d.guidance?.routeMeters;
       let point,playPointer=null;
+      // Independent visual drive speed: never copied into raw GPS telemetry,
+      // route/reroute decisions, ETA, or the real sensor speedometer.
+      let visualDriveSpeed=Number.isFinite(d.telemetry?.speed)?d.telemetry.speed:null;
       const standardPlay=d.v2Experience&&d.simulationPreview&&!d.droneSimulation&&
         timeline.total>0&&Number.isFinite(simulationMeters);
       if(standardPlay){
@@ -1145,6 +1151,28 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           state.gpsMatchRaw=target;
           state.gpsMatchGeometry=geometry;
           if(!state.roadMatch||!sameGeometry)state.roadMeters=null;
+          // Fallback speed uses only consecutive accepted, confidently matched
+          // GPS observations; it is not a replacement for coords.speed.
+          const speedFix=state.roadMatch&&!state.heldRoadLock&&
+            Number.isFinite(d.telemetry?.sourceAt)?
+            {meters:state.roadMatch.meters,sourceAt:d.telemetry.sourceAt,
+              accuracy:d.telemetry.accuracy}:null;
+          if(speedFix&&(!state.lastVisualSpeedFix||
+              speedFix.sourceAt!==state.lastVisualSpeedFix.sourceAt)){
+            state.visualRouteSpeed=estimateVisualRouteSpeed(
+              sameGeometry?state.lastVisualSpeedFix:null,speedFix,
+              {previousSpeed:sameGeometry?state.visualRouteSpeed:null}
+            );
+            state.lastVisualSpeedFix=speedFix;
+          }else if(!state.roadMatch){
+            state.visualRouteSpeed=null;
+            state.lastVisualSpeedFix=null;
+          }
+          if(!Number.isFinite(visualDriveSpeed)&&
+              Number.isFinite(state.visualRouteSpeed)&&
+              Date.now()-d.telemetry.sourceAt>=0&&
+              Date.now()-d.telemetry.sourceAt<=1900)
+            visualDriveSpeed=state.visualRouteSpeed;
           // Road proximity alone is not proof that the driver is on the street.
           // Use independent sensor confidence before replacing the arrow with 3D car.
           const realCarFix=d.v2Experience&&d.navigation&&d.vehicle==='carro'&&
@@ -1152,10 +1180,16 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           state.roadCar=realCarFix?assessV2CarOnStreet({
             previous:sameGeometry?state.roadCar:null,position:target,
             match:state.roadMatch,accuracy:d.telemetry?.accuracy,
-            speed:d.telemetry?.speed,heading:d.telemetry?.heading,
+            speed:visualDriveSpeed,heading:d.telemetry?.heading,
             sourceAt:d.telemetry?.sourceAt,now:fixNow
           }):null;
         }
+        if(!Number.isFinite(visualDriveSpeed)&&
+            Number.isFinite(state.visualRouteSpeed)&&
+            Number.isFinite(d.telemetry?.sourceAt)&&
+            Date.now()-d.telemetry.sourceAt>=0&&
+            Date.now()-d.telemetry.sourceAt<=1900)
+          visualDriveSpeed=state.visualRouteSpeed;
         if(state.roadMatch&&timeline.total>0){
           const measured=state.roadMatch.meters;
           // Visual-only prediction along the observed straight road segment:
@@ -1163,15 +1197,15 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
           const desired=d.navigation&&!d.simulationPreview&&!d.droneSimulation&&!state.heldRoadLock
             ?anticipateRoadProgress({timeline,meters:measured,
               sourceAt:d.telemetry?.sourceAt,now:Date.now(),
-              speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,
-              heading:d.telemetry?.heading})
+              speed:visualDriveSpeed,accuracy:d.telemetry?.accuracy,
+              heading:Number.isFinite(d.telemetry?.heading)?d.telemetry.heading:state.roadMatch?.bearing})
             :measured;
           if(!Number.isFinite(state.roadMeters)||Math.abs(desired-state.roadMeters)>170)
             state.roadMeters=desired;
           else{
             // Animate ALONG the route, not diagonally across a block on turns.
             state.roadMeters=smoothLiveRoadProgress(state.roadMeters,desired,dt,{
-              speed:d.telemetry?.speed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced
+              speed:visualDriveSpeed,accuracy:d.telemetry?.accuracy,reducedMotion:reduced
             });
           }
           point=sampleRoute(timeline,state.roadMeters)?.point;
@@ -1219,7 +1253,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         state.lastChasePoint=point;state.lastChaseKick=now;
         motion.current?.start();
       }
-      const matchedRoadHeading=realDriving&&state.roadMatch&&d.telemetry?.speed>1.5?
+      const matchedRoadHeading=realDriving&&state.roadMatch&&visualDriveSpeed>1.5?
         bearingAtDrivenProgress(timeline,state.roadMeters):null;
       const entryHeading=nearStart?nextRouteBearing(nearStart,route?.geometry,26):null;
       const sensorHeading=Number.isFinite(d.telemetry?.heading)&&d.telemetry.heading>=0&&
@@ -1256,7 +1290,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
             state.bearing=heading;
             state.liveHeadingInitialized=true;
           }else state.bearing=smoothLiveBearing(state.bearing,heading,dt,{
-            speed:d.telemetry?.speed,reducedMotion:reduced
+            speed:visualDriveSpeed,reducedMotion:reduced
           });
         }else if(Number.isFinite(heading)){
           state.liveHeadingInitialized=false;
@@ -1270,7 +1304,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
         state.standardCar=standardMapCarPose({
           previous:state.standardCar,position:target,route,match:state.roadMatch,
           trackingPoint:point,trackingBearing:state.bearing||0,
-          accuracy:d.telemetry?.accuracy,speed:d.telemetry?.speed,
+          accuracy:d.telemetry?.accuracy,speed:visualDriveSpeed,
           heading:d.telemetry?.heading,sourceAt:d.telemetry?.sourceAt,
           now:fixNow,navigation:true,vehicle:d.vehicle
         });
@@ -1281,7 +1315,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
       state.standardSmooth=d.standardMapCar&&state.standardCar?.visible?
         smoothStandardCarDrive({
           previous:state.standardSmooth,point:state.standardCar.point,timeline,
-          speed:d.telemetry?.speed,dtMs:dt,sourceAt:d.telemetry?.sourceAt,
+          speed:visualDriveSpeed,dtMs:dt,sourceAt:d.telemetry?.sourceAt,
           now:fixNow,entryHeld:state.standardCar.entryHeld,
           reducedMotion:reduced,bearing:state.standardCar.bearing
         }):null;

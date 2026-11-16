@@ -55,7 +55,15 @@ export function evaluateGpsPosition(position, previous=null, now=Date.now()) {
     const limit=elapsed<=2
       ?Math.max(48,elapsed*42+16,Math.min(tolerance,55)*1.2+18)
       :Math.max(elapsed*60+35,Math.min(tolerance,120)*1.5+20);
-    if(meters>limit)
+    // A very coarse first fix is a probability region, not an exact anchor.
+    // Allow a much more precise measurement to replace it *within* that
+    // uncertainty, otherwise a successful satellite lock can be rejected
+    // for seconds as an apparent impossible jump.
+    const previousAccuracy=Number(previous.accuracy);
+    const improvedFix=Number.isFinite(previousAccuracy)&&previousAccuracy>=75&&
+      accuracy<=35&&previousAccuracy>=accuracy*3.5;
+    const withinCoarseUncertainty=meters<=previousAccuracy*1.15+Math.min(35,elapsed*18);
+    if(meters>limit&&!(improvedFix&&withinCoarseUncertainty))
       return {ok:false,reason:'jump'};
   }
   return {ok:true,fix:{coords,receivedAt:timestamp,sourceAt:timestamp,accuracy},heading:Number.isFinite(p.heading)?p.heading:null,speed:Number.isFinite(p.speed)?p.speed:null};

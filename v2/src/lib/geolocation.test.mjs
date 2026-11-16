@@ -57,3 +57,16 @@ test('Coordenadas inválidas ou sem precisão não viram localização real',()=
  assert.equal(evaluateGpsPosition(position(NaN,-23.6,90000),null,100000).reason,'invalid');
  assert.equal(evaluateGpsPosition(position(-46.7,-23.6,90000,3000),null,100000).reason,'inaccurate');
 });
+
+test('precise satellite relock supersedes an uncertain initial network position',()=>{
+ const coarse=evaluateGpsPosition(position(-46.700,-23.600,90000,180),null,90000).fix;
+ const recovered=evaluateGpsPosition(position(-46.6987,-23.600,91000,6),coarse,91000);
+ assert.equal(recovered.ok,true,'true position lies inside the coarse fix uncertainty');
+ assert.equal(recovered.fix.accuracy,6);
+ // A high-precision point far outside the old uncertainty is still a jump.
+ assert.equal(evaluateGpsPosition(position(-46.690,-23.600,91000,6),coarse,91000).reason,'jump');
+});
+test('high-quality GPS fixes remain protected from noisy lateral spikes',()=>{
+ const trusted=evaluateGpsPosition(position(-46.700,-23.600,90000,6),null,90000).fix;
+ assert.equal(evaluateGpsPosition(position(-46.6985,-23.600,91000,45),trusted,91000).reason,'jump');
+});
