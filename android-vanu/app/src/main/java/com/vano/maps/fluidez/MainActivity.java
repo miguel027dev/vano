@@ -119,7 +119,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false); // Spoken navigation follows the explicit start-trip action.
-        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.5");
+        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/3.1.5 VANOAndroidSingleGPS/1");
         settings.setSupportMultipleWindows(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
