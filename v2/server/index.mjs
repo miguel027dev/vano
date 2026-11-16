@@ -98,6 +98,8 @@ import {resolveClientIP} from './client-ip.mjs';
 import {pruneGuestRecords} from './guest-retention.mjs';
 import {deleteUserRecords,verifiedGoogleDeletion} from './account-deletion.mjs';
 import { openPostgresStore } from './storage-pg.mjs';
+import {startAnalyticsRuntime} from './analytics-runtime.mjs';
+import {handleAnalyticsHTTP} from './analytics-http.mjs';
 import { hex, sha256, safeEqual, isEmail, validPassword, validName, cleanText, reportPublic, createLimiter, signedToken, openSignedToken, csrfToken, correctOrigin, secureHeaders } from './security.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -121,6 +123,7 @@ for (const value of additionalOrigins) {
 const mailReady = Boolean(process.env.RESEND_API_KEY?.trim() &&
   !process.env.RESEND_API_KEY.startsWith('REPLACE_') &&
   process.env.VANO_EMAIL_FROM?.includes('@'));
+const analyticsRuntime=startAnalyticsRuntime();
 const startupMs = Date.now();
 const SESSION_MAX_AGE=90*86400;
 const runtimeMetrics = { requests:0,routeRequests:0,routeErrors:0,routeLatencyMs:0,pageViews:Object.create(null) };
@@ -934,6 +937,7 @@ async function route(req, res) {
     try{await persist();}catch{return err(res,503,'Não foi possível registrar o evento.');}
     return json(res,200,{ok:true});
   }
+  if((pathname.startsWith('/api/observability/')||pathname==='/api/admin/observability')&&await handleAnalyticsHTTP({pathname,req,res,runtime:analyticsRuntime,userSession,isAdminAccount,protectedWrite,limits,limitAccount,getBody,persist,json,err}))return;
   // Account-level foreground activity. No IP, GPS, device ID or URL is saved.
   if(pathname==='/api/activity/pulse'&&req.method==='POST'){
     const session=userSession(req);

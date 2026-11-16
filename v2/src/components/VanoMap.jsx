@@ -1,3 +1,4 @@
+import {analyticsEvent} from '../lib/analytics.mjs';
 import {attachLocalWeather} from '../lib/localWeather.mjs';
 import React,{useEffect,useRef,useState} from 'react';
 import L from 'leaflet';
@@ -545,6 +546,7 @@ export default function VanoMap({active=true,simulationPreview=false,droneSimula
    // tile requests a moment later. Don't keep a blank WebGL canvas alive.
    // Optional traffic data has already been excluded above.
    const code=Number(e?.error?.status||e?.error?.statusCode||e?.status||0);
+   if(!isLoaded(map))analyticsEvent('map_load_failed',{error_code:'provider'});
    const authFailed=code===401||code===403||/\b(?:401|403)\b|Unauthorized|Unauthorised|Forbidden|Invalid Token|access token is invalid|Not Authorized/i.test(message);
    const styleFailed=/Style not found|Failed to load style/i.test(message);
    // Do not replace the configured style because an optional vector asset
