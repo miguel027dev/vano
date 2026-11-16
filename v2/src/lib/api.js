@@ -1,7 +1,9 @@
+import {observe,configureObservability} from './observability.mjs';
 import {readOffline,writeOffline,cachedBootstrap} from './offlineStore.js';
 import { formatTravelTime } from './formatTime.mjs';
 const BASE = import.meta.env.VITE_API_URL || '/api';
 let csrfToken = '';
+configureObservability(body=>api('/observability/events',{method:'POST',body}));
 let csrfBootstrap = null;
 async function initializeCsrf(){
   if (csrfToken) return csrfToken;
@@ -17,13 +19,18 @@ export async function api(path, opts = {}) {
   const binary = typeof Blob !== 'undefined' && opts.body instanceof Blob;
   const init = { credentials:'include', ...opts, headers: { ...(opts.body ? {'Content-Type':binary?(opts.body.type||'application/octet-stream'):'application/json'} : {}), ...(write ? {'X-VANO-CSRF':csrfToken} : {}), ...opts.headers } };
   if (init.body && typeof init.body !== 'string' && !binary) init.body = JSON.stringify(init.body);
+  const routeObservation=path==='/route';
+  const observedAt=routeObservation?performance.now():0;
+  if(routeObservation){observe('route_request',{kind:'route'});observe('route_calculation_start',{kind:'route'});}
   let res;
   try{res=await fetch(`${BASE}${path}`,init);}catch(error){
+    if(routeObservation)observe('route_calculation_error',{kind:error?.name==='AbortError'?'aborted':'network',duration_ms:Math.round(performance.now()-observedAt)});
     if(!write&&['/bootstrap','/places'].includes(path)){const cached=await readOffline(path.slice(1));if(cached)return path==='/bootstrap'?{...cached,offline:true}:cached;}
     const failure=new Error('Este recurso precisa de conexão. Seu trajeto atual continua salvo.');failure.offline=true;throw failure;
   }
   if(!write&&res.status>=500&&['/bootstrap','/places'].includes(path)){const cached=await readOffline(path.slice(1));if(cached)return path==='/bootstrap'?{...cached,offline:true}:cached;}
   const data = await res.json().catch(()=>({ error: 'O servidor retornou uma resposta inválida.' }));
+  if(routeObservation)observe(res.ok&&Array.isArray(data.routes)&&data.routes.length?'route_calculation_complete':'route_calculation_error',{kind:'route',status:res.status,duration_ms:Math.round(performance.now()-observedAt)});
   if (data.csrfToken) csrfToken = data.csrfToken;
   if(res.ok&&!write&&['/bootstrap','/places'].includes(path))await writeOffline(path.slice(1),path==='/bootstrap'?cachedBootstrap(data):data);
   if (!res.ok) { if(res.status === 403 && String(data.error || '').includes('segurança')) csrfToken=''; throw new Error(data.error || `Erro ${res.status}`); }

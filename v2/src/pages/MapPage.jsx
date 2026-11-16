@@ -1,3 +1,4 @@
+import {observe} from '../lib/observability.mjs';
 import React,{useEffect,useMemo,useRef,useState} from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, Home, BriefcaseBusiness, Clock3, Utensils, Cross, LocateFixed, Layers3, UserRound, ArrowLeft, ArrowRightLeft, Navigation, CarFront, BusFront, Footprints, ShieldCheck, Zap, ChevronDown, ChevronUp, MapPin, AlertTriangle, Volume2, VolumeX, Check, MoveRight, MoreHorizontal, ArrowUpDown, PencilLine, MapPinned, Crosshair, ExternalLink, Sun, Moon, Play, Pause, Square, RotateCcw, ChevronRight, ChevronLeft, SlidersHorizontal, CalendarDays } from 'lucide-react';
@@ -1253,6 +1254,7 @@ export default function MapPage({active=true}){
     if(!hasLiveGPS){requestGPS(true);return;}
     if(measuredTrip.current)return;
     measuredTrip.current={id:crypto.randomUUID(),vehicle:routeVehicle,simulated:routeData?.source==='demonstracao',startedAt:Date.now()};
+    if(routeData?.source!=='demonstracao')observe('navigation_start');
     odometer.current={meters:0,anchor:null,lastSeenAt:null};distanceSync.current=Date.now();
     queueTripWrite({journeyId:measuredTrip.current.id,destination:dest,routeType:choice,proof:route.proof});
     setGuidance(null);setNavMode(true);setSheetOpen(false);
@@ -1263,7 +1265,7 @@ export default function MapPage({active=true}){
     if(!muted&&(!Number.isFinite(first?.distance)||first.distance>150))
       speakManeuver(language==='fr-FR'?'Navigation démarrée.':language==='en-US'?'Navigation started.':'Navegação iniciada.');
   }
-  function reset(){if(simActive){stopRouteSimulation();return;}routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopActiveGuidance();spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
+  function reset(){if(simActive){stopRouteSimulation();return;}if(navMode){observe('navigation_end',{kind:'unknown'});observe('navigation_cancel',{kind:'cancelled'});}routeRequest.current?.abort();setRouteError('');if(jevMode)maneuverAudioRef.current?.abort();setMaviPendingStop(null);syncMeasuredDistance(true);measuredTrip.current=null;odometer.current={meters:0,anchor:null,lastSeenAt:null};rerouteRequest.current=null;setRecalculating(false);if(routeVehicleTimer.current!==null){clearTimeout(routeVehicleTimer.current);routeVehicleTimer.current=null;}deleteOffline('active-trip');stopActiveGuidance();spoken.current.clear();awaitingGpsDestination.current=false;routeEpoch.current++;setNavMode(false);setGuidance(null);setDest(null);setRouteData(null);setSheetOpen(false);setEditor(null);setPointMenu(null);setPickOriginMode(false);setQuery('');}
   const demoRoute=routeData?.source==='demonstracao';
   // Deviation reroutes keep the current journey until a newer
   // route succeeds. The ref blocks duplicate requests before React re-renders.
@@ -1281,6 +1283,7 @@ export default function MapPage({active=true}){
     if(jevMode)maneuverAudioRef.current?.abort();
     else stopActiveGuidance();
     try{
+      observe('route_recalculation',{kind:'route'});
       const next=await api('/route',{method:'POST',body:JSON.stringify({
         origin:userCoords,destination:dest.coords,vehicle:routeVehicle,language,
         telemetry:{bearing:telemetry.heading,speed:telemetry.speed},

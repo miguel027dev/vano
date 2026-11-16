@@ -13,6 +13,7 @@ import {createHelpAssistant} from './help-assistant.mjs';
 const helpAssistant=createHelpAssistant();
 import {createPartnerAPI,PartnerError} from './partner-api.mjs';
 import {createApiObservability} from './api-observability.mjs';
+import {openObservability} from './observability.mjs';
 import {ROAD_SIGN_TYPES} from './partner-map-scopes.mjs';
 import {inspectB2Snapshot} from './safe-routing/b2-snapshot.mjs';
 import {compareLightingInventory} from './safe-routing/lighting-grid.mjs';
@@ -220,6 +221,13 @@ if (migrated) {
   await persist({ backup: false });
 }
 const secret = process.env.VANO_SECURITY_SECRET || hex(32);
+let observability=null;
+// Optional analytics failure must never prevent map/backend startup.
+if(process.env.VANO_OBSERVABILITY_ENABLED==='1'&&process.env.DATABASE_URL){
+ try{observability=await openObservability({connectionString:process.env.DATABASE_URL,secret});}
+ catch{console.warn('VANO observability: initialization unavailable; routing remains enabled.');}
+}
+
 const limiter = createLimiter();
 const nativeGrants=mobileGrants();
 const usedMaviVoiceTickets=new Map();
@@ -933,6 +941,25 @@ async function route(req, res) {
     if(!event||typeof event!=='object'||!recordNavigationOutcome(db,event))return err(res,400,'Evento inválido ou consentimento ausente.');
     try{await persist();}catch{return err(res,503,'Não foi possível registrar o evento.');}
     return json(res,200,{ok:true});
+  }
+  // Separate, consented and bounded event inbox. No routing state is read or changed.
+  if(pathname==='/api/observability/events'&&req.method==='POST'){
+    if(!protectedWrite(req,res)||!limits(req,res,'observability-ingest',30,60000))return;
+    if(!observability)return err(res,503,'Observabilidade indisponível.');
+    if(!limitAccount(res,'observability-global','all',600,60000))return;
+    const body=await getBody(req);
+    if(!body||JSON.stringify(body).length>32768)return err(res,400,'Lote inválido.');
+    try{return json(res,202,{ok:true,...await observability.ingest(body)},{'Cache-Control':'no-store'});}
+    catch(error){return err(res,['invalid_batch','invalid_event'].includes(error.message)?400:error.message==='daily_limit'?429:503,'Evento não aceito.');}
+  }
+  if(pathname==='/api/admin/observability'&&req.method==='GET'){
+    const session=userSession(req);
+    if(!session)return err(res,401,'Entre na sua conta para acessar o console.');
+    if(!isAdminAccount(session.user))return err(res,403,'Acesso administrativo não autorizado.');
+    if(!limits(req,res,'admin-observability',20,60000))return;
+    if(!observability)return json(res,503,{available:false,reason:'not_configured'},{'Cache-Control':'private, no-store'});
+    try{return json(res,200,{available:true,...await observability.report()},{'Cache-Control':'private, no-store'});}
+    catch{return err(res,503,'Métricas temporariamente indisponíveis.');}
   }
   // Account-level foreground activity. No IP, GPS, device ID or URL is saved.
   if(pathname==='/api/activity/pulse'&&req.method==='POST'){
