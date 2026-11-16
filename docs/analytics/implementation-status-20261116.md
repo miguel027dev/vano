@@ -1,13 +1,26 @@
 # VANO Maps — instrumentação Android e observabilidade
 
-**Situação: implementação em branches isoladas; coleta nova desativada; release bloqueado. Não há novo AAB assinado, deploy nem publicação.**
+**Situação: infraestrutura web publicada no Render, com nova coleta desativada. O release Android continua bloqueado pelos gates técnicos; nenhum novo AAB foi assinado ou enviado à Play nesta missão. A autorização de publicação já foi concedida pelo usuário.**
+
+## Publicação web executada
+
+- PR [#245](https://github.com/miguel027dev/vano/pull/245) mesclado na branch de produção `preview/vano-react-v2-7`.
+- Commit implantado: `775fae94e3c3f71eef4a14d12af192b68465583f`.
+- Render: deploy `dep-dbtnucek1f9s7397t61g`, confirmado **live** em 16/11/2026 às 19:11:29 (São Paulo).
+- Build no Render: **1.202 testes aprovados, zero falhas, uma integração de banco ignorada nesse build**; a integração com PostgreSQL 16 já passou no CI dedicado.
+- Configuração aplicada por atualização parcial: `VANO_ANALYTICS_ENABLED=0`. As outras variáveis foram preservadas; não houve ativação da fila ou da coleta nova.
+- Verificação externa HTTPS aprovada no [run 43968050745](https://github.com/miguel027dev/vano/actions/runs/43968050745): `/api/health` retorna `ok=true`, `/mapa` fornece HTML e `/api/observability/consent` retorna 404 com a mensagem de observabilidade desativada.
+- O ambiente de execução/navegador ficou indisponível nesta retomada e o dispositivo autorizado com a chave original continua offline. Esses bloqueios não foram contornados criando chave ou configuração fictícia de release.
+
+A publicação acima é do backend/web. **Não representa publicação Android nem comprova recebimento de eventos reais no Firebase.**
+
 
 ## Fontes e bases verificadas
 
 | Componente | Base utilizada |
 |---|---|
 | Web/backend | `miguel027dev/vano`, produção `preview/vano-react-v2-7`, commit `d1e7b2a7ad7da707fa5117bad9afe04bd392102a` |
-| Render | Serviço `vanu`, `srv-db67qjss728c73fg5amg`, Miguel's workspace; deploy observado `dep-dbtc45m1egvs73a6oto0` com status live |
+| Render | Serviço `vanu`, `srv-db67qjss728c73fg5amg`, Miguel's workspace; deploy atual desta missão `dep-dbtnucek1f9s7397t61g`, commit `775fae94`, status live; base anterior `dep-dbtc45m1egvs73a6oto0` preservada no histórico |
 | Branch web desta missão | `feat/analytics-firebase-20261116` |
 | Android publicado | Play Console confirma **3.1.7 / 20270008**, produção, lançamento completo |
 | Base Android correspondente à versão | `fix/android-system-bars-3.1.7`, commit `1b8d7344535eee2db55bda412dc0ef0eaa12c3d3`, pasta `android-vanu` |
@@ -149,12 +162,12 @@ Android: Gradle raiz/app, manifesto, `.gitignore`, `AnalyticsTelemetry.java`, `T
 4. Aprovar e implementar a transparência e o mecanismo de escolha de coleta; revisar as declarações Play. Sem isso, manter todos os novos coletores desativados.
 5. Resolver os erros de lint anteriores sem regressão visual; validar base e candidato em aparelho, DebugView, Crashlytics, sessões, duplicidade, inicialização, memória e GPS/rotas.
 6. Definir fonte confiável de conclusão/cancelamento e concluir os adaptadores oficiais de instalações, desinstalações e aquisição. Hoje a infraestrutura não consolida todas essas fontes automaticamente.
-7. Gerar AAB de release com assinatura original, conferir pacote/versionCode/certificado e compatibilidade. **Somente então solicitar autorização final de publicação.**
+7. Gerar AAB de release com assinatura original, conferir pacote/versionCode/certificado e compatibilidade. **A publicação já foi autorizada pelo usuário; executar somente depois de todos os gates críticos aprovados, sem pedir novamente a mesma autorização.**
 
 ## Procedimento de rollout e recuperação preparado
 
 - Começar por validação interna com configuração real; exigir todos os gates críticos aprovados.
-- Após autorização final, enviar o AAB e verificar processamento/revisão na Play. Não tratar upload como publicação.
+- Com os gates críticos aprovados e a autorização já concedida, enviar o AAB e verificar processamento/revisão na Play. Não tratar upload como publicação.
 - Se disponível e adequado à pequena base, iniciar rollout gradual e acompanhar crashes, ANRs, abertura, sessões e recebimento por versão. Métricas sem amostra suficiente não comprovam ausência de regressão.
 - Em regressão: interromper a expansão na Play; desligar a coleta nova no backend; observar revalidação dos clientes. Não modificar rotas/GPS como reação a um problema analítico.
 - Dispositivos já atualizados não voltam automaticamente para versionCode menor. Se preciso, gerar correção a partir da base preservada, usando versionCode superior e a mesma assinatura.
