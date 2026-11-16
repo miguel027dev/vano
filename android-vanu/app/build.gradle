@@ -1,4 +1,8 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
+}
 android {
     namespace 'com.vano.maps.fluidez'
     compileSdk 36
@@ -6,8 +10,8 @@ android {
         applicationId 'com.vano.maps'
         minSdk 24
         targetSdk 36
-        versionCode 20270008
-        versionName '3.1.7'
+        versionCode 20270009
+        versionName '3.1.8'
     }
     signingConfigs {
         release {
@@ -34,4 +38,30 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 }
-dependencies { implementation 'androidx.webkit:webkit:1.12.1' }
+dependencies {
+    implementation 'androidx.webkit:webkit:1.12.1'
+    implementation platform('com.google.firebase:firebase-bom:35.2.0')
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.firebase:firebase-crashlytics'
+    // Custom traces only: do not auto-instrument URL-bearing navigation requests.
+    implementation 'com.google.firebase:firebase-perf'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// A fixture/debug APK must never become a release by accident.
+def verifyAnalyticsRelease = tasks.register('verifyAnalyticsRelease') {
+    doLast {
+        def configFile = file('google-services.json')
+        if (!configFile.isFile()) throw new GradleException('Missing verified Firebase Android configuration.')
+        def config = new groovy.json.JsonSlurper().parse(configFile)
+        def matching = config.client?.find {
+            it.client_info?.android_client_info?.package_name == 'com.vano.maps' &&
+            it.client_info?.mobilesdk_app_id == '1:194011733049:android:8256905680c01f9d8b81e8'
+        }
+        if (config.project_info?.project_id != 'vano-maps' || !matching)
+            throw new GradleException('Firebase release configuration does not match the authorized app.')
+        if (!System.getenv('VANO_UPLOAD_KEYSTORE') || !System.getenv('VANO_UPLOAD_PASSWORD_FILE'))
+            throw new GradleException('Original upload signing material is required for release.')
+    }
+}
+tasks.configureEach { if (name == 'preReleaseBuild') dependsOn verifyAnalyticsRelease }

@@ -35,6 +35,7 @@ public final class MainActivity extends Activity {
     private static final int GEO_REQUEST=10, FILE_REQUEST=11, MIC_REQUEST=12;
     private final ExecutorService network=Executors.newSingleThreadExecutor();
     private WebView web;
+    private AnalyticsTelemetry analyticsTelemetry;
     private OfflineCache offlineCache;
     private LocalVoice voice;
     private NativeSpeech speech;
@@ -71,6 +72,7 @@ public final class MainActivity extends Activity {
     static boolean trusted(String url) { try{return trusted(Uri.parse(url));}catch(Exception e){return false;} }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        analyticsTelemetry=new AnalyticsTelemetry(getApplicationContext());
         long splashDeadline=SystemClock.uptimeMillis()+SPLASH_MAX_MS;
         offlineCache=new OfflineCache(this,"vanu-73xu.onrender.com");
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
@@ -175,15 +177,16 @@ public final class MainActivity extends Activity {
                 }
             }
             @Override public void onReceivedError(WebView view,WebResourceRequest req,WebResourceError err){
-                if(req.isForMainFrame()){pageFailed=true;showError("Não foi possível conectar ao VANO. Confira sua conexão e tente novamente.");}
+                if(req.isForMainFrame()){if(analyticsTelemetry!=null)analyticsTelemetry.error("communication_failure","webview");pageFailed=true;showError("Não foi possível conectar ao VANO. Confira sua conexão e tente novamente.");}
             }
             @Override public void onReceivedHttpError(WebView view,WebResourceRequest req,WebResourceResponse resp){
-                if(req.isForMainFrame()&&resp.getStatusCode()>=400){pageFailed=true;showError("O servidor está temporariamente indisponível.");}
+                if(req.isForMainFrame()&&resp.getStatusCode()>=400){if(analyticsTelemetry!=null)analyticsTelemetry.error("api_error",resp.getStatusCode()>=500?"http_5xx":"http_4xx");pageFailed=true;showError("O servidor está temporariamente indisponível.");}
             }
             @Override public void onReceivedSslError(WebView view,android.webkit.SslErrorHandler h,android.net.http.SslError err){
-                h.cancel();pageFailed=true;showError("Não foi possível verificar a conexão segura.");
+                h.cancel();if(analyticsTelemetry!=null)analyticsTelemetry.error("communication_failure","tls");pageFailed=true;showError("Não foi possível verificar a conexão segura.");
             }
             @Override public boolean onRenderProcessGone(WebView view,RenderProcessGoneDetail detail){
+                if(analyticsTelemetry!=null)analyticsTelemetry.error("map_load_failed","renderer");
                 root.removeView(view);view.destroy();web=null;
                 if(!destroyed&&!recovering){recovering=true;handler.post(()->{if(destroyed)return;createWebView();web.loadUrl(currentUrl);});}
                 else if(!destroyed)showError("O mapa precisou ser reiniciado. Toque em tentar novamente.");
@@ -252,7 +255,11 @@ public final class MainActivity extends Activity {
     private void handleNative(WebView view,JSONObject data){
         if(destroyed||view!=web||!trusted(view.getUrl()))return;
         String action=data.optString("action");
-        if("systemBars".equals(action)){
+        if("telemetry".equals(action)){
+            if(analyticsTelemetry!=null)analyticsTelemetry.event(data);
+        }else if("telemetryConsent".equals(action)){
+            if(analyticsTelemetry!=null)analyticsTelemetry.consent(data.optBoolean("allowed",false));
+        }else if("systemBars".equals(action)){
             boolean dark=data.optBoolean("dark",isSystemDark());
             String color=data.optString("background");
             if(!color.matches("#[0-9a-fA-F]{6}"))return;
