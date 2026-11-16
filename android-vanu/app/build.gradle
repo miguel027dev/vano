@@ -10,8 +10,8 @@ android {
         applicationId 'com.vano.maps'
         minSdk 24
         targetSdk 36
-        versionCode 20270009
-        versionName '3.1.8'
+        versionCode 20270010
+        versionName '3.1.9'
     }
     signingConfigs {
         release {

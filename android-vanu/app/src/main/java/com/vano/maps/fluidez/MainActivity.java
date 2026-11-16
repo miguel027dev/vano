@@ -43,12 +43,28 @@ public final class MainActivity extends Activity {
     private String pendingSpeechId="",pendingSpeechLanguage="pt-BR";
     private boolean microphonePrompt=false;
     private LocationManager gps;
-    private boolean routeTracking=false;
+    private boolean routeTracking=false,mapTracking=false,foreground=false,gpsRunning=false;
+    private boolean geoPermissionPrompted=false;
+    private final GpsFixPolicy gpsPolicy=new GpsFixPolicy();
+    private long lastAcceptedGpsAt=0,gpsStartedAt=0;
+    private final Runnable gpsWatchdog=new Runnable(){
+        @Override public void run(){
+            if(!gpsWanted()||!gpsRunning)return;
+            long now=SystemClock.elapsedRealtime();
+            if(now-Math.max(lastAcceptedGpsAt,gpsStartedAt)>=15000){
+                gpsStatus("reconnecting");
+                stopGps();
+                startGps();
+                return;
+            }
+            handler.postDelayed(this,5000);
+        }
+    };
     private final LocationListener gpsListener=new LocationListener(){
         @Override public void onLocationChanged(Location fix){dispatchPosition(fix);}
         @Override public void onStatusChanged(String provider,int status,Bundle extras){}
-        @Override public void onProviderEnabled(String provider){}
-        @Override public void onProviderDisabled(String provider){}
+        @Override public void onProviderEnabled(String provider){stopGps();startGps();}
+        @Override public void onProviderDisabled(String provider){stopGps();startGps();}
     };
     private FrameLayout root;
     private static final long SPLASH_MAX_MS=2700;
@@ -138,7 +154,7 @@ public final class MainActivity extends Activity {
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setMediaPlaybackRequiresUserGesture(false); // Spoken navigation follows the explicit start-trip action.
-        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/"+BuildConfig.VERSION_NAME);
+        settings.setUserAgentString(settings.getUserAgentString()+" VANOAndroid/"+BuildConfig.VERSION_NAME+" VANOAndroidSingleGPS/1");
         settings.setSupportMultipleWindows(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(web,false);
@@ -163,7 +179,7 @@ public final class MainActivity extends Activity {
             }
             @Override public boolean shouldOverrideUrlLoading(WebView view,String url){return navigate(Uri.parse(url));}
             @Override public void onPageStarted(WebView view,String url,android.graphics.Bitmap icon){
-                pageFailed=false;loadGeneration++;firstFrameSeen=false;if(trusted(url))currentUrl=url;else{view.stopLoading();navigate(Uri.parse(url));}
+                mapTracking=false;routeTracking=false;stopGps();pageFailed=false;loadGeneration++;firstFrameSeen=false;if(trusted(url))currentUrl=url;else{view.stopLoading();navigate(Uri.parse(url));}
             }
             @Override public void onPageFinished(WebView view,String url){
                 if(!trusted(url)||pageFailed)return;
@@ -208,7 +224,8 @@ public final class MainActivity extends Activity {
                 if(geoCallback!=null)geoCallback.invoke(geoOrigin,false,false);
                 geoCallback=callback;geoOrigin=origin;
                 if(locationGranted())finishGeo(true);
-                else requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);
+                else if(!geoPermissionPrompted){geoPermissionPrompted=true;requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);}
+                else finishGeo(false);
             }
             @Override public void onGeolocationPermissionsHidePrompt(){finishGeo(false);}
             @Override public boolean onJsPrompt(WebView view,String url,String message,String defaultValue,JsPromptResult result){
@@ -217,7 +234,7 @@ public final class MainActivity extends Activity {
                 try{
                     if(defaultValue==null||defaultValue.length()>130000)throw new IllegalArgumentException();
                     JSONObject data=new JSONObject(defaultValue);String action=data.optString("action");
-                    if("systemBars".equals(action)||"firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)||"speak".equals(action)||"stopSpeech".equals(action)||"navigation".equals(action)||"prepareMap".equals(action)||"voiceSettings".equals(action)||"session".equals(action)||"startSpeechRecognition".equals(action)||"stopSpeechRecognition".equals(action)||"abortSpeechRecognition".equals(action)){
+                    if("systemBars".equals(action)||"firstFrame".equals(action)||"pageReady".equals(action)||"route".equals(action)||"google".equals(action)||"wake".equals(action)||"share".equals(action)||"speak".equals(action)||"stopSpeech".equals(action)||"navigation".equals(action)||"mapTracking".equals(action)||"prepareMap".equals(action)||"voiceSettings".equals(action)||"session".equals(action)||"startSpeechRecognition".equals(action)||"stopSpeechRecognition".equals(action)||"abortSpeechRecognition".equals(action)){
                         handleNative(view,data);result.confirm("ok");
                     }else result.cancel();
                 }catch(Exception e){result.cancel();}
@@ -283,7 +300,12 @@ public final class MainActivity extends Activity {
                 int id=data.optInt("id");offlineCache.prepare(coords,count->runOnUiThread(()->{try{dispatch("vano:offline-map",new JSONObject().put("id",id).put("ok",count>=0).put("tiles",Math.max(0,count)));}catch(Exception ignored){}}));
             }catch(Exception ignored){}
         }else if("navigation".equals(action)){
-            routeTracking=data.optBoolean("active");if(routeTracking){startGps();}else{stopGps();if(voice!=null)voice.stop();}
+            routeTracking=data.optBoolean("active");
+            if(routeTracking||mapTracking)startGps();else stopGps();
+            if(!routeTracking&&voice!=null)voice.stop();
+        }else if("mapTracking".equals(action)){
+            mapTracking=data.optBoolean("active");
+            if(mapTracking||routeTracking)startGps();else stopGps();
         }else if("speak".equals(action)){ensureVoice();voice.speak(data.optString("text"),data.optString("language","pt-BR"),data.optString("utteranceId"));}
         else if("stopSpeech".equals(action)){if(voice!=null)voice.stop(data.optString("utteranceId"));}
         else if("startSpeechRecognition".equals(action)){
@@ -321,16 +343,74 @@ public final class MainActivity extends Activity {
         if(speech==null)speech=new NativeSpeech(this,this::speechEvent);
         speech.start(id,pendingSpeechLanguage);
     }
+    private boolean gpsWanted(){
+        return !destroyed&&foreground&&(mapTracking||routeTracking)&&web!=null&&trusted(web.getUrl());
+    }
+    private void gpsStatus(String status){
+        try{dispatch("vano:native-gps-status",new JSONObject().put("status",status));}catch(Exception ignored){}
+    }
     private void dispatchPosition(Location fix){
-        if(!routeTracking||fix==null||fix.getTime()<=0)return;
-        try{JSONObject coords=new JSONObject().put("latitude",fix.getLatitude()).put("longitude",fix.getLongitude()).put("accuracy",fix.getAccuracy()).put("heading",fix.hasBearing()?fix.getBearing():JSONObject.NULL).put("speed",fix.hasSpeed()?fix.getSpeed():JSONObject.NULL);dispatch("vano:native-position",new JSONObject().put("coords",coords).put("timestamp",fix.getTime()));}catch(Exception ignored){}
+        if(!gpsWanted()||fix==null||!locationGranted())return;
+        long elapsed=fix.getElapsedRealtimeNanos()/1000000L;
+        long now=SystemClock.elapsedRealtime();
+        if(!gpsPolicy.accept(fix.getLatitude(),fix.getLongitude(),fix.hasAccuracy()?fix.getAccuracy():Double.NaN,
+                elapsed,now,fix.getTime(),System.currentTimeMillis(),
+                LocationManager.GPS_PROVIDER.equals(fix.getProvider())))return;
+        lastAcceptedGpsAt=now;
+        // Keep sensor coordinates unchanged. Animation and road matching belong
+        // to the existing visual pipeline, never to routing or speed telemetry.
+        try{
+            JSONObject coords=new JSONObject().put("latitude",fix.getLatitude()).put("longitude",fix.getLongitude())
+                .put("accuracy",fix.getAccuracy())
+                .put("heading",fix.hasBearing()&&fix.hasSpeed()&&fix.getSpeed()>=1.5f
+                    &&(Build.VERSION.SDK_INT<26||!fix.hasBearingAccuracy()||fix.getBearingAccuracyDegrees()<=35f)
+                    ?fix.getBearing():JSONObject.NULL)
+                .put("speed",fix.hasSpeed()&&fix.getSpeed()>=0&&Float.isFinite(fix.getSpeed())
+                    ?fix.getSpeed():JSONObject.NULL);
+            dispatch("vano:native-position",new JSONObject().put("coords",coords).put("timestamp",fix.getTime()));
+        }catch(Exception ignored){}
     }
     private void startGps(){
-        if(!routeTracking||!locationGranted())return;
+        if(!gpsWanted())return;
+        if(!locationGranted()){
+            stopGps();
+            if(!geoPermissionPrompted){
+                geoPermissionPrompted=true;
+                requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION},GEO_REQUEST);
+            }else gpsStatus("denied");
+            return;
+        }
+        // Map mount, navigation mode and recenter can all request tracking.
+        // Do not repeatedly unregister a satellite acquisition in progress.
+        if(gpsRunning)return;
         if(gps==null)gps=(LocationManager)getSystemService(LOCATION_SERVICE);
-        try{gps.removeUpdates(gpsListener);if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED&&gps.isProviderEnabled(LocationManager.GPS_PROVIDER))gps.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,gpsListener,Looper.getMainLooper());if(gps.isProviderEnabled(LocationManager.NETWORK_PROVIDER))gps.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,0,gpsListener,Looper.getMainLooper());}catch(Exception ignored){}
+        if(gps==null){gpsStatus("unavailable");return;}
+        boolean registered=false;
+        Location warm=null;
+        String[] providers={LocationManager.GPS_PROVIDER,LocationManager.NETWORK_PROVIDER};
+        for(String provider:providers){
+            if(LocationManager.GPS_PROVIDER.equals(provider)&&checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED)continue;
+            try{
+                if(!gps.isProviderEnabled(provider))continue;
+                gps.requestLocationUpdates(provider,LocationManager.GPS_PROVIDER.equals(provider)?1000:2000,0,gpsListener,Looper.getMainLooper());
+                registered=true;
+                Location cached=gps.getLastKnownLocation(provider);
+                if(cached!=null&&cached.hasAccuracy()&&GpsFixPolicy.fresh(cached.getElapsedRealtimeNanos()/1000000L,SystemClock.elapsedRealtime(),8000)
+                    &&(warm==null||cached.getAccuracy()<warm.getAccuracy()))warm=cached;
+            }catch(SecurityException denied){/* Another provider may still be available. */}
+             catch(IllegalArgumentException unavailable){/* Optional provider. */}
+        }
+        gpsRunning=registered;
+        if(!registered){gpsStatus("unavailable");return;}
+        gpsStartedAt=SystemClock.elapsedRealtime();
+        if(warm!=null)dispatchPosition(warm);
+        handler.removeCallbacks(gpsWatchdog);
+        handler.postDelayed(gpsWatchdog,5000);
     }
-    private void stopGps(){try{if(gps!=null)gps.removeUpdates(gpsListener);}catch(Exception ignored){}}
+    private void stopGps(){
+        handler.removeCallbacks(gpsWatchdog);gpsRunning=false;
+        try{if(gps!=null)gps.removeUpdates(gpsListener);}catch(Exception ignored){}
+    }
     private void syncScreenAwake(){
         if(navigationActive&&hasWindowFocus())getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -380,7 +460,7 @@ public final class MainActivity extends Activity {
     }
     private boolean locationGranted(){return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED||checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED;}
     private void finishGeo(boolean allow){if(geoCallback!=null){geoCallback.invoke(geoOrigin,allow,false);geoCallback=null;geoOrigin=null;}}
-    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());startGps();}else if(request==MIC_REQUEST)finishMicrophone(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED);}
+    @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] grants){super.onRequestPermissionsResult(request,permissions,grants);if(request==GEO_REQUEST){finishGeo(locationGranted());if(!locationGranted())gpsStatus("denied");else startGps();}else if(request==MIC_REQUEST)finishMicrophone(checkSelfPermission(Manifest.permission.RECORD_AUDIO)==PackageManager.PERMISSION_GRANTED);}
 
     @Override public void onActivityResult(int req,int result,Intent data){
         super.onActivityResult(req,result,data);
@@ -446,7 +526,7 @@ public final class MainActivity extends Activity {
     @Override public void onBackPressed(){handleBack();}
     @Override protected void onSaveInstanceState(Bundle state){if(web!=null){Bundle saved=new Bundle();web.saveState(saved);state.putBundle("web",saved);}super.onSaveInstanceState(state);}
     @Override public void onConfigurationChanged(Configuration c){super.onConfigurationChanged(c);root.requestApplyInsets();if(web!=null&&trusted(web.getUrl()))web.evaluateJavascript("window.dispatchEvent(new Event('resize'))",null);}
-    @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();syncScreenAwake();startGps();}
-    @Override protected void onPause(){getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();if(speech!=null)speech.cancel();super.onPause();}
+    @Override protected void onResume(){super.onResume();foreground=true;if(web!=null)web.onResume();syncScreenAwake();startGps();}
+    @Override protected void onPause(){foreground=false;getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);stopGps();if(voice!=null)voice.stop();if(web!=null)web.onPause();CookieManager.getInstance().flush();if(speech!=null)speech.cancel();super.onPause();}
     @Override protected void onDestroy(){destroyed=true;stopGps();pendingSpeechId="";if(speech!=null)speech.cancel();if(audioPermission!=null){audioPermission.deny();audioPermission=null;}if(voice!=null)voice.close();if(offlineCache!=null)offlineCache.close();handler.removeCallbacksAndMessages(null);finishGeo(false);if(fileCallback!=null)fileCallback.onReceiveValue(null);network.shutdownNow();if(web!=null){root.removeView(web);web.destroy();web=null;}super.onDestroy();}
 }

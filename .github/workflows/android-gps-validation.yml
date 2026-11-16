@@ -1,0 +1,33 @@
+name: Android GPS candidate validation
+on:
+  push:
+    branches: ['feat/android-gps-3.1.9-20261116']
+    paths: ['android-vanu/**', '.github/workflows/android-gps-validation.yml']
+  pull_request:
+    paths: ['android-vanu/**', '.github/workflows/android-gps-validation.yml']
+permissions:
+  contents: read
+jobs:
+  gps-unit-and-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Validate Java policy and compile debug Android source
+        working-directory: android-vanu
+        # No Firebase fixture credentials and no release/signing bypass.
+        # This compilation cannot validate SDK initialization or a distributable AAB.
+        run: bash ./gradlew :app:testDebugUnitTest :app:compileDebugJavaWithJavac -x :app:processDebugGoogleServices --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gps-unit-results
+          path: android-vanu/app/build/reports/tests/
+          if-no-files-found: warn
