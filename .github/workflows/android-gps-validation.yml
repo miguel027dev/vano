@@ -1,0 +1,53 @@
+name: Android GPS candidate validation
+on:
+  push:
+    branches: ['feat/android-gps-3.1.9-20261116']
+    paths: ['android-vanu/**', '.github/workflows/android-gps-validation.yml']
+  pull_request:
+    paths: ['android-vanu/**', '.github/workflows/android-gps-validation.yml']
+permissions:
+  contents: read
+jobs:
+  pure-gps-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Run sensor arbitration scenarios without Android or downloaded dependencies
+        run: |
+          mkdir -p /tmp/vano-gps-tests
+          javac -d /tmp/vano-gps-tests android-vanu/app/src/main/java/com/vano/maps/fluidez/GpsFixPolicy.java android-vanu/tests/gps/com/vano/maps/fluidez/GpsFixPolicySelfTest.java
+          java -cp /tmp/vano-gps-tests com.vano.maps.fluidez.GpsFixPolicySelfTest
+  gps-unit-and-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Validate Java policy and compile debug Android source
+        working-directory: android-vanu
+        # CI-only debug configuration: no credentials, SDK startup or release artifact.
+        # Original release guards remain required for every release build.
+        run: |
+          cat >> app/build.gradle <<'GRADLE'
+          googleServices {
+              missingGoogleServicesStrategy = com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy.IGNORE
+          }
+          GRADLE
+          bash ./gradlew :app:testDebugUnitTest :app:compileDebugJavaWithJavac --no-daemon
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gps-unit-results
+          path: android-vanu/app/build/reports/tests/
+          if-no-files-found: warn
